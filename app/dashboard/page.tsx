@@ -1,0 +1,190 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardBody, CardHeader } from '@/components/Card';
+import { BarChart3, Users, CheckSquare, TrendingUp } from 'lucide-react';
+import { fetchUserCount } from '@/lib/api/users';
+import { fetchActiveTaskCount } from '@/lib/api/tasks';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { ActivityFeed, ActivityItem } from '@/components/dashboard/ActivityFeed';
+
+/**
+ * Dashboard page - main overview of the system
+ */
+export default function DashboardPage() {
+  // Stat Card 1: Total Users
+  const [totalUsers, setTotalUsers] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isError, setIsError] = useState<boolean>(false);
+
+  // Stat Card 2: Active Tasks
+  const [activeTasks, setActiveTasks] = useState<number>(0);
+  const [isTasksLoading, setIsTasksLoading] = useState<boolean>(true);
+  const [isTasksError, setIsTasksError] = useState<boolean>(false);
+
+  // Activity Feed States
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [isActivitiesLoading, setIsActivitiesLoading] = useState<boolean>(true);
+  const [isActivitiesError, setIsActivitiesError] = useState<boolean>(false);
+
+  // Fetch Total Users Count
+  const getUserCountData = async () => {
+    try {
+      setIsLoading(true);
+      setIsError(false);
+      const data = await fetchUserCount();
+      setTotalUsers(data.totalUsers);
+    } catch (error) {
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch Active Tasks Count
+  const getActiveTaskCountData = async () => {
+    try {
+      setIsTasksLoading(true);
+      setIsTasksError(false);
+      const data = await fetchActiveTaskCount();
+      setActiveTasks(data.activeTasks);
+    } catch (error) {
+      setIsTasksError(true);
+    } finally {
+      setIsTasksLoading(false);
+    }
+  };
+
+  // Fetch Recent Activities (Simulated Network Retrieval)
+  const getActivitiesData = async () => {
+    try {
+      setIsActivitiesLoading(true);
+      setIsActivitiesError(false);
+      
+      // Artificial short delay to enjoy premium skeleton animations
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      const mockActivities: ActivityItem[] = [
+        { id: 1, title: 'User Admin created active task #14', timestamp: '10 minutes ago', status: 'Completed' },
+        { id: 2, title: 'Updated privileges for Developer role', timestamp: '1 hour ago', status: 'In Progress' },
+        { id: 3, title: 'Database synchronization executed', timestamp: '2 hours ago', status: 'Completed' },
+        { id: 4, title: 'Neon PostgreSQL cloud backup failed', timestamp: '4 hours ago', status: 'Cancelled' },
+      ];
+      
+      setActivities(mockActivities);
+    } catch (error) {
+      setIsActivitiesError(true);
+    } finally {
+      setIsActivitiesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    
+    if (active) {
+      getUserCountData();
+      getActiveTaskCountData();
+      getActivitiesData();
+    }
+    
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <>
+      {/* Page Header */}
+      <section className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h1>
+        <p className="text-gray-650 dark:text-gray-400 mt-2">Welcome back! Here's an overview of your system.</p>
+      </section>
+
+      {/* Statistics Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          label="Total Users"
+          value={totalUsers}
+          change="+12%"
+          icon={Users}
+          variant="info"
+          isLoading={isLoading}
+          isError={isError}
+          onRetry={getUserCountData}
+        />
+        <StatCard
+          label="Active Tasks"
+          value={activeTasks}
+          change="+5%"
+          icon={CheckSquare}
+          variant="success"
+          isLoading={isTasksLoading}
+          isError={isTasksError}
+          onRetry={getActiveTaskCountData}
+        />
+        <StatCard
+          label="System Load"
+          value="45%"
+          change="-2%"
+          icon={TrendingUp}
+          variant="warning"
+          isLoading={false}
+          isError={false}
+        />
+        <StatCard
+          label="Performance"
+          value="98.5%"
+          change="+2%"
+          icon={BarChart3}
+          variant="danger"
+          isLoading={false}
+          isError={false}
+        />
+      </div>
+
+      {/* Recent Activity & Quick Access Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <ActivityFeed
+            activities={activities}
+            isLoading={isActivitiesLoading}
+            isError={isActivitiesError}
+            onRetry={getActivitiesData}
+          />
+        </div>
+
+        {/* Quick Links Panel */}
+        <div>
+          <Card className="h-full border border-gray-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm">
+            <CardHeader className="border-b border-gray-100 dark:border-slate-800/80 px-6 py-4">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-white">Quick Access</h2>
+            </CardHeader>
+            <CardBody className="p-6">
+              <div className="space-y-3.5">
+                <a
+                  href="/dashboard/user-management"
+                  className="block p-3.5 rounded-xl bg-blue-50/50 hover:bg-blue-100/50 dark:bg-blue-950/20 dark:hover:bg-blue-950/35 transition-all text-blue-600 dark:text-blue-400 font-semibold text-sm"
+                >
+                  → User Management
+                </a>
+                <a
+                  href="/dashboard/tasks"
+                  className="block p-3.5 rounded-xl bg-emerald-50/50 hover:bg-emerald-100/50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/35 transition-all text-emerald-600 dark:text-emerald-400 font-semibold text-sm"
+                >
+                  → View Tasks
+                </a>
+                <a
+                  href="/dashboard/user-management/roles"
+                  className="block p-3.5 rounded-xl bg-purple-50/50 hover:bg-purple-100/50 dark:bg-purple-950/20 dark:hover:bg-purple-950/35 transition-all text-purple-600 dark:text-purple-400 font-semibold text-sm"
+                >
+                  → Manage Roles
+                </a>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+    </>
+  );
+}
