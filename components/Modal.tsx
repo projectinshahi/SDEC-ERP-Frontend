@@ -57,10 +57,12 @@ export const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
           <div
             ref={ref}
             className={classNames(
-              'relative w-full bg-white rounded-xl shadow-2xl border border-gray-100 transform transition-all animate-scale-in',
+              'relative w-full bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700/80 transform transition-all animate-scale-in',
               sizeClasses[size]
             )}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
