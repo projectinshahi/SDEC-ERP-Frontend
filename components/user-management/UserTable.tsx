@@ -1,21 +1,21 @@
 'use client';
 
 import { Edit, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/Badge';
 import type { User } from '@/lib/types/user-management';
-import { classNames } from '@/lib/utils';
+import type { ColumnConfig } from '@/lib/api/columns';
 
 // Flexible interface supporting database shapes and local client structures
 interface UserTableProps {
   users: (User & { role?: string })[];
+  columns?: ColumnConfig[]; // Columns made optional with graceful fallback
   onEdit: (user: User) => void;
   onDelete: (userId: string) => void;
 }
 
 /**
- * Reusable User Table Component
+ * Reusable User Table Component - Renders columns dynamically from Database
  */
-export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
+export function UserTable({ users, columns, onEdit, onDelete }: UserTableProps) {
   // Normalizes status for robust styling matching (Active/active -> success, Inactive/inactive -> warning/danger)
   const getStatusConfig = (statusStr: string) => {
     const s = String(statusStr).toLowerCase();
@@ -30,6 +30,21 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
       className: 'bg-rose-50 text-rose-700 border border-rose-100 font-bold px-2.5 py-0.5 rounded-full text-xs shadow-sm',
     };
   };
+
+  // Graceful fallback defaults if columns are not fetched/provided
+  const defaultCols: ColumnConfig[] = [
+    { key: 'name', label: 'Name', visible: true, order: 1 },
+    { key: 'email', label: 'Email', visible: true, order: 2 },
+    { key: 'role', label: 'Role', visible: true, order: 3 },
+    { key: 'status', label: 'Status', visible: true, order: 4 },
+  ];
+
+  const activeCols = columns && columns.length > 0 ? columns : defaultCols;
+
+  // Sort and filter visible columns according to database column configurations
+  const visibleColumns = [...activeCols]
+    .filter((col) => col.visible)
+    .sort((a, b) => a.order - b.order);
 
   if (users.length === 0) {
     return (
@@ -51,11 +66,17 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/50">
-              <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
-              <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
-              <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Role</th>
-              <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-              <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+              {visibleColumns.map((col) => (
+                <th 
+                  key={col.key} 
+                  className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider"
+                >
+                  {col.label}
+                </th>
+              ))}
+              <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
@@ -74,36 +95,63 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                   key={user.id}
                   className="hover:bg-slate-50/45 transition-colors duration-150 group"
                 >
-                  {/* Name column */}
-                  <td className="py-4 px-6">
-                    <p className="font-bold text-gray-800 text-sm">{user.name}</p>
-                  </td>
+                  {visibleColumns.map((col) => {
+                    // 1. User Name Column
+                    if (col.key === 'name') {
+                      return (
+                        <td key={col.key} className="py-4 px-6">
+                          <p className="font-bold text-gray-800 text-sm">{user.name}</p>
+                        </td>
+                      );
+                    }
 
-                  {/* Email column */}
-                  <td className="py-4 px-6 text-slate-600 text-sm font-medium">
-                    {user.email}
-                  </td>
+                    // 2. Email Column
+                    if (col.key === 'email') {
+                      return (
+                        <td key={col.key} className="py-4 px-6 text-slate-600 text-sm font-medium">
+                          {user.email}
+                        </td>
+                      );
+                    }
 
-                  {/* Role column */}
-                  <td className="py-4 px-6">
-                    <div className="flex flex-wrap gap-1.5">
-                      {userRoles.map((r, index) => (
-                        <span
-                          key={index}
-                          className="bg-slate-150 text-slate-700 font-bold px-2 py-0.5 rounded-md text-[10px] tracking-wide uppercase border border-slate-200/50 shadow-sm"
-                        >
-                          {r}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
+                    // 3. Roles Column
+                    if (col.key === 'role') {
+                      return (
+                        <td key={col.key} className="py-4 px-6">
+                          <div className="flex flex-wrap gap-1.5">
+                            {userRoles.map((r, index) => (
+                              <span
+                                key={index}
+                                className="bg-slate-150 text-slate-700 font-bold px-2 py-0.5 rounded-md text-[10px] tracking-wide uppercase border border-slate-200/50 shadow-sm"
+                              >
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      );
+                    }
 
-                  {/* Status column */}
-                  <td className="py-4 px-6">
-                    <span className={statusConfig.className}>
-                      {statusConfig.label}
-                    </span>
-                  </td>
+                    // 4. Status Column
+                    if (col.key === 'status') {
+                      return (
+                        <td key={col.key} className="py-4 px-6">
+                          <span className={statusConfig.className}>
+                            {statusConfig.label}
+                          </span>
+                        </td>
+                      );
+                    }
+
+                    // 5. Dynamic Fallback for any other custom columns
+                    const rawVal = (user as any)[col.key];
+                    const displayVal = rawVal !== undefined && rawVal !== null && rawVal !== '' ? String(rawVal) : '-';
+                    return (
+                      <td key={col.key} className="py-4 px-6 text-slate-600 text-sm font-medium">
+                        {displayVal}
+                      </td>
+                    );
+                  })}
 
                   {/* Actions column */}
                   <td className="py-4 px-6">
