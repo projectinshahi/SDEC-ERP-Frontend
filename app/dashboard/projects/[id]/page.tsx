@@ -65,7 +65,38 @@ export default function ProjectDetailsPage() {
     try {
       const data = await fetchProjectById(projectId);
       setProject(data);
-      const membersData = await fetchProjectMembers(projectId);
+      let membersData = await fetchProjectMembers(projectId);
+      
+      // If the members API returns empty but the project has members assigned,
+      // derive ProjectMember objects from the project's members name array
+      if ((!membersData || membersData.length === 0) && data.members && data.members.length > 0) {
+        try {
+          const { fetchUsers } = await import('@/lib/api/users');
+          const allUsers = await fetchUsers();
+          membersData = data.members.map((name: string, idx: number) => {
+            const user = allUsers.find((u) => u.name.toLowerCase() === name.toLowerCase());
+            return {
+              id: user ? user.id : `derived-${idx}`,
+              project_id: data.id,
+              userId: user ? user.id : idx + 1,
+              role: (idx === 0 ? 'admin' : 'editor') as 'admin' | 'editor' | 'viewer',
+              name: name,
+              email: user ? user.email : `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+            };
+          });
+        } catch (userErr) {
+          // If users fetch fails, still show members with basic info
+          membersData = data.members.map((name: string, idx: number) => ({
+            id: `derived-${idx}`,
+            project_id: data.id,
+            userId: idx + 1,
+            role: (idx === 0 ? 'admin' : 'editor') as 'admin' | 'editor' | 'viewer',
+            name: name,
+            email: `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+          }));
+        }
+      }
+      
       setMembers(membersData);
     } catch (err: any) {
       console.error('Failed to load project details:', err);
