@@ -10,7 +10,7 @@ import { AddUserModal } from '@/components/user-management/AddUserModal';
 import { AddRoleModal } from '@/components/user-management/AddRoleModal';
 import { CreateRoleModal } from '@/components/user-management/CreateRoleModal';
 import { Modal } from '@/components/Modal';
-import { Plus, Users, Shield, X, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { SlidersHorizontal, Plus, Users, Shield, X, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { DUMMY_ROLES, AVAILABLE_PERMISSIONS } from '@/lib/data/user-management-data';
 import type { User, Role, UserFormData, RoleFormData } from '@/lib/types/user-management';
 import { classNames } from '@/lib/utils';
@@ -21,6 +21,7 @@ import {
   deleteUserApi 
 } from '@/lib/api/users';
 import { fetchRolesApi, deleteRoleApi } from '@/lib/api/roles';
+import { fetchColumnsApi, saveColumnsApi, ColumnConfig } from '@/lib/api/columns';
 
 type TabType = 'users' | 'roles';
 
@@ -48,10 +49,24 @@ export function UserManagementClient() {
   const [isDeletingUser, setIsDeletingUser] = useState<boolean>(false);
   const [isDeletingRole, setIsDeletingRole] = useState<boolean>(false);
 
+  // Dynamic database columns states
+  const [columnConfig, setColumnConfig] = useState<ColumnConfig[]>([]);
+  const [isColumnSettingsOpen, setIsColumnSettingsOpen] = useState(false);
+
   // Custom UX loading states & toasts queue
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const loadColumns = async () => {
+    try {
+      const cols = await fetchColumnsApi('users');
+      setColumnConfig(cols);
+    } catch (err: any) {
+      console.error('Failed to load columns config:', err);
+      showToast('Failed to sync columns config with database', 'error');
+    }
+  };
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -99,7 +114,7 @@ export function UserManagementClient() {
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
-      await Promise.all([loadUsers(), loadRoles()]);
+      await Promise.all([loadUsers(), loadRoles(), loadColumns()]);
       setIsLoading(false);
     };
     init();
@@ -243,22 +258,35 @@ export function UserManagementClient() {
           <h1 className="text-3xl font-bold text-gray-800 tracking-tight">User Management</h1>
           <p className="text-gray-500 text-sm mt-1">Manage users, access controls, and custom security roles in your system.</p>
         </div>
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={() => {
-            if (activeTab === 'users') {
-              setEditingUser(null);
-              setIsUserModalOpen(true);
-            } else {
-              setEditingRole(null);
-              setIsRoleModalOpen(true);
-            }
-          }}
-        >
-          <Plus size={20} />
-          {activeTab === 'users' ? 'Add User' : 'Add Role'}
-        </Button>
+        <div className="flex items-center gap-2">
+          {activeTab === 'users' && (
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => setIsColumnSettingsOpen(true)}
+              className="flex items-center gap-2 border border-gray-200"
+            >
+              <SlidersHorizontal size={20} />
+              <span>Configure Columns</span>
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => {
+              if (activeTab === 'users') {
+                setEditingUser(null);
+                setIsUserModalOpen(true);
+              } else {
+                setEditingRole(null);
+                setIsRoleModalOpen(true);
+              }
+            }}
+          >
+            <Plus size={20} />
+            {activeTab === 'users' ? 'Add User' : 'Add Role'}
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -319,7 +347,7 @@ export function UserManagementClient() {
         ) : (
           <>
             {activeTab === 'users' && (
-              <UserTable users={users} onEdit={handleEditUser} onDelete={handleDeleteUser} />
+              <UserTable users={users} columns={columnConfig} onEdit={handleEditUser} onDelete={handleDeleteUser} />
             )}
             {activeTab === 'roles' && (
               <div className="p-6 bg-white">
@@ -440,6 +468,123 @@ export function UserManagementClient() {
               disabled={!!roleToDelete?.userCount}
             >
               {isDeletingRole ? 'Deleting...' : 'Delete Role'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Dynamic Column Settings Modal */}
+      <Modal
+        isOpen={isColumnSettingsOpen}
+        onClose={() => setIsColumnSettingsOpen(false)}
+        title="Configure Columns"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Configure column visibility, edit table display labels, or use the arrow controls to change column ordering in PostgreSQL.
+          </p>
+          
+          <div className="space-y-2">
+            {columnConfig.map((col, idx) => (
+              <div 
+                key={col.key} 
+                className="flex items-center justify-between p-3 rounded-lg border border-gray-150 bg-gray-50 dark:bg-gray-800/10 hover:bg-white transition-all shadow-sm"
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id={`col-chk-${col.key}`}
+                    checked={col.visible}
+                    onChange={async (e) => {
+                      const updated = columnConfig.map((c) => 
+                        c.key === col.key ? { ...c, visible: e.target.checked } : c
+                      );
+                      setColumnConfig(updated);
+                      try {
+                        await saveColumnsApi('users', updated);
+                        showToast(`Column "${col.label}" visibility updated!`, 'success');
+                      } catch (err) {
+                        showToast('Failed to save columns configuration', 'error');
+                      }
+                    }}
+                    className="h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={col.label}
+                    onChange={(e) => {
+                      const updated = columnConfig.map((c) => 
+                        c.key === col.key ? { ...c, label: e.target.value } : c
+                      );
+                      setColumnConfig(updated);
+                    }}
+                    onBlur={async () => {
+                      try {
+                        await saveColumnsApi('users', columnConfig);
+                        showToast('Column labels updated successfully!', 'success');
+                      } catch (err) {
+                        showToast('Failed to save column configurations', 'error');
+                      }
+                    }}
+                    className="px-2 py-1 text-xs font-bold border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                </div>
+                
+                {/* Order controls */}
+                <div className="flex gap-1">
+                  <button
+                    disabled={idx === 0}
+                    onClick={async () => {
+                      if (idx === 0) return;
+                      const updated = [...columnConfig];
+                      const temp = updated[idx];
+                      updated[idx] = updated[idx - 1];
+                      updated[idx - 1] = temp;
+                      const reordered = updated.map((c, i) => ({ ...c, order: i + 1 }));
+                      setColumnConfig(reordered);
+                      try {
+                        await saveColumnsApi('users', reordered);
+                        showToast('Column order updated!', 'success');
+                      } catch (err) {
+                        showToast('Failed to save columns order', 'error');
+                      }
+                    }}
+                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30 cursor-pointer transition-colors text-xs"
+                    title="Move Up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    disabled={idx === columnConfig.length - 1}
+                    onClick={async () => {
+                      if (idx === columnConfig.length - 1) return;
+                      const updated = [...columnConfig];
+                      const temp = updated[idx];
+                      updated[idx] = updated[idx + 1];
+                      updated[idx + 1] = temp;
+                      const reordered = updated.map((c, i) => ({ ...c, order: i + 1 }));
+                      setColumnConfig(reordered);
+                      try {
+                        await saveColumnsApi('users', reordered);
+                        showToast('Column order updated!', 'success');
+                      } catch (err) {
+                        showToast('Failed to save columns order', 'error');
+                      }
+                    }}
+                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30 cursor-pointer transition-colors text-xs"
+                    title="Move Down"
+                  >
+                    ▼
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t border-gray-100 flex gap-2">
+            <Button variant="primary" onClick={() => setIsColumnSettingsOpen(false)} fullWidth>
+              Done
             </Button>
           </div>
         </div>
