@@ -3,6 +3,7 @@
 import { Edit, Trash2 } from 'lucide-react';
 import type { User } from '@/lib/types/user-management';
 import type { ColumnConfig } from '@/lib/api/columns';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 // Flexible interface supporting database shapes and local client structures
 interface UserTableProps {
@@ -156,20 +157,24 @@ export function UserTable({ users, columns, onEdit, onDelete }: UserTableProps) 
                   {/* Actions column */}
                   <td className="py-4 px-6">
                     <div className="flex items-center justify-end gap-2.5 opacity-80 group-hover:opacity-100 transition-opacity duration-150">
-                      <button
-                        onClick={() => onEdit(user as User)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                        title="Edit user settings"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => onDelete(String(user.id))}
-                        className="p-1.5 text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                        title="Permanently delete user"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <PermissionGuard require="user.update">
+                        <button
+                          onClick={() => onEdit(user as User)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                          title="Edit user settings"
+                        >
+                          <Edit size={16} />
+                        </button>
+                      </PermissionGuard>
+                      <PermissionGuard require="user.delete">
+                        <button
+                          onClick={() => onDelete(String(user.id))}
+                          className="p-1.5 text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                          title="Permanently delete user"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </PermissionGuard>
                     </div>
                   </td>
                 </tr>

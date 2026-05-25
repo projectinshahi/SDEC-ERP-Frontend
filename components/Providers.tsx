@@ -1,6 +1,7 @@
 'use client';
 
 import { ThemeProvider } from '@/lib/hooks/useTheme';
+import { AuthProvider } from '@/lib/context/AuthContext';
 import type { ReactNode } from 'react';
 
 interface ProvidersProps {
@@ -9,14 +10,16 @@ interface ProvidersProps {
 
 /**
  * Client-side providers wrapper
- * Wraps the app with all necessary context providers
+ * Wraps the app with all necessary context providers.
+ * AuthProvider must be outermost so every component in the tree
+ * shares the same authentication state.
  */
 export function Providers({ children }: ProvidersProps) {
-  console.log('Providers component rendering');
-  
   return (
-    <ThemeProvider>
-      {children}
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        {children}
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

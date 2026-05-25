@@ -9,23 +9,28 @@ import {
   LayoutDashboard,
   Users,
   CheckSquare,
+  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   Menu,
   X,
   LogOut,
 } from 'lucide-react';
+import type { ModuleName } from '@/lib/permissions/permission.types';
 
 const iconMap = {
   LayoutDashboard,
   Users,
   CheckSquare,
+  ShieldCheck,
 } as const;
 
-interface SidebarItem {
+export interface SidebarItem {
   label: string;
   href: string;
   icon: keyof typeof iconMap;
+  /** Module this item belongs to. null = always visible (no permission gating). */
+  module?: ModuleName | null;
 }
 
 interface SidebarProps {
@@ -35,12 +40,13 @@ interface SidebarProps {
 }
 
 /**
- * Sidebar component with collapsible desktop menu and responsive mobile drawer
+ * Sidebar component with collapsible desktop menu and responsive mobile drawer.
+ * Items are pre-filtered by the parent (Layout) based on permissions before being passed in.
  */
 export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  
+
   // Desktop collapse state (persisted in localStorage)
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -50,8 +56,6 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
     if (stored !== null) {
       setIsCollapsed(stored === 'true');
     }
-    // Set mounted to true in a separate macro-task/frame to ensure the initial width 
-    // is set immediately WITHOUT triggering the sliding transition animation.
     const timer = setTimeout(() => {
       setMounted(true);
     }, 50);
@@ -95,10 +99,10 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
       <aside
         className={classNames(
           'fixed md:relative top-0 left-0 h-screen bg-zinc-950 text-zinc-100 z-40 flex flex-col border-r border-zinc-900/60',
-          mounted ? 'transition-all duration-300 ease-in-out' : '', // Enable transitions only AFTER initial mount is complete
+          mounted ? 'transition-all duration-300 ease-in-out' : '',
           isCollapsed ? 'md:w-20' : 'md:w-64',
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-          'w-64' // Always w-64 on mobile or when expanding/collapsing
+          'w-64'
         )}
       >
         {/* Header / Brand Logo */}
@@ -140,27 +144,26 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
                   href={item.href}
                   className={classNames(
                     'flex items-center rounded-xl py-3 relative',
-                    mounted ? 'transition-all duration-200 ease-out' : '', // Enable link transition only after mounting
+                    mounted ? 'transition-all duration-200 ease-out' : '',
                     isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'gap-3 px-4 mx-2',
                     active
                       ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-md shadow-indigo-500/10 font-semibold'
                       : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-100'
                   )}
                   onClick={() => {
-                    // Close sidebar on mobile when a link is clicked
                     if (typeof window !== 'undefined' && window.innerWidth < 768) {
                       onToggle();
                     }
                   }}
                 >
-                  {/* Glowing neon active indicator on the left */}
+                  {/* Glowing neon active indicator */}
                   {active && (
                     <span className={classNames(
                       'absolute rounded-r bg-blue-400 shadow-[0_0_8px_#60a5fa]',
                       isCollapsed ? 'left-[-4px] top-1/4 h-1/2 w-1' : 'left-0 top-1/4 h-1/2 w-1.5'
                     )} />
                   )}
-                  
+
                   <Icon
                     size={20}
                     className={classNames(
@@ -168,13 +171,13 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
                       active ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'
                     )}
                   />
-                  
+
                   {!isCollapsed && (
                     <span className="text-sm tracking-wide">{item.label}</span>
                   )}
                 </Link>
 
-                {/* Sleek Tooltip shown in Collapsed mode */}
+                {/* Tooltip in collapsed mode */}
                 {isCollapsed && (
                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-zinc-100 text-xs font-semibold rounded-lg shadow-xl opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 pointer-events-none transition-all duration-200 whitespace-nowrap z-50">
                     {item.label}
@@ -185,7 +188,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
           })}
         </nav>
 
-        {/* Footer Area with persistent profile and desktop toggle */}
+        {/* Footer: profile + collapse toggle */}
         <div className="border-t border-zinc-900/80 p-3 space-y-3 flex-shrink-0 bg-zinc-950/40">
           {/* Collapse/Expand Button for Desktop */}
           <button
@@ -206,11 +209,10 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
           {user && (
             <div className={classNames(
               'group relative flex items-center rounded-xl bg-zinc-900/40 border border-zinc-900 p-2.5',
-              mounted ? 'transition-all duration-200' : '', // Enable transition only after mounting
+              mounted ? 'transition-all duration-200' : '',
               isCollapsed ? 'justify-center mx-auto' : 'justify-between'
             )}>
               <div className="flex items-center gap-3 min-w-0">
-                {/* Avatar with Status indicator */}
                 <div className="relative flex-shrink-0">
                   <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shadow-md shadow-indigo-500/10">
                     {user.name.charAt(0).toUpperCase()}
@@ -221,7 +223,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
                 {!isCollapsed && (
                   <div className="text-left min-w-0">
                     <p className="text-sm font-semibold text-zinc-200 truncate">{user.name}</p>
-                    <p className="text-xs text-zinc-500 font-medium truncate capitalize">{user.role}</p>
+                    <p className="text-xs text-zinc-500 font-medium truncate capitalize">{user.roleName}</p>
                   </div>
                 )}
               </div>
@@ -236,10 +238,9 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
                   <LogOut size={16} />
                 </button>
               ) : (
-                /* Avatar Tooltip for collapsed mode with quick info */
                 <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-2 bg-zinc-900 border border-zinc-800 text-zinc-100 text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 whitespace-nowrap text-left">
                   <p className="font-semibold text-zinc-200">{user.name}</p>
-                  <p className="text-[10px] text-zinc-500 capitalize font-medium">{user.role}</p>
+                  <p className="text-[10px] text-zinc-500 capitalize font-medium">{user.roleName}</p>
                 </div>
               )}
             </div>

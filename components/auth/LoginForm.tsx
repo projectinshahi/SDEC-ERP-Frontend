@@ -2,8 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
+
+// Demo credentials — must match the backend hardcoded values
+const DEMO_EMAIL = 'admin@gmail.com';
+const DEMO_PASSWORD = 'admin123';
 
 export function LoginForm() {
   const router = useRouter();
@@ -26,6 +30,17 @@ export function LoginForm() {
   const [isPasswordTouched, setIsPasswordTouched] = useState(false);
 
   const emailInputRef = useRef<HTMLInputElement>(null);
+
+  /** One-click fill with demo credentials */
+  const fillDemoCredentials = () => {
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    setIsEmailTouched(true);
+    setIsPasswordTouched(true);
+    setEmailError(null);
+    setPasswordError(null);
+    setAuthError(null);
+  };
 
   // Focus on mount
   useEffect(() => {
@@ -81,8 +96,12 @@ export function LoginForm() {
     setAuthError(null);
 
     try {
+      // ✓ Trim email and password before sending
+      const trimmedEmail = email.trim().toLowerCase();
+      const trimmedPassword = password.trim();
+
       // Direct call to useAuth login action
-      await login(email, password);
+      await login(trimmedEmail, trimmedPassword);
       // Successful auth - redirect to dashboard
       router.push('/dashboard');
     } catch (err: any) {
@@ -100,6 +119,27 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+      {/* Demo credentials hint banner */}
+      <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3.5 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+          <Zap size={15} className="text-indigo-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-indigo-800 mb-1">Demo Credentials</p>
+          <p className="text-xs text-indigo-600 font-mono leading-relaxed">
+            <span className="block">Email: <strong>{DEMO_EMAIL}</strong></span>
+            <span className="block">Password: <strong>{DEMO_PASSWORD}</strong></span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={fillDemoCredentials}
+          className="flex-shrink-0 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 hover:border-indigo-400 px-2.5 py-1.5 rounded-lg transition-all duration-150 whitespace-nowrap"
+        >
+          Auto-fill
+        </button>
+      </div>
+
       {/* Global Error Banner */}
       {authError && (
         <div
@@ -173,8 +213,7 @@ export function LoginForm() {
             Password
           </label>
           <a
-            href="#"
-            onClick={(e) => e.preventDefault()}
+            href="/forgot-password"
             className="text-xs font-semibold text-indigo-600 hover:text-indigo-500 hover:underline transition-colors"
           >
             Forgot password?

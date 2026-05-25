@@ -3,6 +3,7 @@
 import { Edit, Trash2, Shield } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import type { Role } from '@/lib/types/user-management';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 interface RoleTableProps {
   roles: Role[];
@@ -72,20 +73,24 @@ export function RoleTable({ roles, onEdit, onDelete }: RoleTableProps) {
 
           {/* Actions */}
           <div className="flex gap-2 pt-4 border-t border-gray-200">
-            <button
-              onClick={() => onEdit(role)}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
-            >
-              <Edit size={16} />
-              Edit
-            </button>
-            <button
-              onClick={() => onDelete(role.id)}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium"
-            >
-              <Trash2 size={16} />
-              Delete
-            </button>
+            <PermissionGuard require="role.update">
+              <button
+                onClick={() => onEdit(role)}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+              >
+                <Edit size={16} />
+                Edit
+              </button>
+            </PermissionGuard>
+            <PermissionGuard require="role.delete">
+              <button
+                onClick={() => onDelete(role.id)}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium"
+              >
+                <Trash2 size={16} />
+                Delete
+              </button>
+            </PermissionGuard>
           </div>
         </div>
       ))}

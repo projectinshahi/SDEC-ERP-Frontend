@@ -1,5 +1,8 @@
 /**
  * User Management Types
+ *
+ * Permission arrays should contain valid PermissionKey values
+ * from `@/lib/permissions/permission.types` (e.g. 'user.create', 'role.read').
  */
 
 export interface User {
@@ -15,6 +18,7 @@ export interface Role {
   id: string;
   name: string;
   description: string;
+  /** Array of PermissionKey values (e.g. 'user.create', 'task.read', 'role.delete') */
   permissions: string[];
   userCount?: number;
 }
