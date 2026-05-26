@@ -5,6 +5,8 @@ import { Card, CardBody, CardHeader, CardFooter } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
+import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { ROUTES } from '@/lib/constants';
 import { Plus, Edit, Trash2, Lock, Shield, Loader2, AlertCircle } from 'lucide-react';
 import { fetchRolesApi } from '@/lib/api/roles';
@@ -78,7 +80,7 @@ export function RolesClient() {
   };
 
   return (
-    <>
+    <PermissionPageGuard module="role">
       {/* Breadcrumb */}
       <div className="mb-6 animate-fade-in">
         <Breadcrumb
@@ -98,15 +100,17 @@ export function RolesClient() {
           </h1>
           <p className="text-gray-500 mt-1">Create, view, and configure security roles and permissions in the system</p>
         </div>
-        <Button 
-          variant="primary" 
-          size="lg" 
-          onClick={() => setIsModalOpen(true)}
-          className="shadow-md hover:shadow-lg transition-all duration-200"
-        >
-          <Plus size={20} className="mr-1" />
-          Create Role
-        </Button>
+        <PermissionGuard require="role.create">
+          <Button 
+            variant="primary" 
+            size="lg" 
+            onClick={() => setIsModalOpen(true)}
+            className="shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            <Plus size={20} className="mr-1" />
+            Create Role
+          </Button>
+        </PermissionGuard>
       </section>
 
       {/* Error Alert Box */}
@@ -227,23 +231,27 @@ export function RolesClient() {
                 </CardBody>
                 <CardFooter className="pt-4 border-t border-gray-50">
                   <div className="flex gap-2.5 w-full">
-                    <Button 
-                      variant="secondary" 
-                      fullWidth 
-                      size="sm" 
-                      className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700"
-                      onClick={() => {
-                        setEditingRole(role);
-                        setIsModalOpen(true);
-                      }}
-                    >
-                      <Edit size={14} className="mr-1.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                      Edit Role
-                    </Button>
-                    <Button variant="danger" fullWidth size="sm" className="bg-red-50 hover:bg-red-100 border-transparent text-red-600 hover:text-red-700">
-                      <Trash2 size={14} className="mr-1.5" />
-                      Delete
-                    </Button>
+                    <PermissionGuard require="role.update">
+                      <Button 
+                        variant="secondary" 
+                        fullWidth 
+                        size="sm" 
+                        className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700"
+                        onClick={() => {
+                          setEditingRole(role);
+                          setIsModalOpen(true);
+                        }}
+                      >
+                        <Edit size={14} className="mr-1.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                        Edit Role
+                      </Button>
+                    </PermissionGuard>
+                    <PermissionGuard require="role.delete">
+                      <Button variant="danger" fullWidth size="sm" className="bg-red-50 hover:bg-red-100 border-transparent text-red-600 hover:text-red-700">
+                        <Trash2 size={14} className="mr-1.5" />
+                        Delete
+                      </Button>
+                    </PermissionGuard>
                   </div>
                 </CardFooter>
               </Card>
@@ -304,6 +312,6 @@ export function RolesClient() {
         onSubmitSuccess={loadRoles}
         roleToEdit={editingRole}
       />
-    </>
+    </PermissionPageGuard>
   );
 }
