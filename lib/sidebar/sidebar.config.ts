@@ -15,7 +15,7 @@ export interface SidebarMenuItem {
   label: string;
   href: string;
   /** Must match a key in Sidebar's iconMap */
-  icon: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck';
+  icon: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module: ModuleName | null;
 }
@@ -37,6 +37,12 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard',
     icon: 'LayoutDashboard',
     module: null, // Always visible
+  },
+  {
+    label: 'Projects',
+    href: '/dashboard/projects',
+    icon: 'Briefcase',
+    module: null,
   },
   {
     label: 'User Management',
