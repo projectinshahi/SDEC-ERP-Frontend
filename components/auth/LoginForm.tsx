@@ -124,20 +124,8 @@ export function LoginForm() {
         <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
           <Zap size={15} className="text-indigo-600" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-indigo-800 mb-1">Demo Credentials</p>
-          <p className="text-xs text-indigo-600 font-mono leading-relaxed">
-            <span className="block">Email: <strong>{DEMO_EMAIL}</strong></span>
-            <span className="block">Password: <strong>{DEMO_PASSWORD}</strong></span>
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={fillDemoCredentials}
-          className="flex-shrink-0 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 hover:border-indigo-400 px-2.5 py-1.5 rounded-lg transition-all duration-150 whitespace-nowrap"
-        >
-          Auto-fill
-        </button>
+       
+        
       </div>
 
       {/* Global Error Banner */}
