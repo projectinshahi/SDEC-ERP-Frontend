@@ -13,6 +13,8 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   user: 'user.',
   task: 'task.',
   role: 'role.',
+  bugs: 'bugs.',
+  sprints: 'sprints.',
 } as const;
 
 /**
@@ -143,6 +145,72 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         label: 'Delete Role',
         description: 'Permanently remove security roles from the system',
         module: 'role',
+      },
+    ],
+  },
+  {
+    module: 'bugs',
+    label: 'Bug Tracking',
+    permissions: [
+      {
+        key: 'bugs.create',
+        label: 'Create Bug',
+        description: 'Report new bugs and issues',
+        module: 'bugs',
+      },
+      {
+        key: 'bugs.read',
+        label: 'Read Bug',
+        description: 'View bug tracking boards and details',
+        module: 'bugs',
+      },
+      {
+        key: 'bugs.update',
+        label: 'Edit Bug',
+        description: 'Update bug status, priority, and details',
+        module: 'bugs',
+      },
+      {
+        key: 'bugs.delete',
+        label: 'Delete Bug',
+        description: 'Permanently remove bugs from the database',
+        module: 'bugs',
+      },
+    ],
+  },
+  {
+    module: 'sprints',
+    label: 'Sprint Tracking',
+    permissions: [
+      {
+        key: 'sprints.create',
+        label: 'Create Sprint',
+        description: 'Create and plan new sprints',
+        module: 'sprints',
+      },
+      {
+        key: 'sprints.read',
+        label: 'Read Sprint',
+        description: 'View sprint boards and details',
+        module: 'sprints',
+      },
+      {
+        key: 'sprints.update',
+        label: 'Edit Sprint',
+        description: 'Update sprint status, details, and assignments',
+        module: 'sprints',
+      },
+      {
+        key: 'sprints.delete',
+        label: 'Delete Sprint',
+        description: 'Permanently remove sprints from the database',
+        module: 'sprints',
+      },
+      {
+        key: 'sprints.analytics',
+        label: 'View Analytics',
+        description: 'Access detailed sprint performance analytics and charts',
+        module: 'sprints',
       },
     ],
   },
