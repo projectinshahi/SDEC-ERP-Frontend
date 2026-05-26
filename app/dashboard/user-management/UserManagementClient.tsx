@@ -120,7 +120,8 @@ export function UserManagementClient() {
       loadUsers(); // Refresh dynamic list from Neon DB
     } catch (err: any) {
       console.error('Error creating user:', err);
-      showToast(err.message || 'Failed to create user', 'error');
+      const errMsg = err.details?.message || err.message || 'Failed to create user';
+      showToast(errMsg, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -142,7 +143,8 @@ export function UserManagementClient() {
         loadUsers(); // Refresh dynamic list from Neon DB
       } catch (err: any) {
         console.error('Error updating user:', err);
-        showToast(err.message || 'Failed to update user profile', 'error');
+        const errMsg = err.details?.message || err.message || 'Failed to update user profile';
+        showToast(errMsg, 'error');
       } finally {
         setIsSubmitting(false);
       }
@@ -165,7 +167,8 @@ export function UserManagementClient() {
       loadUsers(); // Refresh dynamic list from Neon DB
     } catch (err: any) {
       console.error('Error deleting user:', err);
-      showToast(err.message || 'Failed to delete user', 'error');
+      const errMsg = err.details?.message || err.message || 'Failed to delete user';
+      showToast(errMsg, 'error');
     } finally {
       setIsDeletingUser(false);
     }
