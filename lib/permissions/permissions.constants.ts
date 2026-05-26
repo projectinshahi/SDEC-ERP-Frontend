@@ -78,6 +78,42 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: 'Permanently remove operational tasks from the database',
         module: 'task',
       },
+      {
+        key: 'task.board.create',
+        label: 'Create Board',
+        description: 'Create new Kanban boards',
+        module: 'task',
+      },
+      {
+        key: 'task.board.edit',
+        label: 'Edit Board',
+        description: 'Modify existing Kanban boards',
+        module: 'task',
+      },
+      {
+        key: 'task.board.delete',
+        label: 'Delete/Reset Board',
+        description: 'Reset or delete Kanban boards',
+        module: 'task',
+      },
+      {
+        key: 'task.column.create',
+        label: 'Create Column',
+        description: 'Add new status columns to the Kanban board',
+        module: 'task',
+      },
+      {
+        key: 'task.column.update',
+        label: 'Edit Column',
+        description: 'Rename status columns on the Kanban board',
+        module: 'task',
+      },
+      {
+        key: 'task.column.delete',
+        label: 'Delete Column',
+        description: 'Remove status columns from the Kanban board',
+        module: 'task',
+      },
     ],
   },
   {

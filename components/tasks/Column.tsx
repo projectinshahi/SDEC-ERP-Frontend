@@ -5,6 +5,7 @@ import { Plus, MoreHorizontal, Trash2, Filter, X, ChevronDown } from 'lucide-rea
 import { TaskCard } from './TaskCard';
 import { EmptyState } from './EmptyState';
 import type { Task } from './CreateTaskModal';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 interface ColumnProps {
   title: string;
@@ -13,6 +14,7 @@ interface ColumnProps {
   tasks: Task[];
   availableAssignees: string[];
   onEdit: (task: Task) => void;
+  onView: (task: Task) => void;
   onDelete: (id: string) => void;
   draggedTaskId: string | null;
   setDraggedTaskId: (id: string | null) => void;
@@ -36,6 +38,7 @@ export function Column({
   tasks,
   availableAssignees,
   onEdit,
+  onView,
   onDelete,
   draggedTaskId,
   setDraggedTaskId,
@@ -47,6 +50,7 @@ export function Column({
   onDeleteColumnClick,
 }: ColumnProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const { hasPermission } = usePermissions();
 
   // Per-column filter state
   const [showFilters, setShowFilters] = useState(false);
@@ -214,8 +218,7 @@ export function Column({
           >
             <Plus size={16} />
           </button>
-          
-          {onRenameColumnClick && (
+          {onRenameColumnClick && hasPermission('task.column.update') && (
             <button
               onClick={() => onRenameColumnClick(status, title)}
               className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 rounded transition-colors cursor-pointer"
@@ -225,7 +228,7 @@ export function Column({
             </button>
           )}
 
-          {onDeleteColumnClick && (
+          {onDeleteColumnClick && hasPermission('task.column.delete') && (
             <button
               onClick={() => onDeleteColumnClick(status, title)}
               className="p-1 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 text-gray-400 rounded transition-colors cursor-pointer"
@@ -320,6 +323,7 @@ export function Column({
               task={task}
               index={index}
               onEdit={onEdit}
+              onView={onView}
               onDelete={onDelete}
               draggedTaskId={draggedTaskId}
               setDraggedTaskId={setDraggedTaskId}

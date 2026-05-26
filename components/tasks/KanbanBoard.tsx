@@ -4,20 +4,22 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Filter, RefreshCw, Layers, CheckCircle, Clock, AlertTriangle, UserCheck, Trash2, X } from 'lucide-react';
 import { Column } from './Column';
 import { CreateTaskModal, Task, TaskFormData } from './CreateTaskModal';
+import { TaskDetailsModal } from './TaskDetailsModal';
 import { Card, CardBody } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { fetchUsers, UserDbResponse } from '@/lib/api/users';
 import { Modal } from '@/components/Modal';
-import { 
-  fetchKanbanColumns, 
-  createKanbanColumn, 
-  updateKanbanColumn, 
-  deleteKanbanColumn, 
-  fetchKanbanTasks, 
-  createKanbanTask, 
-  updateKanbanTask, 
-  deleteKanbanTask, 
-  moveKanbanTask, 
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import {
+  fetchKanbanColumns,
+  createKanbanColumn,
+  updateKanbanColumn,
+  deleteKanbanColumn,
+  fetchKanbanTasks,
+  createKanbanTask,
+  updateKanbanTask,
+  deleteKanbanTask,
+  moveKanbanTask,
   resetKanbanBoardDb,
   BoardColumn
 } from '@/lib/api/kanban';
@@ -30,12 +32,13 @@ const INITIAL_COLUMNS: BoardColumn[] = [];
 /**
  * KanbanBoard orchestrator - Manages main state and operations of the tasks and dynamic columns.
  */
-export function KanbanBoard() {
+export function KanbanBoard({ boardId }: { boardId?: number | null }) {
   const [columns, setColumns] = useState<BoardColumn[]>(INITIAL_COLUMNS);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [mounted, setMounted] = useState(false);
-  
+  const { hasPermission } = usePermissions();
+
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState<string>('all');
@@ -48,6 +51,7 @@ export function KanbanBoard() {
   // Modal control
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<string>('todo');
 
   // Custom interactive dialog states
@@ -66,7 +70,7 @@ export function KanbanBoard() {
     isOpen: false,
     type: 'confirm',
     title: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const openConfirmDialog = (
@@ -150,7 +154,7 @@ export function KanbanBoard() {
     const lastColId = columns[columns.length - 1]?.id;
     const completed = lastColId ? tasks.filter((t) => t.status === lastColId).length : 0;
     const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-    
+
     return { total, completed, pct };
   }, [tasks, columns]);
 
@@ -161,7 +165,7 @@ export function KanbanBoard() {
 
     // 1. Remove task from current array state
     const remainingTasks = tasks.filter((t) => t.id !== taskId);
-    
+
     // 2. Formulate updated task with new status
     const updatedTask: Task = { ...taskToMove, status: targetStatus };
 
@@ -197,7 +201,7 @@ export function KanbanBoard() {
     const id = name.toLowerCase().trim()
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
-    
+
     const newCol: BoardColumn = { id, label: name, order: columns.length + 1 };
     const newCols = [...columns, newCol];
     setColumns(newCols);
@@ -223,7 +227,7 @@ export function KanbanBoard() {
   const handleDeleteColumn = async (columnId: string) => {
     const newCols = columns.filter((col) => col.id !== columnId);
     setColumns(newCols);
-    
+
     const newTasks = tasks.filter((task) => task.status !== columnId);
     setTasks(newTasks);
 
@@ -307,7 +311,7 @@ export function KanbanBoard() {
           const tsk = await fetchKanbanTasks();
           setColumns(cols);
           setTasks(tsk);
-          
+
           setSearchQuery('');
           setFilterPriority('all');
           setFilterAssignee('all');
@@ -331,11 +335,11 @@ export function KanbanBoard() {
       const matchSearch =
         task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         task.description.toLowerCase().includes(searchQuery.toLowerCase());
-      
+
       const matchPriority = filterPriority === 'all' || task.priority === filterPriority;
-      
+
       const matchAssignee = filterAssignee === 'all' || task.assignee === filterAssignee;
-      
+
       return matchSearch && matchPriority && matchAssignee;
     });
   }, [tasks, searchQuery, filterPriority, filterAssignee]);
@@ -371,7 +375,7 @@ export function KanbanBoard() {
         {/* Dynamic Column Stats */}
         {columns.map((col, idx) => {
           const count = tasks.filter((t) => t.status === col.id).length;
-          
+
           const iconThemes = [
             'bg-gray-100 dark:bg-gray-800 text-gray-500',
             'bg-amber-50 dark:bg-amber-950/20 text-amber-500',
@@ -433,11 +437,21 @@ export function KanbanBoard() {
             <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by title or details..."
+              placeholder="Search tasks..."
+              aria-label="Search tasks"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9.5 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-gray-200 transition-all"
+              className="w-full pl-9.5 pr-9 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-gray-200 transition-all"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2.5 p-0.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           {/* Filter Priority */}
@@ -446,11 +460,10 @@ export function KanbanBoard() {
             <select
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer dark:text-gray-200 transition-all ${
-                filterPriority !== 'all'
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer dark:text-gray-200 transition-all ${filterPriority !== 'all'
                   ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-1 ring-blue-200 dark:ring-blue-800'
                   : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900'
-              }`}
+                }`}
             >
               <option value="all">All Priorities</option>
               <option value="high">High Priority</option>
@@ -465,11 +478,10 @@ export function KanbanBoard() {
             <select
               value={filterAssignee}
               onChange={(e) => setFilterAssignee(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer dark:text-gray-200 transition-all ${
-                filterAssignee !== 'all'
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer dark:text-gray-200 transition-all ${filterAssignee !== 'all'
                   ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-1 ring-blue-200 dark:ring-blue-800'
                   : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900'
-              }`}
+                }`}
             >
               <option value="all">All Assignees</option>
               {availableAssignees.map((name) => (
@@ -484,11 +496,10 @@ export function KanbanBoard() {
           <button
             onClick={handleClearFilters}
             disabled={!hasActiveFilters}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-md select-none transition-all duration-200 ${
-              hasActiveFilters
+            className={`text-xs font-semibold px-3 py-1.5 rounded-md select-none transition-all duration-200 ${hasActiveFilters
                 ? 'text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 cursor-pointer'
                 : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-            }`}
+              }`}
           >
             Reset
           </button>
@@ -504,16 +515,18 @@ export function KanbanBoard() {
 
         {/* Right Side: Actions (New Task & Reset Board) */}
         <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleResetBoard}
-            className="flex items-center gap-2 px-3.5 cursor-pointer"
-            title="Reset Board and columns data"
-          >
-            <RefreshCw size={15} />
-            <span className="hidden sm:inline">Reset Board</span>
-          </Button>
+          {hasPermission('task.board.delete') && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleResetBoard}
+              className="flex items-center gap-2 px-3.5 cursor-pointer"
+              title="Reset Board and columns data"
+            >
+              <RefreshCw size={15} />
+              <span className="hidden sm:inline">Reset Board</span>
+            </Button>
+          )}
 
           <Button
             variant="primary"
@@ -542,11 +555,10 @@ export function KanbanBoard() {
             </span>
           )}
           {filterPriority !== 'all' && (
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium border px-2.5 py-1 rounded-full transition-all ${
-              filterPriority === 'high' ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800' :
-              filterPriority === 'medium' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' :
-              'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
-            }`}>
+            <span className={`inline-flex items-center gap-1.5 text-xs font-medium border px-2.5 py-1 rounded-full transition-all ${filterPriority === 'high' ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800' :
+                filterPriority === 'medium' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' :
+                  'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
+              }`}>
               <AlertTriangle size={11} />
               {filterPriority.charAt(0).toUpperCase() + filterPriority.slice(1)} Priority
               <button onClick={() => setFilterPriority('all')} className="ml-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5 transition-colors cursor-pointer">
@@ -609,8 +621,14 @@ export function KanbanBoard() {
                   status={col.id}
                   index={index}
                   tasks={columnTasks}
-                  availableAssignees={availableAssignees}
-                  onEdit={handleEditTaskOpen}
+                  availableAssignees={users.map((u) => u.name)}
+                  onEdit={(task) => {
+                    setEditingTask(task);
+                    setIsModalOpen(true);
+                  }}
+                  onView={(task) => {
+                    setViewingTask(task);
+                  }}
                   onDelete={handleDeleteTask}
                   draggedTaskId={draggedTaskId}
                   setDraggedTaskId={setDraggedTaskId}
@@ -641,29 +659,31 @@ export function KanbanBoard() {
             })}
 
             {/* "+ Add Column" Dynamic UI Trigger Card */}
-            <div
-              onClick={() => {
-                openInputDialog(
-                  'Add Status Column',
-                  '',
-                  'Enter column title (e.g. To Do)...',
-                  'Create Column',
-                  (name) => handleAddColumn(name)
-                );
-              }}
-              className="flex-shrink-0 w-[280px] h-[150px] flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 bg-gray-50/50 dark:bg-gray-800/10 hover:bg-white dark:hover:bg-gray-800/30 rounded-xl p-6 text-center cursor-pointer transition-all duration-200 group shadow-sm select-none"
-              title="Create a custom status column"
-            >
-              <div className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center mb-2 group-hover:scale-110 transition-transform border border-gray-100 dark:border-gray-700">
-                <Plus size={20} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
+            {hasPermission('task.column.create') && (
+              <div
+                onClick={() => {
+                  openInputDialog(
+                    'Add Status Column',
+                    '',
+                    'Enter column title (e.g. To Do)...',
+                    'Create Column',
+                    (name) => handleAddColumn(name)
+                  );
+                }}
+                className="flex-shrink-0 w-[280px] h-[150px] flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 bg-gray-50/50 dark:bg-gray-800/10 hover:bg-white dark:hover:bg-gray-800/30 rounded-xl p-6 text-center cursor-pointer transition-all duration-200 group shadow-sm select-none"
+                title="Create a custom status column"
+              >
+                <div className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center mb-2 group-hover:scale-110 transition-transform border border-gray-100 dark:border-gray-700">
+                  <Plus size={20} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
+                </div>
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  Add Column
+                </p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                  Create a custom status section
+                </p>
               </div>
-              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                Add Column
-              </p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                Create a custom status section
-              </p>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -685,18 +705,23 @@ export function KanbanBoard() {
       {/* 4. Task Creation/Edit Modal wrapper */}
       <CreateTaskModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTask(null);
+        }}
         onSubmit={handleFormSubmit}
-        availableAssignees={availableAssignees}
+        availableAssignees={users.map((u) => u.name)}
         columns={columns}
         editTask={editingTask || (defaultStatus !== (columns[0]?.id || '') ? {
           id: '',
           title: '',
           description: '',
           priority: 'medium',
-          assignee: availableAssignees[0] || '',
+          assignee: users[0]?.name || '',
           status: defaultStatus,
           dueDate: new Date().toISOString().split('T')[0],
+          estimatedHours: 0,
+          actualHours: 0,
         } : null)}
       />
 
@@ -770,6 +795,11 @@ export function KanbanBoard() {
           )}
         </div>
       </Modal>
+      <TaskDetailsModal
+        isOpen={!!viewingTask}
+        onClose={() => setViewingTask(null)}
+        task={viewingTask}
+      />
     </div>
   );
 }
