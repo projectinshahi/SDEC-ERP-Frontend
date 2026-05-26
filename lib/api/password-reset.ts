@@ -5,7 +5,7 @@ import { apiClient } from './api-client';
  * Request password reset email
  */
 export async function forgotPasswordApi(email: string): Promise<{ success: boolean; message: string }> {
-  const response = await apiClient.post('/auth/forgot-password', { email });
+  const response = await apiClient.post<{ success: boolean; message: string }>('/auth/forgot-password', { email });
   return response.data;
 }
 
@@ -14,7 +14,7 @@ export async function forgotPasswordApi(email: string): Promise<{ success: boole
  * Check if reset token is valid
  */
 export async function validateResetTokenApi(token: string): Promise<{ success: boolean; message: string }> {
-  const response = await apiClient.post('/auth/validate-reset-token', { token });
+  const response = await apiClient.post<{ success: boolean; message: string }>('/auth/validate-reset-token', { token });
   return response.data;
 }
 
@@ -27,7 +27,7 @@ export async function resetPasswordApi(
   password: string,
   confirmPassword: string
 ): Promise<{ success: boolean; message: string }> {
-  const response = await apiClient.post('/auth/reset-password', {
+  const response = await apiClient.post<{ success: boolean; message: string }>('/auth/reset-password', {
     token,
     password,
     confirmPassword,

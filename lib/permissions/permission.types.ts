@@ -22,13 +22,24 @@ export type PermissionKey =
   | 'role.create'
   | 'role.read'
   | 'role.update'
-  | 'role.delete';
+  | 'role.delete'
+  // Bug Tracking
+  | 'bugs.create'
+  | 'bugs.read'
+  | 'bugs.update'
+  | 'bugs.delete'
+  // Sprint Tracking
+  | 'sprints.create'
+  | 'sprints.read'
+  | 'sprints.update'
+  | 'sprints.delete'
+  | 'sprints.analytics';
 
 /**
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'role' | 'dashboard';
+export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints';
 
 /**
  * A single permission definition with metadata for UI rendering.
