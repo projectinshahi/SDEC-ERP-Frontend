@@ -14,6 +14,7 @@ export const ROUTES = {
   USER_MANAGEMENT: '/dashboard/user-management',
   ROLES: '/dashboard/user-management/roles',
   USERS: '/dashboard/user-management/users',
+  PROJECTS: '/dashboard/projects',
 } as const;
 
 // Menu Items Configuration
@@ -32,6 +33,11 @@ export const SIDEBAR_MENU = [
     label: 'Tasks',
     href: ROUTES.TASKS,
     icon: 'CheckSquare',
+  },
+  {
+    label: 'Projects',
+    href: ROUTES.PROJECTS,
+    icon: 'Briefcase',
   },
 ] as const;
 

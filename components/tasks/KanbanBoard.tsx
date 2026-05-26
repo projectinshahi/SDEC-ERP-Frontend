@@ -6,7 +6,7 @@ import { Column } from './Column';
 import { CreateTaskModal, Task, TaskFormData } from './CreateTaskModal';
 import { Card, CardBody } from '@/components/Card';
 import { Button } from '@/components/Button';
-import { DUMMY_USERS } from '@/lib/data/user-management-data';
+import { fetchUsers, UserDbResponse } from '@/lib/api/users';
 import { Modal } from '@/components/Modal';
 import { 
   fetchKanbanColumns, 
@@ -33,6 +33,7 @@ const INITIAL_COLUMNS: BoardColumn[] = [];
 export function KanbanBoard() {
   const [columns, setColumns] = useState<BoardColumn[]>(INITIAL_COLUMNS);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [mounted, setMounted] = useState(false);
   
   // Search & Filter state
@@ -124,8 +125,10 @@ export function KanbanBoard() {
       try {
         const cols = await fetchKanbanColumns();
         const tsk = await fetchKanbanTasks();
+        const usrs = await fetchUsers();
         setColumns(cols);
         setTasks(tsk);
+        setUsers(usrs);
       } catch (error) {
         console.error('Failed to load Kanban board from PostgreSQL database:', error);
       } finally {
@@ -135,10 +138,10 @@ export function KanbanBoard() {
     init();
   }, []);
 
-  // Get active assignee list from the DUMMY_USERS database
+  // Get active assignee list from the database
   const availableAssignees = useMemo(() => {
-    return DUMMY_USERS.map((user) => user.name);
-  }, []);
+    return users.map((user) => user.name);
+  }, [users]);
 
   // Compute metrics for board stats header
   const metrics = useMemo(() => {

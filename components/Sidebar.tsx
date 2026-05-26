@@ -10,6 +10,7 @@ import {
   Users,
   CheckSquare,
   ShieldCheck,
+  Briefcase,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -23,6 +24,7 @@ const iconMap = {
   Users,
   CheckSquare,
   ShieldCheck,
+  Briefcase,
 } as const;
 
 export interface SidebarItem {
