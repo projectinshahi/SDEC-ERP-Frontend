@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Users,
   CheckSquare,
+  Briefcase,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -20,6 +21,7 @@ const iconMap = {
   LayoutDashboard,
   Users,
   CheckSquare,
+  Briefcase,
 } as const;
 
 interface SidebarItem {
