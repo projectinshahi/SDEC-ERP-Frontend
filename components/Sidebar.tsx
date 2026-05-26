@@ -16,6 +16,8 @@ import {
   Menu,
   X,
   LogOut,
+  Bug,
+  Rocket,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
 
@@ -25,6 +27,8 @@ const iconMap = {
   CheckSquare,
   ShieldCheck,
   Briefcase,
+  Bug,
+  Rocket,
 } as const;
 
 export interface SidebarItem {
