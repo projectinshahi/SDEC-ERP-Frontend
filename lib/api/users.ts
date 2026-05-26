@@ -35,7 +35,7 @@ export async function createUserApi(data: any): Promise<any> {
   const response = await apiClient.post('/users', {
     name: data.name,
     email: data.email,
-    password: data.password,
+    password: data.password,   // required — stored as SHA-256 hash on the backend
     roles: data.roles,
     status: data.status,
   });
@@ -49,7 +49,7 @@ export async function updateUserApi(id: string, data: any): Promise<any> {
   const response = await apiClient.put(`/users/${id}`, {
     name: data.name,
     email: data.email,
-    password: data.password,
+    password: data.password,   // optional — only sent if the admin is resetting the password
     roles: data.roles,
     status: data.status,
   });

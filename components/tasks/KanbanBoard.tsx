@@ -140,7 +140,7 @@ export function KanbanBoard() {
 
   // Get active assignee list from the database
   const availableAssignees = useMemo(() => {
-    return users.map((user) => user.name);
+    return Array.from(new Set(users.map((user) => user.name)));
   }, [users]);
 
   // Compute metrics for board stats header

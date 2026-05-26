@@ -9,6 +9,8 @@ import { RoleTable } from '@/components/user-management/RoleTable';
 import { AddUserModal } from '@/components/user-management/AddUserModal';
 import { AddRoleModal } from '@/components/user-management/AddRoleModal';
 import { CreateRoleModal } from '@/components/user-management/CreateRoleModal';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
+import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { Modal } from '@/components/Modal';
 import { Plus, Users, Shield, X, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { DUMMY_ROLES, AVAILABLE_PERMISSIONS } from '@/lib/data/user-management-data';
@@ -239,7 +241,7 @@ export function UserManagementClient() {
   const availableRoleNames = roles.map((r) => r.name);
 
   return (
-    <>
+    <PermissionPageGuard module="user">
       {/* Breadcrumb */}
       <div className="mb-6">
         <Breadcrumb items={[{ label: 'User Management' }]} />
@@ -252,23 +254,36 @@ export function UserManagementClient() {
           <p className="text-gray-500 text-sm mt-1">Manage users, access controls, and custom security roles in your system.</p>
         </div>
         <div className="flex items-center gap-2">
-
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => {
-              if (activeTab === 'users') {
-                setEditingUser(null);
-                setIsUserModalOpen(true);
-              } else {
-                setEditingRole(null);
-                setIsRoleModalOpen(true);
-              }
-            }}
-          >
-            <Plus size={20} />
-            {activeTab === 'users' ? 'Add User' : 'Add Role'}
-          </Button>
+          {/* Show "Add User" only with user.create; "Add Role" only with role.create */}
+          {activeTab === 'users' ? (
+            <PermissionGuard require="user.create">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => {
+                  setEditingUser(null);
+                  setIsUserModalOpen(true);
+                }}
+              >
+                <Plus size={20} />
+                Add User
+              </Button>
+            </PermissionGuard>
+          ) : (
+            <PermissionGuard require="role.create">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => {
+                  setEditingRole(null);
+                  setIsRoleModalOpen(true);
+                }}
+              >
+                <Plus size={20} />
+                Add Role
+              </Button>
+            </PermissionGuard>
+          )}
         </div>
       </div>
 
@@ -501,7 +516,7 @@ export function UserManagementClient() {
           </div>
         ))}
       </div>
-    </>
+    </PermissionPageGuard>
   );
 }
 
