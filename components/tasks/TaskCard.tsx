@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Edit, Trash2, AlertTriangle, Clock } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { truncate, formatDate } from '@/lib/utils';
 import type { Task } from './CreateTaskModal';
@@ -9,6 +9,7 @@ import type { Task } from './CreateTaskModal';
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
+  onView: (task: Task) => void;
   onDelete: (id: string) => void;
   draggedTaskId: string | null;
   setDraggedTaskId: (id: string | null) => void;
@@ -45,6 +46,22 @@ function getUserAvatarDetails(name: string) {
   return { initials, colorClass };
 }
 
+type DueStatus = 'overdue' | 'due-today' | 'normal';
+
+/**
+ * Determines due date status by comparing YYYY-MM-DD strings.
+ * Timezone-safe: uses local date for both sides.
+ */
+function getDueStatus(dueDate: string): DueStatus {
+  if (!dueDate) return 'normal';
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const dueDateStr = dueDate.split('T')[0]; // normalize ISO strings
+  if (dueDateStr < todayStr) return 'overdue';
+  if (dueDateStr === todayStr) return 'due-today';
+  return 'normal';
+}
+
 /**
  * TaskCard Component - Represents an individual task card inside a Kanban Column.
  * Implements HTML5 drag start, end, and hover algorithms for exact reordering.
@@ -52,6 +69,7 @@ function getUserAvatarDetails(name: string) {
 export function TaskCard({
   task,
   onEdit,
+  onView,
   onDelete,
   draggedTaskId,
   setDraggedTaskId,
@@ -62,6 +80,7 @@ export function TaskCard({
 }: TaskCardProps) {
   const isDragging = draggedTaskId === task.id;
   const { initials, colorClass } = getUserAvatarDetails(task.assignee);
+  const dueStatus = getDueStatus(task.dueDate);
 
   const getPriorityVariant = (priority: Task['priority']) => {
     switch (priority) {
@@ -154,8 +173,19 @@ export function TaskCard({
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        className={`group bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-all duration-200 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-gray-200 dark:hover:border-gray-600 ${
-          isDragging ? 'opacity-40 scale-[0.97] border-dashed border-2 border-blue-400 bg-blue-50/10' : ''
+        onClick={() => onView(task)}
+        aria-label={
+          dueStatus === 'overdue' ? 'Overdue task' :
+          dueStatus === 'due-today' ? 'Task due today' : undefined
+        }
+        className={`group rounded-lg shadow-sm p-4 transition-all duration-200 cursor-pointer hover:shadow-md ${
+          isDragging
+            ? 'opacity-40 scale-[0.97] border-dashed border-2 border-blue-400 bg-blue-50/10'
+            : dueStatus === 'overdue'
+              ? 'border-l-4 border-l-red-600 border border-red-300 dark:border-red-700/60 bg-red-100 dark:bg-red-950/40 hover:border-red-400 dark:hover:border-red-600'
+              : dueStatus === 'due-today'
+                ? 'border-l-4 border-l-amber-500 border border-amber-300 dark:border-amber-700/60 bg-amber-100 dark:bg-amber-950/30 hover:border-amber-400 dark:hover:border-amber-600'
+                : 'border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-200 dark:hover:border-gray-600'
         }`}
       >
         {/* Card Header (Drag handle, Title, Action buttons) */}
@@ -167,14 +197,20 @@ export function TaskCard({
           {/* Hover Actions */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 pl-1">
             <button
-              onClick={() => onEdit(task)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(task);
+              }}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 rounded transition-colors"
               title="Edit Task"
             >
               <Edit size={14} />
             </button>
             <button
-              onClick={() => onDelete(task.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
               className="p-1 hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 rounded transition-colors"
               title="Delete Task"
             >
@@ -197,10 +233,32 @@ export function TaskCard({
 
           {/* Assignee & Due Date */}
           <div className="flex items-center gap-2">
-            {/* Due date */}
-            <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-              <Calendar size={12} className="text-gray-400" />
+            {/* Due date with status indicator */}
+            <div className={`flex items-center gap-1 text-[11px] font-medium ${
+              dueStatus === 'overdue'
+                ? 'text-red-600 dark:text-red-400'
+                : dueStatus === 'due-today'
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : 'text-gray-500 dark:text-gray-400'
+            }`}>
+              {dueStatus === 'overdue' ? (
+                <AlertTriangle size={12} className="text-red-500 animate-pulse" />
+              ) : dueStatus === 'due-today' ? (
+                <Clock size={12} className="text-amber-500" />
+              ) : (
+                <Calendar size={12} className="text-gray-400" />
+              )}
               <span>{formatDate(task.dueDate)}</span>
+              {dueStatus === 'overdue' && (
+                <span className="ml-1 text-[9px] font-bold uppercase bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-full leading-none">
+                  Overdue
+                </span>
+              )}
+              {dueStatus === 'due-today' && (
+                <span className="ml-1 text-[9px] font-bold uppercase bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full leading-none">
+                  Today
+                </span>
+              )}
             </div>
 
             {/* User Avatar Initials */}

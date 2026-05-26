@@ -18,6 +18,12 @@ export type PermissionKey =
   | 'task.read'
   | 'task.update'
   | 'task.delete'
+  | 'task.board.create'
+  | 'task.board.edit'
+  | 'task.board.delete'
+  | 'task.column.create'
+  | 'task.column.update'
+  | 'task.column.delete'
   // Role Management
   | 'role.create'
   | 'role.read'
