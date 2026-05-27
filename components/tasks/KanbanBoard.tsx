@@ -202,7 +202,7 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
 
-    const newCol: BoardColumn = { id, label: name, order: columns.length + 1, boardId: boardId ?? undefined };
+    const newCol: BoardColumn = { id, label: name, order: columns.length + 1 };
     const newCols = [...columns, newCol];
     setColumns(newCols);
 

@@ -10,24 +10,28 @@ import { fetchBoards as fetchBoardsApi } from '@/lib/api/kanban';
 import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
 import { AlertCircle } from 'lucide-react';
 
+import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
+import { AlertCircle } from 'lucide-react';
+
 export function TasksPageClient() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const urlBoardId = searchParams.get('boardId');
-
   useEffect(() => {
-    const loadBoards = async () => {
+    const fetchBoards = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchBoardsApi();
+        // Using the mocked Next.js API route created earlier
+        const res = await fetch('/api/boards');
+        if (!res.ok) throw new Error('Failed to load boards');
+        const data = await res.json();
         setBoards(data);
         
-        // Initial setup if we have data
+        // Attempt to load from URL search params first, then localStorage
+        const params = new URLSearchParams(window.location.search);
+        const urlBoardId = params.get('boardId');
         const savedId = localStorage.getItem('selectedBoardId');
         
         if (urlBoardId && data.find((b: Board) => b.id === Number(urlBoardId))) {
