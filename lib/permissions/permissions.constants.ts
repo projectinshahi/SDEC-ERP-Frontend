@@ -15,6 +15,7 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   role: 'role.',
   bugs: 'bugs.',
   sprints: 'sprints.',
+  blockers: 'blockers.',
 } as const;
 
 /**
@@ -175,6 +176,42 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         label: 'View Analytics',
         description: 'Access detailed sprint performance analytics and charts',
         module: 'sprints',
+      },
+    ],
+  },
+  {
+    module: 'blockers',
+    label: 'Blocker Tracking',
+    permissions: [
+      {
+        key: 'blockers.create',
+        label: 'Create Blocker',
+        description: 'Log new blockers and escalation requests',
+        module: 'blockers',
+      },
+      {
+        key: 'blockers.read',
+        label: 'Read Blocker',
+        description: 'View blockers dashboard and details',
+        module: 'blockers',
+      },
+      {
+        key: 'blockers.update',
+        label: 'Edit Blocker',
+        description: 'Update blocker status, severity, and details',
+        module: 'blockers',
+      },
+      {
+        key: 'blockers.delete',
+        label: 'Delete Blocker',
+        description: 'Permanently remove blockers from the system',
+        module: 'blockers',
+      },
+      {
+        key: 'blockers.resolve',
+        label: 'Resolve Blocker',
+        description: 'Mark blockers as resolved or closed',
+        module: 'blockers',
       },
     ],
   },

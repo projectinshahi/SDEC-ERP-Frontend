@@ -33,13 +33,19 @@ export type PermissionKey =
   | 'sprints.read'
   | 'sprints.update'
   | 'sprints.delete'
-  | 'sprints.analytics';
+  | 'sprints.analytics'
+  // Blocker Tracking
+  | 'blockers.create'
+  | 'blockers.read'
+  | 'blockers.update'
+  | 'blockers.delete'
+  | 'blockers.resolve';
 
 /**
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints';
+export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers';
 
 /**
  * A single permission definition with metadata for UI rendering.

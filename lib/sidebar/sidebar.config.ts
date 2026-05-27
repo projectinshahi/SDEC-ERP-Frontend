@@ -15,7 +15,7 @@ export interface SidebarMenuItem {
   label: string;
   href: string;
   /** Must match a key in Sidebar's iconMap */
-  icon: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket';
+  icon: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module: ModuleName | null;
 }
@@ -73,5 +73,11 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sprints',
     icon: 'Rocket',
     module: 'sprints',
+  },
+  {
+    label: 'Blockers',
+    href: '/dashboard/blockers',
+    icon: 'AlertTriangle',
+    module: 'blockers',
   },
 ];
