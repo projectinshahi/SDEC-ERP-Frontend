@@ -10,14 +10,17 @@ import { fetchBoards as fetchBoardsApi } from '@/lib/api/kanban';
 import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
 import { AlertCircle } from 'lucide-react';
 
-import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
-import { AlertCircle } from 'lucide-react';
+
 
 export function TasksPageClient() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlBoardId = searchParams.get('boardId');
 
   useEffect(() => {
     const fetchBoards = async () => {
@@ -28,12 +31,10 @@ export function TasksPageClient() {
         if (!res.ok) throw new Error('Failed to load boards');
         const data = await res.json();
         setBoards(data);
-        
-        // Attempt to load from URL search params first, then localStorage
-        const params = new URLSearchParams(window.location.search);
-        const urlBoardId = params.get('boardId');
+
+        // Initial setup if we have data
         const savedId = localStorage.getItem('selectedBoardId');
-        
+
         if (urlBoardId && data.find((b: Board) => b.id === Number(urlBoardId))) {
           setSelectedBoardId(Number(urlBoardId));
           localStorage.setItem('selectedBoardId', urlBoardId);
@@ -48,7 +49,7 @@ export function TasksPageClient() {
         setIsLoading(false);
       }
     };
-    loadBoards();
+    fetchBoards();
   }, []); // Only fetch boards once on mount
 
   // Reactively respond to URL changes (like clicking a board from the BoardList)
@@ -73,10 +74,10 @@ export function TasksPageClient() {
     if (selectedBoardId && boards.length > 0) {
       const isMissing = !boards.find(b => b.id === selectedBoardId);
       const hasTried = fetchedBoardIds.current.has(selectedBoardId);
-      
+
       if (isMissing && !hasTried) {
         fetchedBoardIds.current.add(selectedBoardId);
-        
+
         const loadBoards = async () => {
           try {
             const data = await fetchBoardsApi();
@@ -112,9 +113,9 @@ export function TasksPageClient() {
 
         {/* Board Selector */}
         {!error && (
-          <BoardSelector 
-            boards={boards} 
-            selectedBoardId={selectedBoardId} 
+          <BoardSelector
+            boards={boards}
+            selectedBoardId={selectedBoardId}
             onSelectBoard={handleSelectBoard}
             isLoading={isLoading}
           />

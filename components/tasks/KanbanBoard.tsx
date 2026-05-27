@@ -621,7 +621,7 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
                   status={col.id}
                   index={index}
                   tasks={columnTasks}
-                  availableAssignees={users.map((u) => u.name)}
+                  availableAssignees={availableAssignees}
                   onEdit={(task) => {
                     setEditingTask(task);
                     setIsModalOpen(true);
@@ -710,7 +710,7 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
           setEditingTask(null);
         }}
         onSubmit={handleFormSubmit}
-        availableAssignees={users.map((u) => u.name)}
+        availableAssignees={availableAssignees}
         columns={columns}
         editTask={editingTask || (defaultStatus !== (columns[0]?.id || '') ? {
           id: '',
