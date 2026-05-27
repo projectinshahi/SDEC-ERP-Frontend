@@ -32,7 +32,7 @@ const INITIAL_COLUMNS: BoardColumn[] = [];
 /**
  * KanbanBoard orchestrator - Manages main state and operations of the tasks and dynamic columns.
  */
-export function KanbanBoard({ boardId }: { boardId?: number | null }) {
+export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sprintId?: string | null }) {
   const [columns, setColumns] = useState<BoardColumn[]>(INITIAL_COLUMNS);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
@@ -128,7 +128,7 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
     const init = async () => {
       try {
         const cols = await fetchKanbanColumns(boardId ?? undefined);
-        const tsk = await fetchKanbanTasks(boardId ?? undefined);
+        const tsk = await fetchKanbanTasks(boardId ?? undefined, sprintId ?? undefined);
         const usrs = await fetchUsers();
         setColumns(cols);
         setTasks(tsk);
@@ -140,7 +140,7 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
       }
     };
     init();
-  }, [boardId]);
+  }, [boardId, sprintId]);
 
   // Get active assignee list from the database
   const availableAssignees = useMemo(() => {
@@ -202,7 +202,7 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
 
-    const newCol: BoardColumn = { id, label: name, order: columns.length + 1 };
+    const newCol: BoardColumn = { id, label: name, order: columns.length + 1, boardId: boardId || undefined };
     const newCols = [...columns, newCol];
     setColumns(newCols);
 
@@ -605,6 +605,11 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
             <Plus size={16} />
             <span>Add Status Column</span>
           </Button>
+        </div>
+      ) : tasks.length === 0 && sprintId ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center w-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/80">
+          <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">No tasks in this sprint</h3>
+          <p className="text-gray-500 mt-2">Adjust your filters or select a different sprint to view tasks.</p>
         </div>
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-800">

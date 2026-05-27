@@ -7,9 +7,10 @@ import { RoleDropdown, ProjectRole } from './RoleDropdown';
 
 interface MemberListProps {
   members: ProjectMember[];
-  onRoleChange: (memberId: string | number, newRole: ProjectRole) => void;
-  onRemove: (member: ProjectMember) => void;
+  onRoleChange?: (memberId: string | number, newRole: ProjectRole) => void;
+  onRemove?: (member: ProjectMember) => void;
   isUpdating?: string | number | null; // ID of the member currently being updated
+  readOnly?: boolean;
 }
 
 const getAvatarBgColor = (name: string) => {
@@ -30,7 +31,7 @@ const getAvatarBgColor = (name: string) => {
   return colors[index];
 };
 
-export function MemberList({ members, onRoleChange, onRemove, isUpdating }: MemberListProps) {
+export function MemberList({ members, onRoleChange, onRemove, isUpdating, readOnly }: MemberListProps) {
   if (!members || members.length === 0) {
     return (
       <div className="py-6 text-center">
@@ -59,20 +60,22 @@ export function MemberList({ members, onRoleChange, onRemove, isUpdating }: Memb
           <div className="flex items-center gap-3 sm:gap-4 shrink-0 ml-2">
             <RoleDropdown 
               role={member.role as ProjectRole} 
-              onChange={(newRole) => onRoleChange(member.id, newRole)}
-              disabled={isUpdating === member.id}
+              onChange={(newRole) => onRoleChange && onRoleChange(member.id, newRole)}
+              disabled={readOnly || isUpdating === member.id}
             />
             
-            <button
-              type="button"
-              onClick={() => onRemove(member)}
-              disabled={isUpdating === member.id}
-              className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              aria-label={`Remove ${member.name}`}
-              title="Remove Member"
-            >
-              <Trash2 size={16} />
-            </button>
+            {!readOnly && onRemove && (
+              <button
+                type="button"
+                onClick={() => onRemove(member)}
+                disabled={isUpdating === member.id}
+                className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                aria-label={`Remove ${member.name}`}
+                title="Remove Member"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
           </div>
         </div>
       ))}
