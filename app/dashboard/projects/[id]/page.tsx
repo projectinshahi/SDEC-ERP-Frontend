@@ -38,8 +38,8 @@ export default function ProjectDetailsPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
   const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'editor' | 'viewer' | null>(null);
   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
   
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
@@ -98,6 +98,29 @@ export default function ProjectDetailsPage() {
       }
       
       setMembers(membersData);
+
+      // Determine current user role
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userObj = JSON.parse(storedUser);
+          const currentMember = membersData.find((m: ProjectMember) => m.userId === userObj.id || m.email === userObj.email);
+          if (currentMember) {
+            setCurrentUserRole(currentMember.role);
+          } else {
+            if (userObj.role?.toLowerCase() === 'admin' || userObj.role?.toLowerCase() === 'super admin') {
+              setCurrentUserRole('admin');
+            } else {
+              setCurrentUserRole('viewer');
+            }
+          }
+        } catch (e) {
+          setCurrentUserRole('viewer');
+        }
+      } else {
+        setCurrentUserRole('viewer');
+      }
+
     } catch (err: any) {
       console.error('Failed to load project details:', err);
       setError(err.message || 'The requested project could not be loaded or does not exist.');
@@ -118,6 +141,8 @@ export default function ProjectDetailsPage() {
       setIsMembersLoading(false);
     }
   }
+
+  const canManageMembers = currentUserRole === 'admin';
 
   useEffect(() => {
     if (projectId) {
@@ -242,7 +267,9 @@ export default function ProjectDetailsPage() {
           <div className="w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30 mb-4 shadow-sm">
             <AlertCircle size={26} />
           </div>
-          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Project Not Found</h3>
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+            {error?.includes('Forbidden') ? 'Access Denied' : 'Project Not Found'}
+          </h3>
           <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5 max-w-sm mb-6 leading-relaxed">
             {error || 'The requested project could not be found. It may have been deleted or you do not have permission to view it.'}
           </p>
@@ -265,13 +292,23 @@ export default function ProjectDetailsPage() {
                 Last updated on {formatDate(project.updatedAt)}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Badge
                 variant={project.status === 'active' ? 'success' : 'default'}
                 className="capitalize text-xs font-bold px-3 py-1 tracking-wider shadow-sm shrink-0"
               >
                 {project.status} status
               </Badge>
+              {currentUserRole !== 'viewer' && (
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
+                  className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+                >
+                  Settings
+                </Button>
+              )}
             </div>
           </div>
 
@@ -334,10 +371,12 @@ export default function ProjectDetailsPage() {
                     <span className="text-[10px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md shadow-sm">
                       {members.length} Total
                     </span>
-                    <Button variant="primary" size="sm" className="px-2 py-1 text-[10px] h-7" onClick={() => setIsAddMemberOpen(true)}>
-                      <Plus size={12} className="mr-1" />
-                      Add
-                    </Button>
+                    {canManageMembers && (
+                      <Button variant="primary" size="sm" className="px-2 py-1 text-[10px] h-7" onClick={() => setIsAddMemberOpen(true)}>
+                        <Plus size={12} className="mr-1" />
+                        Add
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardBody className="p-0 flex-1">
@@ -350,9 +389,10 @@ export default function ProjectDetailsPage() {
                   ) : (
                     <MemberList 
                       members={members}
-                      onRoleChange={handleRoleChange}
-                      onRemove={setMemberToRemove}
+                      onRoleChange={canManageMembers ? handleRoleChange : undefined}
+                      onRemove={canManageMembers ? setMemberToRemove : undefined}
                       isUpdating={isUpdatingRole}
+                      readOnly={!canManageMembers}
                     />
                   )}
                 </CardBody>

@@ -9,7 +9,7 @@ export interface Project {
   id: string;
   name: string;
   description: string;
-  status: 'active' | 'completed';
+  status: 'active' | 'completed' | 'on-hold';
   members: string[];
   updatedAt: string;
   startDate?: string;

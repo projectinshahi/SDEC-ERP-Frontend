@@ -6,7 +6,7 @@ export default function EditBlockerModal() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Edit</Button>
+        <Button variant="secondary" size="sm">Edit</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

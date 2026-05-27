@@ -12,7 +12,21 @@ export interface Board {
   id: number;
   name: string;
   projectName: string;
+  projectId?: string;
   createdAt?: string;
+}
+
+export interface Sprint {
+  id: string;
+  projectId?: string;
+  name: string;
+  goal?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  status: string;
+  estimatedHours?: number;
+  capacity?: number;
 }
 
 // ─────────────────────────────────────────────
@@ -32,8 +46,8 @@ export async function fetchBoards(): Promise<Board[]> {
  * Create a new board
  * POST /api/kanban/boards
  */
-export async function createBoardApi(name: string, projectName: string): Promise<Board> {
-  const response = await apiClient.post<Board>('/kanban/boards', { name, projectName });
+export async function createBoardApi(name: string, projectId: string): Promise<Board> {
+  const response = await apiClient.post<Board>('/kanban/boards', { name, projectId });
   return response.data;
 }
 
@@ -46,6 +60,15 @@ export async function deleteBoardApi(id: number): Promise<any> {
   return response.data;
 }
 
+/**
+ * Fetch sprints for a specific board
+ * GET /api/kanban/boards/:id/sprints
+ */
+export async function fetchSprintsForBoard(boardId: number): Promise<Sprint[]> {
+  const response = await apiClient.get<Sprint[]>(`/kanban/boards/${boardId}/sprints`);
+  return response.data;
+}
+
 // ─────────────────────────────────────────────
 // COLUMN API (filtered by boardId)
 // ─────────────────────────────────────────────
@@ -55,8 +78,10 @@ export async function deleteBoardApi(id: number): Promise<any> {
  * GET /api/kanban/columns?boardId=xxx
  */
 export async function fetchKanbanColumns(boardId?: number): Promise<BoardColumn[]> {
-  const params = boardId ? { boardId } : {};
-  const response = await apiClient.get<BoardColumn[]>('/kanban/columns', { params });
+  if (!boardId) {
+    return []; // Enforce strict isolation: no boardId means no columns
+  }
+  const response = await apiClient.get<BoardColumn[]>(`/kanban/boards/${boardId}/columns`);
   return response.data;
 }
 
@@ -109,11 +134,15 @@ export async function reorderKanbanColumns(columns: { id: string; order: number 
  * Fetch all Tasks from the PostgreSQL Neon Database for a specific board
  * GET /api/kanban/boards/:id/tasks
  */
-export async function fetchKanbanTasks(boardId?: number): Promise<Task[]> {
+export async function fetchKanbanTasks(boardId?: number, sprintId?: string | null): Promise<Task[]> {
   if (!boardId) {
     return []; // Enforce strict isolation: no boardId means no tasks
   }
-  const response = await apiClient.get<Task[]>(`/kanban/boards/${boardId}/tasks`);
+  let url = `/kanban/boards/${boardId}/tasks`;
+  if (sprintId) {
+    url += `?sprintId=${sprintId}`;
+  }
+  const response = await apiClient.get<Task[]>(url);
   return response.data;
 }
 

@@ -5,9 +5,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
-import { fetchBoards as fetchBoardsApi } from '@/lib/api/kanban';
+import { fetchBoards as fetchBoardsApi, fetchSprintsForBoard, Sprint } from '@/lib/api/kanban';
 
-import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
+import { SprintSelector } from '../../../components/sprints/SprintSelector';
+import { Board } from '../../../components/boards/BoardSelector';
 import { AlertCircle } from 'lucide-react';
 
 
@@ -15,6 +16,11 @@ import { AlertCircle } from 'lucide-react';
 export function TasksPageClient() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
+  
+  const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
+  const [isSprintsLoading, setIsSprintsLoading] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,10 +32,7 @@ export function TasksPageClient() {
     const fetchBoards = async () => {
       try {
         setIsLoading(true);
-        // Using the mocked Next.js API route created earlier
-        const res = await fetch('/api/boards');
-        if (!res.ok) throw new Error('Failed to load boards');
-        const data = await res.json();
+        const data = await fetchBoardsApi();
         setBoards(data);
 
         // Initial setup if we have data
@@ -91,11 +94,35 @@ export function TasksPageClient() {
     }
   }, [selectedBoardId, boards]);
 
-  const handleSelectBoard = (id: number) => {
-    setSelectedBoardId(id);
-    localStorage.setItem('selectedBoardId', String(id));
-    router.push(`/dashboard/tasks?boardId=${id}`);
+  const handleSelectSprint = (id: string | null) => {
+    setSelectedSprintId(id);
   };
+
+  // Fetch sprints when selected board changes
+  useEffect(() => {
+    if (selectedBoardId) {
+      const loadSprints = async () => {
+        try {
+          setIsSprintsLoading(true);
+          const data = await fetchSprintsForBoard(selectedBoardId);
+          setSprints(data);
+          
+          // Optionally auto-select active sprint
+          const activeSprint = data.find(s => s.status === 'Active');
+          if (activeSprint) {
+            setSelectedSprintId(activeSprint.id);
+          } else {
+            setSelectedSprintId(null); // Default to all tasks
+          }
+        } catch (err) {
+          console.error('Failed to load sprints', err);
+        } finally {
+          setIsSprintsLoading(false);
+        }
+      };
+      loadSprints();
+    }
+  }, [selectedBoardId]);
 
   return (
     <PermissionPageGuard module="task">
@@ -111,13 +138,13 @@ export function TasksPageClient() {
           </p>
         </div>
 
-        {/* Board Selector */}
-        {!error && (
-          <BoardSelector
-            boards={boards}
-            selectedBoardId={selectedBoardId}
-            onSelectBoard={handleSelectBoard}
-            isLoading={isLoading}
+        {/* Sprint Selector */}
+        {!error && selectedBoardId && (
+          <SprintSelector
+            sprints={sprints}
+            selectedSprintId={selectedSprintId}
+            onSelectSprint={handleSelectSprint}
+            isLoading={isSprintsLoading || isLoading}
           />
         )}
       </section>
@@ -136,8 +163,8 @@ export function TasksPageClient() {
           </button>
         </div>
       ) : selectedBoardId ? (
-        <div key={selectedBoardId} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <KanbanBoard boardId={selectedBoardId} />
+        <div key={`${selectedBoardId}-${selectedSprintId}`} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <KanbanBoard boardId={selectedBoardId} sprintId={selectedSprintId} />
         </div>
       ) : (
         <div className="py-12 text-center">

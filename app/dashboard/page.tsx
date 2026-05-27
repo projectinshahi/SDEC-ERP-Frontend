@@ -6,7 +6,9 @@ import { BarChart3, Users, CheckSquare, TrendingUp } from 'lucide-react';
 import { fetchUserCount } from '@/lib/api/users';
 import { fetchActiveTaskCount } from '@/lib/api/tasks';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { ActivityFeed, ActivityItem } from '@/components/dashboard/ActivityFeed';
+import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { fetchActivityFeed, clearActivityFeed, ActivityLog } from '@/lib/api/activity';
+import toast from 'react-hot-toast';
 
 /**
  * Dashboard page - main overview of the system
@@ -23,9 +25,10 @@ export default function DashboardPage() {
   const [isTasksError, setIsTasksError] = useState<boolean>(false);
 
   // Activity Feed States
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [isActivitiesLoading, setIsActivitiesLoading] = useState<boolean>(true);
   const [isActivitiesError, setIsActivitiesError] = useState<boolean>(false);
+  const [isActivitiesClearing, setIsActivitiesClearing] = useState<boolean>(false);
 
   // Fetch Total Users Count
   const getUserCountData = async () => {
@@ -55,27 +58,34 @@ export default function DashboardPage() {
     }
   };
 
-  // Fetch Recent Activities (Simulated Network Retrieval)
+  // Fetch Recent Activities
   const getActivitiesData = async () => {
     try {
       setIsActivitiesLoading(true);
       setIsActivitiesError(false);
       
-      // Artificial short delay to enjoy premium skeleton animations
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      const mockActivities: ActivityItem[] = [
-        { id: 1, title: 'User Admin created active task #14', timestamp: '10 minutes ago', status: 'Completed' },
-        { id: 2, title: 'Updated privileges for Developer role', timestamp: '1 hour ago', status: 'In Progress' },
-        { id: 3, title: 'Database synchronization executed', timestamp: '2 hours ago', status: 'Completed' },
-        { id: 4, title: 'Neon PostgreSQL cloud backup failed', timestamp: '4 hours ago', status: 'Cancelled' },
-      ];
-      
-      setActivities(mockActivities);
+      const realActivities = await fetchActivityFeed();
+      setActivities(realActivities);
     } catch (error) {
+      console.error('Failed to fetch activity feed:', error);
       setIsActivitiesError(true);
     } finally {
       setIsActivitiesLoading(false);
+    }
+  };
+
+  // Clear Recent Activities
+  const handleClearActivities = async () => {
+    try {
+      setIsActivitiesClearing(true);
+      await clearActivityFeed();
+      setActivities([]);
+      toast.success('Activity feed cleared');
+    } catch (error) {
+      console.error('Failed to clear activity feed:', error);
+      toast.error('Failed to clear activity feed');
+    } finally {
+      setIsActivitiesClearing(false);
     }
   };
 
@@ -151,6 +161,8 @@ export default function DashboardPage() {
             isLoading={isActivitiesLoading}
             isError={isActivitiesError}
             onRetry={getActivitiesData}
+            onClear={handleClearActivities}
+            isClearing={isActivitiesClearing}
           />
         </div>
 
