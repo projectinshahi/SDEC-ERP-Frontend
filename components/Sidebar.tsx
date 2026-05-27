@@ -18,6 +18,7 @@ import {
   LogOut,
   Bug,
   Rocket,
+  AlertTriangle,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
 import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
@@ -30,6 +31,7 @@ const iconMap = {
   Briefcase,
   Bug,
   Rocket,
+  AlertTriangle,
 } as const;
 
 export interface SidebarItem {

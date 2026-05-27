@@ -25,9 +25,15 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
     setError(null);
 
     try {
-      const newBoard = await createBoardApi(name, projectName);
+      const res = await fetch('/api/boards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, projectName }),
+      });
+
+      if (!res.ok) throw new Error('Failed to create board');
       
-      onSuccess(newBoard.id);
+      onSuccess();
       onClose();
       setName('');
       setProjectName('');
@@ -38,8 +44,8 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Create New Board</h2>
@@ -108,7 +114,6 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
           </div>
         </form>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }

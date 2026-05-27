@@ -10,6 +10,8 @@ import { fetchBoards as fetchBoardsApi } from '@/lib/api/kanban';
 import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
 import { AlertCircle } from 'lucide-react';
 
+
+
 export function TasksPageClient() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
@@ -21,10 +23,13 @@ export function TasksPageClient() {
   const urlBoardId = searchParams.get('boardId');
 
   useEffect(() => {
-    const loadBoards = async () => {
+    const fetchBoards = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchBoardsApi();
+        // Using the mocked Next.js API route created earlier
+        const res = await fetch('/api/boards');
+        if (!res.ok) throw new Error('Failed to load boards');
+        const data = await res.json();
         setBoards(data);
 
         // Initial setup if we have data
@@ -44,7 +49,7 @@ export function TasksPageClient() {
         setIsLoading(false);
       }
     };
-    loadBoards();
+    fetchBoards();
   }, []); // Only fetch boards once on mount
 
   // Reactively respond to URL changes (like clicking a board from the BoardList)
