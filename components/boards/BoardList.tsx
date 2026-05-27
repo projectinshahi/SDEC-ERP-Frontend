@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BoardCard, BoardCardProps } from './BoardCard';
 import { Search, Plus, AlertCircle, LayoutGrid } from 'lucide-react';
 import { CreateBoardModal } from './CreateBoardModal';
+import { fetchBoards as fetchBoardsApi } from '@/lib/api/kanban';
+import { useRouter } from 'next/navigation';
 
 export function BoardList() {
   const [boards, setBoards] = useState<BoardCardProps[]>([]);
@@ -11,14 +13,19 @@ export function BoardList() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
 
-  const fetchBoards = useCallback(async () => {
+  const loadBoards = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await fetch('/api/boards');
-      if (!res.ok) throw new Error('Failed to load boards');
-      const data = await res.json();
-      setBoards(data);
+      const data = await fetchBoardsApi();
+      setBoards(data.map(b => ({
+        id: b.id,
+        name: b.name,
+        projectName: b.projectName,
+        taskCount: 0,
+        lastUpdated: b.createdAt || new Date().toISOString(),
+      })));
     } catch (err) {
       setError('Failed to load boards');
     } finally {
@@ -27,8 +34,8 @@ export function BoardList() {
   }, []);
 
   useEffect(() => {
-    fetchBoards();
-  }, [fetchBoards]);
+    loadBoards();
+  }, [loadBoards]);
 
   const filteredBoards = boards.filter(b => 
     b.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -121,7 +128,10 @@ export function BoardList() {
       <CreateBoardModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={fetchBoards}
+        onSuccess={(newBoardId) => {
+          loadBoards();
+          router.push(`/dashboard/tasks?boardId=${newBoardId}`);
+        }}
       />
     </div>
   );

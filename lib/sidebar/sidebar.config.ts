@@ -51,8 +51,8 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: 'user',
   },
   {
-    label: 'Task Management',
-    href: '/dashboard/tasks',
+    label: 'Boards',
+    href: '/dashboard/boards',
     icon: 'CheckSquare',
     module: 'task',
   },

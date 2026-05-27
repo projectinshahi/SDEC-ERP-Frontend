@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { TasksPageClient } from './TasksPageClient';
 
 export const metadata: Metadata = {
@@ -11,5 +12,9 @@ export const metadata: Metadata = {
  * Server Component wrapper — permission guard lives in the client component.
  */
 export default function TasksPage() {
-  return <TasksPageClient />;
+  return (
+    <Suspense fallback={<div className="py-12 text-center text-gray-500 animate-pulse">Loading board...</div>}>
+      <TasksPageClient />
+    </Suspense>
+  );
 }

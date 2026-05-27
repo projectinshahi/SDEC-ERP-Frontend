@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { createBoardApi } from '@/lib/api/kanban';
 
 interface CreateBoardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newBoardId: number) => void;
 }
 
 export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModalProps) {
@@ -23,15 +25,9 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
     setError(null);
 
     try {
-      const res = await fetch('/api/boards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, projectName }),
-      });
-
-      if (!res.ok) throw new Error('Failed to create board');
+      const newBoard = await createBoardApi(name, projectName);
       
-      onSuccess();
+      onSuccess(newBoard.id);
       onClose();
       setName('');
       setProjectName('');
@@ -42,8 +38,8 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Create New Board</h2>
@@ -112,6 +108,7 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
