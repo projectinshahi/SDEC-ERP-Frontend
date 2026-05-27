@@ -26,10 +26,10 @@ export function TasksPageClient() {
         setIsLoading(true);
         const data = await fetchBoardsApi();
         setBoards(data);
-        
+
         // Initial setup if we have data
         const savedId = localStorage.getItem('selectedBoardId');
-        
+
         if (urlBoardId && data.find((b: Board) => b.id === Number(urlBoardId))) {
           setSelectedBoardId(Number(urlBoardId));
           localStorage.setItem('selectedBoardId', urlBoardId);
@@ -69,10 +69,10 @@ export function TasksPageClient() {
     if (selectedBoardId && boards.length > 0) {
       const isMissing = !boards.find(b => b.id === selectedBoardId);
       const hasTried = fetchedBoardIds.current.has(selectedBoardId);
-      
+
       if (isMissing && !hasTried) {
         fetchedBoardIds.current.add(selectedBoardId);
-        
+
         const loadBoards = async () => {
           try {
             const data = await fetchBoardsApi();
@@ -108,9 +108,9 @@ export function TasksPageClient() {
 
         {/* Board Selector */}
         {!error && (
-          <BoardSelector 
-            boards={boards} 
-            selectedBoardId={selectedBoardId} 
+          <BoardSelector
+            boards={boards}
+            selectedBoardId={selectedBoardId}
             onSelectBoard={handleSelectBoard}
             isLoading={isLoading}
           />
