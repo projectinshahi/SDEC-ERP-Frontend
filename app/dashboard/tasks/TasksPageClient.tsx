@@ -1,9 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
+import { fetchBoards as fetchBoardsApi } from '@/lib/api/kanban';
+
+import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
+import { AlertCircle } from 'lucide-react';
 
 import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
 import { AlertCircle } from 'lucide-react';
@@ -31,6 +36,7 @@ export function TasksPageClient() {
         
         if (urlBoardId && data.find((b: Board) => b.id === Number(urlBoardId))) {
           setSelectedBoardId(Number(urlBoardId));
+          localStorage.setItem('selectedBoardId', urlBoardId);
         } else if (savedId && data.find((b: Board) => b.id === Number(savedId))) {
           setSelectedBoardId(Number(savedId));
         } else if (data.length > 0) {
@@ -42,12 +48,52 @@ export function TasksPageClient() {
         setIsLoading(false);
       }
     };
-    fetchBoards();
-  }, []);
+    loadBoards();
+  }, []); // Only fetch boards once on mount
+
+  // Reactively respond to URL changes (like clicking a board from the BoardList)
+  useEffect(() => {
+    if (urlBoardId) {
+      const id = Number(urlBoardId);
+      setSelectedBoardId((currentId) => {
+        if (currentId !== id) {
+          localStorage.setItem('selectedBoardId', String(id));
+          return id;
+        }
+        return currentId;
+      });
+    }
+  }, [urlBoardId]);
+
+  // Keep track of which boards we have already tried to fetch to avoid infinite loops
+  const fetchedBoardIds = useRef<Set<number>>(new Set());
+
+  // Re-fetch boards if a new boardId is detected that isn't in our list
+  useEffect(() => {
+    if (selectedBoardId && boards.length > 0) {
+      const isMissing = !boards.find(b => b.id === selectedBoardId);
+      const hasTried = fetchedBoardIds.current.has(selectedBoardId);
+      
+      if (isMissing && !hasTried) {
+        fetchedBoardIds.current.add(selectedBoardId);
+        
+        const loadBoards = async () => {
+          try {
+            const data = await fetchBoardsApi();
+            setBoards(data);
+          } catch (err) {
+            console.error('Failed to refresh boards', err);
+          }
+        };
+        loadBoards();
+      }
+    }
+  }, [selectedBoardId, boards]);
 
   const handleSelectBoard = (id: number) => {
     setSelectedBoardId(id);
     localStorage.setItem('selectedBoardId', String(id));
+    router.push(`/dashboard/tasks?boardId=${id}`);
   };
 
   return (

@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { createBoardApi } from '@/lib/api/kanban';
 
 interface CreateBoardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newBoardId: number) => void;
 }
 
 export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModalProps) {

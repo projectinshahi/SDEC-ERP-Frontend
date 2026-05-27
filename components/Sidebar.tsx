@@ -20,6 +20,7 @@ import {
   Rocket,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
+import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
 
 const iconMap = {
   LayoutDashboard,
@@ -143,6 +144,18 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
           {items.map((item) => {
             const Icon = iconMap[item.icon];
             const active = isActive(item.href);
+
+            if (item.label === 'Boards') {
+              return (
+                <SidebarBoardsItem 
+                  key={item.label}
+                  active={active}
+                  isCollapsed={isCollapsed}
+                  mounted={mounted}
+                  onMobileToggle={onToggle}
+                />
+              );
+            }
 
             return (
               <div key={item.label} className="relative group">

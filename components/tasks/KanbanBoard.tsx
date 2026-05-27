@@ -127,8 +127,8 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
   useEffect(() => {
     const init = async () => {
       try {
-        const cols = await fetchKanbanColumns();
-        const tsk = await fetchKanbanTasks();
+        const cols = await fetchKanbanColumns(boardId ?? undefined);
+        const tsk = await fetchKanbanTasks(boardId ?? undefined);
         const usrs = await fetchUsers();
         setColumns(cols);
         setTasks(tsk);
@@ -140,7 +140,7 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
       }
     };
     init();
-  }, []);
+  }, [boardId]);
 
   // Get active assignee list from the database
   const availableAssignees = useMemo(() => {
@@ -290,7 +290,7 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
       setTasks([...tasks, newTask]);
 
       try {
-        await createKanbanTask(newTask);
+        await createKanbanTask({ ...newTask, boardId: boardId ?? undefined });
       } catch (err) {
         console.error('Failed to create task in database:', err);
       }
@@ -307,8 +307,8 @@ export function KanbanBoard({ boardId }: { boardId?: number | null }) {
       async () => {
         try {
           await resetKanbanBoardDb();
-          const cols = await fetchKanbanColumns();
-          const tsk = await fetchKanbanTasks();
+          const cols = await fetchKanbanColumns(boardId ?? undefined);
+          const tsk = await fetchKanbanTasks(boardId ?? undefined);
           setColumns(cols);
           setTasks(tsk);
 
