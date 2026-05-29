@@ -97,7 +97,7 @@ export default function BlockersClient() {
       await Promise.all([
         loadBlockers(),
         fetchProjects()
-          .then((data) => setProjects(data.filter((p: Project) => !p.is_archived)))
+          .then((data) => setProjects(data.filter((p: Project) => p.status !== 'completed')))
           .catch(console.error),
       ]);
       setIsLoading(false);

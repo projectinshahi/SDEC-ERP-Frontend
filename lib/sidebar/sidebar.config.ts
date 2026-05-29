@@ -15,22 +15,11 @@ export interface SidebarMenuItem {
   label: string;
   href: string;
   /** Must match a key in Sidebar's iconMap */
-  icon: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle';
+  icon: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module: ModuleName | null;
 }
 
-/**
- * Complete sidebar menu definition with permission-module mappings.
- * Used by Layout.tsx to dynamically filter visible sidebar items.
- *
- * Visibility logic:
- *   - module === null  → always visible
- *   - module === 'user' → visible if user has any 'user.*' permission
- *   - module === 'task' → visible if user has any 'task.*' permission
- *   - module === 'role' → visible if user has any 'role.*' permission
- *   - Super Admin → all items always visible
- */
 export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
   {
     label: 'Dashboard',
@@ -73,6 +62,13 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sprints',
     icon: 'Rocket',
     module: 'sprints',
+  },
+  // New Meetings item
+  {
+    label: 'Meetings',
+    href: '/dashboard/meetings',
+    icon: 'CalendarDays',
+    module: 'meetings',
   },
   {
     label: 'Blockers',
