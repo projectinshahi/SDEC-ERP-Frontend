@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
-import { Plus, Edit, Trash2, Rocket } from 'lucide-react';
+import { Plus, Edit, Trash2, Rocket, Zap, CheckCircle, Clock } from 'lucide-react';
 import { getSprints, deleteSprint, type Sprint } from '@/lib/api/sprints';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { classNames } from '@/lib/utils';
@@ -14,6 +14,13 @@ export function SprintList() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
+
+  const stats = useMemo(() => ({
+    total:     sprints.length,
+    active:    sprints.filter(s => s.status === 'Active').length,
+    completed: sprints.filter(s => s.status === 'Completed').length,
+    planned:   sprints.filter(s => s.status === 'Planned').length,
+  }), [sprints]);
 
   const fetchSprints = async () => {
     setIsLoading(true);
@@ -53,6 +60,28 @@ export function SprintList() {
 
   return (
     <div>
+      {/* ── Status Stat Cards ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'Total Sprints', value: stats.total,     icon: Rocket,      from: 'from-blue-50',   to: 'to-blue-100',   border: 'border-blue-200',   text: 'text-blue-700',   sub: 'text-blue-600',   iconBg: 'bg-blue-500/10',   iconColor: 'text-blue-600'   },
+          { label: 'Active',        value: stats.active,    icon: Zap,         from: 'from-emerald-50',to: 'to-emerald-100',border: 'border-emerald-200',text: 'text-emerald-700',sub: 'text-emerald-600',iconBg: 'bg-emerald-500/10',iconColor: 'text-emerald-600' },
+          { label: 'Completed',     value: stats.completed, icon: CheckCircle, from: 'from-green-50',  to: 'to-green-100',  border: 'border-green-200',  text: 'text-green-700',  sub: 'text-green-600',  iconBg: 'bg-green-500/10',  iconColor: 'text-green-600'  },
+          { label: 'Planned',       value: stats.planned,   icon: Clock,       from: 'from-amber-50',  to: 'to-amber-100',  border: 'border-amber-200',  text: 'text-amber-700',  sub: 'text-amber-600',  iconBg: 'bg-amber-500/10',  iconColor: 'text-amber-600'  },
+        ].map(({ label, value, icon: Icon, from, to, border, text, sub, iconBg, iconColor }) => (
+          <Card key={label} className={classNames('bg-gradient-to-br', from, to, border)}>
+            <div className="flex items-center justify-between p-5">
+              <div>
+                <p className={classNames('text-xs font-semibold uppercase tracking-wide', sub)}>{label}</p>
+                <p className={classNames('text-3xl font-bold mt-2', text)}>{value}</p>
+              </div>
+              <div className={classNames('w-12 h-12 rounded-full flex items-center justify-center', iconBg)}>
+                <Icon className={classNames('w-6 h-6', iconColor)} />
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-gray-800">Sprints</h2>
         <PermissionGuard require="sprints.create">

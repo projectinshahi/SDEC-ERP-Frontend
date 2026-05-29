@@ -16,8 +16,8 @@ export function SprintClient() {
 
   const tabs = [
     { id: 'list', label: 'Sprint List', icon: Rocket },
-    // { id: 'board', label: 'Sprint Board', icon: KanbanSquare },
-    // { id: 'dashboard', label: 'Analytics', icon: BarChart3 },
+    { id: 'board', label: 'Sprint Board', icon: KanbanSquare },
+    { id: 'dashboard', label: 'Analytics', icon: BarChart3 },
   ] as const;
 
   return (
