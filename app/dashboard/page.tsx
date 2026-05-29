@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
-import { BarChart3, Users, CheckSquare, TrendingUp } from 'lucide-react';
+import { BarChart3, Users, CheckSquare, TrendingUp, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { fetchUserCount } from '@/lib/api/users';
 import { fetchActiveTaskCount } from '@/lib/api/tasks';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { fetchActivityFeed, clearActivityFeed, ActivityLog } from '@/lib/api/activity';
-import toast from 'react-hot-toast';
+import { classNames } from '@/lib/utils';
+
+interface ToastMsg { id: string; message: string; type: 'success' | 'error'; }
 
 /**
  * Dashboard page - main overview of the system
@@ -29,6 +31,14 @@ export default function DashboardPage() {
   const [isActivitiesLoading, setIsActivitiesLoading] = useState<boolean>(true);
   const [isActivitiesError, setIsActivitiesError] = useState<boolean>(false);
   const [isActivitiesClearing, setIsActivitiesClearing] = useState<boolean>(false);
+
+  // Toast state
+  const [toasts, setToasts] = useState<ToastMsg[]>([]);
+  const showToast = (message: string, type: ToastMsg['type']) => {
+    const id = Math.random().toString(36).slice(2, 9);
+    setToasts(p => [...p, { id, message, type }]);
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
+  };
 
   // Fetch Total Users Count
   const getUserCountData = async () => {
@@ -80,10 +90,10 @@ export default function DashboardPage() {
       setIsActivitiesClearing(true);
       await clearActivityFeed();
       setActivities([]);
-      toast.success('Activity feed cleared');
+      showToast('Activity feed cleared', 'success');
     } catch (error) {
       console.error('Failed to clear activity feed:', error);
-      toast.error('Failed to clear activity feed');
+      showToast('Failed to clear activity feed', 'error');
     } finally {
       setIsActivitiesClearing(false);
     }
@@ -196,6 +206,30 @@ export default function DashboardPage() {
             </CardBody>
           </Card>
         </div>
+      </div>
+
+      {/* Toast Notifications */}
+      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        {toasts.map(t => (
+          <div key={t.id} role="alert"
+            className={classNames(
+              'pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border bg-white dark:bg-gray-800',
+              t.type === 'success' ? 'border-green-100 dark:border-green-900/30' : 'border-red-100 dark:border-red-900/30'
+            )}>
+            <div className="flex-shrink-0">
+              {t.type === 'success'
+                ? <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-500"><CheckCircle2 size={15} /></div>
+                : <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500"><AlertCircle size={15} /></div>}
+            </div>
+            <div className={classNames('flex-1 text-xs font-semibold',
+              t.type === 'success' ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
+            )}>{t.message}</div>
+            <button onClick={() => setToasts(p => p.filter(x => x.id !== t.id))}
+              className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+              <X size={13} />
+            </button>
+          </div>
+        ))}
       </div>
     </>
   );
