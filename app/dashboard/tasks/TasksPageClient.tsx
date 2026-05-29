@@ -10,9 +10,6 @@ import { fetchBoards as fetchBoardsApi } from '@/lib/api/kanban';
 import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
 import { AlertCircle } from 'lucide-react';
 
-import { BoardSelector, Board } from '../../../components/boards/BoardSelector';
-import { AlertCircle } from 'lucide-react';
-
 export function TasksPageClient() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);

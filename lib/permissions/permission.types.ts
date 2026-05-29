@@ -45,13 +45,18 @@ export type PermissionKey =
   | 'blockers.read'
   | 'blockers.update'
   | 'blockers.delete'
-  | 'blockers.resolve';
+  | 'blockers.resolve'
+  // Meetings
+  | 'meetings.create'
+  | 'meetings.read'
+  | 'meetings.update'
+  | 'meetings.delete';
 
 /**
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers';
+export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings';
 
 /**
  * A single permission definition with metadata for UI rendering.

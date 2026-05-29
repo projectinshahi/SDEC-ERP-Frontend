@@ -19,6 +19,7 @@ import {
   Bug,
   Rocket,
   AlertTriangle,
+  CalendarDays,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
 import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
@@ -32,6 +33,7 @@ const iconMap = {
   Bug,
   Rocket,
   AlertTriangle,
+  CalendarDays,
 } as const;
 
 export interface SidebarItem {

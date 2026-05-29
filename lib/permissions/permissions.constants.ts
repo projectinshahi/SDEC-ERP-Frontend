@@ -16,6 +16,7 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   bugs: 'bugs.',
   sprints: 'sprints.',
   blockers: 'blockers.',
+  meetings: 'meetings.',
 } as const;
 
 /**
@@ -248,6 +249,36 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         label: 'Resolve Blocker',
         description: 'Mark blockers as resolved or closed',
         module: 'blockers',
+      },
+    ],
+  },
+  {
+    module: 'meetings',
+    label: 'Meetings',
+    permissions: [
+      {
+        key: 'meetings.create',
+        label: 'Create Meeting',
+        description: 'Schedule and create new meetings',
+        module: 'meetings',
+      },
+      {
+        key: 'meetings.read',
+        label: 'View Meetings',
+        description: 'Access the meetings dashboard and calendar',
+        module: 'meetings',
+      },
+      {
+        key: 'meetings.update',
+        label: 'Edit Meeting',
+        description: 'Update meeting details and attendees',
+        module: 'meetings',
+      },
+      {
+        key: 'meetings.delete',
+        label: 'Delete Meeting',
+        description: 'Permanently remove meetings from the system',
+        module: 'meetings',
       },
     ],
   },
