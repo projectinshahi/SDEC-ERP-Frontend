@@ -126,16 +126,18 @@ export default function MeetingsClient() {
       setMeetings(mtgs);
       setProjects(projs);
       setUsers(usrs);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load meetings from server.';
       console.error('Failed to load meetings:', err);
-      setLoadError(err?.message || 'Failed to load meetings from server.');
+      setLoadError(msg);
       toast('Failed to load meetings', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => { loadAll(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void loadAll(); }, []);
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const filtered = meetings.filter(m => {
@@ -229,9 +231,10 @@ export default function MeetingsClient() {
         toast(`"${data.title}" created successfully!`, 'success');
       }
       setIsModalOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save meeting.';
       console.error('Save meeting error:', err);
-      toast(err?.message || 'Failed to save meeting.', 'error');
+      toast(msg, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -246,8 +249,9 @@ export default function MeetingsClient() {
       setMeetings(p => p.filter(m => m.id !== meetingToDelete.id));
       toast(`"${meetingToDelete.title}" deleted.`, 'info');
       setMeetingToDelete(null);
-    } catch (err: any) {
-      toast(err?.message || 'Failed to delete meeting.', 'error');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete meeting.';
+      toast(msg, 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -689,7 +693,7 @@ export default function MeetingsClient() {
           </div>
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-2">Delete this meeting?</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
-            Permanently delete <span className="font-semibold text-gray-800 dark:text-gray-200">"{meetingToDelete?.title}"</span>? This cannot be undone.
+            Permanently delete <span className="font-semibold text-gray-800 dark:text-gray-200">&ldquo;{meetingToDelete?.title}&rdquo;</span>? This cannot be undone.
           </p>
           <div className="flex gap-3 w-full">
             <Button variant="secondary" className="flex-1" onClick={() => setMeetingToDelete(null)} disabled={isDeleting}>Cancel</Button>
