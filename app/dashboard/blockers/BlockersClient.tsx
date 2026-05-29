@@ -145,12 +145,12 @@ export default function BlockersClient() {
       if (editingBlocker) {
         const updated = await updateBlocker(editingBlocker.id, {
           title: data.title,
-          description: data.description || null,
+          description: data.description || undefined,
           severity: data.severity,
           status: data.status,
           escalationLevel: data.escalationLevel || 'none',
-          helpNeededFromId: data.helpNeededFromId ? parseInt(data.helpNeededFromId) : null,
-          notes: data.notes || null,
+          helpNeededFromId: data.helpNeededFromId ? parseInt(data.helpNeededFromId) : undefined,
+          notes: data.notes || undefined,
         });
         setBlockers((prev) => prev.map((b) => (b.id === editingBlocker.id ? updated : b)));
         showToast(`Blocker "${data.title}" updated successfully!`, 'success');
@@ -163,7 +163,7 @@ export default function BlockersClient() {
           escalationLevel: data.escalationLevel || 'none',
           projectId: data.projectId,
           loggedById: parseInt(user.id),
-          helpNeededFromId: data.helpNeededFromId ? parseInt(data.helpNeededFromId) : null,
+          helpNeededFromId: data.helpNeededFromId ? parseInt(data.helpNeededFromId) : undefined,
           notes: data.notes || undefined,
         });
         setBlockers((prev) => [created, ...prev]);
@@ -283,15 +283,15 @@ export default function BlockersClient() {
                       <td className="px-4 py-3 font-medium text-gray-800">{b.title}</td>
                       <td className="px-4 py-3 text-gray-600">{b.project?.name ?? b.projectId}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={severityVariant[b.severity] ?? 'default'} size="sm">{b.severity}</Badge>
+                        <Badge variant={severityVariant[b.severity] ?? 'default'}>{b.severity}</Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={statusVariant[b.status] ?? 'default'} size="sm">{b.status}</Badge>
+                        <Badge variant={statusVariant[b.status] ?? 'default'}>{b.status}</Badge>
                       </td>
                       <td className="px-4 py-3 text-gray-600">{b.loggedBy?.name ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-600">{b.helpNeededFrom?.name ?? '—'}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={b.escalationLevel !== 'none' ? 'danger' : 'default'} size="sm">
+                        <Badge variant={b.escalationLevel !== 'none' ? 'danger' : 'default'}>
                           {b.escalationLevel === 'none' ? 'No' : b.escalationLevel}
                         </Badge>
                       </td>
@@ -301,7 +301,7 @@ export default function BlockersClient() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <PermissionGuard require="blockers.update">
-                            <Button variant="outline" size="sm" onClick={() => openEdit(b)}>Edit</Button>
+                            <Button variant="secondary" size="sm" onClick={() => openEdit(b)}>Edit</Button>
                           </PermissionGuard>
                           <PermissionGuard require="blockers.delete">
                             <Button variant="danger" size="sm" onClick={() => setBlockerToDelete(b)}>Delete</Button>
