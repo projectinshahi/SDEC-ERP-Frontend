@@ -13,13 +13,8 @@ import { Plus, Bug, AlertTriangle, X, CheckCircle2, Info } from 'lucide-react';
 import type { Bug as BugType } from '@/lib/api/bugs';
 import { getBugs, createBug, updateBug, deleteBug } from '@/lib/api/bugs';
 import { fetchUsers, type UserDbResponse } from '@/lib/api/users';
+import { useToast } from '@/lib/hooks/useToast';
 import { classNames } from '@/lib/utils';
-
-interface ToastMessage {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'info';
-}
 
 export function BugTrackingClient() {
   const [bugs, setBugs] = useState<BugType[]>([]);
@@ -30,17 +25,9 @@ export function BugTrackingClient() {
   const [bugToDelete, setBugToDelete] = useState<BugType | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3500);
-  };
 
   const loadBugs = async () => {
     try {
@@ -48,7 +35,7 @@ export function BugTrackingClient() {
       setBugs(data);
     } catch (err: any) {
       console.error('Failed to load bugs:', err);
-      showToast('Failed to load bugs from database', 'error');
+      toast('Failed to load bugs from database', 'error');
     }
   };
 
@@ -68,12 +55,12 @@ export function BugTrackingClient() {
     setIsSubmitting(true);
     try {
       await createBug(data);
-      showToast(`Bug "${data.title}" successfully reported!`, 'success');
+      toast(`Bug "${data.title}" successfully reported!`, 'success');
       setIsModalOpen(false);
       loadBugs();
     } catch (err: any) {
       console.error('Error creating bug:', err);
-      showToast('Failed to create bug', 'error');
+      toast('Failed to create bug', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -84,13 +71,13 @@ export function BugTrackingClient() {
       setIsSubmitting(true);
       try {
         await updateBug(editingBug.id, data);
-        showToast(`Bug "${data.title}" successfully updated!`, 'success');
+        toast(`Bug "${data.title}" successfully updated!`, 'success');
         setIsModalOpen(false);
         setEditingBug(null);
         loadBugs();
       } catch (err: any) {
         console.error('Error updating bug:', err);
-        showToast('Failed to update bug', 'error');
+        toast('Failed to update bug', 'error');
       } finally {
         setIsSubmitting(false);
       }
@@ -112,12 +99,12 @@ export function BugTrackingClient() {
     setIsDeleting(true);
     try {
       await deleteBug(bugToDelete.id);
-      showToast(`Bug "${bugToDelete.title}" has been deleted.`, 'info');
+      toast(`Bug "${bugToDelete.title}" has been deleted.`, 'info');
       setBugToDelete(null);
       loadBugs();
     } catch (err: any) {
       console.error('Error deleting bug:', err);
-      showToast('Failed to delete bug', 'error');
+      toast('Failed to delete bug', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -214,48 +201,6 @@ export function BugTrackingClient() {
         </div>
       </Modal>
 
-      {/* Toasts */}
-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={classNames(
-              'pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white',
-              toast.type === 'success'
-                ? 'border-green-100 text-green-800'
-                : toast.type === 'error'
-                  ? 'border-red-100 text-red-800'
-                  : 'border-blue-100 text-blue-800'
-            )}
-            role="alert"
-          >
-            <div className="flex-shrink-0">
-              {toast.type === 'success' ? (
-                <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-500">
-                  <CheckCircle2 size={16} />
-                </div>
-              ) : toast.type === 'error' ? (
-                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500">
-                  <AlertTriangle size={16} />
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                  <Info size={16} />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
-
-            <button
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
     </PermissionPageGuard>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useToast } from '@/lib/hooks/useToast';
 import { Card, CardBody, CardHeader, CardFooter } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Breadcrumb } from '@/components/Breadcrumb';
@@ -17,10 +18,6 @@ import {
   Shield,
   Loader2,
   AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
-  X,
-  Info,
 } from 'lucide-react';
 import { fetchRolesApi, deleteRoleApi } from '@/lib/api/roles';
 import { classNames } from '@/lib/utils';
@@ -34,12 +31,6 @@ interface RoleData {
   createdAt: string;
 }
 
-interface ToastMessage {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'info';
-}
-
 export function RoleManagementClient() {
   const [roles, setRoles] = useState<RoleData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,13 +39,7 @@ export function RoleManagementClient() {
   const [editingRole, setEditingRole] = useState<RoleData | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<RoleData | null>(null);
   const [isDeletingRole, setIsDeletingRole] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const showToast = (message: string, type: ToastMessage['type'] = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
-  };
+  const { toast } = useToast();
 
   const loadRoles = async () => {
     setIsLoading(true);
@@ -80,14 +65,14 @@ export function RoleManagementClient() {
     setIsDeletingRole(true);
     try {
       await deleteRoleApi(String(roleToDelete.id));
-      showToast('Role deleted successfully', 'success');
+      toast('Role deleted successfully', 'success');
       setRoleToDelete(null);
       loadRoles();
     } catch (err: unknown) {
       const errMsg =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
         (err instanceof Error ? err.message : 'Failed to delete role');
-      showToast(
+      toast(
         errMsg === 'Cannot delete role. It is assigned to active users.'
           ? 'Cannot delete role. This role is assigned to active users.'
           : errMsg,
@@ -393,46 +378,6 @@ export function RoleManagementClient() {
         </div>
       </Modal>
 
-      {/* Toast Queue */}
-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={classNames(
-              'pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white',
-              toast.type === 'success'
-                ? 'border-green-100 text-green-800'
-                : toast.type === 'error'
-                ? 'border-red-100 text-red-800'
-                : 'border-blue-100 text-blue-800'
-            )}
-            role="alert"
-          >
-            <div className="flex-shrink-0">
-              {toast.type === 'success' ? (
-                <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-500">
-                  <CheckCircle2 size={16} />
-                </div>
-              ) : toast.type === 'error' ? (
-                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500">
-                  <AlertTriangle size={16} />
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                  <Info size={16} />
-                </div>
-              )}
-            </div>
-            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
-            <button
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
     </PermissionPageGuard>
   );
 }

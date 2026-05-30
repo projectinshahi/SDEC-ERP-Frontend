@@ -12,10 +12,11 @@ import { CreateRoleModal } from '@/components/user-management/CreateRoleModal';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { Modal } from '@/components/Modal';
-import { Plus, Users, Shield, X, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { Plus, Users, Shield, AlertTriangle } from 'lucide-react';
 import { DUMMY_ROLES, AVAILABLE_PERMISSIONS } from '@/lib/data/user-management-data';
 import type { User, Role, UserFormData, RoleFormData } from '@/lib/types/user-management';
 import { classNames } from '@/lib/utils';
+import { useToast } from '@/lib/hooks/useToast';
 import { 
   fetchUsers, 
   createUserApi, 
@@ -27,16 +28,11 @@ import { fetchRolesApi, deleteRoleApi } from '@/lib/api/roles';
 
 type TabType = 'users' | 'roles';
 
-interface ToastMessage {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'info';
-}
-
 /**
  * User Management Client Component
  */
 export function UserManagementClient() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -53,20 +49,9 @@ export function UserManagementClient() {
 
 
 
-  // Custom UX loading states & toasts queue
+  // Custom UX loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3500);
-  };
 
   const loadUsers = async () => {
     try {
@@ -82,7 +67,7 @@ export function UserManagementClient() {
       setUsers(formatted);
     } catch (err: any) {
       console.error('Failed to load users:', err);
-      showToast('Failed to sync users with database', 'error');
+      toast('Failed to sync users with database', 'error');
     }
   };
 
@@ -99,7 +84,7 @@ export function UserManagementClient() {
       setRoles(formatted);
     } catch (err: any) {
       console.error('Failed to load roles:', err);
-      showToast('Failed to sync roles with database', 'error');
+      toast('Failed to sync roles with database', 'error');
     }
   };
 
@@ -117,13 +102,13 @@ export function UserManagementClient() {
     setIsSubmitting(true);
     try {
       await createUserApi(data);
-      showToast(`User "${data.name}" successfully created!`, 'success');
+      toast(`User "${data.name}" successfully created!`, 'success');
       setIsUserModalOpen(false);
       loadUsers(); // Refresh dynamic list from Neon DB
     } catch (err: any) {
       console.error('Error creating user:', err);
       const errMsg = err.details?.message || err.message || 'Failed to create user';
-      showToast(errMsg, 'error');
+      toast(errMsg, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -139,14 +124,14 @@ export function UserManagementClient() {
       setIsSubmitting(true);
       try {
         await updateUserApi(editingUser.id, data);
-        showToast(`User profile for "${data.name}" successfully updated!`, 'success');
+        toast(`User profile for "${data.name}" successfully updated!`, 'success');
         setIsUserModalOpen(false);
         setEditingUser(null);
         loadUsers(); // Refresh dynamic list from Neon DB
       } catch (err: any) {
         console.error('Error updating user:', err);
         const errMsg = err.details?.message || err.message || 'Failed to update user profile';
-        showToast(errMsg, 'error');
+        toast(errMsg, 'error');
       } finally {
         setIsSubmitting(false);
       }
@@ -164,13 +149,13 @@ export function UserManagementClient() {
     setIsDeletingUser(true);
     try {
       await deleteUserApi(userToDelete.id);
-      showToast(`User "${userToDelete.name}" has been deleted.`, 'info');
+      toast(`User "${userToDelete.name}" has been deleted.`, 'info');
       setUserToDelete(null);
       loadUsers(); // Refresh dynamic list from Neon DB
     } catch (err: any) {
       console.error('Error deleting user:', err);
       const errMsg = err.details?.message || err.message || 'Failed to delete user';
-      showToast(errMsg, 'error');
+      toast(errMsg, 'error');
     } finally {
       setIsDeletingUser(false);
     }
@@ -188,7 +173,7 @@ export function UserManagementClient() {
       setRoles((prev) => [...prev, newRole]);
       setIsSubmitting(false);
       setIsRoleModalOpen(false);
-      showToast(`Role "${data.name}" successfully created!`, 'success');
+      toast(`Role "${data.name}" successfully created!`, 'success');
     }, 700);
   };
 
@@ -205,7 +190,7 @@ export function UserManagementClient() {
         setIsSubmitting(false);
         setIsRoleModalOpen(false);
         setEditingRole(null);
-        showToast(`Access permission role "${data.name}" successfully updated!`, 'success');
+        toast(`Access permission role "${data.name}" successfully updated!`, 'success');
       }, 700);
     }
   };
@@ -221,13 +206,13 @@ export function UserManagementClient() {
     setIsDeletingRole(true);
     try {
       await deleteRoleApi(roleToDelete.id);
-      showToast('Role deleted successfully', 'success');
+      toast('Role deleted successfully', 'success');
       setRoleToDelete(null);
       loadRoles(); // Refresh dynamic list from Neon DB
     } catch (err: any) {
       console.error('Error deleting role:', err);
       const errMsg = err.response?.data?.error || err.message || 'Failed to delete role';
-      showToast(
+      toast(
         errMsg === 'Cannot delete role. It is assigned to active users.'
           ? 'Cannot delete role. This role is assigned to users.'
           : errMsg,
@@ -419,103 +404,6 @@ export function UserManagementClient() {
           </div>
         </div>
       </Modal>
-
-      {/* Custom Delete Role Confirmation Modal */}
-      <Modal
-        isOpen={!!roleToDelete}
-        onClose={() => !isDeletingRole && setRoleToDelete(null)}
-        title="Confirm Deletion"
-        size="sm"
-      >
-        <div className="flex flex-col items-center text-center p-2">
-          {/* Circular Alert Icon */}
-          <div className="w-14 h-14 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-red-600 mb-4 shadow-sm animate-pulse">
-            <AlertTriangle size={28} />
-          </div>
-
-          <h3 className="text-lg font-bold text-gray-900 tracking-tight mb-2">
-            Delete Security Role?
-          </h3>
-          <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-            Are you sure you want to permanently delete role <span className="font-semibold text-gray-800">"{roleToDelete?.name}"</span>? This action cannot be undone.
-            {roleToDelete?.userCount ? (
-              <span className="block mt-4 p-3 rounded-lg border border-red-100 bg-red-50/50 text-red-700 text-xs font-semibold text-left animate-shake">
-                ⚠️ This role is currently assigned to {roleToDelete.userCount} active user{roleToDelete.userCount > 1 ? 's' : ''}. You will not be able to delete it.
-              </span>
-            ) : (
-              <span className="block mt-4 p-3 rounded-lg border border-emerald-100 bg-emerald-50/50 text-emerald-700 text-xs font-semibold text-left">
-                ✓ This role is not currently assigned to any active users.
-              </span>
-            )}
-          </p>
-
-          <div className="flex items-center gap-3 w-full">
-            <Button
-              variant="secondary"
-              className="flex-1 font-semibold"
-              onClick={() => setRoleToDelete(null)}
-              disabled={isDeletingRole}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              className="flex-1 font-semibold"
-              onClick={handleConfirmDeleteRole}
-              isLoading={isDeletingRole}
-              disabled={!!roleToDelete?.userCount}
-            >
-              {isDeletingRole ? 'Deleting...' : 'Delete Role'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-
-
-      {/* Dynamic Toast Floating Queue */}
-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={classNames(
-              'pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white',
-              toast.type === 'success'
-                ? 'border-green-100 text-green-800'
-                : toast.type === 'error'
-                  ? 'border-red-100 text-red-800'
-                  : 'border-blue-100 text-blue-800'
-            )}
-            role="alert"
-          >
-            {/* Action status icon */}
-            <div className="flex-shrink-0">
-              {toast.type === 'success' ? (
-                <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-500">
-                  <CheckCircle2 size={16} />
-                </div>
-              ) : toast.type === 'error' ? (
-                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500">
-                  <AlertTriangle size={16} />
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                  <Info size={16} />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
-
-            <button
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
     </PermissionPageGuard>
   );
 }

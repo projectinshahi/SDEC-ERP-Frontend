@@ -18,6 +18,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
+import { useToast } from '@/lib/hooks/useToast';
 import { Modal } from '@/components/Modal';
 
 // Import project-specific sub-components and API helpers
@@ -26,12 +27,6 @@ import { ProjectCard, Project } from '@/components/projects/ProjectCard';
 import { ProjectList } from '@/components/projects/ProjectList';
 import { CreateProjectModal, ProjectFormData } from '@/components/projects/CreateProjectModal';
 import { fetchProjects, createProjectApi, updateProjectApi, archiveProjectApi, restoreProjectApi, deleteProjectApi } from '@/lib/api/projects';
-
-interface ToastMessage {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'info';
-}
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -49,17 +44,7 @@ export default function ProjectsPage() {
   const [isArchiving, setIsArchiving] = useState<boolean>(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-
-  // Toast notification state
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  };
+  const { toast } = useToast();
 
   const loadProjects = async () => {
     setIsLoading(true);
@@ -70,7 +55,7 @@ export default function ProjectsPage() {
     } catch (err: any) {
       console.error('Failed to load projects:', err);
       setError(err.message || 'Failed to fetch projects from the ERP backend server.');
-      showToast('Failed to sync projects from server', 'error');
+      toast('Failed to sync projects from server', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -99,12 +84,12 @@ export default function ProjectsPage() {
     setIsArchiving(true);
     try {
       await archiveProjectApi(projectToArchive.id);
-      showToast(`Project "${projectToArchive.name}" has been successfully archived!`, 'info');
+      toast(`Project "${projectToArchive.name}" has been successfully archived!`, 'info');
       setProjectToArchive(null);
       loadProjects(); // Refresh listing
     } catch (err: any) {
       console.error('Failed to archive project:', err);
-      showToast(err.message || 'Failed to archive project. Try again.', 'error');
+      toast(err.message || 'Failed to archive project. Try again.', 'error');
     } finally {
       setIsArchiving(false);
     }
@@ -113,11 +98,11 @@ export default function ProjectsPage() {
   const handleRestoreClick = async (project: Project, e: React.MouseEvent) => {
     try {
       await restoreProjectApi(project.id);
-      showToast(`Project "${project.name}" has been successfully restored!`, 'success');
+      toast(`Project "${project.name}" has been successfully restored!`, 'success');
       loadProjects(); // Refresh listing
     } catch (err: any) {
       console.error('Failed to restore project:', err);
-      showToast(err.message || 'Failed to restore project. Try again.', 'error');
+      toast(err.message || 'Failed to restore project. Try again.', 'error');
     }
   };
 
@@ -130,12 +115,12 @@ export default function ProjectsPage() {
     setIsDeleting(true);
     try {
       await deleteProjectApi(projectToDelete.id);
-      showToast(`Project "${projectToDelete.name}" has been permanently deleted.`, 'info');
+      toast(`Project "${projectToDelete.name}" has been permanently deleted.`, 'info');
       setProjectToDelete(null);
       loadProjects(); // Refresh listing
     } catch (err: any) {
       console.error('Failed to permanently delete project:', err);
-      showToast(err.message || 'Failed to delete project. Try again.', 'error');
+      toast(err.message || 'Failed to delete project. Try again.', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -147,18 +132,18 @@ export default function ProjectsPage() {
       if (projectToEdit) {
         // Edit Project submission
         await updateProjectApi(projectToEdit.id, formData);
-        showToast(`Project "${formData.name}" was successfully updated!`, 'success');
+        toast(`Project "${formData.name}" was successfully updated!`, 'success');
       } else {
         // Create Project submission
         await createProjectApi(formData);
-        showToast(`Project "${formData.name}" was successfully created!`, 'success');
+        toast(`Project "${formData.name}" was successfully created!`, 'success');
       }
       setIsModalOpen(false);
       setProjectToEdit(null);
       loadProjects(); // Refresh project list from backend
     } catch (err: any) {
       console.error('Failed to save project:', err);
-      showToast(err.message || 'Failed to save project. Try again.', 'error');
+      toast(err.message || 'Failed to save project. Try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -474,48 +459,6 @@ export default function ProjectsPage() {
         </div>
       </Modal>
 
-      {/* Floating Dynamic status toast message alerts */}
-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={classNames(
-              'pointer-events-auto flex items-center gap-3.5 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white dark:bg-gray-800',
-              toast.type === 'success'
-                ? 'border-green-100 dark:border-green-900/30 text-green-800 dark:text-green-300'
-                : toast.type === 'error'
-                  ? 'border-red-100 dark:border-red-900/30 text-red-800 dark:text-red-300'
-                  : 'border-blue-100 dark:border-blue-900/30 text-blue-800 dark:text-blue-300'
-            )}
-            role="alert"
-          >
-            <div className="flex-shrink-0">
-              {toast.type === 'success' ? (
-                <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-950/20 flex items-center justify-center text-green-500 animate-pulse">
-                  <CheckCircle2 size={16} />
-                </div>
-              ) : toast.type === 'error' ? (
-                <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center text-red-500 animate-bounce">
-                  <AlertCircle size={16} />
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-500">
-                  <Info size={16} />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
-
-            <button
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
     </>
   );
 }

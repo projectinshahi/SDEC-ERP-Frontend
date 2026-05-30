@@ -131,13 +131,22 @@ export function CreateProjectModal({
     }
 
     // End date validation: must be on or after start date
+    // if (data.startDate && data.endDate) {
+    //   const start = new Date(data.startDate);
+    //   const end = new Date(data.endDate);
+    //   if (end < start) {
+    //     tempErrors.endDate = 'End date must be on or after start date';
+    //   }
+    // }
     if (data.startDate && data.endDate) {
-      const start = new Date(data.startDate);
-      const end = new Date(data.endDate);
-      if (end < start) {
-        tempErrors.endDate = 'End date must be on or after start date';
-      }
-    }
+  const start = new Date(data.startDate);
+  const end = new Date(data.endDate);
+
+  if (end <= start) {
+    tempErrors.endDate =
+      'End date must be greater than the start date';
+  }
+}
 
     if (data.members.length === 0) {
       tempErrors.members = 'At least one team member must be assigned';
@@ -225,7 +234,7 @@ export function CreateProjectModal({
               error={errors.startDate}
             />
 
-            <InputField
+            {/* <InputField
               type="date"
               label="End Date (Optional)"
               id="project-end-date"
@@ -233,7 +242,27 @@ export function CreateProjectModal({
               value={formData.endDate || ''}
               onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
               error={errors.endDate}
-            />
+            /> */}
+            <InputField
+  type="date"
+  label="End Date (Optional)"
+  id="project-end-date"
+  disabled={isSubmitting || isResolvingMembers}
+  value={formData.endDate || ''}
+  min={
+    formData.startDate
+      ? new Date(
+          new Date(formData.startDate).getTime() + 86400000
+        )
+          .toISOString()
+          .split('T')[0]
+      : undefined
+  }
+  onChange={(e) =>
+    setFormData({ ...formData, endDate: e.target.value })
+  }
+  error={errors.endDate}
+/>
           </div>
 
           {/* Team Member assignment searchable picker */}

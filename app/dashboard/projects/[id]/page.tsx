@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useToast } from '@/lib/hooks/useToast';
 import { useParams, useRouter } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
@@ -18,10 +19,7 @@ import {
   CheckSquare, 
   BarChart3,
   AlertCircle,
-  Plus,
-  CheckCircle2,
-  Info,
-  X
+  Plus
 } from 'lucide-react';
 import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi } from '@/lib/api/projects';
 import { Project, ProjectMember } from '@/components/projects/ProjectCard';
@@ -46,17 +44,7 @@ export default function ProjectDetailsPage() {
   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isUpdatingRole, setIsUpdatingRole] = useState<string | number | null>(null);
-
-  interface ToastMessage { id: string; message: string; type: 'success' | 'error' | 'info'; }
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  };
+  const { toast } = useToast();
 
   const loadProjectAndMembers = async () => {
     setIsLoading(true);
@@ -153,11 +141,11 @@ export default function ProjectDetailsPage() {
   const handleAddMemberSubmit = async (data: { userId: number; role: 'admin' | 'editor' | 'viewer' }) => {
     try {
       await addProjectMemberApi(projectId, data);
-      showToast('Member added successfully!');
+      toast('Member added successfully!');
       setIsAddMemberOpen(false);
       loadMembersOnly();
     } catch (error: any) {
-      showToast(error.message || 'Failed to add member', 'error');
+      toast(error.message || 'Failed to add member', 'error');
     }
   };
 
@@ -165,10 +153,10 @@ export default function ProjectDetailsPage() {
     setIsUpdatingRole(memberId);
     try {
       await updateProjectMemberRoleApi(projectId, memberId, newRole);
-      showToast('Role updated successfully!');
+      toast('Role updated successfully!');
       loadMembersOnly();
     } catch (error: any) {
-      showToast(error.message || 'Failed to update role', 'error');
+      toast(error.message || 'Failed to update role', 'error');
     } finally {
       setIsUpdatingRole(null);
     }
@@ -179,11 +167,11 @@ export default function ProjectDetailsPage() {
     setIsRemoving(true);
     try {
       await removeProjectMemberApi(projectId, memberToRemove.id);
-      showToast('Member removed successfully!');
+      toast('Member removed successfully!');
       setMemberToRemove(null);
       loadMembersOnly();
     } catch (error: any) {
-      showToast(error.message || 'Failed to remove member', 'error');
+      toast(error.message || 'Failed to remove member', 'error');
     } finally {
       setIsRemoving(false);
     }
@@ -473,47 +461,6 @@ export default function ProjectDetailsPage() {
       </Modal>
 
       {/* Floating Dynamic status toast message alerts */}
-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={classNames(
-              'pointer-events-auto flex items-center gap-3.5 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white dark:bg-gray-800',
-              toast.type === 'success'
-                ? 'border-green-100 dark:border-green-900/30 text-green-800 dark:text-green-300'
-                : toast.type === 'error'
-                  ? 'border-red-100 dark:border-red-900/30 text-red-800 dark:text-red-300'
-                  : 'border-blue-100 dark:border-blue-900/30 text-blue-800 dark:text-blue-300'
-            )}
-            role="alert"
-          >
-            <div className="flex-shrink-0">
-              {toast.type === 'success' ? (
-                <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-950/20 flex items-center justify-center text-green-500 animate-pulse">
-                  <CheckCircle2 size={16} />
-                </div>
-              ) : toast.type === 'error' ? (
-                <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center text-red-500 animate-bounce">
-                  <AlertCircle size={16} />
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-500">
-                  <Info size={16} />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
-
-            <button
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
     </>
   );
 }

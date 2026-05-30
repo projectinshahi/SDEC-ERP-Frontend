@@ -8,14 +8,12 @@ import { Card, CardBody, CardHeader } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Skeleton } from '@/components/Skeleton';
 import { ROUTES } from '@/lib/constants';
-import { 
-  ArrowLeft, 
-  AlertCircle,
-  CheckCircle2,
+import { useToast } from '@/lib/hooks/useToast';
+import { useConfirm } from '@/lib/hooks/useConfirm';
+import {
+  ArrowLeft,
   Settings,
   Users,
-  Info,
-  X,
   Loader2
 } from 'lucide-react';
 import { 
@@ -58,15 +56,8 @@ export default function ProjectSettingsPage() {
   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isUpdatingRole, setIsUpdatingRole] = useState<string | number | null>(null);
-
-  interface ToastMessage { id: string; message: string; type: 'success' | 'error' | 'info'; }
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  };
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   const loadData = async () => {
     setIsLoading(true);
@@ -132,10 +123,10 @@ export default function ProjectSettingsPage() {
     setIsSaving(true);
     try {
       await updateProjectApi(projectId, { name, description, status });
-      showToast('Project details updated successfully');
+      toast('Project details updated successfully');
       setProject(prev => prev ? { ...prev, name, description, status } : null);
     } catch (error: any) {
-      showToast(error.message || 'Failed to update details', 'error');
+      toast(error.message || 'Failed to update details', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -144,11 +135,11 @@ export default function ProjectSettingsPage() {
   const handleAddMemberSubmit = async (data: { userId: number; role: 'admin' | 'editor' | 'viewer' }) => {
     try {
       await addProjectMemberApi(projectId, data);
-      showToast('Member added successfully!');
+      toast('Member added successfully!');
       setIsAddMemberOpen(false);
       loadMembersOnly();
     } catch (error: any) {
-      showToast(error.message || 'Failed to add member', 'error');
+      toast(error.message || 'Failed to add member', 'error');
     }
   };
 
@@ -156,10 +147,10 @@ export default function ProjectSettingsPage() {
     setIsUpdatingRole(memberId);
     try {
       await updateProjectMemberRoleApi(projectId, memberId, newRole);
-      showToast('Role updated successfully!');
+      toast('Role updated successfully!');
       loadMembersOnly();
     } catch (error: any) {
-      showToast(error.message || 'Failed to update role', 'error');
+      toast(error.message || 'Failed to update role', 'error');
     } finally {
       setIsUpdatingRole(null);
     }
@@ -172,7 +163,7 @@ export default function ProjectSettingsPage() {
     if (memberToRemove.role === 'admin') {
       const adminCount = members.filter(m => m.role === 'admin').length;
       if (adminCount <= 1) {
-        showToast('Cannot remove the last admin from the project.', 'error');
+        toast('Cannot remove the last admin from the project.', 'error');
         setMemberToRemove(null);
         return;
       }
@@ -181,11 +172,11 @@ export default function ProjectSettingsPage() {
     setIsRemoving(true);
     try {
       await removeProjectMemberApi(projectId, memberToRemove.id);
-      showToast('Member removed successfully!');
+      toast('Member removed successfully!');
       setMemberToRemove(null);
       loadMembersOnly();
     } catch (error: any) {
-      showToast(error.message || 'Failed to remove member', 'error');
+      toast(error.message || 'Failed to remove member', 'error');
     } finally {
       setIsRemoving(false);
     }
@@ -193,14 +184,22 @@ export default function ProjectSettingsPage() {
 
   const handleDeleteProject = async () => {
     if (currentUserRole !== 'admin') return;
-    const confirmDelete = window.confirm("Are you sure you want to permanently delete this project? This action cannot be undone.");
-    if (confirmDelete) {
-      try {
-        await deleteProjectApi(projectId);
-        router.push(ROUTES.PROJECTS);
-      } catch (err: any) {
-        showToast(err.message || 'Failed to delete project', 'error');
-      }
+
+    const confirmed = await confirm({
+      title: 'Delete Project',
+      message: 'Are you sure you want to permanently delete this project? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      intent: 'danger',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      await deleteProjectApi(projectId);
+      router.push(ROUTES.PROJECTS);
+    } catch (err: any) {
+      toast(err.message || 'Failed to delete project', 'error');
     }
   };
 
@@ -432,48 +431,6 @@ export default function ProjectSettingsPage() {
         </div>
       </Modal>
 
-      {/* Floating Dynamic status toast message alerts */}
-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={classNames(
-              'pointer-events-auto flex items-center gap-3.5 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white dark:bg-gray-800',
-              toast.type === 'success'
-                ? 'border-green-100 dark:border-green-900/30 text-green-800 dark:text-green-300'
-                : toast.type === 'error'
-                  ? 'border-red-100 dark:border-red-900/30 text-red-800 dark:text-red-300'
-                  : 'border-blue-100 dark:border-blue-900/30 text-blue-800 dark:text-blue-300'
-            )}
-            role="alert"
-          >
-            <div className="flex-shrink-0">
-              {toast.type === 'success' ? (
-                <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-950/20 flex items-center justify-center text-green-500 animate-pulse">
-                  <CheckCircle2 size={16} />
-                </div>
-              ) : toast.type === 'error' ? (
-                <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center text-red-500 animate-bounce">
-                  <AlertCircle size={16} />
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-500">
-                  <Info size={16} />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
-
-            <button
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
     </>
   );
 }

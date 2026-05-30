@@ -45,12 +45,12 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'CheckSquare',
     module: 'task',
   },
-  {
-    label: 'Role Management',
-    href: '/dashboard/role-management',
-    icon: 'ShieldCheck',
-    module: 'role',
-  },
+  // {
+  //   label: 'Role Management',
+  //   href: '/dashboard/role-management',
+  //   icon: 'ShieldCheck',
+  //   module: 'role',
+  // },
   {
     label: 'Bug Tracking',
     href: '/dashboard/bugs',

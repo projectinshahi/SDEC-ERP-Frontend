@@ -2,6 +2,9 @@
 
 import { ThemeProvider } from '@/lib/hooks/useTheme';
 import { AuthProvider } from '@/lib/context/AuthContext';
+import { ToastProvider } from '@/components/ToastProvider';
+import { ConfirmProvider } from '@/components/ConfirmDialogProvider';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { ReactNode } from 'react';
 
 interface ProvidersProps {
@@ -18,7 +21,13 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <AuthProvider>
       <ThemeProvider>
-        {children}
+        <ErrorBoundary>
+          <ToastProvider>
+            <ConfirmProvider>
+              {children}
+            </ConfirmProvider>
+          </ToastProvider>
+        </ErrorBoundary>
       </ThemeProvider>
     </AuthProvider>
   );
