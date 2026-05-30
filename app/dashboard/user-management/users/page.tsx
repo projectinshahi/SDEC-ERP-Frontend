@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useToast } from '@/lib/hooks/useToast';
 import { Card, CardBody, CardHeader, CardFooter } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
@@ -12,11 +13,7 @@ import {
   Trash2, 
   Loader2, 
   RotateCw, 
-  AlertCircle, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Info, 
-  X 
+  AlertCircle 
 } from 'lucide-react';
 import type { User, UserFormData } from '@/lib/types/user-management';
 import { AddUserModal } from '@/components/user-management/AddUserModal';
@@ -28,12 +25,6 @@ import {
   deleteUserApi 
 } from '@/lib/api/users';
 import { classNames } from '@/lib/utils';
-
-interface ToastMessage {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'info';
-}
 
 /**
  * Live Users page - connects directly to Neon PostgreSQL database with fully responsive features
@@ -51,17 +42,7 @@ export default function UsersPage() {
   // Deletion custom modal states
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-
-  // Dynamic toast notifications state
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3500);
-  };
+  const { toast } = useToast();
 
   const loadUsers = async () => {
     setIsLoading(true);
@@ -82,7 +63,7 @@ export default function UsersPage() {
     } catch (err: any) {
       console.error('Failed to load users:', err);
       setError(err.message || 'Failed to sync users with the database. Check connection URL.');
-      showToast('Failed to sync users with database', 'error');
+      toast('Failed to sync users with database', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -97,12 +78,12 @@ export default function UsersPage() {
     setIsSubmitting(true);
     try {
       await createUserApi(data);
-      showToast(`User "${data.name}" successfully created!`, 'success');
+      toast(`User "${data.name}" successfully created!`, 'success');
       setIsModalOpen(false);
       loadUsers(); // Refresh dynamic list from Neon DB
     } catch (err: any) {
       console.error('Error creating user:', err);
-      showToast(err.message || 'Failed to create user', 'error');
+      toast(err.message || 'Failed to create user', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -118,13 +99,13 @@ export default function UsersPage() {
     setIsSubmitting(true);
     try {
       await updateUserApi(editingUser.id, data);
-      showToast(`User profile for "${data.name}" successfully updated!`, 'success');
+      toast(`User profile for "${data.name}" successfully updated!`, 'success');
       setIsModalOpen(false);
       setEditingUser(null);
       loadUsers(); // Refresh dynamic list from Neon DB
     } catch (err: any) {
       console.error('Error updating user:', err);
-      showToast(err.message || 'Failed to update user profile', 'error');
+      toast(err.message || 'Failed to update user profile', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -141,12 +122,12 @@ export default function UsersPage() {
     setIsDeleting(true);
     try {
       await deleteUserApi(userToDelete.id);
-      showToast(`User "${userToDelete.name}" has been deleted.`, 'info');
+      toast(`User "${userToDelete.name}" has been deleted.`, 'info');
       setUserToDelete(null);
       loadUsers(); // Refresh dynamic list from Neon DB
     } catch (err: any) {
       console.error('Error deleting user:', err);
-      showToast(err.message || 'Failed to delete user', 'error');
+      toast(err.message || 'Failed to delete user', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -413,47 +394,6 @@ export default function UsersPage() {
       </Modal>
 
       {/* Floating dynamic status toast message queue */}
-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={classNames(
-              'pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white',
-              toast.type === 'success'
-                ? 'border-green-100 text-green-800'
-                : toast.type === 'error'
-                  ? 'border-red-100 text-red-800'
-                  : 'border-blue-100 text-blue-800'
-            )}
-            role="alert"
-          >
-            <div className="flex-shrink-0">
-              {toast.type === 'success' ? (
-                <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-500 animate-pulse">
-                  <CheckCircle2 size={16} />
-                </div>
-              ) : toast.type === 'error' ? (
-                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500 animate-bounce">
-                  <AlertTriangle size={16} />
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                  <Info size={16} />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
-
-            <button
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
     </>
   );
 }

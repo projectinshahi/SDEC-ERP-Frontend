@@ -43,10 +43,11 @@ export function canAccessModule(permissions: string[], module: ModuleName): bool
 
 /**
  * Check if the given role name qualifies as Super Admin.
- * Super Admin bypasses all permission checks.
+ * Super Admin (and plain admin) bypasses all permission checks.
  */
 export function isSuperAdmin(roleName: string): boolean {
-  return roleName === SUPER_ADMIN_ROLE_NAME;
+  const normalized = String(roleName ?? '').trim().toLowerCase();
+  return normalized === SUPER_ADMIN_ROLE_NAME.toLowerCase() || normalized === 'admin';
 }
 
 /**

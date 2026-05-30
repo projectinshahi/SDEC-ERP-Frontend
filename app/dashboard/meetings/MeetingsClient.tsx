@@ -9,6 +9,8 @@ import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Modal } from '@/components/Modal';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { EmptyState } from '@/components/EmptyState';
+import { TableSkeleton } from '@/components/Skeleton';
 import {
   Calendar, Plus, X, CheckCircle2, Info, AlertTriangle,
   Search, Users, Clock, MapPin, Video, Edit, Trash2,
@@ -17,6 +19,8 @@ import {
 import { classNames } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useToast } from '@/lib/hooks/useToast';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 import {
   getMeetings as apiGetMeetings,
   createMeeting as apiCreateMeeting,
@@ -50,9 +54,6 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-// ── Toast type ────────────────────────────────────────────────────────────────
-interface ToastMsg { id: string; message: string; type: 'success' | 'error' | 'info'; }
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const TYPE_LABELS: Record<string, string> = {
   DAILY_STANDUP: 'Daily Standup', SPRINT_PLANNING: 'Sprint Planning',
@@ -80,6 +81,8 @@ const inputCls = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 r
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function MeetingsClient() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -89,7 +92,6 @@ export default function MeetingsClient() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
-  const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   // Attendees multi-select state — array of user IDs
@@ -99,19 +101,10 @@ export default function MeetingsClient() {
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const [toasts, setToasts] = useState<ToastMsg[]>([]);
-
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { meetingType: 'DAILY_STANDUP', status: 'SCHEDULED' },
   });
-
-  // ── Toast ──────────────────────────────────────────────────────────────────
-  const toast = (message: string, type: ToastMsg['type'] = 'success') => {
-    const id = Math.random().toString(36).slice(2, 9);
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
-  };
 
   // ── Load data ──────────────────────────────────────────────────────────────
   const loadAll = async () => {
@@ -241,14 +234,21 @@ export default function MeetingsClient() {
   };
 
   // ── Delete ─────────────────────────────────────────────────────────────────
-  const confirmDelete = async () => {
-    if (!meetingToDelete) return;
+  const handleDeleteMeeting = async (meeting: Meeting) => {
+    const confirmed = await confirm({
+      title: 'Delete Meeting',
+      message: `Are you sure you want to permanently delete "${meeting.title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      intent: 'danger',
+    });
+
+    if (!confirmed) return;
     setIsDeleting(true);
     try {
-      await apiDeleteMeeting(meetingToDelete.id);
-      setMeetings(p => p.filter(m => m.id !== meetingToDelete.id));
-      toast(`"${meetingToDelete.title}" deleted.`, 'info');
-      setMeetingToDelete(null);
+      await apiDeleteMeeting(meeting.id);
+      setMeetings((prev) => prev.filter((item) => item.id !== meeting.id));
+      toast(`"${meeting.title}" deleted successfully.`, 'info');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete meeting.';
       toast(msg, 'error');
@@ -345,9 +345,8 @@ export default function MeetingsClient() {
         </div>
 
         {isLoading ? (
-          <div className="py-20 flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Loading meetings...</p>
+          <div className="space-y-4 px-6 py-6">
+            <TableSkeleton />
           </div>
         ) : loadError ? (
           <div className="py-16 flex flex-col items-center gap-3 text-center px-6">
@@ -358,19 +357,16 @@ export default function MeetingsClient() {
             <Button variant="secondary" size="sm" onClick={loadAll}>Retry</Button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-20 flex flex-col items-center gap-3 text-center px-6">
-            <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <Calendar size={26} className="text-gray-400" />
-            </div>
-            <p className="text-base font-bold text-gray-700 dark:text-gray-200">No meetings found</p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 max-w-sm">
-              {searchQuery || typeFilter !== 'ALL' || statusFilter !== 'ALL'
+          <div className="px-6 py-8">
+            <EmptyState
+              icon={<Calendar size={32} className="text-blue-500" />}
+              title="No meetings found"
+              description={searchQuery || typeFilter !== 'ALL' || statusFilter !== 'ALL'
                 ? 'No meetings match your filters. Try adjusting your search.'
                 : 'No meetings scheduled yet. Create your first meeting.'}
-            </p>
-            {!searchQuery && typeFilter === 'ALL' && statusFilter === 'ALL' && (
-              <Button variant="primary" size="md" onClick={openCreate}><Plus size={15} />Create Meeting</Button>
-            )}
+              actionLabel={!searchQuery && typeFilter === 'ALL' && statusFilter === 'ALL' ? 'Create Meeting' : undefined}
+              onAction={!searchQuery && typeFilter === 'ALL' && statusFilter === 'ALL' ? openCreate : undefined}
+            />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -454,7 +450,7 @@ export default function MeetingsClient() {
                           className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-all" title="Edit">
                           <Edit size={14} />
                         </button>
-                        <button onClick={() => setMeetingToDelete(m)}
+                        <button onClick={() => void handleDeleteMeeting(m)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all" title="Delete">
                           <Trash2 size={14} />
                         </button>
@@ -685,50 +681,6 @@ export default function MeetingsClient() {
         </form>
       </Modal>
 
-      {/* Delete Modal */}
-      <Modal isOpen={!!meetingToDelete} onClose={() => { if (!isDeleting) setMeetingToDelete(null); }} title="Delete Meeting" size="sm">
-        <div className="flex flex-col items-center text-center py-2">
-          <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 flex items-center justify-center text-red-500 mb-4">
-            <AlertTriangle size={26} />
-          </div>
-          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-2">Delete this meeting?</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
-            Permanently delete <span className="font-semibold text-gray-800 dark:text-gray-200">&ldquo;{meetingToDelete?.title}&rdquo;</span>? This cannot be undone.
-          </p>
-          <div className="flex gap-3 w-full">
-            <Button variant="secondary" className="flex-1" onClick={() => setMeetingToDelete(null)} disabled={isDeleting}>Cancel</Button>
-            <Button variant="danger" className="flex-1" onClick={confirmDelete} isLoading={isDeleting}>Delete</Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Toasts */}
-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-        {toasts.map(t => (
-          <div key={t.id} role="alert"
-            className={classNames(
-              'pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border bg-white dark:bg-gray-800',
-              t.type === 'success' ? 'border-green-100 dark:border-green-900/30'
-                : t.type === 'error' ? 'border-red-100 dark:border-red-900/30'
-                : 'border-blue-100 dark:border-blue-900/30'
-            )}>
-            <div className="flex-shrink-0">
-              {t.type === 'success' ? <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-500"><CheckCircle2 size={15} /></div>
-                : t.type === 'error' ? <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500"><AlertTriangle size={15} /></div>
-                : <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-500"><Info size={15} /></div>}
-            </div>
-            <div className={classNames('flex-1 text-xs font-semibold',
-              t.type === 'success' ? 'text-green-800 dark:text-green-300'
-                : t.type === 'error' ? 'text-red-800 dark:text-red-300'
-                : 'text-blue-800 dark:text-blue-300'
-            )}>{t.message}</div>
-            <button onClick={() => setToasts(p => p.filter(x => x.id !== t.id))}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-              <X size={13} />
-            </button>
-          </div>
-        ))}
-      </div>
     </>
   );
 }

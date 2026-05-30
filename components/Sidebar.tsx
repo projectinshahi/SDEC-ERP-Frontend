@@ -109,7 +109,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
       {/* Sidebar aside panel */}
       <aside
         className={classNames(
-          'fixed md:relative top-0 left-0 h-screen bg-zinc-950 text-zinc-100 z-40 flex flex-col border-r border-zinc-900/60',
+          'fixed md:relative top-0 left-0 h-screen bg-zinc-950 text-zinc-100 z-40 flex flex-col border-r border-zinc-900/60 overflow-visible',
           mounted ? 'transition-all duration-300 ease-in-out' : '',
           isCollapsed ? 'md:w-20' : 'md:w-64',
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
@@ -144,22 +144,59 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
         </div>
 
         {/* Scrollable Navigation Menu */}
-        <nav className="flex-1 py-6 overflow-y-auto space-y-1.5 px-3">
+        {/* <nav className="flex-1 py-6 overflow-y-auto space-y-1.5 px-3 overflow-x-hidden"> */}
+        <nav className="flex-1 py-6 overflow-y-auto overflow-x-hidden space-y-1.5 px-3 scrollbar-hide">
           {items.map((item) => {
             const Icon = iconMap[item.icon];
             const active = isActive(item.href);
 
+            // if (item.label === 'Boards') {
+            //   return (
+            //     <SidebarBoardsItem 
+            //       key={item.label}
+            //       active={active}
+            //       isCollapsed={isCollapsed}
+            //       mounted={mounted}
+            //       onMobileToggle={onToggle}
+            //     />
+            //   );
+            // }
             if (item.label === 'Boards') {
-              return (
-                <SidebarBoardsItem 
-                  key={item.label}
-                  active={active}
-                  isCollapsed={isCollapsed}
-                  mounted={mounted}
-                  onMobileToggle={onToggle}
-                />
-              );
-            }
+  const boardActive =
+    pathname === '/dashboard/tasks' ||
+    pathname.startsWith('/dashboard/tasks');
+
+  return (
+    // <SidebarBoardsItem
+    //   key={item.label}
+    //   active={boardActive}
+    //   isCollapsed={isCollapsed}
+    //   mounted={mounted}
+    //   onMobileToggle={onToggle}
+    // />
+//     <SidebarBoardsItem
+//   key={item.label}
+//   active={
+//     pathname === '/dashboard/tasks' ||
+//     pathname.startsWith('/dashboard/tasks')
+//   }
+//   isCollapsed={isCollapsed}
+//   mounted={mounted}
+//   onMobileToggle={onToggle}
+// />
+<SidebarBoardsItem
+  key={item.label}
+  active={
+    pathname === '/dashboard/tasks' ||
+    pathname.startsWith('/dashboard/tasks')
+  }
+  isCollapsed={isCollapsed}
+  setIsCollapsed={setIsCollapsed}
+  mounted={mounted}
+  onMobileToggle={onToggle}
+/>
+  );
+}
 
             return (
               <div key={item.label} className="relative group">

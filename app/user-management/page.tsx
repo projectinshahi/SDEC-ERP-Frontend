@@ -7,6 +7,7 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { UserTable } from '@/components/user-management/UserTable';
 import { fetchUsers, UserDbResponse } from '@/lib/api/users';
+import { useToast } from '@/lib/hooks/useToast';
 import type { User } from '@/lib/types/user-management';
 import { AlertCircle, RotateCw, Users, ShieldAlert } from 'lucide-react';
 
@@ -14,6 +15,7 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const loadUsers = async () => {
     setIsLoading(true);
@@ -140,8 +142,8 @@ export default function UserManagementPage() {
           <div className="animate-fade-in">
             <UserTable
               users={users}
-              onEdit={(user) => alert(`Modifying profile for: ${user.name}`)}
-              onDelete={(id) => alert(`Deleting record ID: ${id}`)}
+              onEdit={(user) => toast(`Edit requested for ${user.name}`, 'info')}
+              onDelete={(id) => toast(`Delete requested for record ${id}`, 'warning')}
             />
           </div>
         )}

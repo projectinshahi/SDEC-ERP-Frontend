@@ -14,6 +14,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { AlertTriangle, Plus, X, CheckCircle2, Info } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useToast } from '@/lib/hooks/useToast';
 import {
   getBlockers,
   createBlocker,
@@ -55,14 +56,12 @@ const statusVariant: Record<string, 'success' | 'warning' | 'danger' | 'info' | 
   Closed: 'info',
 };
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
-
-interface ToastMessage { id: string; message: string; type: 'success' | 'error' | 'info'; }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BlockersClient() {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const [blockers, setBlockers] = useState<Blocker[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -72,7 +71,6 @@ export default function BlockersClient() {
   const [blockerToDelete, setBlockerToDelete] = useState<Blocker | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -87,7 +85,7 @@ export default function BlockersClient() {
       setBlockers(data);
     } catch (err) {
       console.error('Failed to load blockers:', err);
-      showToast('Failed to load blockers from database', 'error');
+      toast('Failed to load blockers from database', 'error');
     }
   };
 
@@ -106,12 +104,6 @@ export default function BlockersClient() {
   }, []);
 
   // ─── Toasts ─────────────────────────────────────────────────────────────────
-
-  const showToast = (message: string, type: ToastMessage['type'] = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
-  };
 
   // ─── Modal helpers ───────────────────────────────────────────────────────────
 
@@ -153,7 +145,7 @@ export default function BlockersClient() {
           notes: data.notes || undefined,
         });
         setBlockers((prev) => prev.map((b) => (b.id === editingBlocker.id ? updated : b)));
-        showToast(`Blocker "${data.title}" updated successfully!`, 'success');
+        toast(`Blocker "${data.title}" updated successfully!`, 'success');
       } else {
         const created = await createBlocker({
           title: data.title,
@@ -167,12 +159,12 @@ export default function BlockersClient() {
           notes: data.notes || undefined,
         });
         setBlockers((prev) => [created, ...prev]);
-        showToast(`Blocker "${data.title}" logged successfully!`, 'success');
+        toast(`Blocker "${data.title}" logged successfully!`, 'success');
       }
       setIsModalOpen(false);
     } catch (err) {
       console.error('Error saving blocker:', err);
-      showToast('Failed to save blocker. Please try again.', 'error');
+      toast('Failed to save blocker. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -186,11 +178,11 @@ export default function BlockersClient() {
     try {
       await deleteBlocker(blockerToDelete.id);
       setBlockers((prev) => prev.filter((b) => b.id !== blockerToDelete.id));
-      showToast(`Blocker "${blockerToDelete.title}" deleted.`, 'info');
+      toast(`Blocker "${blockerToDelete.title}" deleted.`, 'info');
       setBlockerToDelete(null);
     } catch (err) {
       console.error('Error deleting blocker:', err);
-      showToast('Failed to delete blocker.', 'error');
+      toast('Failed to delete blocker.', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -423,35 +415,6 @@ export default function BlockersClient() {
         </div>
       </Modal>
 
-      {/* Toasts */}
-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={classNames(
-              'pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white',
-              toast.type === 'success' ? 'border-green-100 text-green-800'
-                : toast.type === 'error' ? 'border-red-100 text-red-800'
-                : 'border-blue-100 text-blue-800'
-            )}
-            role="alert"
-          >
-            <div className="flex-shrink-0">
-              {toast.type === 'success' ? (
-                <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-500"><CheckCircle2 size={16} /></div>
-              ) : toast.type === 'error' ? (
-                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500"><AlertTriangle size={16} /></div>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500"><Info size={16} /></div>
-              )}
-            </div>
-            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
-            <button onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))} className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors">
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
     </PermissionPageGuard>
   );
 }

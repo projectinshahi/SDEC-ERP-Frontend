@@ -8,12 +8,17 @@ import { getSprints, deleteSprint, type Sprint } from '@/lib/api/sprints';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { classNames } from '@/lib/utils';
 import { SprintModal } from './SprintModal';
+import { useToast } from '@/lib/hooks/useToast';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 
 export function SprintList() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
+  
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   const stats = useMemo(() => ({
     total:     sprints.length,
@@ -39,13 +44,31 @@ export function SprintList() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this sprint?')) {
-      try {
-        await deleteSprint(id);
-        fetchSprints();
-      } catch (err) {
-        console.error(err);
-      }
+    // const confirmed = await confirm({
+    //   title: 'Delete Sprint',
+    //   description: 'Are you sure you want to delete this sprint? This action cannot be undone.',
+    //   confirmText: 'Delete',
+    //   cancelText: 'Cancel',
+    // });
+    const confirmed = await confirm({
+  title: 'Delete Sprint',
+  message: 'Are you sure you want to delete this sprint? This action cannot be undone.',
+  confirmLabel: 'Delete',
+  cancelLabel: 'Cancel',
+  intent: 'danger',
+});
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteSprint(id);
+      toast('Sprint deleted successfully', 'success');
+      fetchSprints();
+    } catch (err) {
+      console.error(err);
+      toast('Failed to delete sprint', 'error');
     }
   };
 
