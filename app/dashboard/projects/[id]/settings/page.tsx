@@ -14,7 +14,9 @@ import {
   ArrowLeft,
   Settings,
   Users,
-  Loader2
+  Loader2,
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import { 
   fetchProjectById, 
