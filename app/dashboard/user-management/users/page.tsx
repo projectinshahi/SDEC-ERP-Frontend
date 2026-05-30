@@ -13,7 +13,8 @@ import {
   Trash2, 
   Loader2, 
   RotateCw, 
-  AlertCircle 
+  AlertCircle, 
+  AlertTriangle
 } from 'lucide-react';
 import type { User, UserFormData } from '@/lib/types/user-management';
 import { AddUserModal } from '@/components/user-management/AddUserModal';
