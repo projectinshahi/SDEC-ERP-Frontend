@@ -15,29 +15,30 @@ interface SidebarBoardsItemProps {
   mounted: boolean;
   onMobileToggle: () => void;
 }
+//uyfds
 
-export function SidebarBoardsItem({ active, isCollapsed,setIsCollapsed, mounted, onMobileToggle }: SidebarBoardsItemProps) {
+export function SidebarBoardsItem({ active, isCollapsed, setIsCollapsed, mounted, onMobileToggle }: SidebarBoardsItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { hasPermission } = usePermissions();
-  
+
   const popoverRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   useEffect(() => {
-  if (active) {
-    loadBoards();
-    setIsOpen(true);
-  }
-}, [active]);
-//   useEffect(() => {
-//   if (active) {
-//     setIsOpen(true);
-//     loadBoards();
-//   }
-// }, [active]);
+    if (active) {
+      loadBoards();
+      setIsOpen(true);
+    }
+  }, [active]);
+  //   useEffect(() => {
+  //   if (active) {
+  //     setIsOpen(true);
+  //     loadBoards();
+  //   }
+  // }, [active]);
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -69,40 +70,40 @@ export function SidebarBoardsItem({ active, isCollapsed,setIsCollapsed, mounted,
   //   }
   //   setIsOpen(!isOpen);
   // };
-//   const handleToggle = (e: React.MouseEvent) => {
-//   e.preventDefault();
+  //   const handleToggle = (e: React.MouseEvent) => {
+  //   e.preventDefault();
 
-//   if (isCollapsed) {
-//     return;
-//   }
+  //   if (isCollapsed) {
+  //     return;
+  //   }
 
-//   if (!isOpen) {
-//     loadBoards();
-//   }
+  //   if (!isOpen) {
+  //     loadBoards();
+  //   }
 
-//   setIsOpen(!isOpen);
-// };
-const handleToggle = (e: React.MouseEvent) => {
-  e.preventDefault();
+  //   setIsOpen(!isOpen);
+  // };
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
 
-  if (isCollapsed) {
-    setIsCollapsed(false);
+    if (isCollapsed) {
+      setIsCollapsed(false);
 
-    localStorage.setItem('sidebar-collapsed', 'false');
+      localStorage.setItem('sidebar-collapsed', 'false');
 
-    loadBoards();
+      loadBoards();
 
-    setIsOpen(true);
+      setIsOpen(true);
 
-    return;
-  }
+      return;
+    }
 
-  if (!isOpen) {
-    loadBoards();
-  }
+    if (!isOpen) {
+      loadBoards();
+    }
 
-  setIsOpen(!isOpen);
-};
+    setIsOpen(!isOpen);
+  };
   const handleSelectBoard = (id: number) => {
     setIsOpen(false);
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -111,35 +112,35 @@ const handleToggle = (e: React.MouseEvent) => {
     router.push(`/dashboard/tasks?boardId=${id}`);
   };
 
-  const filteredBoards = boards.filter(b => 
-    b.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredBoards = boards.filter(b =>
+    b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     b.projectName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
 
   return (
     <div className="relative group" ref={popoverRef}>
       <button
         onClick={handleToggle}
         aria-expanded={isOpen}
-  //       className={classNames(
-  //         'flex items-center rounded-xl py-3 relative w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50',
-  //         mounted ? 'transition-all duration-200 ease-out' : '',
-  //         isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'justify-between px-4 mx-2',
-  //         // active || isOpen
-  //         //   ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-md shadow-indigo-500/10 font-semibold'
-  //         //   : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-100'
-  //         active
-  // ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-md shadow-indigo-500/10 font-semibold'
-  //       )}
-  className={classNames(
-  'flex items-center rounded-xl py-3 relative w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50',
-  mounted ? 'transition-all duration-200 ease-out' : '',
-  isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'justify-between px-4 mx-2',
-  active
-    ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-md shadow-indigo-500/10 font-semibold'
-    : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-100'
-)}
+        //       className={classNames(
+        //         'flex items-center rounded-xl py-3 relative w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50',
+        //         mounted ? 'transition-all duration-200 ease-out' : '',
+        //         isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'justify-between px-4 mx-2',
+        //         // active || isOpen
+        //         //   ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-md shadow-indigo-500/10 font-semibold'
+        //         //   : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-100'
+        //         active
+        // ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-md shadow-indigo-500/10 font-semibold'
+        //       )}
+        className={classNames(
+          'flex items-center rounded-xl py-3 relative w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50',
+          mounted ? 'transition-all duration-200 ease-out' : '',
+          isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'justify-between px-4 mx-2',
+          active
+            ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-md shadow-indigo-500/10 font-semibold'
+            : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-100'
+        )}
       >
         <div className="flex items-center gap-3">
           {/* {(active || isOpen) && ( */}
@@ -159,57 +160,57 @@ const handleToggle = (e: React.MouseEvent) => {
             )}
           /> */}
           <CheckSquare
-  size={20}
-  className={classNames(
-    'transition-transform duration-200 group-hover:scale-105 flex-shrink-0',
-    active
-      ? 'text-white'
-      : 'text-zinc-400 group-hover:text-zinc-100'
-  )}
-/>
+            size={20}
+            className={classNames(
+              'transition-transform duration-200 group-hover:scale-105 flex-shrink-0',
+              active
+                ? 'text-white'
+                : 'text-zinc-400 group-hover:text-zinc-100'
+            )}
+          />
 
           {!isCollapsed && (
             // <span className="text-sm tracking-wide">Boards</span>
             <span
-  className={classNames(
-    'text-sm tracking-wide',
-    active ? 'text-white font-semibold' : 'text-zinc-400'
-  )}
->
-  Boards
-</span>
+              className={classNames(
+                'text-sm tracking-wide',
+                active ? 'text-white font-semibold' : 'text-zinc-400'
+              )}
+            >
+              Boards
+            </span>
           )}
         </div>
 
         {!isCollapsed && (
-          <ChevronRight 
-            size={16} 
+          <ChevronRight
+            size={16}
             className={classNames(
               "transition-transform duration-200 text-zinc-400",
               isOpen ? "rotate-90 text-white" : "group-hover:text-zinc-200"
-            )} 
+            )}
           />
         )}
       </button>
 
       {/* Boards Panel: Inline Accordion */}
       {isOpen && (
-        <div 
+        <div
           className={classNames(
             "z-[100] bg-zinc-900 border border-zinc-800 overflow-hidden animate-in fade-in duration-200",
             "relative mt-2 mx-2 w-auto rounded-lg shadow-inner",
             // isCollapsed && "hidden md:block absolute left-full top-0 ml-4 w-64 shadow-2xl"
-//             isCollapsed &&
-// "hidden md:block fixed left-20 top-32 w-72 shadow-2xl z-[9999]"
-isCollapsed &&
-"hidden md:block absolute left-full top-0 ml-3 w-72 shadow-2xl z-[9999]"
+            //             isCollapsed &&
+            // "hidden md:block fixed left-20 top-32 w-72 shadow-2xl z-[9999]"
+            isCollapsed &&
+            "hidden md:block absolute left-full top-0 ml-3 w-72 shadow-2xl z-[9999]"
           )}
         >
           <div className="p-3 border-b border-zinc-800 bg-zinc-900/80">
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-semibold text-zinc-200">Your Boards</h3>
               {hasPermission('task.board.create') && (
-                <button 
+                <button
                   onClick={() => setIsModalOpen(true)}
                   className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-md transition-colors"
                   title="Create Board"
@@ -230,7 +231,7 @@ isCollapsed &&
               />
             </div>
           </div>
-          
+
           <div className="max-h-[300px] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-zinc-700">
             {isLoading ? (
               <div className="py-6 text-center text-zinc-500 text-sm animate-pulse">Loading boards...</div>
@@ -262,7 +263,7 @@ isCollapsed &&
       )}
 
       {/* Create Board Modal integration */}
-      <CreateBoardModal 
+      <CreateBoardModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={(newBoardId) => {
