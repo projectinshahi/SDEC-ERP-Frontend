@@ -5,7 +5,7 @@
 // API Configuration
 // Auto-normalise: if NEXT_PUBLIC_API_URL is set without the /api suffix (e.g. on Render),
 // append it automatically so every API call resolves correctly.
-const _rawApiUrl = process.env.NEXT_PUBLIC_API_URL ;
+const _rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://sdec-erp-backend.onrender.com';
 export const API_BASE_URL = _rawApiUrl.endsWith('/api') ? _rawApiUrl : `${_rawApiUrl.replace(/\/$/, '')}/api`;
 export const API_TIMEOUT = 60000; // 60 seconds
 
