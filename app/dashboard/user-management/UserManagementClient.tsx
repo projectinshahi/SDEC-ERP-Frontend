@@ -211,13 +211,8 @@ export function UserManagementClient() {
       loadRoles(); // Refresh dynamic list from Neon DB
     } catch (err: any) {
       console.error('Error deleting role:', err);
-      const errMsg = err.response?.data?.error || err.message || 'Failed to delete role';
-      toast(
-        errMsg === 'Cannot delete role. It is assigned to active users.'
-          ? 'Cannot delete role. This role is assigned to users.'
-          : errMsg,
-        'error'
-      );
+      const errMsg = err instanceof Error ? err.message : 'Failed to delete role';
+      toast(errMsg, 'error');
     } finally {
       setIsDeletingRole(false);
     }
@@ -400,6 +395,57 @@ export function UserManagementClient() {
               isLoading={isDeletingUser}
             >
               {isDeletingUser ? 'Deleting...' : 'Delete User'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Custom Delete Role Confirmation Modal */}
+      <Modal
+        isOpen={!!roleToDelete}
+        onClose={() => !isDeletingRole && setRoleToDelete(null)}
+        title="Confirm Deletion"
+        size="sm"
+      >
+        <div className="flex flex-col items-center text-center p-2">
+          {/* Circular Alert Icon */}
+          <div className="w-14 h-14 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-red-600 mb-4 shadow-sm animate-pulse">
+            <AlertTriangle size={28} />
+          </div>
+
+          <h3 className="text-lg font-bold text-gray-900 tracking-tight mb-2">
+            Delete Security Role?
+          </h3>
+          <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+            Are you sure you want to permanently delete role <span className="font-semibold text-gray-800">"{roleToDelete?.name}"</span>? This action cannot be undone.
+            {roleToDelete?.userCount ? (
+              <span className="block mt-4 p-3 rounded-lg border border-red-100 bg-red-50/50 text-red-700 text-xs font-semibold text-left">
+                ⚠️ This role is assigned to {roleToDelete.userCount} active user{roleToDelete.userCount > 1 ? 's' : ''}. You will not be able to delete it.
+              </span>
+            ) : (
+              <span className="block mt-4 p-3 rounded-lg border border-emerald-100 bg-emerald-50/50 text-emerald-700 text-xs font-semibold text-left">
+                ✓ This role is not currently assigned to any active users.
+              </span>
+            )}
+          </p>
+
+          <div className="flex items-center gap-3 w-full">
+            <Button
+              variant="secondary"
+              className="flex-1 font-semibold"
+              onClick={() => setRoleToDelete(null)}
+              disabled={isDeletingRole}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              className="flex-1 font-semibold"
+              onClick={handleConfirmDeleteRole}
+              isLoading={isDeletingRole}
+              disabled={!!roleToDelete?.userCount}
+            >
+              {isDeletingRole ? 'Deleting...' : 'Delete Role'}
             </Button>
           </div>
         </div>

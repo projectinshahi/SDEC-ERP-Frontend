@@ -50,13 +50,18 @@ export type PermissionKey =
   | 'meetings.create'
   | 'meetings.read'
   | 'meetings.update'
-  | 'meetings.delete';
+  | 'meetings.delete'
+  // Project Management
+  | 'projects.create'
+  | 'projects.read'
+  | 'projects.update'
+  | 'projects.delete';
 
 /**
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings';
+export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'projects';
 
 /**
  * A single permission definition with metadata for UI rendering.

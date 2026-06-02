@@ -14,6 +14,7 @@ export interface Task {
   dueDate: string;
   estimatedHours?: number;
   actualHours?: number;
+  originTaskId?: string;
 }
 
 export interface TaskFormData {
@@ -25,6 +26,7 @@ export interface TaskFormData {
   dueDate: string;
   estimatedHours?: number;
   actualHours?: number;
+  originTaskId?: string;
 }
 
 interface CreateTaskModalProps {

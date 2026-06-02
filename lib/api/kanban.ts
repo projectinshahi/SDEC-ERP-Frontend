@@ -194,3 +194,12 @@ export async function resetKanbanBoardDb(): Promise<any> {
   const response = await apiClient.post('/kanban/reset');
   return response.data;
 }
+
+/**
+ * Clone an existing task in the database
+ * POST /api/kanban/tasks/:id/clone
+ */
+export async function cloneKanbanTask(id: string): Promise<any> {
+  const response = await apiClient.post(`/kanban/tasks/${id}/clone`);
+  return response.data;
+}
