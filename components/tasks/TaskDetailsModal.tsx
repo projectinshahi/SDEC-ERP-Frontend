@@ -43,16 +43,21 @@ export function TaskDetailsModal({ isOpen, onClose, task }: TaskDetailsModalProp
               {task.priority} Priority
             </Badge>
           </div>
-          <div className="inline-flex items-center self-start">
+          <div className="flex items-center gap-3 self-start">
             <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded-md capitalize font-medium">
               Status: {task.status.replace('-', ' ')}
             </span>
+            {task.originTaskId && (
+              <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-1 rounded-md font-mono font-medium flex items-center gap-1 border border-blue-100 dark:border-blue-800/50">
+                ID: {task.originTaskId}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Description */}
         <div>
-          <h3 className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <h3 className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 mt-2">
             <AlignLeft size={16} />
             Description
           </h3>

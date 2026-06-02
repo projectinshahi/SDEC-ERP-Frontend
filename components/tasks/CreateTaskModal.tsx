@@ -77,6 +77,7 @@ export function CreateTaskModal({
             dueDate: editTask.dueDate,
             estimatedHours: editTask.estimatedHours || 0,
             actualHours: editTask.actualHours || 0,
+            originTaskId: editTask.originTaskId,
           });
         } else {
           setFormData({
@@ -151,6 +152,27 @@ export function CreateTaskModal({
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Read-Only Task ID */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Task ID
+          </label>
+          <div className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500 font-mono flex items-center justify-between cursor-not-allowed">
+            {editTask && editTask.id !== '' ? (
+              <span className={!editTask.originTaskId ? 'italic opacity-60' : ''}>
+                {editTask.originTaskId || 'N/A (Legacy Task)'}
+              </span>
+            ) : (
+              <span className="italic opacity-60">Pending Generation...</span>
+            )}
+            <span className="text-xs text-gray-400 font-sans tracking-wide uppercase px-2 py-0.5 bg-gray-200/50 rounded-md">
+              {editTask && editTask.id !== '' 
+                ? (editTask.originTaskId ? 'Auto-generated' : 'Not Available') 
+                : 'Auto-generated on Save'}
+            </span>
+          </div>
+        </div>
+
         {/* Title */}
         <div>
           <label htmlFor="task-title" className="block text-sm font-medium text-gray-700 mb-1">
