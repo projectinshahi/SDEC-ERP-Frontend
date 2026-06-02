@@ -1,16 +1,18 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Edit, Trash2, AlertTriangle, Clock } from 'lucide-react';
+import { Calendar, Edit, Trash2, AlertTriangle, Clock, Copy, GitMerge } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { truncate, formatDate } from '@/lib/utils';
 import type { Task } from './CreateTaskModal';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
   onView: (task: Task) => void;
   onDelete: (id: string) => void;
+  onClone?: (id: string) => void;
   draggedTaskId: string | null;
   setDraggedTaskId: (id: string | null) => void;
   dropIndicator: { taskId: string; position: 'before' | 'after' } | null;
@@ -71,6 +73,7 @@ export function TaskCard({
   onEdit,
   onView,
   onDelete,
+  onClone,
   draggedTaskId,
   setDraggedTaskId,
   dropIndicator,
@@ -78,6 +81,7 @@ export function TaskCard({
   onMoveTask,
   index,
 }: TaskCardProps) {
+  const { hasPermission } = usePermissions();
   const isDragging = draggedTaskId === task.id;
   const { initials, colorClass } = getUserAvatarDetails(task.assignee);
   const dueStatus = getDueStatus(task.dueDate);
@@ -190,32 +194,54 @@ export function TaskCard({
       >
         {/* Card Header (Drag handle, Title, Action buttons) */}
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-snug group-hover:text-blue-600 transition-colors flex-1 break-words">
-            {task.title}
-          </h3>
+          <div className="flex flex-col flex-1 min-w-0">
+            {task.originTaskId && (
+              <div 
+                className="flex items-center gap-1 group/copy cursor-pointer w-fit mb-0.5"
+                title="Copy Task ID"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(task.originTaskId || '');
+                  // Optional: we could add a toast here, but simple copy is fine
+                }}
+              >
+                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-wider group-hover/copy:text-blue-500 transition-colors">
+                  {task.originTaskId}
+                </span>
+                <Copy size={10} className="text-gray-400 opacity-0 group-hover/copy:opacity-100 group-hover/copy:text-blue-500 transition-all" />
+              </div>
+            )}
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-snug group-hover:text-blue-600 transition-colors break-words">
+              {task.title}
+            </h3>
+          </div>
 
           {/* Hover Actions */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 pl-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(task);
-              }}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 rounded transition-colors"
-              title="Edit Task"
-            >
-              <Edit size={14} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(task.id);
-              }}
-              className="p-1 hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 rounded transition-colors"
-              title="Delete Task"
-            >
-              <Trash2 size={14} />
-            </button>
+            {hasPermission('task.update') && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(task);
+                }}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 rounded transition-colors"
+                title="Edit Task"
+              >
+                <Edit size={14} />
+              </button>
+            )}
+            {hasPermission('task.delete') && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task.id);
+                }}
+                className="p-1 hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 rounded transition-colors"
+                title="Delete Task"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -227,9 +253,11 @@ export function TaskCard({
         {/* Card Footer Details */}
         <div className="flex items-center justify-between mt-auto gap-2">
           {/* Priority badge */}
-          <Badge variant={getPriorityVariant(task.priority)} className="capitalize text-[10px] px-2 py-0.5 font-bold">
-            {task.priority}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={getPriorityVariant(task.priority)} className="capitalize text-[10px] px-2 py-0.5 font-bold">
+              {task.priority}
+            </Badge>
+          </div>
 
           {/* Assignee & Due Date */}
           <div className="flex items-center gap-2">

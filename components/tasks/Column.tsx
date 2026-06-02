@@ -16,6 +16,7 @@ interface ColumnProps {
   onEdit: (task: Task) => void;
   onView: (task: Task) => void;
   onDelete: (id: string) => void;
+  onClone?: (id: string) => void;
   draggedTaskId: string | null;
   setDraggedTaskId: (id: string | null) => void;
   dropIndicator: { taskId: string; position: 'before' | 'after' } | null;
@@ -40,6 +41,7 @@ export function Column({
   onEdit,
   onView,
   onDelete,
+  onClone,
   draggedTaskId,
   setDraggedTaskId,
   dropIndicator,
@@ -325,6 +327,7 @@ export function Column({
               onEdit={onEdit}
               onView={onView}
               onDelete={onDelete}
+              onClone={onClone}
               draggedTaskId={draggedTaskId}
               setDraggedTaskId={setDraggedTaskId}
               dropIndicator={dropIndicator}

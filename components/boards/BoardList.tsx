@@ -6,6 +6,7 @@ import { Search, Plus, AlertCircle, LayoutGrid } from 'lucide-react';
 import { CreateBoardModal } from './CreateBoardModal';
 import { fetchBoards as fetchBoardsApi } from '@/lib/api/kanban';
 import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 export function BoardList() {
   const [boards, setBoards] = useState<BoardCardProps[]>([]);
@@ -14,6 +15,7 @@ export function BoardList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
+  const { hasPermission } = usePermissions();
 
   const loadBoards = useCallback(async () => {
     try {
@@ -59,13 +61,15 @@ export function BoardList() {
         </div>
 
         {/* Create CTA */}
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
-        >
-          <Plus size={18} />
-          Create Board
-        </button>
+        {hasPermission('task.board.create') && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+          >
+            <Plus size={18} />
+            Create Board
+          </button>
+        )}
       </div>
 
       {/* States */}
@@ -95,7 +99,7 @@ export function BoardList() {
           <p className="text-gray-500 mb-6 max-w-sm mx-auto">
             {searchQuery ? 'We couldn\'t find any boards matching your search.' : 'You haven\'t created any task boards yet.'}
           </p>
-          {!searchQuery && (
+          {!searchQuery && hasPermission('task.board.create') && (
             <button 
               onClick={() => setIsModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm inline-flex items-center gap-2"

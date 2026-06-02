@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChevronDown, FolderKanban, Plus } from 'lucide-react';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 export interface Board {
   id: number;
@@ -18,6 +19,7 @@ interface BoardSelectorProps {
 
 export function BoardSelector({ boards, selectedBoardId, onSelectBoard, isLoading }: BoardSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { hasPermission } = usePermissions();
 
   const selectedBoard = boards.find(b => b.id === selectedBoardId);
 
@@ -43,9 +45,11 @@ export function BoardSelector({ boards, selectedBoardId, onSelectBoard, isLoadin
           <ChevronDown size={16} className={`text-gray-400 ml-2 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
-        <button className="flex items-center justify-center p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm" title="Create Board">
-          <Plus size={20} />
-        </button>
+        {hasPermission('task.board.create') && (
+          <button className="flex items-center justify-center p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm" title="Create Board">
+            <Plus size={20} />
+          </button>
+        )}
       </div>
 
       {isOpen && !isLoading && (

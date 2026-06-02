@@ -20,6 +20,7 @@ import {
   updateKanbanTask,
   deleteKanbanTask,
   moveKanbanTask,
+  cloneKanbanTask,
   resetKanbanBoardDb,
   BoardColumn
 } from '@/lib/api/kanban';
@@ -160,6 +161,8 @@ export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sp
 
   // Drag-and-drop placement reordering algorithm
   const handleMoveTask = async (taskId: string, targetStatus: string, targetIndex?: number) => {
+    if (!hasPermission('task.update')) return;
+
     const taskToMove = tasks.find((t) => t.id === taskId);
     if (!taskToMove) return;
 
@@ -269,6 +272,18 @@ export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sp
     );
   };
 
+  // Clone a task
+  const handleCloneTask = async (id: string) => {
+    try {
+      const res = await cloneKanbanTask(id);
+      if (res.success && res.task) {
+        setTasks([...tasks, res.task]);
+      }
+    } catch (err) {
+      console.error('Failed to clone task in database:', err);
+    }
+  };
+
   // Process Add/Edit form submission
   const handleFormSubmit = async (data: TaskFormData) => {
     if (editingTask) {
@@ -287,10 +302,14 @@ export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sp
         id: `task-${Date.now()}`,
         ...data,
       };
-      setTasks([...tasks, newTask]);
+      setTasks(prev => [...prev, newTask]);
 
       try {
-        await createKanbanTask({ ...newTask, boardId: boardId ?? undefined });
+        const response = await createKanbanTask({ ...newTask, boardId: boardId ?? undefined });
+        if (response?.task) {
+          // Update the optimistically added task with the server-generated fields like originTaskId
+          setTasks(prev => prev.map(t => t.id === newTask.id ? response.task : t));
+        }
       } catch (err) {
         console.error('Failed to create task in database:', err);
       }
@@ -528,16 +547,18 @@ export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sp
             </Button>
           )}
 
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => handleCreateTaskOpen(columns[0]?.id || '')}
-            disabled={columns.length === 0}
-            className="flex items-center gap-2 shadow-sm shadow-blue-500/10 cursor-pointer"
-          >
-            <Plus size={16} />
-            <span>New Task</span>
-          </Button>
+          {hasPermission('task.create') && (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => handleCreateTaskOpen(columns[0]?.id || '')}
+              disabled={columns.length === 0}
+              className="flex items-center gap-2 shadow-sm shadow-blue-500/10 cursor-pointer"
+            >
+              <Plus size={16} />
+              <span>New Task</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -588,23 +609,25 @@ export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sp
           <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm max-w-xs leading-relaxed">
             Your Kanban board is currently empty. Add custom workflow status columns to start creating and managing tasks.
           </p>
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              openInputDialog(
-                'Add Status Column',
-                '',
-                'Enter column title (e.g. To Do)...',
-                'Create Column',
-                (name) => handleAddColumn(name)
-              );
-            }}
-            className="mt-6 flex items-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer"
-          >
-            <Plus size={16} />
-            <span>Add Status Column</span>
-          </Button>
+          {hasPermission('task.column.create') && (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                openInputDialog(
+                  'Add Status Column',
+                  '',
+                  'Enter column title (e.g. To Do)...',
+                  'Create Column',
+                  (name) => handleAddColumn(name)
+                );
+              }}
+              className="mt-6 flex items-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer"
+            >
+              <Plus size={16} />
+              <span>Add Status Column</span>
+            </Button>
+          )}
         </div>
       ) : tasks.length === 0 && sprintId ? (
         <div className="flex flex-col items-center justify-center py-20 text-center w-full bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/80">
@@ -635,6 +658,7 @@ export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sp
                     setViewingTask(task);
                   }}
                   onDelete={handleDeleteTask}
+                  onClone={handleCloneTask}
                   draggedTaskId={draggedTaskId}
                   setDraggedTaskId={setDraggedTaskId}
                   dropIndicator={dropIndicator}

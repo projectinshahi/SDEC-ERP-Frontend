@@ -17,6 +17,7 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   sprints: 'sprints.',
   blockers: 'blockers.',
   meetings: 'meetings.',
+  projects: 'projects.',
 } as const;
 
 /**
@@ -279,6 +280,36 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         label: 'Delete Meeting',
         description: 'Permanently remove meetings from the system',
         module: 'meetings',
+      },
+    ],
+  },
+  {
+    module: 'projects',
+    label: 'Project Management',
+    permissions: [
+      {
+        key: 'projects.create',
+        label: 'Create Project',
+        description: 'Create and setup new projects',
+        module: 'projects',
+      },
+      {
+        key: 'projects.read',
+        label: 'Read Project',
+        description: 'View project details and listings',
+        module: 'projects',
+      },
+      {
+        key: 'projects.update',
+        label: 'Edit Project',
+        description: 'Update project configurations and details',
+        module: 'projects',
+      },
+      {
+        key: 'projects.delete',
+        label: 'Delete Project',
+        description: 'Permanently remove projects from the system',
+        module: 'projects',
       },
     ],
   },

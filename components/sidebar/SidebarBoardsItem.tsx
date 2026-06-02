@@ -6,6 +6,7 @@ import { ChevronRight, Plus, Search, CheckSquare } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { CreateBoardModal } from '@/components/boards/CreateBoardModal';
 import { fetchBoards as fetchBoardsApi, type Board } from '@/lib/api/kanban';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 interface SidebarBoardsItemProps {
   active: boolean;
@@ -21,6 +22,7 @@ export function SidebarBoardsItem({ active, isCollapsed,setIsCollapsed, mounted,
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { hasPermission } = usePermissions();
   
   const popoverRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -206,13 +208,15 @@ isCollapsed &&
           <div className="p-3 border-b border-zinc-800 bg-zinc-900/80">
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-semibold text-zinc-200">Your Boards</h3>
-              <button 
-                onClick={() => setIsModalOpen(true)}
-                className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-md transition-colors"
-                title="Create Board"
-              >
-                <Plus size={16} />
-              </button>
+              {hasPermission('task.board.create') && (
+                <button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-md transition-colors"
+                  title="Create Board"
+                >
+                  <Plus size={16} />
+                </button>
+              )}
             </div>
             <div className="relative">
               <Search className="absolute left-2.5 top-2 h-4 w-4 text-zinc-500" />

@@ -70,15 +70,8 @@ export function RoleManagementClient() {
       setRoleToDelete(null);
       loadRoles();
     } catch (err: unknown) {
-      const errMsg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        (err instanceof Error ? err.message : 'Failed to delete role');
-      toast(
-        errMsg === 'Cannot delete role. It is assigned to active users.'
-          ? 'Cannot delete role. This role is assigned to active users.'
-          : errMsg,
-        'error'
-      );
+      const errMsg = err instanceof Error ? err.message : 'Failed to delete role';
+      toast(errMsg, 'error');
     } finally {
       setIsDeletingRole(false);
     }

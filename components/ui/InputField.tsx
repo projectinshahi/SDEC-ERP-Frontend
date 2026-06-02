@@ -73,8 +73,14 @@ export const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
             id={id}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onFocus={(e) => {
+              setIsFocused(true);
+              if (props.onFocus) props.onFocus(e);
+            }}
+            onBlur={(e) => {
+              setIsFocused(false);
+              if (props.onBlur) props.onBlur(e);
+            }}
             disabled={disabled}
             placeholder={placeholder}
             aria-invalid={error ? 'true' : 'false'}
