@@ -47,7 +47,16 @@ class ApiClientService {
   private handleError(error: AxiosError): Promise<never> {
     // Pure network failure (no response at all)
     if (!error.response) {
-      console.error('[API] Network error:', error.message);
+      console.error('[API] Network error Details:', {
+        message: error.message,
+        code: error.code,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL
+      });
+
+      if (error.code === 'ECONNABORTED' || error.message.toLowerCase().includes('timeout')) {
+        return Promise.reject(new NetworkError('The server took too long to respond. Please try again.'));
+      }
       return Promise.reject(new NetworkError(ERROR_MESSAGES.NETWORK_ERROR));
     }
 
