@@ -62,7 +62,7 @@ export default function ProjectsPage() {
   };
 
   useEffect(() => {
-    +();
+    loadProjects();
   }, []);
 
   const handleOpenCreateModal = () => {
