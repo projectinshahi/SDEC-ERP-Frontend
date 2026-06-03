@@ -82,7 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<void> => {
-    setState((prev) => ({ ...prev, isLoading: true }));
+    // DO NOT set isLoading: true here. 
+    // It causes login/page.tsx to unmount the LoginForm and erases all error states!
+    // The LoginForm component handles its own local isLoading state.
 
     try {
       console.log(`[Auth] Logging in user: ${email}`);
@@ -131,8 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // ── Surface the real error message to the UI ───────────────────────────
-      setState((prev) => ({ ...prev, isLoading: false }));
-      
+      // We do not need to setState isLoading: false here because we didn't set it to true.
       if (err instanceof Error) {
         console.error(`[Auth] Error message: ${err.message}`);
         throw err;

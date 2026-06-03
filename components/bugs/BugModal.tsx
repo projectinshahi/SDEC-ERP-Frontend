@@ -139,15 +139,19 @@ export function BugModal({
             <div className="absolute top-1/2 -translate-y-1/2 left-3 text-slate-400 pointer-events-none">
               <AlertTriangle size={18} />
             </div>
-            <input
-              type="text"
+            <select
               id="severity"
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-sm text-slate-800 placeholder-slate-400"
-              placeholder="e.g. Critical System Crash"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-sm text-slate-800"
               value={formData.severity || ''}
               onChange={(e) => handleChange('severity', e.target.value)}
               disabled={isSubmitting}
-            />
+            >
+              <option value="">None</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
           </div>
         </div>
 
