@@ -9,14 +9,17 @@ import { BugModal } from '@/components/bugs/BugModal';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { Modal } from '@/components/Modal';
-import { Plus, Bug, AlertTriangle, X, CheckCircle2, Info } from 'lucide-react';
+import { Plus, Bug, AlertTriangle, X, CheckCircle2, Info, FolderDot } from 'lucide-react';
 import type { Bug as BugType } from '@/lib/api/bugs';
-import { getBugs, createBug, updateBug, deleteBug } from '@/lib/api/bugs';
+import { createBug, updateBug, deleteBug } from '@/lib/api/bugs';
+import { fetchProjectBugs } from '@/lib/api/projects';
 import { fetchUsers, type UserDbResponse } from '@/lib/api/users';
 import { useToast } from '@/lib/hooks/useToast';
+import { useProject } from '@/lib/context/ProjectContext';
 import { classNames } from '@/lib/utils';
 
 export function BugTrackingClient() {
+  const { activeProject } = useProject();
   const [bugs, setBugs] = useState<BugType[]>([]);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,31 +33,35 @@ export function BugTrackingClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadBugs = async () => {
+    if (!activeProject) {
+      setBugs([]);
+      return;
+    }
     try {
-      const data = await getBugs();
+      setIsLoading(true);
+      const data = await fetchProjectBugs(activeProject.id);
       setBugs(data);
     } catch (err: any) {
       console.error('Failed to load bugs:', err);
       toast('Failed to load bugs from database', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    const init = async () => {
-      setIsLoading(true);
-      await Promise.all([
-        loadBugs(),
-        fetchUsers().then(setUsers).catch(console.error)
-      ]);
-      setIsLoading(false);
-    };
-    init();
+    loadBugs();
+  }, [activeProject]);
+
+  useEffect(() => {
+    fetchUsers().then(setUsers).catch(console.error);
   }, []);
 
   const handleAddBug = async (data: Partial<BugType>) => {
+    if (!activeProject) return;
     setIsSubmitting(true);
     try {
-      await createBug(data);
+      await createBug({ ...data, project_id: activeProject.id } as any);
       toast(`Bug "${data.title}" successfully reported!`, 'success');
       setIsModalOpen(false);
       loadBugs();
@@ -126,6 +133,7 @@ export function BugTrackingClient() {
             <Button
               variant="primary"
               size="lg"
+              disabled={!activeProject}
               onClick={() => {
                 setEditingBug(null);
                 setIsModalOpen(true);
@@ -138,6 +146,13 @@ export function BugTrackingClient() {
         </div>
       </div>
 
+      {!activeProject ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-gray-200">
+          <FolderDot size={48} className="text-gray-300 mb-4" />
+          <h2 className="text-xl font-semibold text-gray-700">No Active Project</h2>
+          <p className="text-gray-500 mt-2">Please select a project from the top navigation bar to view its bugs.</p>
+        </div>
+      ) : (
       <Card variant="outlined" className="overflow-hidden">
         {isLoading ? (
           <div className="py-20 text-center bg-white flex flex-col items-center justify-center">
@@ -148,6 +163,7 @@ export function BugTrackingClient() {
           <BugTable bugs={bugs} onEdit={handleEditBug} onDelete={handleDeleteBug} />
         )}
       </Card>
+      )}
 
       <BugModal
         isOpen={isModalOpen}

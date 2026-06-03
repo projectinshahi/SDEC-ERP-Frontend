@@ -88,3 +88,30 @@ export async function removeProjectMemberApi(projectId: string, memberId: string
   const response = await apiClient.delete(`/projects/${projectId}/members/${memberId}`);
   return response.data;
 }
+
+// --- Scoped Data Fetching APIs ---
+
+export async function fetchProjectBoards(projectId: string): Promise<any[]> {
+  const response = await apiClient.get<any[]>(`/projects/${projectId}/boards`);
+  return response.data;
+}
+
+export async function fetchProjectTasks(projectId: string): Promise<any[]> {
+  const response = await apiClient.get<any[]>(`/projects/${projectId}/tasks`);
+  return response.data;
+}
+
+export async function fetchProjectBugs(projectId: string): Promise<any[]> {
+  const response = await apiClient.get<{ success: boolean; data: any[] }>(`/projects/${projectId}/bugs`);
+  return response.data.data;
+}
+
+export async function fetchProjectDashboardStats(projectId: string): Promise<any> {
+  const response = await apiClient.get<any>(`/projects/${projectId}/dashboard-stats`);
+  return response.data;
+}
+
+export async function fetchProjectActivities(projectId: string): Promise<any[]> {
+  const response = await apiClient.get<any[]>(`/projects/${projectId}/activities`);
+  return response.data;
+}

@@ -7,6 +7,8 @@ import { classNames } from '@/lib/utils';
 import { CreateBoardModal } from '@/components/boards/CreateBoardModal';
 import { fetchBoards as fetchBoardsApi, type Board } from '@/lib/api/kanban';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { useProject } from '@/lib/context/ProjectContext';
+import { fetchProjectBoards } from '@/lib/api/projects';
 
 interface SidebarBoardsItemProps {
   active: boolean;
@@ -18,8 +20,9 @@ interface SidebarBoardsItemProps {
 //uyfds
 
 export function SidebarBoardsItem({ active, isCollapsed, setIsCollapsed, mounted, onMobileToggle }: SidebarBoardsItemProps) {
+  const { activeProject } = useProject();
   const [isOpen, setIsOpen] = useState(false);
-  const [boards, setBoards] = useState<Board[]>([]);
+  const [boards, setBoards] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,18 +30,13 @@ export function SidebarBoardsItem({ active, isCollapsed, setIsCollapsed, mounted
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  
   useEffect(() => {
     if (active) {
       loadBoards();
       setIsOpen(true);
     }
-  }, [active]);
-  //   useEffect(() => {
-  //   if (active) {
-  //     setIsOpen(true);
-  //     loadBoards();
-  //   }
-  // }, [active]);
+  }, [active, activeProject]);
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -52,12 +50,16 @@ export function SidebarBoardsItem({ active, isCollapsed, setIsCollapsed, mounted
   }, []);
 
   const loadBoards = async () => {
+    if (!activeProject) {
+      setBoards([]);
+      return;
+    }
     try {
       setIsLoading(true);
-      const data = await fetchBoardsApi();
+      const data = await fetchProjectBoards(activeProject.id);
       setBoards(data);
     } catch (err) {
-      console.error('Failed to load boards', err);
+      console.error('Failed to load project boards', err);
     } finally {
       setIsLoading(false);
     }
@@ -113,8 +115,8 @@ export function SidebarBoardsItem({ active, isCollapsed, setIsCollapsed, mounted
   };
 
   const filteredBoards = boards.filter(b =>
-    b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    b.projectName.toLowerCase().includes(searchQuery.toLowerCase())
+    b.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (b.projectName || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
 

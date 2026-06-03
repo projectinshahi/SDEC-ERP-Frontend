@@ -5,15 +5,18 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
-import { fetchBoards as fetchBoardsApi, fetchSprintsForBoard, Sprint } from '@/lib/api/kanban';
+import { fetchSprintsForBoard, Sprint } from '@/lib/api/kanban';
+import { fetchProjectBoards } from '@/lib/api/projects';
+import { useProject } from '@/lib/context/ProjectContext';
 
 import { SprintSelector } from '../../../components/sprints/SprintSelector';
 import { Board } from '../../../components/boards/BoardSelector';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, FolderDot } from 'lucide-react';
 
 
 
 export function TasksPageClient() {
+  const { activeProject } = useProject();
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
   
@@ -29,22 +32,30 @@ export function TasksPageClient() {
   const urlBoardId = searchParams.get('boardId');
 
   useEffect(() => {
-    const fetchBoards = async () => {
+    const loadBoards = async () => {
+      if (!activeProject) {
+        setBoards([]);
+        setSelectedBoardId(null);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
-        const data = await fetchBoardsApi();
+        const data = await fetchProjectBoards(activeProject.id);
         setBoards(data);
 
-        // Initial setup if we have data
-        const savedId = localStorage.getItem('selectedBoardId');
-
-        if (urlBoardId && data.find((b: Board) => b.id === Number(urlBoardId))) {
-          setSelectedBoardId(Number(urlBoardId));
-          localStorage.setItem('selectedBoardId', urlBoardId);
-        } else if (savedId && data.find((b: Board) => b.id === Number(savedId))) {
-          setSelectedBoardId(Number(savedId));
-        } else if (data.length > 0) {
-          setSelectedBoardId(data[0].id);
+        // Auto-select logic
+        if (data.length > 0) {
+          // If we have an ID from URL and it's in this project's boards, use it
+          if (urlBoardId && data.find((b: Board) => b.id === Number(urlBoardId))) {
+            setSelectedBoardId(Number(urlBoardId));
+          } else {
+            // Otherwise, just pick the first board of this project
+            setSelectedBoardId(data[0].id);
+          }
+        } else {
+          setSelectedBoardId(null);
         }
       } catch (err) {
         setError('Failed to load boards');
@@ -52,8 +63,8 @@ export function TasksPageClient() {
         setIsLoading(false);
       }
     };
-    fetchBoards();
-  }, []); // Only fetch boards once on mount
+    loadBoards();
+  }, [activeProject, urlBoardId]);
 
   // Reactively respond to URL changes (like clicking a board from the BoardList)
   useEffect(() => {
@@ -82,8 +93,9 @@ export function TasksPageClient() {
         fetchedBoardIds.current.add(selectedBoardId);
 
         const loadBoards = async () => {
+          if (!activeProject) return;
           try {
-            const data = await fetchBoardsApi();
+            const data = await fetchProjectBoards(activeProject.id);
             setBoards(data);
           } catch (err) {
             console.error('Failed to refresh boards', err);
@@ -149,7 +161,13 @@ export function TasksPageClient() {
         )}
       </section>
 
-      {error ? (
+      {!activeProject ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-gray-200">
+          <FolderDot size={48} className="text-gray-300 mb-4" />
+          <h2 className="text-xl font-semibold text-gray-700">No Active Project</h2>
+          <p className="text-gray-500 mt-2">Please select a project from the top navigation bar to view its tasks.</p>
+        </div>
+      ) : error ? (
         <div className="p-4 bg-red-50 text-red-600 rounded-lg flex items-center gap-2">
           <AlertCircle size={20} />
           {error}
