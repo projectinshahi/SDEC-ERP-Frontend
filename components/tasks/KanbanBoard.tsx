@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Filter, RefreshCw, Layers, CheckCircle, Clock, AlertTriangle, UserCheck, Trash2, X } from 'lucide-react';
 import { Column } from './Column';
 import { CreateTaskModal, Task, TaskFormData } from './CreateTaskModal';
-import { TaskDetailsModal } from './TaskDetailsModal';
+import { TaskDetailsDrawer } from './TaskDetailsDrawer';
 import { Card, CardBody } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { fetchUsers, UserDbResponse } from '@/lib/api/users';
@@ -736,10 +736,16 @@ export function KanbanBoard({
           )}
         </div>
       </Modal>
-      <TaskDetailsModal
+      <TaskDetailsDrawer
         isOpen={!!viewingTask}
         onClose={() => setViewingTask(null)}
         task={viewingTask}
+        canEdit={hasPermission('task.update')}
+        onEdit={() => {
+          if (viewingTask) {
+            handleEditTaskOpen(viewingTask);
+          }
+        }}
       />
     </div>
   );
