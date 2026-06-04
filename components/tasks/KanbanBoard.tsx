@@ -384,78 +384,7 @@ export function KanbanBoard({
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Overview Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {/* Total stats */}
-        <Card variant="outlined" className="bg-white dark:bg-gray-800">
-          <CardBody className="flex items-center gap-4 p-4">
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 text-blue-600 rounded-lg">
-              <Layers size={20} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Tasks</p>
-              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{metrics.total}</h3>
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Dynamic Column Stats */}
-        {columns.map((col, idx) => {
-          const count = tasks.filter((t) => t.status === col.id).length;
-
-          const iconThemes = [
-            'bg-gray-100 dark:bg-gray-800 text-gray-500',
-            'bg-amber-50 dark:bg-amber-950/20 text-amber-500',
-            'bg-blue-50 dark:bg-blue-950/20 text-blue-600',
-            'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500',
-            'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500',
-            'bg-rose-50 dark:bg-rose-950/20 text-rose-500',
-            'bg-violet-50 dark:bg-violet-950/20 text-violet-500',
-            'bg-cyan-50 dark:bg-cyan-950/20 text-cyan-500',
-          ];
-          const currentTheme = iconThemes[idx % iconThemes.length];
-
-          return (
-            <Card key={col.id} variant="outlined" className="bg-white dark:bg-gray-800 transition-all duration-300">
-              <CardBody className="flex items-center gap-4 p-4">
-                <div className={`p-3 rounded-lg ${currentTheme}`}>
-                  <Clock size={20} />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider truncate max-w-[120px]" title={col.label}>
-                    {col.label}
-                  </p>
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{count}</h3>
-                </div>
-              </CardBody>
-            </Card>
-          );
-        })}
-
-        {/* Completed Stats Card with dynamic progress */}
-        {columns.length > 0 && (
-          <Card variant="outlined" className="bg-emerald-50/20 dark:bg-emerald-950/5 border-emerald-100 dark:border-emerald-900/50">
-            <CardBody className="flex flex-col justify-center p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500 font-semibold text-xs uppercase tracking-wider">
-                  <CheckCircle size={14} />
-                  <span>Completion</span>
-                </div>
-                <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{metrics.pct}%</span>
-              </div>
-              {/* Completion Progress Bar */}
-              <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${metrics.pct}%` }}
-                />
-              </div>
-            </CardBody>
-          </Card>
-        )}
-      </div>
-
-      {/* 2. Search, Filters and Toolbar Panel */}
+      {/* 1. Search, Filters and Toolbar Panel */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200/60 dark:border-gray-700/80 shadow-sm">
         {/* Left Side: Search & Filter inputs */}
         <div className="flex flex-wrap items-center gap-3 flex-1">

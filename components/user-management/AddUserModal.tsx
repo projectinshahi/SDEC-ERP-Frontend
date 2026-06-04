@@ -182,7 +182,6 @@ export function AddUserModal({
   const hasErrors =
     validateField('name', formData.name) !== '' ||
     validateField('email', formData.email) !== '' ||
-    validateField('password', formData.password) !== '' ||
     validateField('roles', formData.roles) !== '';
 
   const isFormValid = !hasErrors;
@@ -203,7 +202,6 @@ export function AddUserModal({
     const newErrors: Partial<Record<keyof UserFormData, string>> = {
       name: validateField('name', formData.name),
       email: validateField('email', formData.email),
-      password: validateField('password', formData.password),
       roles: validateField('roles', formData.roles),
     };
 
@@ -237,7 +235,7 @@ export function AddUserModal({
           <div className="text-xs text-blue-900 leading-relaxed font-semibold">
             {editUser
               ? `You are currently modifying settings for user "${editUser.name}". Verify security levels before proceeding.`
-              : 'Add a new member to the ERP platform. All fields marked with * are mandatory.'}
+              : 'Add a new member to the ERP platform. A secure temporary password will be automatically generated and emailed to the user.'}
           </div>
         </div>
 
@@ -289,85 +287,87 @@ export function AddUserModal({
           )}
         </div>
 
-        {/* Password Field with strength indicator */}
-        <div>
-          <div className="relative">
-            <InputField
-              label={editUser ? 'Reset Password (Optional)' : 'Password'}
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder={editUser ? '•••••• (Leave blank to keep original)' : 'Min. 6 characters'}
-              icon={Lock}
-              value={formData.password}
-              onChange={(val) => handleFieldChange('password', val)}
-              onBlur={() => handleBlur('password')}
-              error={touched.password ? errors.password : undefined}
-              showSuccess={touched.password && !errors.password && formData.password !== ''}
-              required={!editUser}
-              disabled={isSubmitting}
-              maxLength={128}
-            />
-            {/* Toggle password visibility */}
-            {formData.password && (
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-10 top-[38px] text-gray-400 hover:text-gray-600 transition-colors"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            )}
-          </div>
+        {/* Password Field with strength indicator (Only for Edit Mode) */}
+        {editUser && (
+          <div>
+            <div className="relative">
+              <InputField
+                label="Reset Password (Optional)"
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="•••••• (Leave blank to keep original)"
+                icon={Lock}
+                value={formData.password}
+                onChange={(val) => handleFieldChange('password', val)}
+                onBlur={() => handleBlur('password')}
+                error={touched.password ? errors.password : undefined}
+                showSuccess={touched.password && !errors.password && formData.password !== ''}
+                required={false}
+                disabled={isSubmitting}
+                maxLength={128}
+              />
+              {/* Toggle password visibility */}
+              {formData.password && (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-10 top-[38px] text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              )}
+            </div>
 
-          {/* Password Strength Bar */}
-          {formData.password && (
-            <div className="mt-2.5 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 flex gap-1">
-                  {[1, 2, 3, 4, 5].map((level) => (
+            {/* Password Strength Bar */}
+            {formData.password && (
+              <div className="mt-2.5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex gap-1">
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <div
+                        key={level}
+                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${passwordStrength.score >= level
+                            ? passwordStrength.color
+                            : 'bg-gray-200'
+                          }`}
+                      />
+                    ))}
+                  </div>
+                  <span className={`text-xs font-bold ${passwordStrength.score <= 1 ? 'text-red-500' :
+                      passwordStrength.score <= 2 ? 'text-orange-500' :
+                        passwordStrength.score <= 3 ? 'text-yellow-600' :
+                          'text-emerald-600'
+                    }`}>
+                    {passwordStrength.label}
+                  </span>
+                </div>
+
+                {/* Password requirement checklist */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {passwordChecks.map((check) => (
                     <div
-                      key={level}
-                      className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${passwordStrength.score >= level
-                          ? passwordStrength.color
-                          : 'bg-gray-200'
+                      key={check.label}
+                      className={`flex items-center gap-1.5 text-xs font-medium transition-colors duration-200 ${check.met ? 'text-emerald-600' : 'text-gray-400'
                         }`}
-                    />
+                    >
+                      {check.met ? (
+                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <circle cx="12" cy="12" r="9" strokeWidth={2} />
+                        </svg>
+                      )}
+                      <span>{check.label}</span>
+                    </div>
                   ))}
                 </div>
-                <span className={`text-xs font-bold ${passwordStrength.score <= 1 ? 'text-red-500' :
-                    passwordStrength.score <= 2 ? 'text-orange-500' :
-                      passwordStrength.score <= 3 ? 'text-yellow-600' :
-                        'text-emerald-600'
-                  }`}>
-                  {passwordStrength.label}
-                </span>
               </div>
-
-              {/* Password requirement checklist */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                {passwordChecks.map((check) => (
-                  <div
-                    key={check.label}
-                    className={`flex items-center gap-1.5 text-xs font-medium transition-colors duration-200 ${check.met ? 'text-emerald-600' : 'text-gray-400'
-                      }`}
-                  >
-                    {check.met ? (
-                      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <circle cx="12" cy="12" r="9" strokeWidth={2} />
-                      </svg>
-                    )}
-                    <span>{check.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Role Select Checkbox Group */}
         <div className="space-y-2">

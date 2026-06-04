@@ -28,6 +28,8 @@ import { MemberList } from '@/components/projects/MemberList';
 import { AddMemberModal } from '@/components/projects/AddMemberModal';
 import { ImportBacklogModal } from '@/components/projects/ImportBacklogModal';
 import { Modal } from '@/components/Modal';
+import { ProjectSprintsTable } from '@/components/projects/ProjectSprintsTable';
+import { SprintStatsSidebar } from '@/components/projects/SprintStatsSidebar';
 import { classNames } from '@/lib/utils';
 
 export default function ProjectDetailsPage() {
@@ -332,14 +334,13 @@ export default function ProjectDetailsPage() {
               )}
             </div>
           </div>
-
           {/* Details layout: main columns */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main description and interactive stats */}
+            {/* Main Content Column (Left - 70%) */}
             <div className="lg:col-span-2 space-y-6">
               {/* Project Description Card */}
               <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
-                <CardHeader className="border-b border-gray-100 bg-white">
+                <CardHeader className="border-b border-gray-100 bg-white dark:bg-gray-800">
                   <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Workspace Overview</h3>
                 </CardHeader>
                 <CardBody className="p-6 space-y-4">
@@ -349,34 +350,8 @@ export default function ProjectDetailsPage() {
                 </CardBody>
               </Card>
 
-              {/* ERP Project Workspace Mockup Feature */}
-              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
-                <CardHeader className="border-b border-gray-100 bg-white flex items-center justify-between">
-                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Deliverables & Timeline</h3>
-                  <Badge variant="info" className="text-[9px] font-bold tracking-widest px-2 uppercase shadow-sm">
-                    Premium Workspace
-                  </Badge>
-                </CardHeader>
-                <CardBody className="p-6 text-center flex flex-col items-center justify-center min-h-[220px] bg-slate-50/50 dark:bg-slate-900/40 rounded-b-lg">
-                  <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-500 mb-3 border border-blue-100 dark:border-blue-900/30 shadow-sm">
-                    <BarChart3 size={20} />
-                  </div>
-                  <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200">Interactive Workspace Details</h4>
-                  <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5 mb-5 max-w-sm leading-relaxed">
-                    Interactive milestones, Gantt timelines, performance trackers, and financial audit worksheets are presently under construction for this project slot.
-                  </p>
-                  <div className="flex gap-3">
-                    <Button variant="primary" size="sm" onClick={() => router.push('/dashboard/tasks')}>
-                      <CheckSquare size={14} className="mr-1.5" />
-                      View Board Tasks
-                    </Button>
-                    <Button variant="secondary" size="sm" disabled>
-                      <LayoutDashboard size={14} className="mr-1.5" />
-                      Analytics Hub
-                    </Button>
-                  </div>
-                </CardBody>
-              </Card>
+              {/* Sprint Tracking Table */}
+              <ProjectSprintsTable projectId={projectId} />
             </div>
 
             {/* Sidebar metadata card */}
@@ -419,29 +394,8 @@ export default function ProjectDetailsPage() {
                 </CardBody>
               </Card>
 
-              {/* Date Metadata details card */}
-              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
-                <CardBody className="p-5 space-y-4">
-                  <div className="flex items-start gap-3">
-                    <Calendar size={16} className="text-gray-400 mt-0.5" />
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-400">Created Workspace</h4>
-                      <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mt-0.5">
-                        {formatDate(project.updatedAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Briefcase size={16} className="text-gray-400 mt-0.5" />
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-400">Access ID Reference</h4>
-                      <code className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-900/10 px-2 py-1 rounded border border-blue-100/20 mt-1 block">
-                        {project.id}
-                      </code>
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
+              {/* Minimal Sprint Stats Sidebar */}
+              <SprintStatsSidebar projectId={projectId} />
             </div>
           </div>
         </div>

@@ -8,9 +8,10 @@ interface SprintModalProps {
   onClose: () => void;
   onSuccess: () => void;
   editSprint?: Sprint | null;
+  projectId?: string;
 }
 
-export function SprintModal({ isOpen, onClose, onSuccess, editSprint }: SprintModalProps) {
+export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId }: SprintModalProps) {
   const [formData, setFormData] = useState({
     id: '',
     name: '',
@@ -21,6 +22,7 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint }: SprintMo
     status: 'Planned',
     estimatedHours: 0,
     capacity: 0,
+    projectId: projectId || null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint }: SprintMo
         status: editSprint.status,
         estimatedHours: editSprint.estimatedHours || 0,
         capacity: editSprint.capacity || 0,
+        projectId: editSprint.projectId || projectId || null,
       });
     } else {
       setFormData({
@@ -49,9 +52,10 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint }: SprintMo
         status: 'Planned',
         estimatedHours: 0,
         capacity: 0,
+        projectId: projectId || null,
       });
     }
-  }, [editSprint, isOpen]);
+  }, [editSprint, isOpen, projectId]);
 
   if (!isOpen) return null;
 

@@ -52,6 +52,15 @@ export async function createBoardApi(name: string, projectId: string): Promise<B
 }
 
 /**
+ * Update an existing board
+ * PUT /api/kanban/boards/:id
+ */
+export async function updateBoardApi(id: number, name: string): Promise<Board> {
+  const response = await apiClient.put<Board>(`/kanban/boards/${id}`, { name });
+  return response.data;
+}
+
+/**
  * Delete a board and all its columns + tasks
  * DELETE /api/kanban/boards/:id
  */
@@ -201,5 +210,29 @@ export async function resetKanbanBoardDb(): Promise<any> {
  */
 export async function cloneKanbanTask(id: string): Promise<any> {
   const response = await apiClient.post(`/kanban/tasks/${id}/clone`);
+  return response.data;
+}
+
+// ─────────────────────────────────────────────
+// ANALYTICS API
+// ─────────────────────────────────────────────
+
+export interface BoardAnalyticsFilters {
+  sprintId?: string | null;
+  assignee?: string | null;
+}
+
+export async function fetchBoardAnalytics(boardId: number, filters?: BoardAnalyticsFilters): Promise<any> {
+  let url = `/kanban/boards/${boardId}/analytics`;
+  const params = new URLSearchParams();
+  if (filters?.sprintId) params.append('sprintId', filters.sprintId);
+  if (filters?.assignee) params.append('assignee', filters.assignee);
+  
+  const queryString = params.toString();
+  if (queryString) {
+    url += `?${queryString}`;
+  }
+  
+  const response = await apiClient.get<any>(url);
   return response.data;
 }

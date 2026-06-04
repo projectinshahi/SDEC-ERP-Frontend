@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Plus, MoreHorizontal, Trash2, Filter, X, ChevronDown } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Plus, MoreHorizontal, Trash2, Filter, X, ChevronDown, Edit2 } from 'lucide-react';
 import { TaskCard } from './TaskCard';
 import { EmptyState } from './EmptyState';
 import type { Task } from './CreateTaskModal';
@@ -61,6 +61,20 @@ export function Column({
 
   const hasColumnFilters = colFilterPriority !== 'all' || colFilterAssignee !== 'all';
   const activeFilterCount = (colFilterPriority !== 'all' ? 1 : 0) + (colFilterAssignee !== 'all' ? 1 : 0);
+
+  // Dropdown menu state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Filter tasks locally within this column
   const displayedTasks = useMemo(() => {
@@ -220,24 +234,49 @@ export function Column({
           >
             <Plus size={16} />
           </button>
-          {onRenameColumnClick && hasPermission('task.column.update') && (
-            <button
-              onClick={() => onRenameColumnClick(status, title)}
-              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 rounded transition-colors cursor-pointer"
-              title="Rename Column"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-          )}
 
-          {onDeleteColumnClick && hasPermission('task.column.delete') && (
-            <button
-              onClick={() => onDeleteColumnClick(status, title)}
-              className="p-1 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 text-gray-400 rounded transition-colors cursor-pointer"
-              title="Delete Column"
-            >
-              <Trash2 size={15} />
-            </button>
+          {/* Triple dot menu for Rename and Delete */}
+          {(onRenameColumnClick || onDeleteColumnClick) && (hasPermission('task.column.update') || hasPermission('task.column.delete')) && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 rounded transition-colors cursor-pointer"
+                title="More actions"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                  <div className="py-1 flex flex-col">
+                    {onRenameColumnClick && hasPermission('task.column.update') && (
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onRenameColumnClick(status, title);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-left transition-colors"
+                      >
+                        <Edit2 size={14} className="text-gray-500" />
+                        Rename
+                      </button>
+                    )}
+                    {onDeleteColumnClick && hasPermission('task.column.delete') && (
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onDeleteColumnClick(status, title);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-left transition-colors"
+                      >
+                        <Trash2 size={14} className="text-red-500" />
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
