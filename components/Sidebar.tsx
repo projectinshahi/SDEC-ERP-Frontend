@@ -315,7 +315,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
               mounted ? 'transition-all duration-200' : '',
               isCollapsed ? 'justify-center mx-auto' : 'justify-between'
             )}>
-              <div className="flex items-center gap-3 min-w-0">
+              <Link href="/dashboard/profile" onClick={(e) => { if (typeof window !== 'undefined' && window.innerWidth < 768) onToggle(); }} className="flex items-center gap-3 min-w-0 flex-1 hover:bg-zinc-800/50 p-1 -m-1 rounded-lg transition-colors cursor-pointer">
                 <div className="relative flex-shrink-0">
                   <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shadow-md shadow-indigo-500/10">
                     {user.name.charAt(0).toUpperCase()}
@@ -329,7 +329,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
                     <p className="text-xs text-zinc-500 font-medium truncate capitalize">{user.roleName}</p>
                   </div>
                 )}
-              </div>
+              </Link>
 
               {!isCollapsed ? (
                 <button

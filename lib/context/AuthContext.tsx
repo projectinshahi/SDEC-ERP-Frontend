@@ -29,6 +29,7 @@ export interface AuthUser {
   role: string;
   roleName: string;
   permissions: string[];
+  mustChangePassword?: boolean;
 }
 
 interface AuthState {
@@ -103,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...user,
         roleName: user.roleName ?? SUPER_ADMIN_ROLE_NAME,
         permissions: user.permissions ?? [],
+        mustChangePassword: user.mustChangePassword ?? false,
       };
 
       localStorage.setItem('authToken', token);

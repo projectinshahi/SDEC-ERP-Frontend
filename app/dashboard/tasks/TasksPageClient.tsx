@@ -9,9 +9,15 @@ import { fetchSprintsForBoard, Sprint } from '@/lib/api/kanban';
 import { fetchProjectBoards } from '@/lib/api/projects';
 import { useProject } from '@/lib/context/ProjectContext';
 
+import { BoardAnalytics } from '@/components/boards/BoardAnalytics';
 import { SprintSelector } from '../../../components/sprints/SprintSelector';
 import { Board } from '../../../components/boards/BoardSelector';
-import { AlertCircle, FolderDot } from 'lucide-react';
+import { AlertCircle, FolderDot, LayoutDashboard, BarChart3, Settings, Edit2, Trash2 } from 'lucide-react';
+import { classNames } from '@/lib/utils';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { updateBoardApi, deleteBoardApi } from '@/lib/api/kanban';
+import { Modal } from '@/components/Modal';
+import { Button } from '@/components/Button';
 
 
 
@@ -26,6 +32,48 @@ export function TasksPageClient() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'board' | 'analytics'>('board');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
+
+  // Dialog State
+  const [dialogInput, setDialogInput] = useState('');
+  const [dialogInputError, setDialogInputError] = useState('');
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean;
+    type: 'input' | 'confirm';
+    title: string;
+    message?: string;
+    placeholder?: string;
+    confirmText?: string;
+    confirmVariant?: 'primary' | 'danger';
+    onConfirm: (val?: string) => void;
+  }>({
+    isOpen: false,
+    type: 'confirm',
+    title: '',
+    onConfirm: () => { },
+  });
+
+  const closeDialog = () => {
+    setDialog((prev) => ({ ...prev, isOpen: false }));
+    setDialogInput('');
+    setDialogInputError('');
+  };
+
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const isAdmin = isSuperAdmin || hasPermission('task.board.edit');
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -136,20 +184,139 @@ export function TasksPageClient() {
     }
   }, [selectedBoardId]);
 
+  // Handle board rename
+  const handleRenameBoard = () => {
+    if (!selectedBoardId) return;
+    const currentBoard = boards.find(b => b.id === selectedBoardId);
+    if (!currentBoard) return;
+
+    setDialogInput(currentBoard.name);
+    setDialogInputError('');
+    setDialog({
+      isOpen: true,
+      type: 'input',
+      title: 'Rename Board',
+      placeholder: 'Enter new board name...',
+      confirmText: 'Rename',
+      confirmVariant: 'primary',
+      onConfirm: async (newName?: string) => {
+        if (newName && newName.trim() !== '' && newName !== currentBoard.name) {
+          try {
+            const updated = await updateBoardApi(selectedBoardId, newName.trim());
+            setBoards(prev => prev.map(b => b.id === selectedBoardId ? { ...b, name: updated.name } : b));
+          } catch (err) {
+            console.error('Failed to rename board', err);
+            // Could add toast here
+          }
+        }
+        closeDialog();
+      }
+    });
+    setIsSettingsOpen(false);
+  };
+
+  // Handle board delete
+  const handleDeleteBoard = () => {
+    if (!selectedBoardId) return;
+    
+    setDialog({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Delete Board',
+      message: 'Are you sure you want to permanently delete this board? All columns and tasks will be lost.',
+      confirmText: 'Delete Board',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteBoardApi(selectedBoardId);
+          setBoards(prev => prev.filter(b => b.id !== selectedBoardId));
+          setSelectedBoardId(null);
+          router.push('/dashboard/tasks');
+        } catch (err) {
+          console.error('Failed to delete board', err);
+        }
+        closeDialog();
+      }
+    });
+    setIsSettingsOpen(false);
+  };
+
   return (
     <PermissionPageGuard module="task">
       <div className="mb-6">
         <Breadcrumb items={[{ label: 'Tasks' }]} />
       </div>
 
-      <section className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <section className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-700/60 pb-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Tasks Board</h1>
-          <p className="text-gray-500 mt-1 text-sm">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 tracking-tight flex items-center gap-2">
+            Tasks Board
+            {isAdmin && selectedBoardId && (
+              <div className="relative inline-block ml-2" ref={settingsMenuRef}>
+                <button
+                  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                  className="p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 rounded-md transition-colors"
+                  title="Board Settings"
+                >
+                  <Settings size={20} />
+                </button>
+                {isSettingsOpen && (
+                  <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                    <div className="py-1 flex flex-col">
+                      <button
+                        onClick={handleRenameBoard}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                      >
+                        <Edit2 size={14} className="text-gray-500" />
+                        Rename Board
+                      </button>
+                      <button
+                        onClick={handleDeleteBoard}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
+                      >
+                        <Trash2 size={14} className="text-red-500" />
+                        Delete Board
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
             Drag-and-drop tasks to advance workflows, search by title, and filter assignees.
           </p>
         </div>
 
+        {/* Tab Toggle */}
+        {selectedBoardId && (
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab('board')}
+              className={classNames(
+                'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors',
+                activeTab === 'board' 
+                  ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              )}
+            >
+              <LayoutDashboard size={16} />
+              Board
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={classNames(
+                'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors',
+                activeTab === 'analytics' 
+                  ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              )}
+            >
+              <BarChart3 size={16} />
+              Analytics
+            </button>
+          </div>
+        )}
       </section>
 
       {!activeProject ? (
@@ -173,24 +340,103 @@ export function TasksPageClient() {
         </div>
       ) : selectedBoardId ? (
         <div key={`${selectedBoardId}-${selectedSprintId}`} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <KanbanBoard 
-            boardId={selectedBoardId} 
-            sprintId={selectedSprintId} 
-            headerActions={
-              <SprintSelector
-                sprints={sprints}
-                selectedSprintId={selectedSprintId}
-                onSelectSprint={handleSelectSprint}
-                isLoading={isSprintsLoading || isLoading}
-              />
-            }
-          />
+          {activeTab === 'board' ? (
+            <KanbanBoard 
+              boardId={selectedBoardId} 
+              sprintId={selectedSprintId} 
+              headerActions={
+                <SprintSelector
+                  sprints={sprints}
+                  selectedSprintId={selectedSprintId}
+                  onSelectSprint={handleSelectSprint}
+                  isLoading={isSprintsLoading || isLoading}
+                />
+              }
+            />
+          ) : (
+            <BoardAnalytics 
+              boardId={selectedBoardId} 
+              sprintId={selectedSprintId} 
+              sprints={sprints} 
+            />
+          )}
         </div>
       ) : (
         <div className="py-12 text-center">
           <p className="text-gray-500 animate-pulse">Loading board data...</p>
         </div>
       )}
+
+      {/* Dialog Modal */}
+      <Modal
+        isOpen={dialog.isOpen}
+        onClose={closeDialog}
+        title={dialog.title}
+        size="sm"
+      >
+        <div className="space-y-4">
+          {dialog.type === 'confirm' ? (
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                {dialog.message}
+              </p>
+              <div className="flex gap-3 pt-5 border-t border-gray-100 dark:border-gray-800 mt-6">
+                <Button variant="secondary" onClick={closeDialog} fullWidth>
+                  Cancel
+                </Button>
+                <Button
+                  variant={dialog.confirmVariant === 'danger' ? 'danger' : 'primary'}
+                  onClick={() => dialog.onConfirm()}
+                  fullWidth
+                >
+                  {dialog.confirmText || 'Confirm'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!dialogInput.trim()) {
+                  setDialogInputError('This field is required');
+                  return;
+                }
+                dialog.onConfirm(dialogInput.trim());
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <input
+                  type="text"
+                  value={dialogInput}
+                  onChange={(e) => {
+                    setDialogInput(e.target.value);
+                    if (e.target.value.trim()) setDialogInputError('');
+                  }}
+                  placeholder={dialog.placeholder}
+                  className="w-full px-3.5 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-gray-200 transition-all"
+                  autoFocus
+                />
+                {dialogInputError && (
+                  <p className="text-red-500 text-xs mt-1 font-medium">{dialogInputError}</p>
+                )}
+              </div>
+              <div className="flex gap-3 pt-5 border-t border-gray-100 dark:border-gray-800 mt-2">
+                <Button type="button" variant="secondary" onClick={closeDialog} fullWidth>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  fullWidth
+                >
+                  {dialog.confirmText || 'Save'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </Modal>
     </PermissionPageGuard>
   );
 }
