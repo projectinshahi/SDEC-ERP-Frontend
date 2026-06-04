@@ -2,6 +2,7 @@
 
 import { ThemeProvider } from '@/lib/hooks/useTheme';
 import { AuthProvider } from '@/lib/context/AuthContext';
+import { ProjectProvider } from '@/lib/context/ProjectContext';
 import { ToastProvider } from '@/components/ToastProvider';
 import { ConfirmProvider } from '@/components/ConfirmDialogProvider';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -20,15 +21,17 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <ErrorBoundary>
-          <ToastProvider>
-            <ConfirmProvider>
-              {children}
-            </ConfirmProvider>
-          </ToastProvider>
-        </ErrorBoundary>
-      </ThemeProvider>
+      <ProjectProvider>
+        <ThemeProvider>
+          <ErrorBoundary>
+            <ToastProvider>
+              <ConfirmProvider>
+                {children}
+              </ConfirmProvider>
+            </ToastProvider>
+          </ErrorBoundary>
+        </ThemeProvider>
+      </ProjectProvider>
     </AuthProvider>
   );
 }

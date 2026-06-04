@@ -2,72 +2,66 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
-import { BarChart3, Users, CheckSquare, TrendingUp, CheckCircle2, AlertCircle, X } from 'lucide-react';
-import { fetchUserCount } from '@/lib/api/users';
-import { fetchActiveTaskCount } from '@/lib/api/tasks';
+import { BarChart3, Users, CheckSquare, TrendingUp, CheckCircle2, AlertCircle, X, Bug, FolderDot } from 'lucide-react';
+import { fetchProjectDashboardStats, fetchProjectActivities } from '@/lib/api/projects';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
-import { fetchActivityFeed, clearActivityFeed, ActivityLog } from '@/lib/api/activity';
+import { ActivityLog } from '@/lib/api/activity';
 import { classNames } from '@/lib/utils';
 import { useToast } from '@/lib/hooks/useToast';
+import { useProject } from '@/lib/context/ProjectContext';
 
 /**
  * Dashboard page - main overview of the system
  */
 export default function DashboardPage() {
   const { toast } = useToast();
+  const { activeProject } = useProject();
 
-  // Stat Card 1: Total Users
-  const [totalUsers, setTotalUsers] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isError, setIsError] = useState<boolean>(false);
-
-  // Stat Card 2: Active Tasks
-  const [activeTasks, setActiveTasks] = useState<number>(0);
-  const [isTasksLoading, setIsTasksLoading] = useState<boolean>(true);
-  const [isTasksError, setIsTasksError] = useState<boolean>(false);
+  // Dashboard Stats
+  const [stats, setStats] = useState({
+    totalTasks: 0,
+    activeTasks: 0,
+    completedTasks: 0,
+    openBugs: 0,
+    teamMembers: 0
+  });
+  const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true);
+  const [isStatsError, setIsStatsError] = useState<boolean>(false);
 
   // Activity Feed States
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [isActivitiesLoading, setIsActivitiesLoading] = useState<boolean>(true);
   const [isActivitiesError, setIsActivitiesError] = useState<boolean>(false);
-  const [isActivitiesClearing, setIsActivitiesClearing] = useState<boolean>(false);
 
-  // Fetch Total Users Count
-  const getUserCountData = async () => {
+  // Fetch Dashboard Stats
+  const getStatsData = async () => {
+    if (!activeProject) return;
     try {
-      setIsLoading(true);
-      setIsError(false);
-      const data = await fetchUserCount();
-      setTotalUsers(data.totalUsers);
+      setIsStatsLoading(true);
+      setIsStatsError(false);
+      const data = await fetchProjectDashboardStats(activeProject.id);
+      setStats({
+        totalTasks: data.totalTasks || 0,
+        activeTasks: data.activeTasks || 0,
+        completedTasks: data.completedTasks || 0,
+        openBugs: data.openBugs || 0,
+        teamMembers: data.teamMembers || 0
+      });
     } catch (error) {
-      setIsError(true);
+      setIsStatsError(true);
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch Active Tasks Count
-  const getActiveTaskCountData = async () => {
-    try {
-      setIsTasksLoading(true);
-      setIsTasksError(false);
-      const data = await fetchActiveTaskCount();
-      setActiveTasks(data.activeTasks);
-    } catch (error) {
-      setIsTasksError(true);
-    } finally {
-      setIsTasksLoading(false);
+      setIsStatsLoading(false);
     }
   };
 
   // Fetch Recent Activities
   const getActivitiesData = async () => {
+    if (!activeProject) return;
     try {
       setIsActivitiesLoading(true);
       setIsActivitiesError(false);
-      
-      const realActivities = await fetchActivityFeed();
+      const realActivities = await fetchProjectActivities(activeProject.id);
       setActivities(realActivities);
     } catch (error) {
       console.error('Failed to fetch activity feed:', error);
@@ -77,82 +71,88 @@ export default function DashboardPage() {
     }
   };
 
-  // Clear Recent Activities
-  const handleClearActivities = async () => {
-    try {
-      setIsActivitiesClearing(true);
-      await clearActivityFeed();
-      setActivities([]);
-      toast('Activity feed cleared', 'success');
-    } catch (error) {
-      console.error('Failed to clear activity feed:', error);
-      toast('Failed to clear activity feed', 'error');
-    } finally {
-      setIsActivitiesClearing(false);
-    }
-  };
-
   useEffect(() => {
     let active = true;
     
-    if (active) {
-      getUserCountData();
-      getActiveTaskCountData();
+    if (activeProject && active) {
+      getStatsData();
       getActivitiesData();
     }
     
     return () => {
       active = false;
     };
-  }, []);
+  }, [activeProject]);
+
+  if (!activeProject) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+        <FolderDot size={48} className="text-gray-300 mb-4" />
+        <h2 className="text-2xl font-semibold text-gray-700">No Active Project</h2>
+        <p className="text-gray-500 mt-2">Please select a project from the top navigation bar to view the dashboard.</p>
+      </div>
+    );
+  }
 
   return (
     <>
       {/* Page Header */}
       <section className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h1>
-        <p className="text-gray-650 dark:text-gray-400 mt-2">Welcome back! Here's an overview of your system.</p>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Dashboard - {activeProject.name}</h1>
+        <p className="text-gray-650 dark:text-gray-400 mt-2">Here's an overview of your selected project.</p>
       </section>
 
       {/* Statistics Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
-          label="Total Users"
-          value={totalUsers}
-          change="+12%"
-          icon={Users}
+          label="Total Tasks"
+          value={stats.totalTasks}
+          change=""
+          icon={BarChart3}
           variant="info"
-          isLoading={isLoading}
-          isError={isError}
-          onRetry={getUserCountData}
+          isLoading={isStatsLoading}
+          isError={isStatsError}
+          onRetry={getStatsData}
         />
         <StatCard
           label="Active Tasks"
-          value={activeTasks}
-          change="+5%"
+          value={stats.activeTasks}
+          change=""
           icon={CheckSquare}
           variant="success"
-          isLoading={isTasksLoading}
-          isError={isTasksError}
-          onRetry={getActiveTaskCountData}
+          isLoading={isStatsLoading}
+          isError={isStatsError}
+          onRetry={getStatsData}
         />
         <StatCard
-          label="System Load"
-          value="45%"
-          change="-2%"
-          icon={TrendingUp}
+          label="Completed Tasks"
+          value={stats.completedTasks}
+          change=""
+          icon={CheckCircle2}
           variant="warning"
-          isLoading={false}
-          isError={false}
+          isLoading={isStatsLoading}
+          isError={isStatsError}
+          onRetry={getStatsData}
         />
         <StatCard
-          label="Performance"
-          value="98.5%"
-          change="+2%"
-          icon={BarChart3}
+          label="Open Bugs"
+          value={stats.openBugs}
+          change=""
+          icon={Bug}
           variant="danger"
-          isLoading={false}
-          isError={false}
+          isLoading={isStatsLoading}
+          isError={isStatsError}
+          onRetry={getStatsData}
+        />
+        <StatCard
+          label="Team Members"
+          value={stats.teamMembers}
+          change=""
+          icon={Users}
+          variant="primary"
+          isLoading={isStatsLoading}
+          isError={isStatsError}
+          onRetry={getStatsData}
         />
       </div>
 
@@ -164,8 +164,6 @@ export default function DashboardPage() {
             isLoading={isActivitiesLoading}
             isError={isActivitiesError}
             onRetry={getActivitiesData}
-            onClear={handleClearActivities}
-            isClearing={isActivitiesClearing}
           />
         </div>
 

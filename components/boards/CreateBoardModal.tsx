@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Loader2, CheckCircle, AlertCircle, Building2 } from 'lucide-react';
 import { createBoardApi } from '@/lib/api/kanban';
-import { fetchProjects } from '@/lib/api/projects';
-import { Project } from '@/components/projects/ProjectCard';
+import { useProject } from '@/lib/context/ProjectContext';
 
 interface CreateBoardModalProps {
   isOpen: boolean;
@@ -15,41 +14,26 @@ interface CreateBoardModalProps {
 
 export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModalProps) {
   const [name, setName] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const [projects, setProjects] = useState<Project[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // UI States
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{name?: string, projectId?: string}>({});
-  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
+  const { activeProject } = useProject();
+
   // Fetch projects when modal opens
   useEffect(() => {
     if (isOpen) {
-      const loadProjects = async () => {
-        setIsLoadingProjects(true);
-        try {
-          const data = await fetchProjects();
-          setProjects(data);
-        } catch (err) {
-          console.error('Failed to load projects', err);
-        } finally {
-          setIsLoadingProjects(false);
-        }
-      };
-      loadProjects();
-      
       // Auto-focus after a short delay for transition
       setTimeout(() => nameInputRef.current?.focus(), 100);
     } else {
       // Reset state when closed
       setName('');
-      setProjectId('');
       setError(null);
       setSuccess(null);
       setValidationErrors({});
@@ -79,7 +63,7 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
   const validate = () => {
     const errors: {name?: string, projectId?: string} = {};
     if (!name.trim()) errors.name = 'Board name is required';
-    if (!projectId) errors.projectId = 'Please select a project';
+    if (!activeProject) errors.projectId = 'No active project selected';
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -93,7 +77,7 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
     setSuccess(null);
 
     try {
-      const res = await createBoardApi(name, projectId);
+      const res = await createBoardApi(name, activeProject!.id);
       setSuccess('Board created successfully!');
       
       // Delay closing to show success toast
@@ -170,45 +154,6 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
               />
               {validationErrors.name && (
                 <p className="mt-1.5 text-sm text-red-500 animate-in slide-in-from-top-1">{validationErrors.name}</p>
-              )}
-            </div>
-
-            {/* Project Selection */}
-            <div>
-              <label htmlFor="projectId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Project Association <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  id="projectId"
-                  value={projectId}
-                  onChange={(e) => {
-                    setProjectId(e.target.value);
-                    if (validationErrors.projectId) setValidationErrors({...validationErrors, projectId: undefined});
-                  }}
-                  className={`w-full px-4 py-2 appearance-none border rounded-lg focus:outline-none focus:ring-2 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                    ${validationErrors.projectId 
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 dark:border-red-500/50' 
-                      : 'border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500/20'}
-                    ${!projectId && !validationErrors.projectId ? 'text-gray-500 dark:text-gray-400' : ''}`}
-                  disabled={isLoadingProjects}
-                  aria-invalid={!!validationErrors.projectId}
-                >
-                  <option value="" disabled>
-                    {isLoadingProjects ? 'Loading projects...' : 'Select a project'}
-                  </option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                  {isLoadingProjects ? <Loader2 className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
-                </div>
-              </div>
-              {validationErrors.projectId && (
-                <p className="mt-1.5 text-sm text-red-500 animate-in slide-in-from-top-1">{validationErrors.projectId}</p>
               )}
             </div>
           </div>

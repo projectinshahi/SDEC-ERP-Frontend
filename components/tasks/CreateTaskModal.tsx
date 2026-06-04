@@ -12,8 +12,7 @@ export interface Task {
   assignee: string; // Name of assigned user
   status: string; // Generic string status to allow dynamic columns
   dueDate: string;
-  estimatedHours?: number;
-  actualHours?: number;
+  storyPoints?: number;
   originTaskId?: string;
 }
 
@@ -24,8 +23,7 @@ export interface TaskFormData {
   assignee: string;
   status: string; // Generic string status to allow dynamic columns
   dueDate: string;
-  estimatedHours?: number;
-  actualHours?: number;
+  storyPoints?: number;
   originTaskId?: string;
 }
 
@@ -56,8 +54,7 @@ export function CreateTaskModal({
     assignee: availableAssignees[0] || '',
     status: columns[0]?.id || 'todo',
     dueDate: new Date().toISOString().split('T')[0],
-    estimatedHours: 0,
-    actualHours: 0,
+    storyPoints: 0,
   };
 
   const [formData, setFormData] = useState<TaskFormData>(initialFormState);
@@ -75,8 +72,7 @@ export function CreateTaskModal({
             assignee: editTask.assignee,
             status: editTask.status,
             dueDate: editTask.dueDate,
-            estimatedHours: editTask.estimatedHours || 0,
-            actualHours: editTask.actualHours || 0,
+            storyPoints: editTask.storyPoints || 0,
             originTaskId: editTask.originTaskId,
           });
         } else {
@@ -87,8 +83,7 @@ export function CreateTaskModal({
             assignee: availableAssignees[0] || '',
             status: columns[0]?.id || 'todo',
             dueDate: new Date().toISOString().split('T')[0],
-            estimatedHours: 0,
-            actualHours: 0,
+            storyPoints: 0,
           });
         }
         setErrors({});
@@ -121,12 +116,8 @@ export function CreateTaskModal({
       newErrors.dueDate = 'Due Date is required';
     }
 
-    if (formData.estimatedHours !== undefined && formData.estimatedHours < 0) {
-      newErrors.estimatedHours = 'Cannot be negative';
-    }
-
-    if (formData.actualHours !== undefined && formData.actualHours < 0) {
-      newErrors.actualHours = 'Cannot be negative';
+    if (formData.storyPoints !== undefined && formData.storyPoints < 0) {
+      newErrors.storyPoints = 'Cannot be negative';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -295,53 +286,28 @@ export function CreateTaskModal({
           </div>
         </div>
 
-        {/* Row for Estimated & Actual Hours */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Estimated Hours */}
+        {/* Row for Story Points */}
+        <div className="grid grid-cols-1 gap-4">
           <div>
-            <label htmlFor="task-est-hours" className="block text-sm font-medium text-gray-700 mb-1">
-              Estimated Hours
+            <label htmlFor="task-story-points" className="block text-sm font-medium text-gray-700 mb-1">
+              Story Points
             </label>
             <input
               type="text"
               inputMode="decimal"
-              id="task-est-hours"
-              value={formData.estimatedHours || ''}
+              id="task-story-points"
+              value={formData.storyPoints || ''}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                  setFormData({ ...formData, estimatedHours: val === '' ? 0 : parseFloat(val) || 0 });
+                  setFormData({ ...formData, storyPoints: val === '' ? 0 : parseFloat(val) || 0 });
                 }
               }}
               placeholder="0"
               className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
-            {errors.estimatedHours && (
-              <p className="text-red-500 text-xs mt-1 font-medium">{errors.estimatedHours}</p>
-            )}
-          </div>
-
-          {/* Actual Hours */}
-          <div>
-            <label htmlFor="task-act-hours" className="block text-sm font-medium text-gray-700 mb-1">
-              Actual Hours
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              id="task-act-hours"
-              value={formData.actualHours || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                  setFormData({ ...formData, actualHours: val === '' ? 0 : parseFloat(val) || 0 });
-                }
-              }}
-              placeholder="0"
-              className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            />
-            {errors.actualHours && (
-              <p className="text-red-500 text-xs mt-1 font-medium">{errors.actualHours}</p>
+            {errors.storyPoints && (
+              <p className="text-red-500 text-xs mt-1 font-medium">{errors.storyPoints}</p>
             )}
           </div>
         </div>

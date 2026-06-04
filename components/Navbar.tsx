@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { LogOut, Menu } from 'lucide-react';
+import { useProject } from '@/lib/context/ProjectContext';
+import { LogOut, Menu, FolderDot, ChevronDown } from 'lucide-react';
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -14,6 +15,7 @@ interface NavbarProps {
  */
 export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const { user, logout } = useAuth();
+  const { projects, activeProject, setActiveProjectId, isLoading } = useProject();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -25,18 +27,20 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
     <nav className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
       <div className="px-4 md:px-6 py-4 flex items-center justify-between">
         {/* Left: Menu button (mobile) */}
-        <button
-          onClick={onMenuClick}
-          className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
-          aria-label="Toggle menu"
-        >
-          <Menu size={20} className="text-gray-900" />
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onMenuClick}
+            className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
+            aria-label="Toggle menu"
+          >
+            <Menu size={20} className="text-gray-900" />
+          </button>
 
-        {/* Center: App Title */}
-        <Link href="/dashboard" className="text-lg font-bold text-gray-900 hidden md:block">
-          ERP System
-        </Link>
+          {/* Center: App Title */}
+          <Link href="/dashboard" className="text-lg font-bold text-gray-900 hidden md:block">
+            ERP System
+          </Link>
+        </div>
 
         {/* Right: User Info and Actions */}
         <div className="flex items-center gap-4 ml-auto">

@@ -20,9 +20,12 @@ import {
   Rocket,
   AlertTriangle,
   CalendarDays,
+  FolderDot,
+  ChevronDown,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
 import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
+import { useProject } from '@/lib/context/ProjectContext';
 
 const iconMap = {
   LayoutDashboard,
@@ -57,6 +60,7 @@ interface SidebarProps {
 export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { projects, activeProject, setActiveProjectId, isLoading } = useProject();
 
   // Desktop collapse state (persisted in localStorage)
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -142,6 +146,45 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
             <X size={20} />
           </button>
         </div>
+
+        {/* Project Selector */}
+        {user && (
+          <div className={classNames(
+            "px-4 py-3 border-b border-zinc-900/60 transition-all duration-300",
+            isCollapsed ? "opacity-0 invisible h-0 overflow-hidden py-0 border-none" : "opacity-100 visible"
+          )}>
+            <div className="relative group/project">
+              <div className="flex items-center gap-2 bg-zinc-900/50 hover:bg-zinc-800/80 border border-zinc-800 px-3 py-2 rounded-lg text-sm font-medium text-zinc-300 transition-colors cursor-pointer w-full">
+                <FolderDot size={16} className="text-blue-400 flex-shrink-0" />
+                <span className="truncate flex-1">
+                  {isLoading ? 'Loading...' : (activeProject?.name || 'No Project Assigned')}
+                </span>
+                <ChevronDown size={14} className="text-zinc-500" />
+              </div>
+              
+              {/* Dropdown Menu */}
+              {!isLoading && projects.length > 0 && (
+                <div className="absolute top-full left-0 mt-1 w-full bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover/project:opacity-100 group-hover/project:visible transition-all duration-200 z-50 py-2">
+                  <div className="px-3 pb-2 mb-2 border-b border-zinc-800 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    Switch Project
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
+                    {projects.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => setActiveProjectId(p.id)}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-zinc-800/80 transition-colors ${activeProject?.id === p.id ? 'bg-blue-900/30 text-blue-400 font-medium' : 'text-zinc-300'}`}
+                      >
+                        <span className="truncate pr-4">{p.name}</span>
+                        {activeProject?.id === p.id && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0"></div>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Scrollable Navigation Menu */}
         {/* <nav className="flex-1 py-6 overflow-y-auto space-y-1.5 px-3 overflow-x-hidden"> */}

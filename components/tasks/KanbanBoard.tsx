@@ -33,7 +33,15 @@ const INITIAL_COLUMNS: BoardColumn[] = [];
 /**
  * KanbanBoard orchestrator - Manages main state and operations of the tasks and dynamic columns.
  */
-export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sprintId?: string | null }) {
+export function KanbanBoard({ 
+  boardId, 
+  sprintId,
+  headerActions
+}: { 
+  boardId?: number | null, 
+  sprintId?: string | null,
+  headerActions?: React.ReactNode
+}) {
   const [columns, setColumns] = useState<BoardColumn[]>(INITIAL_COLUMNS);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
@@ -532,33 +540,9 @@ export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sp
           )}
         </div>
 
-        {/* Right Side: Actions (New Task & Reset Board) */}
+        {/* Right Side: Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          {hasPermission('task.board.delete') && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleResetBoard}
-              className="flex items-center gap-2 px-3.5 cursor-pointer"
-              title="Reset Board and columns data"
-            >
-              <RefreshCw size={15} />
-              <span className="hidden sm:inline">Reset Board</span>
-            </Button>
-          )}
-
-          {hasPermission('task.create') && (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => handleCreateTaskOpen(columns[0]?.id || '')}
-              disabled={columns.length === 0}
-              className="flex items-center gap-2 shadow-sm shadow-blue-500/10 cursor-pointer"
-            >
-              <Plus size={16} />
-              <span>New Task</span>
-            </Button>
-          )}
+          {headerActions}
         </div>
       </div>
 
@@ -749,8 +733,7 @@ export function KanbanBoard({ boardId, sprintId }: { boardId?: number | null, sp
           assignee: users[0]?.name || '',
           status: defaultStatus,
           dueDate: new Date().toISOString().split('T')[0],
-          estimatedHours: 0,
-          actualHours: 0,
+          storyPoints: 0,
         } : null)}
       />
 

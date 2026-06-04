@@ -90,23 +90,13 @@ export function TaskDetailsModal({ isOpen, onClose, task }: TaskDetailsModalProp
             </span>
           </div>
 
-          {/* Estimated Hours */}
+          {/* Story Points */}
           <div className="flex flex-col p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100/50 dark:border-blue-800/30">
             <span className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 mb-1">
-              <Clock size={14} /> Estimated Hours
+              <Clock size={14} /> Story Points
             </span>
             <span className="text-sm font-semibold text-blue-800 dark:text-blue-300">
-              {task.estimatedHours || 0} hrs
-            </span>
-          </div>
-
-          {/* Actual Hours */}
-          <div className="flex flex-col p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg border border-emerald-100/50 dark:border-emerald-800/30">
-            <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 mb-1">
-              <Clock size={14} /> Actual Hours
-            </span>
-            <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-              {task.actualHours || 0} hrs
+              {task.storyPoints || 0} pts
             </span>
           </div>
         </div>
