@@ -19,12 +19,14 @@ import {
   CheckSquare, 
   BarChart3,
   AlertCircle,
-  Plus
+  Plus,
+  Upload
 } from 'lucide-react';
-import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi } from '@/lib/api/projects';
+import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi, importProjectBacklogApi } from '@/lib/api/projects';
 import { Project, ProjectMember } from '@/components/projects/ProjectCard';
 import { MemberList } from '@/components/projects/MemberList';
 import { AddMemberModal } from '@/components/projects/AddMemberModal';
+import { ImportBacklogModal } from '@/components/projects/ImportBacklogModal';
 import { Modal } from '@/components/Modal';
 import { classNames } from '@/lib/utils';
 
@@ -44,6 +46,8 @@ export default function ProjectDetailsPage() {
   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isUpdatingRole, setIsUpdatingRole] = useState<string | number | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
 
   const loadProjectAndMembers = async () => {
@@ -177,6 +181,24 @@ export default function ProjectDetailsPage() {
     }
   };
 
+  const handleImportBacklog = async (tasks: any[]) => {
+    setIsImporting(true);
+    try {
+      const result = await importProjectBacklogApi(projectId, tasks);
+      if (result.success) {
+        toast(`Import completed successfully! Boards: ${result.summary.boardsCreated}, Columns: ${result.summary.columnsCreated}, Tasks: ${result.summary.tasksImported}`);
+        setIsImportModalOpen(false);
+        loadProjectAndMembers(); // Reload data
+      } else {
+        toast('Failed to import backlog.', 'error');
+      }
+    } catch (error: any) {
+      toast(error.message || 'Error importing backlog', 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
@@ -288,14 +310,25 @@ export default function ProjectDetailsPage() {
                 {project.status} status
               </Badge>
               {currentUserRole !== 'viewer' && (
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
-                  className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
-                >
-                  Settings
-                </Button>
+                <>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+                  >
+                    <Upload size={14} />
+                    Import Backlog
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
+                    className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+                  >
+                    Settings
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -459,6 +492,14 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Import Backlog Modal */}
+      <ImportBacklogModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImportBacklog}
+        isImporting={isImporting}
+      />
 
       {/* Floating Dynamic status toast message alerts */}
     </>

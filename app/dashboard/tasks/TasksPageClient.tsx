@@ -150,15 +150,6 @@ export function TasksPageClient() {
           </p>
         </div>
 
-        {/* Sprint Selector */}
-        {!error && selectedBoardId && (
-          <SprintSelector
-            sprints={sprints}
-            selectedSprintId={selectedSprintId}
-            onSelectSprint={handleSelectSprint}
-            isLoading={isSprintsLoading || isLoading}
-          />
-        )}
       </section>
 
       {!activeProject ? (
@@ -182,7 +173,18 @@ export function TasksPageClient() {
         </div>
       ) : selectedBoardId ? (
         <div key={`${selectedBoardId}-${selectedSprintId}`} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <KanbanBoard boardId={selectedBoardId} sprintId={selectedSprintId} />
+          <KanbanBoard 
+            boardId={selectedBoardId} 
+            sprintId={selectedSprintId} 
+            headerActions={
+              <SprintSelector
+                sprints={sprints}
+                selectedSprintId={selectedSprintId}
+                onSelectSprint={handleSelectSprint}
+                isLoading={isSprintsLoading || isLoading}
+              />
+            }
+          />
         </div>
       ) : (
         <div className="py-12 text-center">

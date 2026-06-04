@@ -257,6 +257,11 @@ export function TaskCard({
             <Badge variant={getPriorityVariant(task.priority)} className="capitalize text-[10px] px-2 py-0.5 font-bold">
               {task.priority}
             </Badge>
+            {task.storyPoints !== undefined && task.storyPoints > 0 && (
+              <Badge variant="default" className="text-[10px] px-2 py-0.5 font-bold bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                {task.storyPoints} {task.storyPoints === 1 ? 'pt' : 'pts'}
+              </Badge>
+            )}
           </div>
 
           {/* Assignee & Due Date */}

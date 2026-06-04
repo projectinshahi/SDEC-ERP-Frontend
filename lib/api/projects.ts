@@ -115,3 +115,12 @@ export async function fetchProjectActivities(projectId: string): Promise<any[]> 
   const response = await apiClient.get<any[]>(`/projects/${projectId}/activities`);
   return response.data;
 }
+
+/**
+ * Import backlog tasks (CSV/XLSX parsed to JSON)
+ */
+export async function importProjectBacklogApi(projectId: string, tasks: any[]): Promise<any> {
+  const response = await apiClient.post(`/projects/${projectId}/import`, { tasks });
+  return response.data;
+}
+
