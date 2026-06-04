@@ -153,16 +153,16 @@ export function BugTrackingClient() {
           <p className="text-gray-500 mt-2">Please select a project from the top navigation bar to view its bugs.</p>
         </div>
       ) : (
-      <Card variant="outlined" className="overflow-hidden">
-        {isLoading ? (
-          <div className="py-20 text-center bg-white flex flex-col items-center justify-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="text-gray-500 font-bold text-xs mt-4">Loading issues...</p>
-          </div>
-        ) : (
-          <BugTable bugs={bugs} onEdit={handleEditBug} onDelete={handleDeleteBug} />
-        )}
-      </Card>
+        <Card variant="outlined" className="overflow-hidden">
+          {isLoading ? (
+            <div className="py-20 text-center bg-white flex flex-col items-center justify-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="text-gray-500 font-bold text-xs mt-4">Loading issues...</p>
+            </div>
+          ) : (
+            <BugTable bugs={bugs} onEdit={handleEditBug} onDelete={handleDeleteBug} />
+          )}
+        </Card>
       )}
 
       <BugModal
