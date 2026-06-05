@@ -14,6 +14,7 @@ interface BugTableProps {
   onSort?: (field: BugQueryParams['sortBy']) => void;
   onEdit: (bug: BugType) => void;
   onDelete: (bugId: number) => void;
+  onView: (bug: BugType) => void;
   onResetFilters?: () => void;
   hasActiveFilters?: boolean;
 }
@@ -87,6 +88,7 @@ export function BugTable({
   onSort,
   onEdit,
   onDelete,
+  onView,
   onResetFilters,
   hasActiveFilters,
 }: BugTableProps) {
@@ -161,7 +163,11 @@ export function BugTable({
               const statusConfig   = getStatusConfig(bug.status);
               const priorityConfig = getPriorityConfig(bug.priority);
               return (
-                <tr key={bug.id} className="hover:bg-slate-50/50 transition-colors duration-150 group">
+                <tr 
+                  key={bug.id} 
+                  className="hover:bg-slate-50/50 transition-colors duration-150 group cursor-pointer"
+                  onClick={() => onView(bug)}
+                >
                   {/* Bug Name + Severity */}
                   <td className="py-4 px-6 max-w-xs">
                     <div className="flex items-start gap-2">
@@ -201,7 +207,7 @@ export function BugTable({
                     <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
                       <PermissionGuard require="bugs.update">
                         <button
-                          onClick={() => onEdit(bug)}
+                          onClick={(e) => { e.stopPropagation(); onEdit(bug); }}
                           className="p-1.5 text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition-colors border border-transparent hover:border-blue-100"
                           title="Edit bug"
                         >
@@ -210,7 +216,7 @@ export function BugTable({
                       </PermissionGuard>
                       <PermissionGuard require="bugs.delete">
                         <button
-                          onClick={() => onDelete(bug.id)}
+                          onClick={(e) => { e.stopPropagation(); onDelete(bug.id); }}
                           className="p-1.5 text-red-500 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors border border-transparent hover:border-red-100"
                           title="Delete bug"
                         >

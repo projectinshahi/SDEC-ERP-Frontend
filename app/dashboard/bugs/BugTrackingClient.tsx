@@ -6,24 +6,29 @@ import { Button } from '@/components/Button';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { BugTable } from '@/components/bugs/BugTable';
 import { BugModal } from '@/components/bugs/BugModal';
+import { QueuedFile } from '@/components/bugs/FileUploader';
+import { BugDetailsModal } from '@/components/bugs/BugDetailsModal';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { Modal } from '@/components/Modal';
 import { Plus, Bug, AlertTriangle, X, CheckCircle2, Info, FolderDot } from 'lucide-react';
 import type { Bug as BugType } from '@/lib/api/bugs';
-import { createBug, updateBug, deleteBug } from '@/lib/api/bugs';
+import { createBug, updateBug, deleteBug, uploadBugAttachments } from '@/lib/api/bugs';
 import { fetchProjectBugs } from '@/lib/api/projects';
 import { fetchUsers, type UserDbResponse } from '@/lib/api/users';
 import { useToast } from '@/lib/hooks/useToast';
+import { useAuthContext } from '@/lib/context/AuthContext';
 import { useProject } from '@/lib/context/ProjectContext';
 import { classNames } from '@/lib/utils';
 
 export function BugTrackingClient() {
   const { activeProject } = useProject();
+  const { user: currentUser } = useAuthContext();
   const [bugs, setBugs] = useState<BugType[]>([]);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBug, setEditingBug] = useState<BugType | null>(null);
+  const [viewingBug, setViewingBug] = useState<BugType | null>(null);
 
   const [bugToDelete, setBugToDelete] = useState<BugType | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -57,11 +62,22 @@ export function BugTrackingClient() {
     fetchUsers().then(setUsers).catch(console.error);
   }, []);
 
-  const handleAddBug = async (data: Partial<BugType>) => {
+  const handleAddBug = async (data: Partial<BugType>, queuedFiles: QueuedFile[] = []) => {
     if (!activeProject) return;
     setIsSubmitting(true);
     try {
-      await createBug({ ...data, project_id: activeProject.id } as any);
+      const newBug = await createBug({ ...data, project_id: activeProject.id } as any);
+      
+      // Handle attachments
+      if (queuedFiles.length > 0 && newBug.id) {
+        const formData = new FormData();
+        queuedFiles.forEach(qf => {
+          formData.append('files', qf.file);
+          formData.append('descriptions', qf.description || '');
+        });
+        await uploadBugAttachments(newBug.id, formData);
+      }
+
       toast(`Bug "${data.title}" successfully reported!`, 'success');
       setIsModalOpen(false);
       loadBugs();
@@ -73,11 +89,22 @@ export function BugTrackingClient() {
     }
   };
 
-  const handleUpdateBug = async (data: Partial<BugType>) => {
+  const handleUpdateBug = async (data: Partial<BugType>, queuedFiles: QueuedFile[] = []) => {
     if (editingBug) {
       setIsSubmitting(true);
       try {
         await updateBug(editingBug.id, data);
+
+        // Handle new attachments
+        if (queuedFiles.length > 0) {
+          const formData = new FormData();
+          queuedFiles.forEach(qf => {
+            formData.append('files', qf.file);
+            formData.append('descriptions', qf.description || '');
+          });
+          await uploadBugAttachments(editingBug.id, formData);
+        }
+
         toast(`Bug "${data.title}" successfully updated!`, 'success');
         setIsModalOpen(false);
         setEditingBug(null);
@@ -160,7 +187,7 @@ export function BugTrackingClient() {
               <p className="text-gray-500 font-bold text-xs mt-4">Loading issues...</p>
             </div>
           ) : (
-            <BugTable bugs={bugs} onEdit={handleEditBug} onDelete={handleDeleteBug} />
+            <BugTable bugs={bugs} onEdit={handleEditBug} onDelete={handleDeleteBug} onView={setViewingBug} />
           )}
         </Card>
       )}
@@ -175,6 +202,13 @@ export function BugTrackingClient() {
         editBug={editingBug}
         isSubmitting={isSubmitting}
         users={users}
+      />
+
+      <BugDetailsModal
+        isOpen={!!viewingBug}
+        onClose={() => setViewingBug(null)}
+        bug={viewingBug}
+        currentUserId={currentUser?.id}
       />
 
       {/* Delete Confirmation Modal */}

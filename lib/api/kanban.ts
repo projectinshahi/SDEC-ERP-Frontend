@@ -24,6 +24,13 @@ export interface Board {
   name: string;
   projectName: string;
   projectId?: string;
+  goal?: string;
+  description?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  estimatedHours?: number;
+  capacity?: number;
   createdAt?: string;
 }
 
@@ -57,8 +64,8 @@ export async function fetchBoards(): Promise<Board[]> {
  * Create a new board
  * POST /api/kanban/boards
  */
-export async function createBoardApi(name: string, projectId: string): Promise<Board> {
-  const response = await apiClient.post<Board>('/kanban/boards', { name, projectId });
+export async function createBoardApi(data: Partial<Board>): Promise<Board> {
+  const response = await apiClient.post<Board>('/kanban/boards', data);
   return response.data;
 }
 
@@ -66,8 +73,13 @@ export async function createBoardApi(name: string, projectId: string): Promise<B
  * Update an existing board
  * PUT /api/kanban/boards/:id
  */
-export async function updateBoardApi(id: number, name: string): Promise<Board> {
-  const response = await apiClient.put<Board>(`/kanban/boards/${id}`, { name });
+export async function updateBoardApi(id: number, data: Partial<Board>): Promise<Board> {
+  const response = await apiClient.put<Board>(`/kanban/boards/${id}`, data);
+  return response.data;
+}
+
+export async function updateBoardStatusApi(id: number, status: string): Promise<Board> {
+  const response = await apiClient.patch<Board>(`/kanban/boards/${id}/status`, { status });
   return response.data;
 }
 

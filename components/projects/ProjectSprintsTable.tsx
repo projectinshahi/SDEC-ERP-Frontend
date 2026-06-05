@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import { apiClient } from '@/lib/api/api-client';
-import { Loader2, Rocket, Plus } from 'lucide-react';
+import { Loader2, Rocket, Plus, Edit2 } from 'lucide-react';
 import { SprintModal } from '@/components/sprints/SprintModal';
 import { classNames } from '@/lib/utils';
 
@@ -20,6 +20,7 @@ interface SprintRow {
 
 interface ProjectSprintsTableProps {
   projectId: string;
+  userRole?: 'admin' | 'editor' | 'viewer' | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -29,10 +30,15 @@ const STATUS_COLORS: Record<string, string> = {
   Closed: '#6b7280',  // gray
 };
 
-export function ProjectSprintsTable({ projectId }: ProjectSprintsTableProps) {
+import { updateBoardStatusApi } from '@/lib/api/kanban';
+import { useToast } from '@/lib/hooks/useToast';
+
+export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTableProps) {
   const [sprints, setSprints] = useState<SprintRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSprint, setEditingSprint] = useState<SprintRow | null>(null);
+  const { toast } = useToast();
 
   const fetchSprintsList = async () => {
     try {
@@ -65,6 +71,16 @@ export function ProjectSprintsTable({ projectId }: ProjectSprintsTableProps) {
       });
     } catch {
       return dateStr;
+    }
+  };
+
+  const handleStatusChange = async (sprintId: string, newStatus: string) => {
+    try {
+      await updateBoardStatusApi(Number(sprintId), newStatus);
+      toast('Sprint status updated successfully!');
+      fetchSprintsList();
+    } catch (err: any) {
+      toast(err.message || 'Failed to update sprint status', 'error');
     }
   };
 
@@ -128,6 +144,7 @@ export function ProjectSprintsTable({ projectId }: ProjectSprintsTableProps) {
                   <th className="p-4">End Date</th>
                   <th className="p-4">Tasks</th>
                   <th className="p-4">Est. Hours</th>
+                  {userRole !== 'viewer' && <th className="p-4">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800 text-sm">
@@ -137,16 +154,34 @@ export function ProjectSprintsTable({ projectId }: ProjectSprintsTableProps) {
                       <p className="font-semibold text-gray-800 dark:text-gray-200">{s.name}</p>
                     </td>
                     <td className="p-4">
-                      <span
-                        className="px-2.5 py-1 rounded-full text-[10px] font-bold border"
-                        style={{
-                          backgroundColor: (STATUS_COLORS[s.status] || '#6b7280') + '18',
-                          color: STATUS_COLORS[s.status] || '#6b7280',
-                          borderColor: (STATUS_COLORS[s.status] || '#6b7280') + '40',
-                        }}
-                      >
-                        {s.status}
-                      </span>
+                      {userRole === 'viewer' ? (
+                        <span
+                          className="px-2.5 py-1 rounded-full text-[10px] font-bold border"
+                          style={{
+                            backgroundColor: (STATUS_COLORS[s.status] || '#6b7280') + '18',
+                            color: STATUS_COLORS[s.status] || '#6b7280',
+                            borderColor: (STATUS_COLORS[s.status] || '#6b7280') + '40',
+                          }}
+                        >
+                          {s.status}
+                        </span>
+                      ) : (
+                        <select
+                          value={s.status}
+                          onChange={(e) => handleStatusChange(s.id, e.target.value)}
+                          className="px-2 py-1 text-xs font-semibold rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          style={{
+                            color: STATUS_COLORS[s.status] || '#6b7280',
+                          }}
+                        >
+                          <option value="Planned">Planned</option>
+                          <option value="Active">Active</option>
+                          <option value="In Progress">In Progress</option>
+                          <option value="Review">Review</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Closed">Closed</option>
+                        </select>
+                      )}
                     </td>
                     <td className="p-4 text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {formatDate(s.startDate)}
@@ -160,6 +195,20 @@ export function ProjectSprintsTable({ projectId }: ProjectSprintsTableProps) {
                     <td className="p-4 text-gray-600 dark:text-gray-400">
                       {s.estimatedHours || 0}h
                     </td>
+                    {userRole !== 'viewer' && (
+                      <td className="p-4">
+                        <button
+                          onClick={() => {
+                            setEditingSprint(s);
+                            setIsModalOpen(true);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                          title="Edit Sprint"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -170,9 +219,13 @@ export function ProjectSprintsTable({ projectId }: ProjectSprintsTableProps) {
 
       <SprintModal 
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingSprint(null);
+        }}
         onSuccess={fetchSprintsList}
         projectId={projectId}
+        editSprint={editingSprint}
       />
     </>
   );

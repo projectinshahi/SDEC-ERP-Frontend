@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/Button';
 import { X } from 'lucide-react';
-import { createSprint, updateSprint, type Sprint } from '@/lib/api/sprints';
+import { createBoardApi, updateBoardApi, type Board as Sprint } from '@/lib/api/kanban';
 
 interface SprintModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  editSprint?: Sprint | null;
+  editSprint?: Sprint | any | null;
   projectId?: string;
 }
 
@@ -65,10 +65,11 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId 
     setError(null);
 
     try {
+      const { id: _id, ...dataToSave } = formData;
       if (editSprint) {
-        await updateSprint(editSprint.id, formData);
+        await updateBoardApi(Number(editSprint.id), { ...dataToSave, estimatedHours: Number(formData.estimatedHours), capacity: Number(formData.capacity) });
       } else {
-        await createSprint(formData);
+        await createBoardApi({ ...dataToSave, estimatedHours: Number(formData.estimatedHours), capacity: Number(formData.capacity) });
       }
       onSuccess();
       onClose();

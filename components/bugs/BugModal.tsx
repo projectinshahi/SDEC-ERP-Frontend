@@ -4,14 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/ui/InputField';
-import { Bug as BugIcon, AlertTriangle, FileText, User } from 'lucide-react';
-import type { Bug } from '@/lib/api/bugs';
+import { Bug as BugIcon, AlertTriangle, FileText, User, X } from 'lucide-react';
+import { FileUploader, QueuedFile } from './FileUploader';
+import type { Bug, BugAttachment } from '@/lib/api/bugs';
 import type { UserDbResponse } from '@/lib/api/users';
+import { fetchBugAttachments, deleteBugAttachment } from '@/lib/api/bugs';
 
 interface BugModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Bug>) => void;
+  onSubmit: (data: Partial<Bug>, files: QueuedFile[]) => void;
   editBug?: Bug | null;
   isSubmitting?: boolean;
   users?: UserDbResponse[];
@@ -35,6 +37,10 @@ export function BugModal({
     reportedBy: '',
   });
 
+  const [queuedFiles, setQueuedFiles] = useState<QueuedFile[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<BugAttachment[]>([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -46,6 +52,17 @@ export function BugModal({
         assignedTo: editBug?.assignedTo || '',
         reportedBy: editBug?.reportedBy || '',
       });
+      setQueuedFiles([]);
+      
+      if (editBug?.id) {
+        setLoadingAttachments(true);
+        fetchBugAttachments(editBug.id)
+          .then(setExistingAttachments)
+          .catch(console.error)
+          .finally(() => setLoadingAttachments(false));
+      } else {
+        setExistingAttachments([]);
+      }
     }
   }, [isOpen, editBug]);
 
@@ -55,7 +72,18 @@ export function BugModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit(formData, queuedFiles);
+  };
+
+  const handleDeleteAttachment = async (attachmentId: number) => {
+    if (!editBug?.id) return;
+    try {
+      await deleteBugAttachment(editBug.id, attachmentId);
+      setExistingAttachments(prev => prev.filter(a => a.id !== attachmentId));
+    } catch (error) {
+      console.error('Failed to delete attachment', error);
+      alert('Failed to delete attachment. You may not have permission.');
+    }
   };
 
   const isFormValid = formData.title?.trim().length;
@@ -97,6 +125,42 @@ export function BugModal({
               disabled={isSubmitting}
             />
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-sm font-semibold text-gray-700">
+            Attachments
+          </label>
+          <FileUploader files={queuedFiles} onChange={setQueuedFiles} />
+          
+          {editBug && existingAttachments.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase">Existing Attachments</h4>
+              <ul className="space-y-2">
+                {existingAttachments.map(att => (
+                  <li key={att.id} className="flex items-center justify-between p-2 border border-gray-100 rounded-lg bg-gray-50">
+                    <div className="flex flex-col overflow-hidden truncate">
+                      <span className="text-sm font-medium text-gray-700 truncate">{att.file_name}</span>
+                      <span className="text-xs text-gray-500">
+                        {(att.file_size / 1024).toFixed(1)} KB • {new Date(att.uploaded_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAttachment(att.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 bg-white hover:bg-red-50 rounded-full shadow-sm border border-gray-200 transition-colors ml-2"
+                      title="Remove Attachment"
+                    >
+                      <X className="w-4 h-4 text-gray-500 hover:text-red-600" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {loadingAttachments && (
+            <p className="text-xs text-gray-400 mt-2">Loading existing attachments...</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
