@@ -22,8 +22,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Only fetch projects if the user is logged in
-    if (!user) {
+    // Only fetch projects if the user is logged in and doesn't need to change password
+    if (!user || user.mustChangePassword) {
       setProjects([]);
       setActiveProjectState(null);
       setIsLoading(false);

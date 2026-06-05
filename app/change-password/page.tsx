@@ -26,7 +26,7 @@ function getPasswordStrength(password: string): { score: number; label: string; 
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: isAuthLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading, logout, updateUser } = useAuth();
   
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -103,13 +103,13 @@ export default function ChangePasswordPage() {
       // Update local storage user state
       if (user) {
         const updatedUser = { ...user, mustChangePassword: false };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        updateUser(updatedUser);
       }
 
       toast.success('Password updated successfully!');
       
-      // Force page reload to re-initialize auth state with mustChangePassword = false
-      window.location.href = '/dashboard';
+      // Redirect to dashboard now that password is changed
+      router.push('/dashboard');
     } catch (err: any) {
       console.error('[ChangePassword] Error:', err);
       setError(err.response?.data?.error || err.message || 'An error occurred while changing password.');
