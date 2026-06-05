@@ -1,8 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
+import dynamic from 'next/dynamic';
+import { useDropzone } from 'react-dropzone';
+import { TaskAttachment, uploadTaskAttachment, deleteTaskAttachment } from '@/lib/api/kanban';
+import { X, UploadCloud, FileIcon, Loader2, Paperclip } from 'lucide-react';
+
+const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
 
 export interface Task {
   id: string;
@@ -14,6 +20,7 @@ export interface Task {
   dueDate: string;
   storyPoints?: number;
   originTaskId?: string;
+  attachments?: TaskAttachment[];
 }
 
 export interface TaskFormData {
@@ -59,6 +66,8 @@ export function CreateTaskModal({
 
   const [formData, setFormData] = useState<TaskFormData>(initialFormState);
   const [errors, setErrors] = useState<Partial<Record<keyof TaskFormData, string>>>({});
+  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
 
   // Reset form when editTask changes or modal opens
   useEffect(() => {
@@ -75,6 +84,7 @@ export function CreateTaskModal({
             storyPoints: editTask.storyPoints || 0,
             originTaskId: editTask.originTaskId,
           });
+          setAttachments(editTask.attachments || []);
         } else {
           setFormData({
             title: '',
@@ -85,8 +95,10 @@ export function CreateTaskModal({
             dueDate: new Date().toISOString().split('T')[0],
             storyPoints: 0,
           });
+          setAttachments([]);
         }
         setErrors({});
+        setUploadingFiles([]);
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -132,7 +144,55 @@ export function CreateTaskModal({
   const handleClose = () => {
     setFormData(initialFormState);
     setErrors({});
+    setAttachments([]);
+    setUploadingFiles([]);
     onClose();
+  };
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (!editTask || !editTask.id) {
+      alert("Please create the task first before uploading files.");
+      return;
+    }
+    
+    for (const file of acceptedFiles) {
+      setUploadingFiles((prev) => [...prev, file.name]);
+      
+      const form = new FormData();
+      form.append('files', file);
+      
+      try {
+        const res = await uploadTaskAttachment(editTask.id, form);
+        if (res.success && res.attachments) {
+          setAttachments((prev) => [...prev, ...res.attachments]);
+        }
+      } catch (err) {
+        console.error('Failed to upload file:', file.name, err);
+      } finally {
+        setUploadingFiles((prev) => prev.filter(name => name !== file.name));
+      }
+    }
+  }, [editTask]);
+
+  const { getRootProps, getInputProps, open } = useDropzone({ 
+    onDrop,
+    accept: {
+      'image/*': [],
+      'application/pdf': []
+    },
+    maxSize: 50 * 1024 * 1024,
+    noClick: true,
+    noKeyboard: true
+  });
+
+  const handleDeleteAttachment = async (attachmentId: number) => {
+    if (!editTask || !editTask.id) return;
+    try {
+      await deleteTaskAttachment(editTask.id, attachmentId);
+      setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+    } catch (error) {
+      console.error('Failed to delete attachment', error);
+    }
   };
 
   return (
@@ -143,26 +203,22 @@ export function CreateTaskModal({
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Read-Only Task ID */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Task ID
-          </label>
-          <div className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500 font-mono flex items-center justify-between cursor-not-allowed">
-            {editTask && editTask.id !== '' ? (
+        {/* Read-Only Task ID (Only shown during edit) */}
+        {editTask && editTask.id && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Task ID
+            </label>
+            <div className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500 font-mono flex items-center justify-between cursor-not-allowed">
               <span className={!editTask.originTaskId ? 'italic opacity-60' : ''}>
                 {editTask.originTaskId || 'N/A (Legacy Task)'}
               </span>
-            ) : (
-              <span className="italic opacity-60">Pending Generation...</span>
-            )}
-            <span className="text-xs text-gray-400 font-sans tracking-wide uppercase px-2 py-0.5 bg-gray-200/50 rounded-md">
-              {editTask && editTask.id !== '' 
-                ? (editTask.originTaskId ? 'Auto-generated' : 'Not Available') 
-                : 'Auto-generated on Save'}
-            </span>
+              <span className="text-xs text-gray-400 font-sans tracking-wide uppercase px-2 py-0.5 bg-gray-200/50 rounded-md">
+                {editTask.originTaskId ? 'Auto-generated' : 'Not Available'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Title */}
         <div>
@@ -180,22 +236,82 @@ export function CreateTaskModal({
           {errors.title && <p className="text-red-500 text-xs mt-1 font-medium">{errors.title}</p>}
         </div>
 
-        {/* Description */}
-        <div>
-          <label htmlFor="task-desc" className="block text-sm font-medium text-gray-700 mb-1">
-            Description <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            id="task-desc"
-            rows={3}
+        {/* Description & Attachments Button */}
+        <div data-color-mode="light">
+          <div className="flex items-end justify-between mb-1">
+            <label htmlFor="task-desc" className="block text-sm font-medium text-gray-700">
+              Description <span className="text-red-500">*</span>
+            </label>
+            {editTask && editTask.id ? (
+              <div {...getRootProps()}>
+                <input {...getInputProps()} />
+                <button 
+                  type="button" 
+                  onClick={open} 
+                  className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded-md transition-colors"
+                >
+                  <Paperclip size={14} /> Add Attachment
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs text-gray-400 italic">Save task to add attachments</span>
+            )}
+          </div>
+          <MDEditor
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
-            placeholder="Provide a brief summary of the task details..."
+            onChange={(val) => setFormData({ ...formData, description: val || '' })}
+            preview="edit"
+            height={200}
+            className="w-full"
           />
           {errors.description && (
             <p className="text-red-500 text-xs mt-1 font-medium">{errors.description}</p>
           )}
+
+          {/* Uploading Files Indicator */}
+            {uploadingFiles.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {uploadingFiles.map(name => (
+                  <div key={name} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded-md">
+                    <Loader2 className="animate-spin w-4 h-4 text-blue-500" />
+                    <span>Uploading {name}...</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Existing Attachments List */}
+            {attachments.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {attachments.map(att => (
+                  <div key={att.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      {att.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) || att.file_url.includes('image/upload') ? (
+                        <img src={att.file_url.startsWith('http') ? att.file_url : process.env.NEXT_PUBLIC_API_URL + att.file_url} alt={att.file_name} className="w-10 h-10 object-cover rounded-md border border-gray-200" />
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-100 flex items-center justify-center rounded-md border border-gray-200">
+                          <FileIcon className="w-5 h-5 text-gray-500" />
+                        </div>
+                      )}
+                      <div className="truncate">
+                        <a href={att.file_url.startsWith('http') ? att.file_url : process.env.NEXT_PUBLIC_API_URL + att.file_url} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:underline truncate block">
+                          {att.file_name}
+                        </a>
+                        <span className="text-xs text-gray-500">{(att.file_size / 1024).toFixed(1)} KB • by {att.uploader?.name || 'Unknown'}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAttachment(att.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                      title="Remove attachment"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
         </div>
 
         {/* Row for Priority & Status */}
@@ -311,6 +427,8 @@ export function CreateTaskModal({
             )}
           </div>
         </div>
+
+        {/* Attachments Section used to be here, moved up */}
 
         {/* Form Controls */}
         <div className="flex gap-3 pt-5 border-t border-gray-100 mt-6">

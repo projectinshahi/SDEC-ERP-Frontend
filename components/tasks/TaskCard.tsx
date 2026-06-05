@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Edit, Trash2, AlertTriangle, Clock, Copy, GitMerge } from 'lucide-react';
+import { Calendar, Edit, Trash2, AlertTriangle, Clock, Copy, GitMerge, Paperclip } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { truncate, formatDate } from '@/lib/utils';
 import type { Task } from './CreateTaskModal';
@@ -261,6 +261,12 @@ export function TaskCard({
               <Badge variant="default" className="text-[10px] px-2 py-0.5 font-bold bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
                 {task.storyPoints} {task.storyPoints === 1 ? 'pt' : 'pts'}
               </Badge>
+            )}
+            {task.attachments && task.attachments.length > 0 && (
+              <div className="flex items-center gap-1 text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-medium" title={`${task.attachments.length} attachment(s)`}>
+                <Paperclip size={10} />
+                <span>{task.attachments.length}</span>
+              </div>
             )}
           </div>
 

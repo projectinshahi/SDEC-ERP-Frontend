@@ -1,6 +1,17 @@
 import { apiClient } from './api-client';
 import type { Task } from '@/components/tasks/CreateTaskModal';
 
+export interface TaskAttachment {
+  id: number;
+  task_id: string;
+  file_name: string;
+  file_url: string;
+  file_size: number;
+  uploaded_by: number;
+  uploaded_at: string;
+  uploader?: { id: number; name: string };
+}
+
 export interface BoardColumn {
   id: string;
   label: string;
@@ -234,5 +245,23 @@ export async function fetchBoardAnalytics(boardId: number, filters?: BoardAnalyt
   }
   
   const response = await apiClient.get<any>(url);
+  return response.data;
+}
+
+// ─────────────────────────────────────────────
+// TASK ATTACHMENTS API
+// ─────────────────────────────────────────────
+
+export async function uploadTaskAttachment(taskId: string, formData: FormData): Promise<any> {
+  const response = await apiClient.post(`/kanban/tasks/${taskId}/attachments`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+}
+
+export async function deleteTaskAttachment(taskId: string, attachmentId: number): Promise<any> {
+  const response = await apiClient.delete(`/kanban/tasks/${taskId}/attachments/${attachmentId}`);
   return response.data;
 }

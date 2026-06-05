@@ -136,24 +136,24 @@ class ApiClientService {
     }
   }
 
-  public get<T>(url: string, params?: unknown) {
-    return this.client.get<T>(url, { params });
+  public get<T>(url: string, config?: InternalAxiosRequestConfig | any) {
+    return this.client.get<T>(url, config);
   }
 
-  public post<T>(url: string, data?: unknown) {
-    return this.client.post<T>(url, data);
+  public post<T>(url: string, data?: unknown, config?: InternalAxiosRequestConfig | any) {
+    return this.client.post<T>(url, data, config);
   }
 
-  public put<T>(url: string, data?: unknown) {
-    return this.client.put<T>(url, data);
+  public put<T>(url: string, data?: unknown, config?: InternalAxiosRequestConfig | any) {
+    return this.client.put<T>(url, data, config);
   }
 
-  public patch<T>(url: string, data?: unknown) {
-    return this.client.patch<T>(url, data);
+  public patch<T>(url: string, data?: unknown, config?: InternalAxiosRequestConfig | any) {
+    return this.client.patch<T>(url, data, config);
   }
 
-  public delete<T>(url: string) {
-    return this.client.delete<T>(url);
+  public delete<T>(url: string, config?: InternalAxiosRequestConfig | any) {
+    return this.client.delete<T>(url, config);
   }
 }
 
