@@ -351,7 +351,7 @@ export default function ProjectDetailsPage() {
               </Card>
 
               {/* Sprint Tracking Table */}
-              <ProjectSprintsTable projectId={projectId} />
+              <ProjectSprintsTable projectId={projectId} userRole={currentUserRole} />
             </div>
 
             {/* Sidebar metadata card */}

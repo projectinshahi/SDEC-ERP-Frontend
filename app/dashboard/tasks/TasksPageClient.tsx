@@ -202,7 +202,7 @@ export function TasksPageClient() {
       onConfirm: async (newName?: string) => {
         if (newName && newName.trim() !== '' && newName !== currentBoard.name) {
           try {
-            const updated = await updateBoardApi(selectedBoardId, newName.trim());
+            const updated = await updateBoardApi(selectedBoardId, { name: newName.trim() });
             setBoards(prev => prev.map(b => b.id === selectedBoardId ? { ...b, name: updated.name } : b));
           } catch (err) {
             console.error('Failed to rename board', err);

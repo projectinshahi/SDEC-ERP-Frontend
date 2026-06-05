@@ -77,7 +77,7 @@ export function CreateBoardModal({ isOpen, onClose, onSuccess }: CreateBoardModa
     setSuccess(null);
 
     try {
-      const res = await createBoardApi(name, activeProject!.id);
+      const res = await createBoardApi({ name, projectId: activeProject!.id });
       setSuccess('Board created successfully!');
       
       // Delay closing to show success toast

@@ -1,4 +1,6 @@
 import { apiClient as api } from './api-client';
+import axios from 'axios';
+import { API_BASE_URL } from '@/lib/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface Bug {
@@ -12,6 +14,36 @@ export interface Bug {
   reportedBy: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BugDiscussionMessage {
+  id: number;
+  bug_id: number;
+  sender_id: number;
+  message: string;
+  created_at: string;
+  updated_at: string;
+  sender: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+export interface BugAttachment {
+  id: number;
+  bug_id: number;
+  file_name: string;
+  file_url: string;
+  file_size: number;
+  description?: string | null;
+  uploaded_by: number;
+  uploaded_at: string;
+  uploader?: {
+    id: number;
+    name: string;
+    email: string;
+  };
 }
 
 export interface BugPagination {
@@ -92,4 +124,49 @@ export const updateBug = async (id: number, data: Partial<Bug>): Promise<Bug> =>
 
 export const deleteBug = async (id: number): Promise<void> => {
   await api.delete<{ success: boolean; message: string }>(`/bugs/${id}`);
+};
+
+// ── Discussion & Attachment APIs ─────────────────────────────────────────────
+
+export const fetchBugDiscussions = async (bugId: number): Promise<BugDiscussionMessage[]> => {
+  const response = await api.get<BugDiscussionMessage[]>(`/bugs/${bugId}/discussions`);
+  return response.data;
+};
+
+export const addBugMessage = async (bugId: number, message: string): Promise<BugDiscussionMessage> => {
+  const response = await api.post<{ success: boolean; message: BugDiscussionMessage }>(`/bugs/${bugId}/discussions`, { message });
+  return response.data.message;
+};
+
+export const deleteMessage = async (bugId: number, messageId: number): Promise<void> => {
+  await api.delete(`/bugs/${bugId}/discussions/${messageId}`);
+};
+
+export const fetchBugAttachments = async (bugId: number): Promise<BugAttachment[]> => {
+  const response = await api.get<{ success: boolean; attachments: BugAttachment[] }>(`/bugs/${bugId}/attachments`);
+  return response.data.attachments;
+};
+
+// Use fetch API or axios to upload form data since api-client doesn't wrap FormData well without custom config headers
+export const uploadBugAttachments = async (bugId: number, formData: FormData): Promise<BugAttachment[]> => {
+  const token = localStorage.getItem('authToken');
+  const response = await axios.post<{ success: boolean; attachments: BugAttachment[] }>(
+    `${API_BASE_URL}/bugs/${bugId}/attachments`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
+      }
+    }
+  );
+  return response.data.attachments;
+};
+
+export const deleteBugAttachment = async (bugId: number, attachmentId: number): Promise<void> => {
+  await api.delete(`/bugs/${bugId}/attachments/${attachmentId}`);
+};
+
+export const markBugDiscussionAsRead = async (bugId: number): Promise<void> => {
+  await api.post(`/bugs/${bugId}/discussions/read`, {});
 };
