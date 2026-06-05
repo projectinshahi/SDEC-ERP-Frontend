@@ -23,8 +23,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
     if (!isLoading) {
       if (!isAuthenticated) {
         router.replace('/login');
-      } else if (user?.mustChangePassword && pathname !== '/dashboard/profile') {
-        router.replace('/dashboard/profile');
+      } else if (user?.mustChangePassword && pathname !== '/change-password') {
+        router.replace('/change-password');
       }
     }
   }, [isLoading, isAuthenticated, user, router, pathname]);

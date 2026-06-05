@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { apiClient } from '@/lib/api/api-client';
 import { InputField } from '@/components/ui/InputField';
@@ -25,7 +26,8 @@ function getPasswordStrength(password: string): { score: number; label: string; 
 }
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: isAuthLoading, updateUser } = useAuth();
   
   // Profile Form State
   const [profileData, setProfileData] = useState({
@@ -123,7 +125,7 @@ export default function ProfilePage() {
       
       // Update local storage user state with new name
       const updatedUser = { ...user, name: profileData.name };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      updateUser(updatedUser);
       
     } catch (err: any) {
       console.error('[Profile] Error:', err);
@@ -162,12 +164,15 @@ export default function ProfilePage() {
 
       // Update local storage user state if needed
       const updatedUser = { ...user, mustChangePassword: false };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      updateUser(updatedUser);
 
       toast.success('Password changed successfully!');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      
+      // Redirect to dashboard now that password is changed
+      router.push('/dashboard');
     } catch (err: any) {
       console.error('[ChangePassword] Error:', err);
       setPasswordError(err.response?.data?.error || err.message || 'An error occurred while changing password.');
