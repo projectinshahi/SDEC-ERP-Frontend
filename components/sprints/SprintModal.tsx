@@ -22,7 +22,7 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId 
     status: 'Planned',
     estimatedHours: 0,
     capacity: 0,
-    projectId: projectId || null,
+    projectId: projectId || undefined,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId 
         status: editSprint.status,
         estimatedHours: editSprint.estimatedHours || 0,
         capacity: editSprint.capacity || 0,
-        projectId: editSprint.projectId || projectId || null,
+        projectId: editSprint.projectId || projectId || undefined,
       });
     } else {
       setFormData({
@@ -52,7 +52,7 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId 
         status: 'Planned',
         estimatedHours: 0,
         capacity: 0,
-        projectId: projectId || null,
+        projectId: projectId || undefined,
       });
     }
   }, [editSprint, isOpen, projectId]);
