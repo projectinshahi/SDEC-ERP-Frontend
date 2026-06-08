@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Calendar, User, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { Project } from './ProjectCard';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 interface ProjectListProps {
   projects: Project[];
@@ -35,6 +36,9 @@ const getAvatarBgColor = (name: string) => {
 
 export function ProjectList({ projects, onEdit, onArchive, onRestore, onDelete }: ProjectListProps) {
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canEdit = hasPermission('project.edit');
+  const canDelete = hasPermission('project.delete');
 
   const formatDate = (dateStr: string) => {
     try {
@@ -167,7 +171,7 @@ export function ProjectList({ projects, onEdit, onArchive, onRestore, onDelete }
                   <div className="flex items-center justify-center gap-1.5">
                     {project.is_archived ? (
                       <>
-                        {onRestore && (
+                        {onRestore && canDelete && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -182,7 +186,7 @@ export function ProjectList({ projects, onEdit, onArchive, onRestore, onDelete }
                             <ArchiveRestore size={14} className="stroke-[2.5]" />
                           </button>
                         )}
-                        {onDelete && (
+                        {onDelete && canDelete && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -200,7 +204,7 @@ export function ProjectList({ projects, onEdit, onArchive, onRestore, onDelete }
                       </>
                     ) : (
                       <>
-                        {onEdit && (
+                        {onEdit && canEdit && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -215,7 +219,7 @@ export function ProjectList({ projects, onEdit, onArchive, onRestore, onDelete }
                             <Pencil size={14} className="stroke-[2.5]" />
                           </button>
                         )}
-                        {onArchive && (
+                        {onArchive && canDelete && (
                           <button
                             type="button"
                             onClick={(e) => {

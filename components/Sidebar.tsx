@@ -22,10 +22,13 @@ import {
   CalendarDays,
   FolderDot,
   ChevronDown,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
 import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
 import { useProject } from '@/lib/context/ProjectContext';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 const iconMap = {
   LayoutDashboard,
@@ -37,6 +40,8 @@ const iconMap = {
   Rocket,
   AlertTriangle,
   CalendarDays,
+  Target,
+  TrendingUp,
 } as const;
 
 export interface SidebarItem {
@@ -61,6 +66,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { projects, activeProject, setActiveProjectId, isLoading } = useProject();
+  const { hasPermission } = usePermissions();
 
   // Desktop collapse state (persisted in localStorage)
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -148,7 +154,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
         </div>
 
         {/* Project Selector */}
-        {user && (
+        {user && hasPermission('project.view') && (
           <div className={classNames(
             "px-4 py-3 border-b border-zinc-900/60 transition-all duration-300",
             isCollapsed ? "opacity-0 invisible h-0 overflow-hidden py-0 border-none" : "opacity-100 visible"

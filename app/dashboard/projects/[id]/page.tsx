@@ -8,6 +8,9 @@ import { Button } from '@/components/Button';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Skeleton } from '@/components/Skeleton';
+import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { ROUTES } from '@/lib/constants';
 import { 
   ArrowLeft, 
@@ -51,6 +54,7 @@ export default function ProjectDetailsPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
 
   const loadProjectAndMembers = async () => {
     setIsLoading(true);
@@ -136,7 +140,11 @@ export default function ProjectDetailsPage() {
     }
   }
 
-  const canManageMembers = currentUserRole === 'admin';
+  const canManageMembers = currentUserRole === 'admin' && hasPermission('project.manage_members');
+  const canEditProject = hasPermission('project.edit') && currentUserRole !== 'viewer';
+  const canViewSettings = canEditProject || canManageMembers;
+  const canImportBacklog = hasPermission('project.create') && hasPermission('project.edit') && currentUserRole !== 'viewer';
+  const canViewAnalytics = hasPermission('project.analytics');
 
   useEffect(() => {
     if (projectId) {
@@ -217,7 +225,7 @@ export default function ProjectDetailsPage() {
   };
 
   return (
-    <>
+    <PermissionPageGuard require="project.view" module="project">
       {/* Breadcrumb Navigation */}
       <div className="mb-6">
         <Breadcrumb
@@ -311,26 +319,26 @@ export default function ProjectDetailsPage() {
               >
                 {project.status} status
               </Badge>
-              {currentUserRole !== 'viewer' && (
-                <>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={() => setIsImportModalOpen(true)}
-                    className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
-                  >
-                    <Upload size={14} />
-                    Import Backlog
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
-                    className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
-                  >
-                    Settings
-                  </Button>
-                </>
+              {canImportBacklog && (
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+                >
+                  <Upload size={14} />
+                  Import Backlog
+                </Button>
+              )}
+              {canViewSettings && (
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
+                  className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+                >
+                  Settings
+                </Button>
               )}
             </div>
           </div>
@@ -395,7 +403,9 @@ export default function ProjectDetailsPage() {
               </Card>
 
               {/* Minimal Sprint Stats Sidebar */}
-              <SprintStatsSidebar projectId={projectId} />
+              {canViewAnalytics && (
+                <SprintStatsSidebar projectId={projectId} />
+              )}
             </div>
           </div>
         </div>
@@ -456,6 +466,6 @@ export default function ProjectDetailsPage() {
       />
 
       {/* Floating Dynamic status toast message alerts */}
-    </>
+    </PermissionPageGuard>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,13 +14,15 @@ import { TableSkeleton } from '@/components/Skeleton';
 import {
   Calendar, Plus, X, CheckCircle2, Info, AlertTriangle,
   Search, Users, Clock, MapPin, Video, Edit, Trash2,
-  CalendarDays, CheckCircle, ListTodo,
+  CalendarDays, CheckCircle, ListTodo, Eye
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
+import { useProject } from '@/lib/context/ProjectContext';
+import { MeetingDetailsModal } from '@/components/meetings/MeetingDetailsModal';
 import {
   getMeetings as apiGetMeetings,
   createMeeting as apiCreateMeeting,
@@ -28,15 +30,12 @@ import {
   deleteMeeting as apiDeleteMeeting,
   type Meeting,
 } from '@/lib/api/meetings';
-import { fetchProjects } from '@/lib/api/projects';
 import { fetchUsers, type UserDbResponse } from '@/lib/api/users';
-import type { Project } from '@/components/projects/ProjectCard';
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 const schema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().optional(),
-  projectId: z.string().min(1, 'Project is required'),
   meetingType: z.enum([
     'DAILY_STANDUP', 'SPRINT_PLANNING', 'SPRINT_REVIEW',
     'RETROSPECTIVE', 'CLIENT_MEETING', 'INTERNAL_DISCUSSION',
@@ -44,13 +43,13 @@ const schema = z.object({
   ]),
   meetingDate: z.string().min(1, 'Date is required'),
   startTime: z.string().min(1, 'Start time is required'),
-  endTime: z.string().min(1, 'End time is required'),
-  location: z.string().optional(),
+  duration: z.string().min(1, 'Duration is required'),
+  customDuration: z.string().optional(),
   meetingLink: z.string().optional(),
-  organizerId: z.string().min(1, 'Organizer is required'),
   attendees: z.string().optional(),
-  notes: z.string().optional(),
-  status: z.enum(['SCHEDULED', 'ONGOING', 'COMPLETED', 'CANCELLED']),
+}).refine(data => data.duration !== 'CUSTOM' || (data.customDuration && parseInt(data.customDuration) > 0), {
+  message: 'Valid custom duration is required',
+  path: ['customDuration'],
 });
 type FormData = z.infer<typeof schema>;
 
@@ -73,7 +72,7 @@ const TYPE_COLORS: Record<string, string> = {
   OTHER: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
 };
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'default'> = {
-  SCHEDULED: 'info', ONGOING: 'warning', COMPLETED: 'success', CANCELLED: 'default',
+  UPCOMING: 'info', ONGOING: 'warning', COMPLETED: 'success', CANCELLED: 'default',
 };
 
 const inputCls = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400';
@@ -83,9 +82,9 @@ export default function MeetingsClient() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { confirm } = useConfirm();
+  const { activeProject } = useProject();
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -94,6 +93,10 @@ export default function MeetingsClient() {
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+
   // Attendees multi-select state — array of user IDs
   const [selectedAttendees, setSelectedAttendees] = useState<number[]>([]);
 
@@ -101,23 +104,37 @@ export default function MeetingsClient() {
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { meetingType: 'DAILY_STANDUP', status: 'SCHEDULED' },
+    defaultValues: { meetingType: 'DAILY_STANDUP', duration: '30' },
   });
+
+  const watchStartTime = watch('startTime');
+  const watchDuration = watch('duration');
+  const watchCustomDuration = watch('customDuration');
+
+  // Calculate dynamic end time for display
+  const dynamicEndTime = useMemo(() => {
+    if (!watchStartTime || !watchDuration) return '';
+    const dur = watchDuration === 'CUSTOM' ? parseInt(watchCustomDuration || '0') : parseInt(watchDuration);
+    if (isNaN(dur) || dur <= 0) return '';
+    const [h, m] = watchStartTime.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return '';
+    const d = new Date();
+    d.setHours(h, m + dur);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }, [watchStartTime, watchDuration, watchCustomDuration]);
 
   // ── Load data ──────────────────────────────────────────────────────────────
   const loadAll = async () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [mtgs, projs, usrs] = await Promise.all([
+      const [mtgs, usrs] = await Promise.all([
         apiGetMeetings(),
-        fetchProjects().catch(() => [] as Project[]),
         fetchUsers().catch(() => [] as UserDbResponse[]),
       ]);
       setMeetings(mtgs);
-      setProjects(projs);
       setUsers(usrs);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load meetings from server.';
@@ -132,34 +149,64 @@ export default function MeetingsClient() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadAll(); }, []);
 
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const processedMeetings = useMemo(() => {
+    return meetings.map(m => {
+      const dateStr = m.meetingDate.split('T')[0];
+      const start = new Date(`${dateStr}T${m.startTime}:00`);
+      let computedStatus = 'UPCOMING';
+      if (m.endTime) {
+        const end = new Date(`${dateStr}T${m.endTime}:00`);
+        if (now < start) computedStatus = 'UPCOMING';
+        else if (now >= start && now <= end) computedStatus = 'ONGOING';
+        else computedStatus = 'COMPLETED';
+      } else {
+        if (now < start) computedStatus = 'UPCOMING';
+        else computedStatus = 'ONGOING';
+      }
+      return { ...m, computedStatus };
+    });
+  }, [meetings, now]);
+
   // ── Filtered list ──────────────────────────────────────────────────────────
-  const filtered = meetings.filter(m => {
+  const filtered = processedMeetings.filter(m => {
     const q = searchQuery.toLowerCase();
     const matchSearch = !q ||
       m.title.toLowerCase().includes(q) ||
       (m.description ?? '').toLowerCase().includes(q) ||
       (m.project?.name ?? '').toLowerCase().includes(q);
     const matchType = typeFilter === 'ALL' || m.meetingType === typeFilter;
-    const matchStatus = statusFilter === 'ALL' || m.status === statusFilter;
+    const matchStatus = statusFilter === 'ALL' || m.computedStatus === statusFilter;
     return matchSearch && matchType && matchStatus;
   });
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = {
-    total: meetings.length,
-    scheduled: meetings.filter(m => m.status === 'SCHEDULED').length,
-    completed: meetings.filter(m => m.status === 'COMPLETED').length,
-    actionItems: meetings.reduce((n, m) => n + (m.actionItems?.filter(a => a.status === 'OPEN').length ?? 0), 0),
+    total: processedMeetings.length,
+    scheduled: processedMeetings.filter(m => m.computedStatus === 'UPCOMING').length,
+    completed: processedMeetings.filter(m => m.computedStatus === 'COMPLETED').length,
+    actionItems: processedMeetings.reduce((n, m) => n + (m.actionItems?.filter(a => a.status === 'OPEN').length ?? 0), 0),
   };
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
   const openCreate = () => {
+    // Check if we have an active project
+    if (!activeProject) {
+      toast('Please select a project from the sidebar to create meetings', 'warning');
+      return;
+    }
+
     setEditingMeeting(null);
     setSelectedAttendees([]);
     reset({
-      title: '', description: '', projectId: '', meetingType: 'DAILY_STANDUP',
-      meetingDate: '', startTime: '', endTime: '', location: '', meetingLink: '',
-      organizerId: user?.id ?? '', attendees: '', notes: '', status: 'SCHEDULED',
+      title: '', description: '', meetingType: 'DAILY_STANDUP',
+      meetingDate: '', startTime: '', duration: '30', customDuration: '', meetingLink: '',
+      attendees: '',
     });
     setIsModalOpen(true);
   };
@@ -167,28 +214,48 @@ export default function MeetingsClient() {
   const openEdit = (m: Meeting) => {
     setEditingMeeting(m);
     setSelectedAttendees(Array.isArray(m.attendees) ? m.attendees.map(Number) : []);
+    const start = new Date(`1970-01-01T${m.startTime}:00Z`);
+    const end = new Date(`1970-01-01T${m.endTime}:00Z`);
+    let diff = (end.getTime() - start.getTime()) / 60000;
+    if (diff <= 0) diff += 24 * 60;
+    const durStr = ['15', '30', '45', '60', '120'].includes(String(diff)) ? String(diff) : 'CUSTOM';
+    const customDurStr = durStr === 'CUSTOM' ? String(diff) : '';
+
     reset({
       title: m.title,
       description: m.description ?? '',
-      projectId: m.projectId,
       meetingType: m.meetingType as FormData['meetingType'],
       meetingDate: m.meetingDate.split('T')[0],
       startTime: m.startTime,
-      endTime: m.endTime,
-      location: m.location ?? '',
+      duration: durStr,
+      customDuration: customDurStr,
       meetingLink: m.meetingLink ?? '',
-      organizerId: String(m.organizerId),
       attendees: (m.attendees ?? []).join(', '),
-      notes: m.notes ?? '',
-      status: m.status as FormData['status'],
     });
     setIsModalOpen(true);
   };
 
+  const openDetails = (m: Meeting) => {
+    setSelectedMeeting(m);
+    setIsDetailsModalOpen(true);
+  };
+
   // ── Submit ─────────────────────────────────────────────────────────────────
   const onSubmit = async (data: FormData) => {
+    // Validate active project exists for new meetings
+    if (!editingMeeting && !activeProject) {
+      toast('Please select a project from the sidebar', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      const dur = data.duration === 'CUSTOM' ? parseInt(data.customDuration || '0') : parseInt(data.duration);
+      const [h, m] = data.startTime.split(':').map(Number);
+      const d = new Date();
+      d.setHours(h, m + dur);
+      const computedEndTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
       if (editingMeeting) {
         const updated = await apiUpdateMeeting(editingMeeting.id, {
           title: data.title,
@@ -196,30 +263,33 @@ export default function MeetingsClient() {
           meetingType: data.meetingType,
           meetingDate: data.meetingDate,
           startTime: data.startTime,
-          endTime: data.endTime,
-          location: data.location || undefined,
+          endTime: computedEndTime,
           meetingLink: data.meetingLink || undefined,
           attendees: selectedAttendees,
-          notes: data.notes || undefined,
-          status: data.status,
         });
         setMeetings(p => p.map(m => m.id === editingMeeting.id ? updated : m));
         toast(`"${data.title}" updated successfully!`, 'success');
       } else {
-        const created = await apiCreateMeeting({
+        // Build payload, excluding undefined values
+        const payload: any = {
           title: data.title,
-          description: data.description || undefined,
-          projectId: data.projectId,
+          projectId: activeProject!.id,
           meetingType: data.meetingType,
-          meetingDate: data.meetingDate,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          location: data.location || undefined,
-          meetingLink: data.meetingLink || undefined,
-          organizerId: parseInt(data.organizerId),
-          attendees: selectedAttendees,
-          notes: data.notes || undefined,
-        });
+          meetingDate: data.meetingDate, // Should be YYYY-MM-DD format from input[type="date"]
+          startTime: data.startTime,     // Should be HH:MM format from input[type="time"]
+          endTime: computedEndTime,      // Should be HH:MM format
+          attendees: selectedAttendees,  // Array of user IDs
+        };
+
+        // Only add optional fields if they have values
+        if (data.description && data.description.trim()) {
+          payload.description = data.description.trim();
+        }
+        if (data.meetingLink && data.meetingLink.trim()) {
+          payload.meetingLink = data.meetingLink.trim();
+        }
+
+        const created = await apiCreateMeeting(payload);
         setMeetings(p => [created, ...p]);
         toast(`"${data.title}" created successfully!`, 'success');
       }
@@ -275,8 +345,21 @@ export default function MeetingsClient() {
           <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-sm max-w-xl leading-relaxed">
             Manage project meetings, attendees, schedules, and action items.
           </p>
+          {!activeProject && (
+            <div className="mt-2 flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <Info size={14} />
+              <span className="text-xs font-medium">Select a project from the sidebar to create meetings</span>
+            </div>
+          )}
         </div>
-        <Button variant="primary" size="lg" onClick={openCreate} className="self-start sm:self-center">
+        <Button 
+          variant={activeProject ? "primary" : "secondary"} 
+          size="lg" 
+          onClick={openCreate} 
+          className="self-start sm:self-center"
+          disabled={!activeProject}
+          title={!activeProject ? "Select a project from the sidebar to create meetings" : "Create a new meeting"}
+        >
           <Plus size={18} />
           Create Meeting
         </Button>
@@ -329,10 +412,9 @@ export default function MeetingsClient() {
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm cursor-pointer">
           <option value="ALL">All Status</option>
-          <option value="SCHEDULED">Scheduled</option>
+          <option value="UPCOMING">Upcoming</option>
           <option value="ONGOING">Ongoing</option>
           <option value="COMPLETED">Completed</option>
-          <option value="CANCELLED">Cancelled</option>
         </select>
       </section>
 
@@ -358,15 +440,23 @@ export default function MeetingsClient() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-6 py-8">
-            <EmptyState
-              icon={<Calendar size={32} className="text-blue-500" />}
-              title="No meetings found"
-              description={searchQuery || typeFilter !== 'ALL' || statusFilter !== 'ALL'
-                ? 'No meetings match your filters. Try adjusting your search.'
-                : 'No meetings scheduled yet. Create your first meeting.'}
-              actionLabel={!searchQuery && typeFilter === 'ALL' && statusFilter === 'ALL' ? 'Create Meeting' : undefined}
-              onAction={!searchQuery && typeFilter === 'ALL' && statusFilter === 'ALL' ? openCreate : undefined}
-            />
+            {!activeProject ? (
+              <EmptyState
+                icon={<Info size={32} className="text-amber-500" />}
+                title="No project selected"
+                description="Please select a project from the sidebar to view and manage meetings for that project."
+              />
+            ) : (
+              <EmptyState
+                icon={<Calendar size={32} className="text-blue-500" />}
+                title="No meetings found"
+                description={searchQuery || typeFilter !== 'ALL' || statusFilter !== 'ALL'
+                  ? 'No meetings match your filters. Try adjusting your search.'
+                  : `No meetings scheduled yet for ${activeProject.name}. Create your first meeting.`}
+                actionLabel={!searchQuery && typeFilter === 'ALL' && statusFilter === 'ALL' ? 'Create Meeting' : undefined}
+                onAction={!searchQuery && typeFilter === 'ALL' && statusFilter === 'ALL' ? openCreate : undefined}
+              />
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -380,9 +470,9 @@ export default function MeetingsClient() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                 {filtered.map(m => (
-                  <tr key={m.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors group">
-                    <td className="px-4 py-3.5">
-                      <p className="font-semibold text-gray-800 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{m.title}</p>
+                  <tr key={m.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors group cursor-pointer" onClick={() => openDetails(m)}>
+                    <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                      <p className="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer transition-colors" onClick={() => openDetails(m)}>{m.title}</p>
                       {m.project?.name && <p className="text-xs text-gray-400 mt-0.5">{m.project.name}</p>}
                     </td>
                     <td className="px-4 py-3.5">
@@ -410,7 +500,7 @@ export default function MeetingsClient() {
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
-                      <Badge variant={STATUS_VARIANT[m.status] ?? 'default'}>{m.status}</Badge>
+                      <Badge variant={STATUS_VARIANT[m.computedStatus] ?? 'default'}>{m.computedStatus}</Badge>
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1.5">
@@ -444,8 +534,12 @@ export default function MeetingsClient() {
                         })()}
                       </div>
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
+                        <button onClick={() => openDetails(m)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-all" title="View Details">
+                          <Eye size={14} />
+                        </button>
                         <button onClick={() => openEdit(m)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-all" title="Edit">
                           <Edit size={14} />
@@ -463,7 +557,7 @@ export default function MeetingsClient() {
                       </div>
                     </td>
                   </tr>
-                ))} 
+                ))}
               </tbody>
             </table>
           </div>
@@ -472,12 +566,12 @@ export default function MeetingsClient() {
 
       {/* Action Items */}
       {/* <Card variant="outlined" className="overflow-hidden mb-8"> */}
-        {/* <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/60 flex items-center gap-2">
+      {/* <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/60 flex items-center gap-2">
           <ListTodo size={17} className="text-orange-500" />
           <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">Open Action Items</h2>
           <span className="ml-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">{stats.actionItems}</span>
         </div> */}
-        {/* {(() => {
+      {/* {(() => {
           const openItems: Array<{ meetingTitle: string; id: number; title: string; description: string | null; assignedTo: number; dueDate: string; status: string; priority: string; meetingId: number; createdAt: string; updatedAt: string; }> = meetings.flatMap(m =>
             (m.actionItems ?? []).filter(a => a.status !== 'COMPLETED').map(a => ({ ...a, meetingTitle: m.title }))
           );
@@ -530,6 +624,30 @@ export default function MeetingsClient() {
       <Modal isOpen={isModalOpen} onClose={() => { if (!isSubmitting) setIsModalOpen(false); }}
         title={editingMeeting ? 'Edit Meeting' : 'Create Meeting'} size="lg">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Active Project Display for Create */}
+          {!editingMeeting && activeProject && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Creating meeting for: <span className="font-semibold">{activeProject.name}</span>
+                </span>
+              </div>
+            </div>
+          )}
+          
+          {/* Project Display for Edit */}
+          {editingMeeting && editingMeeting.project && (
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Project: <span className="font-semibold">{editingMeeting.project.name}</span>
+                </span>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Meeting Title *</label>
             <input {...register('title')} placeholder="e.g. Sprint Planning Q2" className={inputCls} />
@@ -539,15 +657,7 @@ export default function MeetingsClient() {
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
             <textarea {...register('description')} rows={2} placeholder="Meeting agenda or purpose..." className={classNames(inputCls, 'resize-none')} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Project *</label>
-              <select {...register('projectId')} className={inputCls} disabled={!!editingMeeting}>
-                <option value="">Select project...</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              {errors.projectId && <p className="text-xs text-red-500 mt-1">{errors.projectId.message}</p>}
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Meeting Type *</label>
               <select {...register('meetingType')} className={inputCls}>
@@ -567,29 +677,39 @@ export default function MeetingsClient() {
               {errors.startTime && <p className="text-xs text-red-500 mt-1">{errors.startTime.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">End Time *</label>
-              <input {...register('endTime')} type="time" className={inputCls} />
-              {errors.endTime && <p className="text-xs text-red-500 mt-1">{errors.endTime.message}</p>}
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Duration *</label>
+              <select {...register('duration')} className={inputCls}>
+                <option value="15">15 Minutes</option>
+                <option value="30">30 Minutes</option>
+                <option value="45">45 Minutes</option>
+                <option value="60">1 Hour</option>
+                <option value="120">2 Hours</option>
+                <option value="CUSTOM">Custom Duration</option>
+              </select>
             </div>
           </div>
+          {watchDuration === 'CUSTOM' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Custom Duration (Minutes) *</label>
+                <input {...register('customDuration')} type="number" min="1" className={inputCls} placeholder="e.g. 90" />
+                {errors.customDuration && <p className="text-xs text-red-500 mt-1">{errors.customDuration.message}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">End Time</label>
+                <input value={dynamicEndTime} disabled className={classNames(inputCls, 'bg-gray-50 text-gray-500 cursor-not-allowed')} />
+              </div>
+            </div>
+          )}
+          {watchDuration !== 'CUSTOM' && (
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Calculated End Time:</span> {dynamicEndTime}
+            </div>
+          )}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Organizer *</label>
-            <select {...register('organizerId')} className={inputCls}>
-              <option value="">Select organizer...</option>
-              {users.map(u => <option key={u.id} value={String(u.id)}>{u.name} ({u.email})</option>)}
-            </select>
-            {errors.organizerId && <p className="text-xs text-red-500 mt-1">{errors.organizerId.message}</p>}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5"><MapPin size={12} className="inline mr-1" />Location</label>
-              <input {...register('location')} placeholder="e.g. Conference Room A" className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5"><Video size={12} className="inline mr-1" />Meeting Link</label>
-              <input {...register('meetingLink')} placeholder="https://zoom.us/j/..." className={inputCls} />
-              {errors.meetingLink && <p className="text-xs text-red-500 mt-1">{errors.meetingLink.message}</p>}
-            </div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5"><Video size={12} className="inline mr-1" />Meeting Link</label>
+            <input {...register('meetingLink')} placeholder="https://zoom.us/j/..." className={inputCls} />
+            {errors.meetingLink && <p className="text-xs text-red-500 mt-1">{errors.meetingLink.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
@@ -659,19 +779,7 @@ export default function MeetingsClient() {
               </div>
             )}
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Notes</label>
-            <textarea {...register('notes')} rows={2} placeholder="Additional notes..." className={classNames(inputCls, 'resize-none')} />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Status</label>
-            <select {...register('status')} className={inputCls}>
-              <option value="SCHEDULED">Scheduled</option>
-              <option value="ONGOING">Ongoing</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-          </div>
+
           <div className="flex gap-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
             <Button type="button" variant="secondary" className="flex-1" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancel</Button>
             <Button type="submit" variant="primary" className="flex-1" isLoading={isSubmitting}>
@@ -680,6 +788,13 @@ export default function MeetingsClient() {
           </div>
         </form>
       </Modal>
+
+      {/* Details Modal */}
+      <MeetingDetailsModal 
+        isOpen={isDetailsModalOpen} 
+        onClose={() => setIsDetailsModalOpen(false)} 
+        meeting={selectedMeeting} 
+      />
 
     </>
   );

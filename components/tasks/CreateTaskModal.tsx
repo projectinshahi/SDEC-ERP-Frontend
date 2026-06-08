@@ -21,6 +21,7 @@ export interface Task {
   storyPoints?: number;
   originTaskId?: string;
   attachments?: TaskAttachment[];
+  unreadCount?: number;
 }
 
 export interface TaskFormData {
@@ -32,6 +33,8 @@ export interface TaskFormData {
   dueDate: string;
   storyPoints?: number;
   originTaskId?: string;
+  pendingFiles?: File[];
+  attachments?: TaskAttachment[];
 }
 
 interface CreateTaskModalProps {
@@ -68,6 +71,7 @@ export function CreateTaskModal({
   const [errors, setErrors] = useState<Partial<Record<keyof TaskFormData, string>>>({});
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   // Reset form when editTask changes or modal opens
   useEffect(() => {
@@ -99,6 +103,7 @@ export function CreateTaskModal({
         }
         setErrors({});
         setUploadingFiles([]);
+        setPendingFiles([]);
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -137,7 +142,7 @@ export function CreateTaskModal({
       return;
     }
 
-    onSubmit(formData);
+    onSubmit({ ...formData, pendingFiles, attachments });
     handleClose();
   };
 
@@ -146,12 +151,13 @@ export function CreateTaskModal({
     setErrors({});
     setAttachments([]);
     setUploadingFiles([]);
+    setPendingFiles([]);
     onClose();
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (!editTask || !editTask.id) {
-      alert("Please create the task first before uploading files.");
+      setPendingFiles((prev) => [...prev, ...acceptedFiles]);
       return;
     }
     
@@ -242,20 +248,16 @@ export function CreateTaskModal({
             <label htmlFor="task-desc" className="block text-sm font-medium text-gray-700">
               Description <span className="text-red-500">*</span>
             </label>
-            {editTask && editTask.id ? (
-              <div {...getRootProps()}>
-                <input {...getInputProps()} />
-                <button 
-                  type="button" 
-                  onClick={open} 
-                  className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded-md transition-colors"
-                >
-                  <Paperclip size={14} /> Add Attachment
-                </button>
-              </div>
-            ) : (
-              <span className="text-xs text-gray-400 italic">Save task to add attachments</span>
-            )}
+            <div {...getRootProps()}>
+              <input {...getInputProps()} />
+              <button 
+                type="button" 
+                onClick={open} 
+                className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded-md transition-colors"
+              >
+                <Paperclip size={14} /> Add Attachment
+              </button>
+            </div>
           </div>
           <MDEditor
             value={formData.description}
@@ -305,6 +307,39 @@ export function CreateTaskModal({
                       onClick={() => handleDeleteAttachment(att.id)}
                       className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
                       title="Remove attachment"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Pending Files List (Before task is created) */}
+            {pendingFiles.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {pendingFiles.map((file, idx) => (
+                  <div key={`${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      {file.type.startsWith('image/') ? (
+                        <img src={URL.createObjectURL(file)} alt={file.name} className="w-10 h-10 object-cover rounded-md border border-gray-200" />
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-100 flex items-center justify-center rounded-md border border-gray-200">
+                          <FileIcon className="w-5 h-5 text-gray-500" />
+                        </div>
+                      )}
+                      <div className="truncate">
+                        <span className="text-sm font-medium text-gray-800 truncate block">
+                          {file.name}
+                        </span>
+                        <span className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB • Pending upload</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPendingFiles(prev => prev.filter((_, i) => i !== idx))}
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                      title="Remove file"
                     >
                       <X size={16} />
                     </button>

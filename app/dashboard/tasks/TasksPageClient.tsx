@@ -250,7 +250,7 @@ export function TasksPageClient() {
       <section className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-700/60 pb-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 tracking-tight flex items-center gap-2">
-            Tasks Board
+            {boards.find(b => b.id === selectedBoardId)?.name || 'Tasks Board'}
             {isAdmin && selectedBoardId && (
               <div className="relative inline-block ml-2" ref={settingsMenuRef}>
                 <button

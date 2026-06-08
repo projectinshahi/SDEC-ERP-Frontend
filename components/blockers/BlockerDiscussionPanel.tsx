@@ -2,26 +2,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Send, Image as ImageIcon, Paperclip, Loader2 } from 'lucide-react';
+import { Send, Paperclip, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { apiClient } from '@/lib/api/api-client';
+import { BlockerDiscussionMessage } from '@/lib/api/blockers';
 
-interface Message {
-  id: number;
-  task_id: string;
-  sender_id: number;
-  message: string;
-  created_at: string;
-  sender: {
-    id: number;
-    name: string;
-    email: string;
-  };
-}
-
-export function TaskDiscussionPanel({ taskId, currentUserId }: { taskId: string, currentUserId?: number }) {
-  const [messages, setMessages] = useState<Message[]>([]);
+export function BlockerDiscussionPanel({ blockerId, currentUserId }: { blockerId: number, currentUserId?: number | string }) {
+  const [messages, setMessages] = useState<BlockerDiscussionMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isForbidden, setIsForbidden] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [typists, setTypists] = useState<Set<string>>(new Set());
@@ -42,70 +31,77 @@ export function TaskDiscussionPanel({ taskId, currentUserId }: { taskId: string,
     // 1. Fetch initial messages
     const fetchMessages = async () => {
       try {
-        // Assume NEXT_PUBLIC_API_URL is handled via proxy or absolute path
-        const res = await apiClient.get(`/tasks/${taskId}/discussions`);
-        setMessages(res.data as Message[]);
-        // Mark as read when opening panel
-        await apiClient.post(`/tasks/${taskId}/discussions/read`);
-      } catch (err) {
-        console.error('Error fetching discussions', err);
+        const res = await apiClient.get(`/blockers/${blockerId}/discussions`);
+        setMessages(res.data as BlockerDiscussionMessage[]);
+        
+        // Mark as read immediately
+        await apiClient.post(`/blockers/${blockerId}/discussions/read`, {});
+      } catch (err: any) {
+        console.error('Error fetching blocker discussions', err);
+        if (err.response?.status === 403) {
+          setIsForbidden(true);
+        }
       } finally {
         setLoading(false);
       }
     };
-    fetchMessages();
 
-    // 2. Initialize Socket.IO
-    const token = localStorage.getItem('authToken');
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    
-    // We strip /api from URL if it exists, since socket connects to base origin
-    const socketUrl = apiUrl.endsWith('/api') ? apiUrl.replace('/api', '') : apiUrl;
-    
-    socketRef.current = io(socketUrl, {
-      auth: { token },
-      withCredentials: true
-    });
+    fetchMessages().then(() => {
+      if (!isForbidden) {
+        // 2. Initialize Socket.IO
+        const token = localStorage.getItem('authToken');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        
+        // We strip /api from URL if it exists, since socket connects to base origin
+        const socketUrl = apiUrl.endsWith('/api') ? apiUrl.replace('/api', '') : apiUrl;
+        
+        socketRef.current = io(socketUrl, {
+          auth: { token },
+          withCredentials: true
+        });
 
-    socketRef.current.on('connect', () => {
-      socketRef.current?.emit('join_task_room', { taskId });
-    });
+        socketRef.current.on('connect', () => {
+          socketRef.current?.emit('join_blocker_room', { blockerId });
+        });
 
-    socketRef.current.on('new_message', (message: Message) => {
-      setMessages((prev) => [...prev, message]);
-      
-      // Auto-read incoming messages while panel is open
-      if (message.sender_id !== currentUserId) {
-        apiClient.post(`/tasks/${taskId}/discussions/read`).catch(console.error);
+        socketRef.current.on('new_message', (message: BlockerDiscussionMessage) => {
+          setMessages((prev) => {
+            if (prev.some(m => m.id === message.id)) return prev;
+            return [...prev, message];
+          });
+        });
+
+        socketRef.current.on('message_deleted', (data: { messageId: number }) => {
+          setMessages((prev) => prev.filter(m => m.id !== data.messageId));
+        });
+
+        socketRef.current.on('typing', (data: { userId: number, userName: string }) => {
+          setTypists(prev => {
+            const next = new Set(prev);
+            next.add(data.userName);
+            return next;
+          });
+        });
+
+        socketRef.current.on('stop_typing', (data: { userId: number, userName: string }) => {
+          setTypists(prev => {
+            const next = new Set(prev);
+            next.clear();
+            return next;
+          });
+        });
+
+        socketRef.current.on('error', (data: { message: string }) => {
+           console.error('Socket error:', data.message);
+        });
       }
     });
 
-    socketRef.current.on('message_deleted', (data: { messageId: number }) => {
-      setMessages((prev) => prev.filter(m => m.id !== data.messageId));
-    });
-
-    socketRef.current.on('typing', (data: { userId: number, userName: string }) => {
-      setTypists(prev => {
-        const next = new Set(prev);
-        next.add(data.userName);
-        return next;
-      });
-    });
-
-    socketRef.current.on('stop_typing', (data: { userId: number, userName: string }) => {
-      setTypists(prev => {
-        const next = new Set(prev);
-        // Note: We need a mapping from ID to Name, or just rely on clear timeouts
-        next.clear();
-        return next;
-      });
-    });
-
     return () => {
-      socketRef.current?.emit('leave_task_room', { taskId });
+      socketRef.current?.emit('leave_blocker_room', { blockerId });
       socketRef.current?.disconnect();
     };
-  }, [taskId]);
+  }, [blockerId, isForbidden]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -113,15 +109,15 @@ export function TaskDiscussionPanel({ taskId, currentUserId }: { taskId: string,
     // Handle typing indicator
     if (!isTyping) {
       setIsTyping(true);
-      // We pass some placeholder name since we might not have user object here
-      socketRef.current?.emit('typing', { taskId, userName: 'Someone' });
+      // Pass a placeholder since we don't have current user's name easily accessible
+      socketRef.current?.emit('blocker_typing', { blockerId, userName: 'Someone' });
     }
     
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      socketRef.current?.emit('stop_typing', { taskId });
+      socketRef.current?.emit('stop_blocker_typing', { blockerId });
     }, 1000);
   };
 
@@ -133,12 +129,18 @@ export function TaskDiscussionPanel({ taskId, currentUserId }: { taskId: string,
     setInputValue('');
     setIsTyping(false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    socketRef.current?.emit('stop_typing', { taskId });
+    socketRef.current?.emit('stop_blocker_typing', { blockerId });
 
     try {
-      await apiClient.post(`/tasks/${taskId}/discussions`, { message: messageText });
+      const res = await apiClient.post<{ success: boolean; message: BlockerDiscussionMessage }>(`/blockers/${blockerId}/discussions`, { message: messageText });
+      if (res.data?.message) {
+        setMessages((prev) => {
+          if (prev.some(m => m.id === res.data.message.id)) return prev;
+          return [...prev, res.data.message];
+        });
+      }
     } catch (err) {
-      console.error('Failed to send message', err);
+      console.error('Failed to send blocker message', err);
     }
   };
 
@@ -150,8 +152,20 @@ export function TaskDiscussionPanel({ taskId, currentUserId }: { taskId: string,
     );
   }
 
+  if (isForbidden) {
+    return (
+      <div className="flex flex-col h-full bg-gray-50/50 rounded-xl border border-gray-100 items-center justify-center min-h-[300px] p-6 text-center">
+        <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-3">
+          <span className="text-red-500 font-bold text-xl">!</span>
+        </div>
+        <h3 className="text-lg font-bold text-gray-800">Restricted Access</h3>
+        <p className="text-gray-500 text-sm mt-2">Only project members can view and participate in this discussion.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full max-h-[600px] bg-gray-50/50 rounded-xl border border-gray-100 overflow-hidden">
+    <div className="flex flex-col h-full bg-gray-50/50 rounded-xl border border-gray-100 overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 bg-white flex items-center justify-between">
         <h3 className="font-semibold text-gray-800">Discussion</h3>
@@ -168,11 +182,11 @@ export function TaskDiscussionPanel({ taskId, currentUserId }: { taskId: string,
               <Send className="w-5 h-5 text-gray-400" />
             </div>
             <p className="text-gray-500 font-medium">No discussion yet</p>
-            <p className="text-sm text-gray-400 mt-1">Start the conversation about this task.</p>
+            <p className="text-sm text-gray-400 mt-1">Start the conversation about this blocker.</p>
           </div>
         ) : (
           messages.map((msg) => {
-            const isMe = msg.sender_id === currentUserId;
+            const isMe = String(msg.sender_id) === String(currentUserId);
             return (
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
                 {!isMe && (
@@ -212,7 +226,7 @@ export function TaskDiscussionPanel({ taskId, currentUserId }: { taskId: string,
       )}
 
       {/* Input Form */}
-      <div className="p-4 bg-white border-t border-gray-100">
+      <div className="p-4 bg-white border-t border-gray-100 mt-auto">
         <form onSubmit={handleSendMessage} className="relative flex items-center">
           <input
             type="text"
@@ -222,13 +236,6 @@ export function TaskDiscussionPanel({ taskId, currentUserId }: { taskId: string,
             className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-full pl-4 pr-24 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm"
           />
           <div className="absolute right-1.5 flex items-center gap-1">
-            <button
-              type="button"
-              className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
-              title="Attach File"
-            >
-              <Paperclip className="w-4 h-4" />
-            </button>
             <button
               type="submit"
               disabled={!inputValue.trim()}

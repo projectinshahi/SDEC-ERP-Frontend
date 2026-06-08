@@ -15,7 +15,7 @@ export interface SidebarMenuItem {
   label: string;
   href: string;
   /** Must match a key in Sidebar's iconMap */
-  icon: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays';
+  icon: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'Target' | 'TrendingUp';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module: ModuleName | null;
 }
@@ -31,7 +31,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     label: 'Projects',
     href: '/dashboard/projects',
     icon: 'Briefcase',
-    module: null,
+    module: 'project',
   },
   {
     label: 'User Management',
@@ -71,9 +71,28 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: 'meetings',
   },
   {
-    label: 'Blockers',
+    label: 'Tickets',
     href: '/dashboard/blockers',
     icon: 'AlertTriangle',
     module: 'blockers',
   },
+  // Sales Module
+  // {
+  //   label: 'Leads',
+  //   href: '/dashboard/sales/leads',
+  //   icon: 'Target',
+  //   module: 'sales',
+  // },
+  // {
+  //   label: 'Deals',
+  //   href: '/dashboard/sales/deals',
+  //   icon: 'TrendingUp',
+  //   module: 'sales',
+  // },
+  // {
+  //   label: 'Customers',
+  //   href: '/dashboard/sales/customers',
+  //   icon: 'Users',
+  //   module: 'sales',
+  // },
 ];

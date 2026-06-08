@@ -7,6 +7,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { BugTable } from '@/components/bugs/BugTable';
 import { BugModal } from '@/components/bugs/BugModal';
 import { QueuedFile } from '@/components/bugs/FileUploader';
+import { BugAnalyticsDashboard } from '@/components/bugs/BugAnalyticsDashboard';
 import { BugDetailsModal } from '@/components/bugs/BugDetailsModal';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
@@ -24,6 +25,7 @@ import { classNames } from '@/lib/utils';
 export function BugTrackingClient() {
   const { activeProject } = useProject();
   const { user: currentUser } = useAuthContext();
+  const [activeTab, setActiveTab] = useState<'reports' | 'analytics'>('reports');
   const [bugs, setBugs] = useState<BugType[]>([]);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -123,6 +125,17 @@ export function BugTrackingClient() {
     setIsModalOpen(true);
   };
 
+  const handleStatusChange = async (bugId: number, newStatus: string) => {
+    try {
+      await updateBug(bugId, { status: newStatus as any });
+      toast(`Bug status updated successfully!`, 'success');
+      loadBugs();
+    } catch (err: any) {
+      console.error('Error updating bug status:', err);
+      toast('Failed to update bug status', 'error');
+    }
+  };
+
   const handleDeleteBug = (bugId: number) => {
     const bug = bugs.find((b) => b.id === bugId);
     if (bug) setBugToDelete(bug);
@@ -155,41 +168,64 @@ export function BugTrackingClient() {
           <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Bug Tracking</h1>
           <p className="text-gray-500 text-sm mt-1">Manage and track system issues, bugs, and feature requests.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <PermissionGuard require="bugs.create">
-            <Button
-              variant="primary"
-              size="lg"
-              disabled={!activeProject}
-              onClick={() => {
-                setEditingBug(null);
-                setIsModalOpen(true);
-              }}
+        <div className="flex items-center gap-4">
+          <div className="bg-slate-100 p-1 rounded-lg flex items-center shadow-inner border border-slate-200">
+            <button 
+              onClick={() => setActiveTab('reports')} 
+              className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === 'reports' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
             >
-              <Plus size={20} />
-              Report Bug
-            </Button>
-          </PermissionGuard>
+              Bug Reports
+            </button>
+            <button 
+              onClick={() => setActiveTab('analytics')} 
+              className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === 'analytics' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+            >
+              Analytics
+            </button>
+          </div>
+          
+          {activeTab === 'reports' && (
+            <PermissionGuard require="bugs.create">
+              <Button
+                variant="primary"
+                size="lg"
+                disabled={!activeProject}
+                onClick={() => {
+                  setEditingBug(null);
+                  setIsModalOpen(true);
+                }}
+              >
+                <Plus size={20} />
+                Report Bug
+              </Button>
+            </PermissionGuard>
+          )}
         </div>
       </div>
 
-      {!activeProject ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-gray-200">
-          <FolderDot size={48} className="text-gray-300 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700">No Active Project</h2>
-          <p className="text-gray-500 mt-2">Please select a project from the top navigation bar to view its bugs.</p>
-        </div>
-      ) : (
-        <Card variant="outlined" className="overflow-hidden">
-          {isLoading ? (
-            <div className="py-20 text-center bg-white flex flex-col items-center justify-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="text-gray-500 font-bold text-xs mt-4">Loading issues...</p>
+      {activeTab === 'reports' ? (
+        <>
+          {!activeProject ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-gray-200">
+              <FolderDot size={48} className="text-gray-300 mb-4" />
+              <h2 className="text-xl font-semibold text-gray-700">No Active Project</h2>
+              <p className="text-gray-500 mt-2">Please select a project from the top navigation bar to view its bugs.</p>
             </div>
           ) : (
-            <BugTable bugs={bugs} onEdit={handleEditBug} onDelete={handleDeleteBug} onView={setViewingBug} />
+            <Card variant="outlined" className="overflow-hidden">
+              {isLoading ? (
+                <div className="py-20 text-center bg-white flex flex-col items-center justify-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <p className="text-gray-500 font-bold text-xs mt-4">Loading issues...</p>
+                </div>
+              ) : (
+                <BugTable bugs={bugs} onEdit={handleEditBug} onDelete={handleDeleteBug} onView={setViewingBug} onStatusChange={handleStatusChange} />
+              )}
+            </Card>
           )}
-        </Card>
+        </>
+      ) : (
+        <BugAnalyticsDashboard />
       )}
 
       <BugModal

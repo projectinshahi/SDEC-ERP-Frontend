@@ -17,6 +17,7 @@ interface BugTableProps {
   onView: (bug: BugType) => void;
   onResetFilters?: () => void;
   hasActiveFilters?: boolean;
+  onStatusChange?: (bugId: number, newStatus: string) => void;
 }
 
 const SORTABLE_COLUMNS: { key: BugQueryParams['sortBy']; label: string }[] = [
@@ -91,6 +92,7 @@ export function BugTable({
   onView,
   onResetFilters,
   hasActiveFilters,
+  onStatusChange,
 }: BugTableProps) {
   if (isLoading) return <BugTableSkeleton />;
 
@@ -183,10 +185,27 @@ export function BugTable({
                     </div>
                   </td>
                   {/* Status */}
-                  <td className="py-4 px-6">
-                    <span className={classNames('border font-bold px-2.5 py-0.5 rounded-full text-[11px] shadow-sm uppercase tracking-wide', statusConfig.className)}>
-                      {statusConfig.label}
-                    </span>
+                  <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                    <select
+                      className={classNames(
+                        'border font-bold pl-2.5 pr-6 py-0.5 rounded-full text-[11px] shadow-sm uppercase tracking-wide cursor-pointer appearance-none outline-none bg-no-repeat transition-colors',
+                        statusConfig.className
+                      )}
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                        backgroundSize: '1em',
+                        backgroundPosition: 'right 0.35rem center',
+                      }}
+                      value={bug.status}
+                      onChange={(e) => onStatusChange?.(bug.id, e.target.value)}
+                      disabled={!onStatusChange}
+                    >
+                      <option value="open" className="text-slate-800 bg-white font-medium capitalize">Open</option>
+                      <option value="in_progress" className="text-slate-800 bg-white font-medium capitalize">In Progress</option>
+                      <option value="resolved" className="text-slate-800 bg-white font-medium capitalize">Resolved</option>
+                      <option value="closed" className="text-slate-800 bg-white font-medium capitalize">Closed</option>
+                      <option value="reopened" className="text-slate-800 bg-white font-medium capitalize">Reopened</option>
+                    </select>
                   </td>
                   {/* Priority */}
                   <td className="py-4 px-6">

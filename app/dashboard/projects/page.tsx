@@ -5,6 +5,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Skeleton, TableSkeleton } from '@/components/Skeleton';
+import { Modal } from '@/components/Modal';
 import { ROUTES } from '@/lib/constants';
 import { 
   Plus, 
@@ -19,10 +20,10 @@ import {
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useToast } from '@/lib/hooks/useToast';
-import { Modal } from '@/components/Modal';
-
-// Import project-specific sub-components and API helpers
-import { ViewToggle } from '@/components/projects/ViewToggle';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
+import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
+import { ViewToggle } from '@/components/ViewToggle';
+import { useViewMode } from '@/lib/hooks/useViewMode';
 import { ProjectCard, Project } from '@/components/projects/ProjectCard';
 import { ProjectList } from '@/components/projects/ProjectList';
 import { CreateProjectModal, ProjectFormData } from '@/components/projects/CreateProjectModal';
@@ -30,7 +31,7 @@ import { fetchProjects, createProjectApi, updateProjectApi, archiveProjectApi, r
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useViewMode('projects');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,7 +163,7 @@ export default function ProjectsPage() {
   );
 
   return (
-    <>
+    <PermissionPageGuard require="project.view" module="project">
       {/* Breadcrumb Navigation */}
       <div className="mb-6">
         <Breadcrumb
@@ -184,15 +185,17 @@ export default function ProjectsPage() {
             Manage your teams, view active workloads, and track project lifecycle deliverables at a glance.
           </p>
         </div>
-        <Button 
-          variant="primary" 
-          size="lg"
-          onClick={handleOpenCreateModal}
-          className="shadow-sm shadow-blue-500/10 cursor-pointer self-start sm:self-center"
-        >
-          <Plus size={18} className="stroke-[2.5]" />
-          Create Project
-        </Button>
+        <PermissionGuard require="project.create">
+          <Button 
+            variant="primary" 
+            size="lg"
+            onClick={handleOpenCreateModal}
+            className="shadow-sm shadow-blue-500/10 cursor-pointer self-start sm:self-center"
+          >
+            <Plus size={18} className="stroke-[2.5]" />
+            Create Project
+          </Button>
+        </PermissionGuard>
       </section>
 
       {/* Search & View Mode Filters Bar */}
@@ -459,6 +462,6 @@ export default function ProjectsPage() {
         </div>
       </Modal>
 
-    </>
+    </PermissionPageGuard>
   );
 }

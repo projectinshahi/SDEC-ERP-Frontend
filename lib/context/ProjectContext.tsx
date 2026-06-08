@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { fetchProjects } from '@/lib/api/projects';
 import { Project } from '@/components/projects/ProjectCard';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 interface ProjectContextType {
   projects: Project[];
@@ -17,13 +18,14 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProjectState] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Only fetch projects if the user is logged in and doesn't need to change password
-    if (!user || user.mustChangePassword) {
+    // Only fetch projects if the user is logged in, doesn't need to change password, and has permission
+    if (!user || user.mustChangePassword || !hasPermission('project.view')) {
       setProjects([]);
       setActiveProjectState(null);
       setIsLoading(false);

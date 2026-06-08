@@ -10,6 +10,8 @@ import { Skeleton } from '@/components/Skeleton';
 import { ROUTES } from '@/lib/constants';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
+import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import {
   ArrowLeft,
   Settings,
@@ -60,6 +62,7 @@ export default function ProjectSettingsPage() {
   const [isUpdatingRole, setIsUpdatingRole] = useState<string | number | null>(null);
   const { toast } = useToast();
   const { confirm } = useConfirm();
+  const { hasPermission } = usePermissions();
 
   const loadData = async () => {
     setIsLoading(true);
@@ -205,11 +208,12 @@ export default function ProjectSettingsPage() {
     }
   };
 
-  const canEditDetails = currentUserRole === 'admin' || currentUserRole === 'editor';
-  const canManageMembers = currentUserRole === 'admin';
+  const canEditDetails = hasPermission('project.edit') && (currentUserRole === 'admin' || currentUserRole === 'editor');
+  const canManageMembers = hasPermission('project.manage_members') && currentUserRole === 'admin';
+  const canDeleteProject = hasPermission('project.delete') && currentUserRole === 'admin';
 
   return (
-    <>
+    <PermissionPageGuard require="project.view" module="project">
       <div className="mb-6">
         <Breadcrumb
           items={[
@@ -362,7 +366,7 @@ export default function ProjectSettingsPage() {
                     </div>
                   )}
 
-                  {currentUserRole === 'admin' && (
+                  {canDeleteProject && (
                     <div className="pt-8 mt-8 border-t border-red-100 dark:border-red-900/30">
                       <h4 className="text-red-600 font-bold mb-2">Danger Zone</h4>
                       <p className="text-sm text-gray-500 mb-4">Deleting this project will permanently remove all associated tasks, columns, and data.</p>
@@ -433,6 +437,6 @@ export default function ProjectSettingsPage() {
         </div>
       </Modal>
 
-    </>
+    </PermissionPageGuard>
   );
 }

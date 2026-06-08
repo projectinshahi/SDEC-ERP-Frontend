@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Search, Filter, RefreshCw, Layers, CheckCircle, Clock, AlertTriangle, UserCheck, Trash2, X } from 'lucide-react';
 import { Column } from './Column';
 import { CreateTaskModal, Task, TaskFormData } from './CreateTaskModal';
+import { TaskAttachment } from '@/lib/api/kanban';
 import { TaskDetailsDrawer } from './TaskDetailsDrawer';
 import { Card, CardBody } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { fetchUsers, UserDbResponse } from '@/lib/api/users';
 import { Modal } from '@/components/Modal';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { io, Socket } from 'socket.io-client';
 import {
   fetchKanbanColumns,
   createKanbanColumn,
@@ -22,6 +25,7 @@ import {
   moveKanbanTask,
   cloneKanbanTask,
   resetKanbanBoardDb,
+  uploadTaskAttachment,
   BoardColumn
 } from '@/lib/api/kanban';
 
@@ -47,6 +51,9 @@ export function KanbanBoard({
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [mounted, setMounted] = useState(false);
   const { hasPermission } = usePermissions();
+  const { user } = useAuth();
+  const currentUserId = user?.id ? Number(user.id) : undefined;
+  const socketRef = useRef<Socket | null>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -150,6 +157,51 @@ export function KanbanBoard({
     };
     init();
   }, [boardId, sprintId]);
+
+  // Setup Socket.IO for real-time unread messages
+  useEffect(() => {
+    if (!mounted || !currentUserId) return;
+
+    const token = localStorage.getItem('authToken');
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const socketUrl = apiUrl.endsWith('/api') ? apiUrl.replace('/api', '') : apiUrl;
+    
+    socketRef.current = io(socketUrl, {
+      auth: { token },
+      withCredentials: true
+    });
+
+    socketRef.current.on('connect', () => {
+      if (boardId) {
+        socketRef.current?.emit('join_board_room', { boardId });
+      }
+    });
+
+    socketRef.current.on('task_unread_updated', (data: { taskId: string, senderId: number }) => {
+      if (data.senderId !== currentUserId) {
+        setTasks(prev => prev.map(t => 
+          t.id === data.taskId 
+            ? { ...t, unreadCount: (t.unreadCount || 0) + 1 } 
+            : t
+        ));
+      }
+    });
+
+    socketRef.current.on('task_read', (data: { taskId: string, boardId: string }) => {
+      setTasks(prev => prev.map(t => 
+        t.id === data.taskId 
+          ? { ...t, unreadCount: 0 } 
+          : t
+      ));
+    });
+
+    return () => {
+      if (boardId) {
+        socketRef.current?.emit('leave_board_room', { boardId });
+      }
+      socketRef.current?.disconnect();
+    };
+  }, [mounted, currentUserId, boardId]);
 
   // Get active assignee list from the database
   const availableAssignees = useMemo(() => {
@@ -301,6 +353,31 @@ export function KanbanBoard({
 
       try {
         await updateKanbanTask(editingTask.id, data);
+        
+        // Also upload pending files if any
+        if (data.pendingFiles && data.pendingFiles.length > 0) {
+          const newlyUploadedAttachments: TaskAttachment[] = [];
+          for (const file of data.pendingFiles) {
+            const form = new FormData();
+            form.append('files', file);
+            try {
+              const uploadRes = await uploadTaskAttachment(editingTask.id, form);
+              if (uploadRes.success && uploadRes.attachments) {
+                newlyUploadedAttachments.push(...uploadRes.attachments);
+              }
+            } catch (err) {
+              console.error('Failed to upload file during update', err);
+            }
+          }
+          if (newlyUploadedAttachments.length > 0) {
+            setTasks(prev => prev.map(t => 
+              t.id === editingTask.id ? { 
+                ...t, 
+                attachments: [...(t.attachments || []), ...newlyUploadedAttachments] 
+              } : t
+            ));
+          }
+        }
       } catch (err) {
         console.error('Failed to update task in database:', err);
       }
@@ -315,8 +392,30 @@ export function KanbanBoard({
       try {
         const response = await createKanbanTask({ ...newTask, boardId: boardId ?? undefined });
         if (response?.task) {
+          const createdTask = response.task;
+          
+          // Process attachments upload sequentially after task is created
+          if (data.pendingFiles && data.pendingFiles.length > 0) {
+            const uploadedAttachments = [];
+            for (const file of data.pendingFiles) {
+              const form = new FormData();
+              form.append('files', file);
+              try {
+                const uploadRes = await uploadTaskAttachment(createdTask.id, form);
+                if (uploadRes.success && uploadRes.attachments) {
+                  uploadedAttachments.push(...uploadRes.attachments);
+                }
+              } catch (err) {
+                console.error('Failed to upload pending attachment:', err);
+              }
+            }
+            if (uploadedAttachments.length > 0) {
+              createdTask.attachments = uploadedAttachments;
+            }
+          }
+
           // Update the optimistically added task with the server-generated fields like originTaskId
-          setTasks(prev => prev.map(t => t.id === newTask.id ? response.task : t));
+          setTasks(prev => prev.map(t => t.id === newTask.id ? createdTask : t));
         }
       } catch (err) {
         console.error('Failed to create task in database:', err);
@@ -554,6 +653,7 @@ export function KanbanBoard({
             {columns.map((col, index) => {
               // Filter tasks matching the current column status and active filters
               const columnTasks = filteredTasks.filter((t) => t.status === col.id);
+              const columnUnreadCount = columnTasks.reduce((sum, t) => sum + (t.unreadCount || 0), 0);
 
               return (
                 <Column
@@ -562,6 +662,7 @@ export function KanbanBoard({
                   status={col.id}
                   index={index}
                   tasks={columnTasks}
+                  unreadCount={columnUnreadCount}
                   availableAssignees={availableAssignees}
                   onEdit={(task) => {
                     setEditingTask(task);
