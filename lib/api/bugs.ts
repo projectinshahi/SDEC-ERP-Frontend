@@ -72,6 +72,22 @@ export interface BugsResponse {
   pagination: BugPagination;
 }
 
+export interface BugAnalyticsData {
+  totalBugs: number;
+  openBugs: number;
+  inProgressBugs: number;
+  closedBugs: number;
+  reopenedBugs: number;
+  severityDistribution: { name: string; value: number }[];
+  priorityDistribution: { name: string; value: number }[];
+  statusDistribution: { name: string; value: number }[];
+  projectDistribution: { name: string; value: number }[];
+  assigneeAnalytics: { name: string; count: number }[];
+  resolutionTimeAvgDays: number;
+  trendAnalytics: { date: string; created: number; resolved: number }[];
+  reopenRate: number;
+}
+
 // ── Default pagination (used when backend response is missing pagination) ─────
 const DEFAULT_PAGINATION: BugPagination = {
   total: 0,
@@ -105,6 +121,11 @@ export const getBugs = async (params?: BugQueryParams): Promise<BugsResponse> =>
       totalPages: data?.pagination?.totalPages ?? DEFAULT_PAGINATION.totalPages,
     },
   };
+};
+
+export const fetchBugAnalytics = async (projectId?: string): Promise<BugAnalyticsData> => {
+  const response = await api.get<{ success: boolean; data: BugAnalyticsData }>('/bugs/analytics', projectId ? { params: { projectId } } : {});
+  return response.data.data;
 };
 
 export const getBugById = async (id: number): Promise<Bug> => {

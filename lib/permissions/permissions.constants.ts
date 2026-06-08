@@ -17,7 +17,8 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   sprints: 'sprints.',
   blockers: 'blockers.',
   meetings: 'meetings.',
-  projects: 'projects.',
+  project: 'project.',
+  sales: 'sales.',
 } as const;
 
 /**
@@ -278,38 +279,80 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       {
         key: 'meetings.delete',
         label: 'Delete Meeting',
-        description: 'Permanently remove meetings from the system',
+        description: 'Cancel meetings and delete action items',
         module: 'meetings',
       },
     ],
   },
   {
-    module: 'projects',
+    module: 'project',
     label: 'Project Management',
     permissions: [
       {
-        key: 'projects.create',
-        label: 'Create Project',
-        description: 'Create and setup new projects',
-        module: 'projects',
-      },
-      {
-        key: 'projects.read',
-        label: 'Read Project',
+        key: 'project.view',
+        label: 'View Projects',
         description: 'View project details and listings',
-        module: 'projects',
+        module: 'project',
       },
       {
-        key: 'projects.update',
-        label: 'Edit Project',
+        key: 'project.create',
+        label: 'Create Projects',
+        description: 'Create and setup new projects',
+        module: 'project',
+      },
+      {
+        key: 'project.edit',
+        label: 'Edit Projects',
         description: 'Update project configurations and details',
-        module: 'projects',
+        module: 'project',
       },
       {
-        key: 'projects.delete',
-        label: 'Delete Project',
-        description: 'Permanently remove projects from the system',
-        module: 'projects',
+        key: 'project.delete',
+        label: 'Delete Projects',
+        description: 'Archive and permanently remove projects',
+        module: 'project',
+      },
+      {
+        key: 'project.manage_members',
+        label: 'Manage Members',
+        description: 'Add, edit, or remove project members',
+        module: 'project',
+      },
+      {
+        key: 'project.analytics',
+        label: 'View Analytics',
+        description: 'Access project analytics and reports',
+        module: 'project',
+      },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales Management',
+    permissions: [
+      {
+        key: 'sales.view',
+        label: 'View Sales',
+        description: 'Access the sales dashboard and view leads',
+        module: 'sales',
+      },
+      {
+        key: 'sales.create',
+        label: 'Create Sales Entities',
+        description: 'Create new leads, opportunities, and deals',
+        module: 'sales',
+      },
+      {
+        key: 'sales.edit',
+        label: 'Edit Sales Entities',
+        description: 'Modify existing sales data and advance pipelines',
+        module: 'sales',
+      },
+      {
+        key: 'sales.delete',
+        label: 'Delete Sales Entities',
+        description: 'Permanently remove sales records',
+        module: 'sales',
       },
     ],
   },

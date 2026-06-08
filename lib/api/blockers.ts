@@ -62,11 +62,73 @@ export interface UpdateBlockerPayload {
   tags?: string[];
 }
 
+export interface BlockerDiscussionMessage {
+  id: number;
+  blocker_id: number;
+  sender_id: number;
+  message: string;
+  created_at: string;
+  updated_at: string;
+  sender: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+export interface BlockerAttachment {
+  id: number;
+  blocker_id: number;
+  file_name: string;
+  file_url: string;
+  file_size: number;
+  description: string | null;
+  uploaded_by: number;
+  uploaded_at: string;
+  uploader?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+export interface GetBlockersParams {
+  projectId?: string;
+  loggedBy?: string;
+  assignedTo?: string;
+  status?: string;
+  escalation?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedBlockersResponse {
+  data: Blocker[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 
-export const getBlockers = async (): Promise<Blocker[]> => {
-  const response = await api.get<{ success: boolean; data: Blocker[] }>('/blockers');
-  return response.data.data;
+export const getBlockers = async (params?: GetBlockersParams): Promise<PaginatedBlockersResponse> => {
+  const query = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.append(key, String(value));
+      }
+    });
+  }
+  const queryString = query.toString();
+  const response = await api.get<{ success: boolean; data: Blocker[]; meta: any }>(`/blockers${queryString ? `?${queryString}` : ''}`);
+  return { data: response.data.data, meta: response.data.meta };
 };
 
 export const getBlockerById = async (id: number): Promise<Blocker> => {
@@ -86,4 +148,45 @@ export const updateBlocker = async (id: number, data: UpdateBlockerPayload): Pro
 
 export const deleteBlocker = async (id: number): Promise<void> => {
   await api.delete<{ success: boolean; message: string }>(`/blockers/${id}`);
+};
+
+export const fetchBlockerDiscussions = async (id: number): Promise<BlockerDiscussionMessage[]> => {
+  const response = await api.get<BlockerDiscussionMessage[]>(`/blockers/${id}/discussions`);
+  return response.data;
+};
+
+export const postBlockerDiscussion = async (id: number, message: string): Promise<BlockerDiscussionMessage> => {
+  const response = await api.post<{ message: BlockerDiscussionMessage }>(`/blockers/${id}/discussions`, { message });
+  return response.data.message;
+};
+
+export const markBlockerDiscussionRead = async (id: number): Promise<void> => {
+  await api.post(`/blockers/${id}/discussions/read`, {});
+};
+
+export const deleteBlockerDiscussion = async (id: number, messageId: number): Promise<void> => {
+  await api.delete(`/blockers/${id}/discussions/${messageId}`);
+};
+
+export const fetchBlockerAttachments = async (id: number): Promise<BlockerAttachment[]> => {
+  const response = await api.get<{ attachments: BlockerAttachment[] }>(`/blockers/${id}/attachments`);
+  return response.data.attachments;
+};
+
+export const uploadBlockerAttachments = async (id: number, files: File[]): Promise<BlockerAttachment[]> => {
+  const formData = new FormData();
+  files.forEach(file => {
+    formData.append('files', file);
+  });
+  
+  const response = await api.post<{ attachments: BlockerAttachment[] }>(`/blockers/${id}/attachments`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data.attachments;
+};
+
+export const deleteBlockerAttachment = async (id: number, attachmentId: number): Promise<void> => {
+  await api.delete(`/blockers/${id}/attachments/${attachmentId}`);
 };

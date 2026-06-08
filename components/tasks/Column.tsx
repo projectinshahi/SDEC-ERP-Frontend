@@ -12,6 +12,7 @@ interface ColumnProps {
   status: string; // Dynamic string status
   index: number;  // Order index of this column for dynamic coloring
   tasks: Task[];
+  unreadCount?: number;
   availableAssignees: string[];
   onEdit: (task: Task) => void;
   onView: (task: Task) => void;
@@ -37,6 +38,7 @@ export function Column({
   status,
   index,
   tasks,
+  unreadCount,
   availableAssignees,
   onEdit,
   onView,
@@ -204,6 +206,13 @@ export function Column({
           <span className="flex items-center justify-center bg-gray-200/80 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full px-2 py-0.5 text-xs font-bold leading-none select-none">
             {hasColumnFilters ? `${displayedTasks.length}/${tasks.length}` : tasks.length}
           </span>
+
+          {/* Unread Count Badge */}
+          {!!unreadCount && unreadCount > 0 && (
+            <span className="flex items-center justify-center bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none select-none animate-pulse shadow-sm">
+              {unreadCount}
+            </span>
+          )}
         </div>
 
         {/* Actions */}

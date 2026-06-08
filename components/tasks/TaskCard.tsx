@@ -211,8 +211,13 @@ export function TaskCard({
                 <Copy size={10} className="text-gray-400 opacity-0 group-hover/copy:opacity-100 group-hover/copy:text-blue-500 transition-all" />
               </div>
             )}
-            <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-snug group-hover:text-blue-600 transition-colors break-words">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-snug group-hover:text-blue-600 transition-colors break-words flex items-center gap-2">
               {task.title}
+              {!!task.unreadCount && task.unreadCount > 0 && (
+                <span className="inline-flex items-center justify-center bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none select-none animate-pulse shadow-sm">
+                  {task.unreadCount}
+                </span>
+              )}
             </h3>
           </div>
 

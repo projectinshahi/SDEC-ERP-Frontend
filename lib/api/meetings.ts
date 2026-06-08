@@ -59,7 +59,6 @@ export interface CreateMeetingPayload {
   endTime: string;
   location?: string;
   meetingLink?: string;
-  organizerId: number;
   attendees?: number[];
   notes?: string;
 }

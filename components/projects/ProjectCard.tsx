@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Calendar, User, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/Badge';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 export interface Project {
   id: string;
@@ -54,6 +55,10 @@ const getAvatarBgColor = (name: string) => {
 };
 
 export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }: ProjectCardProps) {
+  const { hasPermission } = usePermissions();
+  const canEdit = hasPermission('project.edit');
+  const canDelete = hasPermission('project.delete');
+
   // Format the date beautifully (e.g., "May 25, 2026")
   const formatDate = (dateStr: string) => {
     try {
@@ -85,7 +90,7 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
             <div className="flex items-center gap-1.5 shrink-0">
               {project.is_archived ? (
                 <>
-                  {onRestore && (
+                  {onRestore && canDelete && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -100,7 +105,7 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
                       <ArchiveRestore size={13} className="stroke-[2.5]" />
                     </button>
                   )}
-                  {onDelete && (
+                  {onDelete && canDelete && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -124,7 +129,7 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
                 </>
               ) : (
                 <>
-                  {onEdit && (
+                  {onEdit && canEdit && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -139,7 +144,7 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
                       <Pencil size={13} className="stroke-[2.5]" />
                     </button>
                   )}
-                  {onArchive && (
+                  {onArchive && canDelete && (
                     <button
                       type="button"
                       onClick={(e) => {

@@ -15,7 +15,7 @@ export default function BlockerTable() {
             <th className="px-4 py-2 text-left">Severity</th>
             <th className="px-4 py-2 text-left">Status</th>
             <th className="px-4 py-2 text-left">Logged By</th>
-            <th className="px-4 py-2 text-left">Need Help From</th>
+            <th className="px-4 py-2 text-left">Assigned To</th>
             <th className="px-4 py-2 text-left">Escalation</th>
             <th className="px-4 py-2 text-left">Created At</th>
             <th className="px-4 py-2 text-left">Actions</th>
