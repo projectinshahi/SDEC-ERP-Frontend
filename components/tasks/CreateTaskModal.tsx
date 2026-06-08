@@ -444,15 +444,14 @@ export function CreateTaskModal({
               Story Points
             </label>
             <input
-              type="text"
-              inputMode="decimal"
+              type="number"
+              step="0.5"
+              min="0"
               id="task-story-points"
-              value={formData.storyPoints || ''}
+              value={formData.storyPoints === 0 ? '' : formData.storyPoints ?? ''}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                  setFormData({ ...formData, storyPoints: val === '' ? 0 : parseFloat(val) || 0 });
-                }
+                setFormData({ ...formData, storyPoints: val === '' ? 0 : parseFloat(val) });
               }}
               placeholder="0"
               className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"

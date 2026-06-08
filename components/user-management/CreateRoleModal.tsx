@@ -17,6 +17,7 @@ import { createRoleApi, updateRoleApi } from '@/lib/api/roles';
 import { PERMISSION_GROUPS, ALL_PERMISSION_KEYS } from '@/lib/permissions/permissions.constants';
 import type { PermissionKey } from '@/lib/permissions/permission.types';
 import { classNames } from '@/lib/utils';
+import { useToast } from '@/lib/hooks/useToast';
 
 interface CreateRoleModalProps {
   isOpen: boolean;
@@ -60,7 +61,7 @@ export function CreateRoleModal({
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const { toast } = useToast();
 
   // Reset / populate form when modal opens
   useEffect(() => {
@@ -77,7 +78,6 @@ export function CreateRoleModal({
       setErrors({});
       setTouched({});
       setSubmitError(null);
-      setShowSuccessToast(false);
     }
   }, [isOpen, roleToEdit]);
 
@@ -169,18 +169,17 @@ export function CreateRoleModal({
         });
       }
 
-      setShowSuccessToast(true);
-      setTimeout(() => {
-        setIsSubmitting(false);
-        onClose();
-        onSubmitSuccess?.();
-      }, 1500);
+      toast(roleToEdit ? 'Role updated successfully' : 'Role created successfully', 'success');
+      setIsSubmitting(false);
+      onClose();
+      onSubmitSuccess?.();
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         (err instanceof Error ? err.message : 'Failed to connect to backend service.');
       setSubmitError(message);
       setIsSubmitting(false);
+      toast(message, 'error');
     }
   };
 
@@ -404,13 +403,7 @@ export function CreateRoleModal({
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 size={16} className="animate-spin" />
-                  {showSuccessToast
-                    ? roleToEdit
-                      ? 'Role Updated!'
-                      : 'Role Created!'
-                    : roleToEdit
-                    ? 'Updating Role...'
-                    : 'Creating Role...'}
+                  {roleToEdit ? 'Updating Role...' : 'Creating Role...'}
                 </span>
               ) : roleToEdit ? (
                 'Update Role'
@@ -421,18 +414,6 @@ export function CreateRoleModal({
           </div>
         </form>
       </Modal>
-
-      {/* Success Toast */}
-      {showSuccessToast && (
-        <div className="fixed top-6 right-6 z-[200] pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-2xl border border-green-100 bg-white animate-slide-in-right max-w-sm w-full">
-          <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-500 animate-pulse">
-            <CheckCircle2 size={16} />
-          </div>
-          <div className="flex-1 text-xs font-bold text-green-800 leading-normal">
-            {roleToEdit ? 'Role updated successfully' : 'Role created successfully'}
-          </div>
-        </div>
-      )}
     </>
   );
 }

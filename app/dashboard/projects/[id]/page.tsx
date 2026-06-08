@@ -196,7 +196,11 @@ export default function ProjectDetailsPage() {
     try {
       const result = await importProjectBacklogApi(projectId, tasks);
       if (result.success) {
-        toast(`Import completed successfully! Boards: ${result.summary.boardsCreated}, Columns: ${result.summary.columnsCreated}, Tasks: ${result.summary.tasksImported}`);
+        if (result.summary.skippedDueToInvalidDate > 0) {
+          toast(`Imported: ${result.summary.tasksImported} rows\nSkipped: ${result.summary.skippedDueToInvalidDate} rows\nReason: Invalid Date Format`);
+        } else {
+          toast(`Import completed successfully! Boards: ${result.summary.boardsCreated}, Columns: ${result.summary.columnsCreated}, Tasks: ${result.summary.tasksImported}`);
+        }
         setIsImportModalOpen(false);
         loadProjectAndMembers(); // Reload data
       } else {
