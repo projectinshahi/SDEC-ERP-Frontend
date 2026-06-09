@@ -171,7 +171,8 @@ export function ActivityFeed({
             {activities.map((activity) => {
               const { label, variant } = getTypeConfig(activity.type);
               
-              const actorName = activity.actor?.name || 'System';
+              const isSystemEvent = ['system_job', 'cleanup', 'automated_sync', 'cron'].includes(activity.type);
+              const actorName = activity.actor?.name || (isSystemEvent ? 'System' : 'Unknown User');
               const avatarChar = actorName.charAt(0).toUpperCase();
               
               const avatarColors = [

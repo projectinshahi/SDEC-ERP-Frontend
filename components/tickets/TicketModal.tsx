@@ -4,59 +4,59 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/ui/InputField';
-import { Bug as BugIcon, AlertTriangle, FileText, User, X } from 'lucide-react';
+import { Ticket as TicketIcon, AlertTriangle, FileText, User, X } from 'lucide-react';
 import { FileUploader, QueuedFile } from './FileUploader';
-import type { Bug, BugAttachment } from '@/lib/api/bugs';
+import type { Ticket, TicketAttachment } from '../../lib/api/tickets';
 import type { UserDbResponse } from '@/lib/api/users';
-import { fetchBugAttachments, deleteBugAttachment } from '@/lib/api/bugs';
+import { fetchTicketAttachments, deleteTicketAttachment } from '../../lib/api/tickets';
 
-interface BugModalProps {
+interface TicketModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Bug>, files: QueuedFile[]) => void;
-  editBug?: Bug | null;
+  onSubmit: (data: Partial<Ticket>, files: QueuedFile[]) => void;
+  editTicket?: Ticket | null;
   isSubmitting?: boolean;
   users?: UserDbResponse[];
 }
 
-export function BugModal({
+export function TicketModal({
   isOpen,
   onClose,
   onSubmit,
-  editBug,
+  editTicket,
   isSubmitting = false,
   users = [],
-}: BugModalProps) {
-  const [formData, setFormData] = useState<Partial<Bug>>({
+}: TicketModalProps) {
+  const [formData, setFormData] = useState<Partial<Ticket>>({
     title: '',
     description: '',
     status: 'open',
     priority: 'medium',
-    severity: 'low',
-    assignedTo: '',
-    reportedBy: '',
+
+    assigned_to: undefined,
+    created_by: undefined,
   });
 
   const [queuedFiles, setQueuedFiles] = useState<QueuedFile[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<BugAttachment[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<TicketAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        title: editBug?.title || '',
-        description: editBug?.description || '',
-        status: editBug?.status || 'open',
-        priority: editBug?.priority || 'medium',
-        severity: editBug?.severity || 'low',
-        assignedTo: editBug?.assignedTo || '',
-        reportedBy: editBug?.reportedBy || '',
+        title: editTicket?.title || '',
+        description: editTicket?.description || '',
+        status: editTicket?.status || 'open',
+        priority: editTicket?.priority || 'medium',
+
+        assigned_to: editTicket?.assigned_to || undefined,
+        created_by: editTicket?.created_by || undefined,
       });
       setQueuedFiles([]);
-      
-      if (editBug?.id) {
+
+      if (editTicket?.id) {
         setLoadingAttachments(true);
-        fetchBugAttachments(editBug.id)
+        fetchTicketAttachments(editTicket.id)
           .then(setExistingAttachments)
           .catch(console.error)
           .finally(() => setLoadingAttachments(false));
@@ -64,9 +64,9 @@ export function BugModal({
         setExistingAttachments([]);
       }
     }
-  }, [isOpen, editBug]);
+  }, [isOpen, editTicket]);
 
-  const handleChange = (field: keyof Bug, value: string) => {
+  const handleChange = (field: keyof Ticket, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -76,9 +76,9 @@ export function BugModal({
   };
 
   const handleDeleteAttachment = async (attachmentId: number) => {
-    if (!editBug?.id) return;
+    if (!editTicket?.id) return;
     try {
-      await deleteBugAttachment(editBug.id, attachmentId);
+      await deleteTicketAttachment(editTicket.id, attachmentId);
       setExistingAttachments(prev => prev.filter(a => a.id !== attachmentId));
     } catch (error) {
       console.error('Failed to delete attachment', error);
@@ -92,15 +92,15 @@ export function BugModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editBug ? 'Edit Bug Report' : 'Report New Bug'}
+      title={editTicket ? 'Edit Ticket Report' : 'Report New Ticket'}
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <InputField
-          label="Bug Title"
+          label="Ticket Title"
           id="title"
           placeholder="Enter a descriptive title"
-          icon={BugIcon}
+          icon={TicketIcon}
           value={formData.title || ''}
           onChange={(val) => handleChange('title', val)}
           required
@@ -132,8 +132,8 @@ export function BugModal({
             Attachments
           </label>
           <FileUploader files={queuedFiles} onChange={setQueuedFiles} />
-          
-          {editBug && existingAttachments.length > 0 && (
+
+          {editTicket && existingAttachments.length > 0 && (
             <div className="mt-4 space-y-2">
               <h4 className="text-xs font-semibold text-gray-500 uppercase">Existing Attachments</h4>
               <ul className="space-y-2">
@@ -181,7 +181,7 @@ export function BugModal({
               <option value="closed">Closed</option>
             </select>
           </div>
-          
+
           <div className="space-y-1.5">
             <label htmlFor="priority" className="block text-sm font-semibold text-gray-700">Priority</label>
             <select
@@ -205,13 +205,13 @@ export function BugModal({
             <select
               id="assignedTo"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-sm text-slate-800"
-              value={formData.assignedTo || ''}
-              onChange={(e) => handleChange('assignedTo', e.target.value)}
+              value={formData.assigned_to || ''}
+              onChange={(e) => handleChange('assigned_to', Number(e.target.value) || undefined)}
               disabled={isSubmitting}
             >
               <option value="">Unassigned</option>
               {users.map(user => (
-                <option key={user.id} value={user.name}>{user.name}</option>
+                <option key={user.id} value={user.id}>{user.name}</option>
               ))}
             </select>
           </div>
@@ -220,13 +220,13 @@ export function BugModal({
             <select
               id="reportedBy"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-sm text-slate-800"
-              value={formData.reportedBy || ''}
-              onChange={(e) => handleChange('reportedBy', e.target.value)}
+              value={formData.created_by || ''}
+              onChange={(e) => handleChange('created_by', Number(e.target.value) || undefined)}
               disabled={isSubmitting}
             >
               <option value="">Unknown</option>
               {users.map(user => (
-                <option key={user.id} value={user.name}>{user.name}</option>
+                <option key={user.id} value={user.id}>{user.name}</option>
               ))}
             </select>
           </div>
@@ -237,10 +237,13 @@ export function BugModal({
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={isSubmitting || !isFormValid} fullWidth>
-            {isSubmitting ? 'Saving...' : (editBug ? 'Save Changes' : 'Create Bug')}
+            {isSubmitting ? 'Saving...' : (editTicket ? 'Save Changes' : 'Create Ticket')}
           </Button>
         </div>
       </form>
     </Modal>
   );
 }
+
+
+

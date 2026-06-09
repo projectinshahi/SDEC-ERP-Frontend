@@ -23,7 +23,8 @@ import {
   BarChart3,
   AlertCircle,
   Plus,
-  Upload
+  Upload,
+  FileText
 } from 'lucide-react';
 import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi, importProjectBacklogApi } from '@/lib/api/projects';
 import { Project, ProjectMember } from '@/components/projects/ProjectCard';
@@ -33,6 +34,7 @@ import { ImportBacklogModal } from '@/components/projects/ImportBacklogModal';
 import { Modal } from '@/components/Modal';
 import { ProjectSprintsTable } from '@/components/projects/ProjectSprintsTable';
 import { SprintStatsSidebar } from '@/components/projects/SprintStatsSidebar';
+import { ProjectDocsLibrary } from '@/components/projects/docs/ProjectDocsLibrary';
 import { classNames } from '@/lib/utils';
 
 export default function ProjectDetailsPage() {
@@ -45,7 +47,9 @@ export default function ProjectDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'editor' | 'viewer' | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'overview' | 'docs'>('overview');
   
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
@@ -102,6 +106,7 @@ export default function ProjectDetailsPage() {
       if (storedUser) {
         try {
           const userObj = JSON.parse(storedUser);
+          setCurrentUserId(userObj.id);
           const currentMember = membersData.find((m: ProjectMember) => m.userId === userObj.id || m.email === userObj.email);
           if (currentMember) {
             setCurrentUserRole(currentMember.role);
@@ -346,8 +351,37 @@ export default function ProjectDetailsPage() {
               )}
             </div>
           </div>
+
+          {/* Tabs Navigation */}
+          <div className="flex items-center gap-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={classNames(
+                'pb-3 pt-1 text-sm font-bold border-b-2 transition-colors whitespace-nowrap outline-none',
+                activeTab === 'overview'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              )}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('docs')}
+              className={classNames(
+                'pb-3 pt-1 text-sm font-bold border-b-2 transition-colors whitespace-nowrap outline-none flex items-center gap-1.5',
+                activeTab === 'docs'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              )}
+            >
+              <FileText size={15} className={activeTab === 'docs' ? 'text-blue-500' : 'text-gray-400'} />
+              Project Docs
+            </button>
+          </div>
+
           {/* Details layout: main columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {activeTab === 'overview' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
             {/* Main Content Column (Left - 70%) */}
             <div className="lg:col-span-2 space-y-6">
               {/* Project Description Card */}
@@ -412,6 +446,15 @@ export default function ProjectDetailsPage() {
               )}
             </div>
           </div>
+          ) : (
+            <div className="animate-fade-in">
+              <ProjectDocsLibrary 
+                projectId={projectId} 
+                userRole={currentUserRole} 
+                currentUserId={currentUserId} 
+              />
+            </div>
+          )}
         </div>
       )}
 

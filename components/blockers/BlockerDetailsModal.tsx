@@ -330,14 +330,14 @@ export function BlockerDetailsModal({ isOpen, onClose, blocker, currentUserId, o
                               <FileIcon className="w-8 h-8 text-blue-500" />
                             </a>
                           )}
-                          <div className="p-2 border-t border-gray-100 flex flex-col justify-between flex-1">
+                          <div className="p-2.5 border-t border-gray-100 flex flex-col justify-between flex-1">
                             <div>
-                              <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-gray-700 truncate block hover:text-blue-600 transition-colors" title={att.file_name}>
-                                {att.file_name}
+                              <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate block hover:text-blue-600 transition-colors" title={att.description || att.file_name}>
+                                {att.description || att.file_name}
                               </a>
                               {att.description && (
-                                <p className="text-[10px] text-gray-600 mt-1 italic line-clamp-2" title={att.description}>
-                                  "{att.description}"
+                                <p className="text-[10px] text-gray-500 mt-0.5 truncate" title={att.file_name}>
+                                  {att.file_name}
                                 </p>
                               )}
                             </div>

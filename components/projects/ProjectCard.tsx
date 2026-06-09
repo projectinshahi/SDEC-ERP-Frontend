@@ -16,6 +16,8 @@ export interface Project {
   startDate?: string;
   endDate?: string;
   is_archived?: boolean;
+  owner_id?: number | null;
+  owner?: { id: number; name: string } | null;
 }
 
 export interface ProjectMember {
@@ -76,7 +78,7 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
   return (
     <Link href={`/dashboard/projects/${project.id}`}>
       <div 
-        className="group flex flex-col justify-between bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer h-full min-h-[220px]"
+        className="group flex flex-col justify-between bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer h-full min-h-[180px]"
         role="button"
         tabIndex={0}
         aria-label={`Project: ${project.name}, Status: ${project.status}`}
@@ -174,6 +176,16 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
           <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-3 leading-relaxed">
             {project.description}
           </p>
+
+          {/* Owner */}
+          {project.owner && (
+            <div className="flex items-center gap-1.5 pt-1">
+              <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 flex items-center justify-center text-[10px] font-bold">
+                {project.owner.name.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium truncate">Owner: {project.owner.name}</span>
+            </div>
+          )}
         </div>
 
         {/* Footer row: Members Pile & Updated Date */}
