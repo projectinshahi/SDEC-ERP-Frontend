@@ -48,8 +48,33 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
+  const ALLOWED_ACTIVITY_TYPES = [
+    'project_created',
+    'project_updated',
+    'sprint_updated',
+    'sprint_status_changed',
+    'document_uploaded',
+    'document_updated',
+    'document_removed',
+    'sprint_created',
+    'board_created',
+    'bug_created',
+    'bug_updated',
+    'bug_deleted',
+    'meeting_created',
+    'meeting_updated',
+    'meeting_deleted',
+    'blocker_created',
+    'blocker_updated',
+    'blocker_deleted',
+    'attachment_uploaded',
+    'attachment_removed'
+  ];
+
+  const filteredActivities = activities?.filter(a => ALLOWED_ACTIVITY_TYPES.includes(a.type)) || [];
+
   // Determine if feed is empty
-  const isEmpty = !activities || activities.length === 0;
+  const isEmpty = filteredActivities.length === 0;
 
   // Map backend types to friendly statuses
   const getTypeConfig = (type: string) => {
@@ -70,12 +95,24 @@ export function ActivityFeed({
       case 'user_deleted': return { label: 'User Deleted', variant: 'danger' as any };
       case 'role_created': return { label: 'Role Created', variant: 'info' as any };
       case 'role_deleted': return { label: 'Role Deleted', variant: 'danger' as any };
-      case 'sprint_created': return { label: 'Sprint Added', variant: 'success' as any };
+      case 'sprint_created': return { label: 'Sprint/Board Added', variant: 'success' as any };
+      case 'sprint_updated': return { label: 'Sprint Update', variant: 'warning' as any };
+      case 'sprint_status_changed': return { label: 'Sprint Status', variant: 'info' as any };
       case 'sprint_deleted': return { label: 'Sprint Removed', variant: 'danger' as any };
+      case 'document_uploaded': return { label: 'Doc Uploaded', variant: 'success' as any };
+      case 'document_updated': return { label: 'Doc Update', variant: 'warning' as any };
+      case 'document_removed': return { label: 'Doc Removed', variant: 'danger' as any };
       case 'bug_created': return { label: 'Bug Logged', variant: 'danger' as any };
+      case 'bug_updated': return { label: 'Bug Update', variant: 'warning' as any };
       case 'bug_deleted': return { label: 'Bug Removed', variant: 'success' as any };
-      case 'blocker_created': return { label: 'Blocker Logged', variant: 'danger' as any };
-      case 'blocker_deleted': return { label: 'Blocker Removed', variant: 'success' as any };
+      case 'blocker_created': return { label: 'Ticket Logged', variant: 'danger' as any };
+      case 'blocker_updated': return { label: 'Ticket Update', variant: 'warning' as any };
+      case 'blocker_deleted': return { label: 'Ticket Removed', variant: 'success' as any };
+      case 'meeting_created': return { label: 'Meeting Added', variant: 'success' as any };
+      case 'meeting_updated': return { label: 'Meeting Update', variant: 'warning' as any };
+      case 'meeting_deleted': return { label: 'Meeting Removed', variant: 'danger' as any };
+      case 'attachment_uploaded': return { label: 'Attachment Added', variant: 'info' as any };
+      case 'attachment_removed': return { label: 'Attachment Removed', variant: 'danger' as any };
       case 'mention': return { label: 'Mention', variant: 'warning' as any };
       default: return { label: 'System', variant: 'info' as any };
     }
@@ -100,10 +137,10 @@ export function ActivityFeed({
           <Activity size={18} className="text-indigo-600 dark:text-indigo-400" />
           <h2 className="text-lg font-bold text-gray-800 dark:text-white">Recent Activity</h2>
         </div>
-        {!isLoading && !isError && activities.length > 0 && (
+        {!isLoading && !isError && filteredActivities.length > 0 && (
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-full shrink-0">
-              {activities.length} total
+              {filteredActivities.length} total
             </span>
             {onClear && (
               <Button
@@ -168,7 +205,7 @@ export function ActivityFeed({
         ) : (
           /* 4. Normal Activity List presentation */
           <div className="divide-y divide-gray-100 dark:divide-slate-800">
-            {activities.map((activity) => {
+            {filteredActivities.map((activity) => {
               const { label, variant } = getTypeConfig(activity.type);
               
               const isSystemEvent = ['system_job', 'cleanup', 'automated_sync', 'cron'].includes(activity.type);
