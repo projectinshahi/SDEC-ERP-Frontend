@@ -43,8 +43,8 @@ export function MemberList({ members, onRoleChange, onRemove, isUpdating, readOn
   return (
     <div className="divide-y divide-gray-100 dark:divide-gray-700/40">
       {members.map((member) => (
-        <div 
-          key={member.id} 
+        <div
+          key={member.id}
           className="flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group"
         >
           <div className="flex items-center gap-3.5">
