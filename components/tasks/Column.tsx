@@ -183,7 +183,7 @@ export function Column({
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex-1 min-w-[280px] max-w-[340px] flex flex-col bg-gray-50/80 dark:bg-gray-900/40 rounded-xl border border-gray-200/60 dark:border-gray-800/80 transition-all duration-300 p-3 h-full max-h-[80vh] ${
+      className={`shrink-0 w-[320px] flex flex-col bg-gray-50/80 dark:bg-gray-900/40 rounded-xl border border-gray-200/60 dark:border-gray-800/80 transition-all duration-300 p-3 h-full max-h-[80vh] ${
         currentTheme.border
       } ${
         isDragOver
