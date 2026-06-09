@@ -57,12 +57,12 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'Bug',
     module: 'bugs',
   },
-  {
-    label: 'Sprint Tracking',
-    href: '/dashboard/sprints',
-    icon: 'Rocket',
-    module: 'sprints',
-  },
+  // {
+  //   label: 'Sprint Tracking',
+  //   href: '/dashboard/sprints',
+  //   icon: 'Rocket',
+  //   module: 'sprints',
+  // },
   // New Meetings item
   {
     label: 'Meetings',

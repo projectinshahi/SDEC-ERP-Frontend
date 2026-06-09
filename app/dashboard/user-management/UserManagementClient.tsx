@@ -7,7 +7,6 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { UserTable } from '@/components/user-management/UserTable';
 import { RoleTable } from '@/components/user-management/RoleTable';
 import { AddUserModal } from '@/components/user-management/AddUserModal';
-import { AddRoleModal } from '@/components/user-management/AddRoleModal';
 import { CreateRoleModal } from '@/components/user-management/CreateRoleModal';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
@@ -162,37 +161,9 @@ export function UserManagementClient() {
   };
 
   // Role handlers
-  const handleAddRole = (data: RoleFormData) => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      const newRole: Role = {
-        id: String(roles.length + 1),
-        ...data,
-        userCount: 0,
-      };
-      setRoles((prev) => [...prev, newRole]);
-      setIsSubmitting(false);
-      setIsRoleModalOpen(false);
-      toast(`Role "${data.name}" successfully created!`, 'success');
-    }, 700);
-  };
-
   const handleEditRole = (role: Role) => {
     setEditingRole(role);
     setIsRoleModalOpen(true);
-  };
-
-  const handleUpdateRole = (data: RoleFormData) => {
-    if (editingRole) {
-      setIsSubmitting(true);
-      setTimeout(() => {
-        setRoles((prev) => prev.map((r) => (r.id === editingRole.id ? { ...r, ...data } : r)));
-        setIsSubmitting(false);
-        setIsRoleModalOpen(false);
-        setEditingRole(null);
-        toast(`Access permission role "${data.name}" successfully updated!`, 'success');
-      }, 700);
-    }
   };
 
   const handleDeleteRole = (roleId: string) => {
