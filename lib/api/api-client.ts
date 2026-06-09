@@ -79,6 +79,7 @@ class ApiClientService {
         if (!isLoginRoute && typeof window !== 'undefined') {
           console.log('[API] Session expired, redirecting to login');
           localStorage.removeItem('authToken');
+          localStorage.removeItem('userToken');
           localStorage.removeItem('user');
           window.location.href = '/login';
         }
