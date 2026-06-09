@@ -1,21 +1,21 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bug as BugType, BugAttachment, fetchBugAttachments } from '@/lib/api/bugs';
-import { BugDiscussionPanel } from './BugDiscussionPanel';
+import { Ticket as TicketType, TicketAttachment, fetchTicketAttachments } from '../../lib/api/tickets';
+
 import { ImageViewer } from './ImageViewer';
-import { X, Calendar, User, Tag, AlertTriangle, Monitor, Activity, FileText, Settings, Bug as BugIcon, File as FileIcon, Paperclip } from 'lucide-react';
+import { X, Calendar, User, Tag, AlertTriangle, Monitor, Activity, FileText, Settings, Ticket as TicketIcon, File as FileIcon, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 
-interface BugDetailsModalProps {
+interface TicketDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  bug: BugType | null;
+  ticket: TicketType | null;
   currentUserId?: number | string;
 }
 
-export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDetailsModalProps) {
-  const [attachments, setAttachments] = useState<BugAttachment[]>([]);
+export function TicketDetailsModal({ isOpen, onClose, ticket, currentUserId }: TicketDetailsModalProps) {
+  const [attachments, setAttachments] = useState<TicketAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
 
   // Image viewer state
@@ -23,16 +23,16 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
   const [viewerIndex, setViewerIndex] = useState(0);
 
   useEffect(() => {
-    if (isOpen && bug) {
+    if (isOpen && ticket) {
       setLoadingAttachments(true);
-      fetchBugAttachments(bug.id)
+      fetchTicketAttachments(ticket.id)
         .then(setAttachments)
         .catch(console.error)
         .finally(() => setLoadingAttachments(false));
     }
-  }, [isOpen, bug]);
+  }, [isOpen, ticket]);
 
-  if (!isOpen || !bug) return null;
+  if (!isOpen || !ticket) return null;
 
   const imageAttachments = attachments.filter(a => a.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) || a.file_url.includes('image/upload'));
   const viewerImages = imageAttachments.map(a => ({ id: a.id, url: a.file_url, name: a.file_name }));
@@ -75,19 +75,19 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
-              <BugIcon size={20} />
+              <TicketIcon size={20} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400">BUG-{bug.id}</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getStatusColor(bug.status)}`}>
-                  {bug.status.replace('_', ' ')}
+                <span className="text-xs font-bold text-gray-400">BUG-{ticket.id}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getStatusColor(ticket.status)}`}>
+                  {ticket.status.replace('_', ' ')}
                 </span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getPriorityColor(bug.priority)}`}>
-                  {bug.priority} Priority
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getPriorityColor(ticket.priority)}`}>
+                  {ticket.priority} Priority
                 </span>
               </div>
-              <h2 className="text-xl font-bold text-gray-800 mt-0.5">{bug.title}</h2>
+              <h2 className="text-xl font-bold text-gray-800 mt-0.5">{ticket.title}</h2>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -103,7 +103,7 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
         {/* Content Body */}
         <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
 
-          {/* Left Section - Bug Details (70%) */}
+          {/* Left Section - Ticket Details (70%) */}
           <div className="w-full lg:w-[70%] h-full overflow-y-auto p-6 bg-white border-r border-gray-100 custom-scrollbar">
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -112,14 +112,14 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
                   <User size={14} />
                   <span className="text-xs font-semibold uppercase tracking-wider">Assignee</span>
                 </div>
-                <div className="font-medium text-sm text-gray-800">{bug.assignedTo || 'Unassigned'}</div>
+                <div className="font-medium text-sm text-gray-800">{ticket.assignee?.name || 'Unassigned'}</div>
               </div>
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                 <div className="flex items-center gap-2 text-gray-500 mb-1">
                   <User size={14} />
                   <span className="text-xs font-semibold uppercase tracking-wider">Reporter</span>
                 </div>
-                <div className="font-medium text-sm text-gray-800">{bug.reportedBy || 'Unknown'}</div>
+                <div className="font-medium text-sm text-gray-800">{ticket.creator?.name || 'Unknown'}</div>
               </div>
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                 <div className="flex items-center gap-2 text-gray-500 mb-1">
@@ -127,7 +127,7 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
                   <span className="text-xs font-semibold uppercase tracking-wider">Created</span>
                 </div>
                 <div className="font-medium text-sm text-gray-800">
-                  {bug.createdAt ? format(new Date(bug.createdAt), 'MMM d, yyyy') : 'N/A'}
+                  {ticket.created_at ? format(new Date(ticket.created_at), 'MMM d, yyyy') : 'N/A'}
                 </div>
               </div>
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
@@ -135,7 +135,7 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
                   <AlertTriangle size={14} />
                   <span className="text-xs font-semibold uppercase tracking-wider">Severity</span>
                 </div>
-                <div className="font-medium text-sm text-gray-800 capitalize">{bug.severity || 'Not set'}</div>
+                <div className="font-medium text-sm text-gray-800 capitalize">{ticket.priority || 'Not set'}</div>
               </div>
             </div>
 
@@ -147,7 +147,7 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
                   <h3 className="text-lg font-bold text-gray-800">Description</h3>
                 </div>
                 <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  {bug.description || 'No description provided.'}
+                  {ticket.description || 'No description provided.'}
                 </div>
               </section>
 
@@ -270,7 +270,7 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
 
           {/* Right Section - Discussion (30%) */}
           <div className="w-full lg:w-[30%] h-full flex flex-col bg-gray-50">
-            <BugDiscussionPanel bugId={bug.id} currentUserId={currentUserId} />
+            <div>Discussions disabled</div>
           </div>
 
         </div>
@@ -284,3 +284,5 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
     </div>
   );
 }
+
+

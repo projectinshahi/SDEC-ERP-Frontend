@@ -34,6 +34,10 @@ export type PermissionKey =
   | 'bugs.read'
   | 'bugs.update'
   | 'bugs.delete'
+  | 'tickets.create'
+  | 'tickets.read'
+  | 'tickets.update'
+  | 'tickets.delete'
   // Sprint Tracking
   | 'sprints.create'
   | 'sprints.read'
@@ -68,7 +72,7 @@ export type PermissionKey =
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales';
+export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets';
 
 /**
  * A single permission definition with metadata for UI rendering.
@@ -102,3 +106,5 @@ export interface AuthenticatedUser {
   roleName: string;
   permissions: string[];
 }
+
+

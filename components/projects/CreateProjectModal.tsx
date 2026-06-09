@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { InputField } from './InputField';
 import { TextareaField } from './TextareaField';
 import { MultiSelectMembers } from './MultiSelectMembers';
+import { SingleSelectMember } from './SingleSelectMember';
 import { Project } from './ProjectCard';
 import { fetchUsers } from '@/lib/api/users';
 
@@ -16,6 +17,7 @@ export interface ProjectFormData {
   startDate: string;
   endDate?: string;
   members: number[];
+  owner_id: number | null;
 }
 
 interface CreateProjectModalProps {
@@ -50,6 +52,7 @@ export function CreateProjectModal({
     startDate: getTodayDateString(),
     endDate: '',
     members: [],
+    owner_id: null,
   });
 
   const [formData, setFormData] = useState<ProjectFormData>(initialFormState());
@@ -98,6 +101,7 @@ export function CreateProjectModal({
           startDate: projectToEdit.startDate || getTodayDateString(),
           endDate: projectToEdit.endDate || '',
           members: resolvedIds,
+          owner_id: projectToEdit.owner_id || null,
         });
       } else {
         setFormData(initialFormState());
@@ -270,6 +274,12 @@ export function CreateProjectModal({
             selectedIds={formData.members}
             onChange={(ids) => setFormData({ ...formData, members: ids })}
             error={errors.members}
+          />
+
+          {/* Project Owner assignment searchable picker */}
+          <SingleSelectMember
+            selectedId={formData.owner_id}
+            onChange={(id) => setFormData({ ...formData, owner_id: id })}
           />
         </div>
 

@@ -101,11 +101,11 @@ export function TaskDetailsDrawer({ isOpen, onClose, task, onEdit, canEdit }: Ta
                         </div>
                       )}
                       <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium text-gray-900 truncate" title={att.file_name}>
-                          {att.file_name}
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" title={att.description || att.file_name}>
+                          {att.description || att.file_name}
                         </span>
-                        <span className="text-xs text-gray-500 truncate">
-                          {(att.file_size / 1024).toFixed(1)} KB • {att.uploader?.name || 'Unknown'}
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {att.description ? att.file_name + ' • ' : ''}{(att.file_size / 1024).toFixed(1)} KB • {att.uploader?.name || 'Unknown'}
                         </span>
                       </div>
                     </div>

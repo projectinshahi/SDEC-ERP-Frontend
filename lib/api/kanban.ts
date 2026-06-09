@@ -7,6 +7,7 @@ export interface TaskAttachment {
   file_name: string;
   file_url: string;
   file_size: number;
+  description?: string | null;
   uploaded_by: number;
   uploaded_at: string;
   uploader?: { id: number; name: string };

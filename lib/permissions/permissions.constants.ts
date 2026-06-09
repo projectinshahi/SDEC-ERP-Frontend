@@ -14,6 +14,7 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   task: 'task.',
   role: 'role.',
   bugs: 'bugs.',
+  tickets: 'tickets.',
   sprints: 'sprints.',
   blockers: 'blockers.',
   meetings: 'meetings.',
@@ -371,3 +372,4 @@ export const ALL_PERMISSION_KEYS: PermissionKey[] = PERMISSION_GROUPS.flatMap(
  * Super Admin bypasses all permission checks.
  */
 export const SUPER_ADMIN_ROLE_NAME = 'Super Admin';
+

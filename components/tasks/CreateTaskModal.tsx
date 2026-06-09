@@ -296,10 +296,10 @@ export function CreateTaskModal({
                         </div>
                       )}
                       <div className="truncate">
-                        <a href={att.file_url.startsWith('http') ? att.file_url : process.env.NEXT_PUBLIC_API_URL + att.file_url} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:underline truncate block">
-                          {att.file_name}
+                        <a href={att.file_url.startsWith('http') ? att.file_url : process.env.NEXT_PUBLIC_API_URL + att.file_url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-600 hover:underline truncate block">
+                          {att.description || att.file_name}
                         </a>
-                        <span className="text-xs text-gray-500">{(att.file_size / 1024).toFixed(1)} KB • by {att.uploader?.name || 'Unknown'}</span>
+                        <span className="text-xs text-gray-500">{att.description ? att.file_name + ' • ' : ''}{(att.file_size / 1024).toFixed(1)} KB • by {att.uploader?.name || 'Unknown'}</span>
                       </div>
                     </div>
                     <button

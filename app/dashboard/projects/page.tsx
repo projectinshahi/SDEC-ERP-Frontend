@@ -274,7 +274,7 @@ export default function ProjectsPage() {
         {isLoading ? (
           /* LOADING STATE: Custom skeleton grids or lists */
           viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5">
               {Array.from({ length: 3 }).map((_, index) => (
                 <div key={index} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm space-y-4">
                   <div className="flex justify-between items-center">
@@ -349,7 +349,7 @@ export default function ProjectsPage() {
           /* SUCCESS STATE: Display grid or list */
           <div className="animate-fade-in">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5">
                 {displayedProjects.map((project) => (
                   <ProjectCard 
                     key={project.id} 

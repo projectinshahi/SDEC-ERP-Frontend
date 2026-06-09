@@ -12,7 +12,8 @@ export interface ActivityLog {
   actor?: {
     id: number;
     name: string;
-    role: string;
+    role?: string;
+    email?: string;
   };
 }
 
