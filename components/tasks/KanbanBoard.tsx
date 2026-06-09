@@ -648,7 +648,7 @@ export function KanbanBoard({
         </div>
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-800">
-          <div className="flex gap-4 min-w-[1100px] h-[66vh] items-start">
+          <div className="flex gap-4 min-w-max h-[66vh] items-start">
             {/* Active Dynamic Columns */}
             {columns.map((col, index) => {
               // Filter tasks matching the current column status and active filters
@@ -713,7 +713,7 @@ export function KanbanBoard({
                     (name) => handleAddColumn(name)
                   );
                 }}
-                className="flex-shrink-0 w-[280px] h-[150px] flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 bg-gray-50/50 dark:bg-gray-800/10 hover:bg-white dark:hover:bg-gray-800/30 rounded-xl p-6 text-center cursor-pointer transition-all duration-200 group shadow-sm select-none"
+                className="flex-shrink-0 w-[320px] h-[150px] flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 bg-gray-50/50 dark:bg-gray-800/10 hover:bg-white dark:hover:bg-gray-800/30 rounded-xl p-6 text-center cursor-pointer transition-all duration-200 group shadow-sm select-none"
                 title="Create a custom status column"
               >
                 <div className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center mb-2 group-hover:scale-110 transition-transform border border-gray-100 dark:border-gray-700">

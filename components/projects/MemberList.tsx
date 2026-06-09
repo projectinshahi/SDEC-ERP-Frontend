@@ -3,7 +3,7 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 import { ProjectMember } from '@/components/projects/ProjectCard';
-import { RoleDropdown, ProjectRole } from './RoleDropdown';
+import { ProjectRole } from './RoleDropdown';
 
 interface MemberListProps {
   members: ProjectMember[];
@@ -56,14 +56,7 @@ export function MemberList({ members, onRoleChange, onRemove, isUpdating, readOn
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{member.email}</p>
             </div>
           </div>
-          
           <div className="flex items-center gap-3 sm:gap-4 shrink-0 ml-2">
-            <RoleDropdown 
-              role={member.role as ProjectRole} 
-              onChange={(newRole) => onRoleChange && onRoleChange(member.id, newRole)}
-              disabled={readOnly || isUpdating === member.id}
-            />
-            
             {!readOnly && onRemove && (
               <button
                 type="button"

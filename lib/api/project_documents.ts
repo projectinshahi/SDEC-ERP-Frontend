@@ -54,3 +54,10 @@ export const updateProjectDocument = async (
 export const deleteProjectDocument = async (projectId: string, documentId: number): Promise<void> => {
   await apiClient.delete(`/projects/${projectId}/documents/${documentId}`);
 };
+
+export const downloadProjectDocumentBlob = async (projectId: string, documentId: number): Promise<Blob> => {
+  const { data } = await apiClient.get<Blob>(`/projects/${projectId}/documents/${documentId}/download`, {
+    responseType: 'blob',
+  });
+  return data as Blob;
+};

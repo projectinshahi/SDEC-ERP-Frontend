@@ -12,8 +12,9 @@ import {
   ProjectDocument, 
   fetchProjectDocuments, 
   uploadProjectDocument, 
+  deleteProjectDocument, 
   updateProjectDocument, 
-  deleteProjectDocument 
+  downloadProjectDocumentBlob 
 } from '@/lib/api/project_documents';
 import { UploadDocModal } from './UploadDocModal';
 import { EditDocModal } from './EditDocModal';
@@ -139,6 +140,39 @@ export function ProjectDocsLibrary({ projectId, userRole, currentUserId }: Proje
     });
   };
 
+  const handlePreview = async (doc: ProjectDocument, e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      toast('Opening document...', 'info');
+      const blob = await downloadProjectDocumentBlob(doc.project_id, doc.id);
+      const blobUrl = window.URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    } catch (error) {
+      console.error("Preview failed:", error);
+      toast('Failed to load document', 'error');
+    }
+  };
+
+  const handleDownload = async (doc: ProjectDocument, e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      toast('Starting download...', 'success');
+      const blob = await downloadProjectDocumentBlob(doc.project_id, doc.id);
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = doc.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast('Direct download failed, opening in new tab...', 'error');
+      window.open(doc.file_url, '_blank');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header and Controls */}
@@ -207,9 +241,14 @@ export function ProjectDocsLibrary({ projectId, userRole, currentUserId }: Proje
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="font-bold text-gray-900 dark:text-gray-100 mb-0.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
+                      <a 
+                        href="#" 
+                        onClick={(e) => handlePreview(doc, e)}
+                        className="font-bold text-gray-900 dark:text-gray-100 mb-0.5 hover:underline group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1 block cursor-pointer"
+                        title="Click to preview document"
+                      >
                         {doc.title}
-                      </p>
+                      </a>
                       <p className="text-xs text-gray-400 line-clamp-1 max-w-[400px]">
                         {doc.description || doc.file_name}
                       </p>
@@ -229,10 +268,9 @@ export function ProjectDocsLibrary({ projectId, userRole, currentUserId }: Proje
                       <div className="flex items-center justify-end gap-2 transition-opacity">
                         <a
                           href={doc.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          onClick={(e) => handleDownload(doc, e)}
                           className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
-                          title="Download / View"
+                          title="Download Document"
                         >
                           <Download size={16} />
                         </a>

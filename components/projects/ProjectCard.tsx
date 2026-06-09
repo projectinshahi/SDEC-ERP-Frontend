@@ -86,7 +86,7 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
         <div className="space-y-3">
           {/* Header row: Project Title & Status / Actions */}
           <div className="flex items-start justify-between gap-3">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-1">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 break-words">
               {project.name}
             </h3>
             <div className="flex items-center gap-1.5 shrink-0">
