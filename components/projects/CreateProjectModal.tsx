@@ -6,7 +6,7 @@ import { Button } from '@/components/Button';
 import { Loader2 } from 'lucide-react';
 import { InputField } from './InputField';
 import { TextareaField } from './TextareaField';
-import { MultiSelectMembers } from './MultiSelectMembers';
+import { ProjectMemberTable, MemberDetail } from './ProjectMemberTable';
 import { SingleSelectMember } from './SingleSelectMember';
 import { Project } from './ProjectCard';
 import { fetchUsers } from '@/lib/api/users';
@@ -16,7 +16,7 @@ export interface ProjectFormData {
   description: string;
   startDate: string;
   endDate?: string;
-  members: number[];
+  memberDetails: MemberDetail[];
   owner_id: number | null;
 }
 
@@ -51,7 +51,7 @@ export function CreateProjectModal({
     description: '',
     startDate: getTodayDateString(),
     endDate: '',
-    members: [],
+    memberDetails: [],
     owner_id: null,
   });
 
@@ -95,12 +95,14 @@ export function CreateProjectModal({
           setIsResolvingMembers(false);
         }
 
+        const prefilledMemberDetails = projectToEdit.memberDetails || resolvedIds.map(id => ({ userId: id, role: 'viewer', capacityPoints: 0 }));
+
         setFormData({
           name: projectToEdit.name,
           description: projectToEdit.description || '',
           startDate: projectToEdit.startDate || getTodayDateString(),
           endDate: projectToEdit.endDate || '',
-          members: resolvedIds,
+          memberDetails: prefilledMemberDetails,
           owner_id: projectToEdit.owner_id || null,
         });
       } else {
@@ -152,8 +154,10 @@ export function CreateProjectModal({
   }
 }
 
-    if (data.members.length === 0) {
-      tempErrors.members = 'At least one team member must be assigned';
+    if (data.memberDetails.length === 0) {
+      tempErrors.memberDetails = 'At least one team member must be assigned';
+    } else if (data.memberDetails.some(m => !m.userId)) {
+      tempErrors.memberDetails = 'Please select a user for all member rows';
     }
 
     return tempErrors;
@@ -161,7 +165,7 @@ export function CreateProjectModal({
 
   // Run validation triggers on form modifications
   useEffect(() => {
-    if (formData.name || formData.members.length > 0 || formData.endDate) {
+    if (formData.name || formData.memberDetails.length > 0 || formData.endDate) {
       const formErrors = validateForm(formData);
       setErrors(formErrors);
     }
@@ -270,10 +274,10 @@ export function CreateProjectModal({
           </div>
 
           {/* Team Member assignment searchable picker */}
-          <MultiSelectMembers
-            selectedIds={formData.members}
-            onChange={(ids) => setFormData({ ...formData, members: ids })}
-            error={errors.members}
+          <ProjectMemberTable
+            memberDetails={formData.memberDetails}
+            onChange={(details) => setFormData({ ...formData, memberDetails: details })}
+            error={errors.memberDetails}
           />
 
           {/* Project Owner assignment searchable picker */}

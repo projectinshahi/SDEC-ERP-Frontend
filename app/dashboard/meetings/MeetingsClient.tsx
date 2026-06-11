@@ -45,7 +45,6 @@ const schema = z.object({
   startTime: z.string().min(1, 'Start time is required'),
   duration: z.string().min(1, 'Duration is required'),
   customDuration: z.string().optional(),
-  meetingLink: z.string().optional(),
   attendees: z.string().optional(),
 }).refine(data => data.duration !== 'CUSTOM' || (data.customDuration && parseInt(data.customDuration) > 0), {
   message: 'Valid custom duration is required',
@@ -205,7 +204,7 @@ export default function MeetingsClient() {
     setSelectedAttendees([]);
     reset({
       title: '', description: '', meetingType: 'DAILY_STANDUP',
-      meetingDate: '', startTime: '', duration: '30', customDuration: '', meetingLink: '',
+      meetingDate: '', startTime: '', duration: '30', customDuration: '',
       attendees: '',
     });
     setIsModalOpen(true);
@@ -229,7 +228,6 @@ export default function MeetingsClient() {
       startTime: m.startTime,
       duration: durStr,
       customDuration: customDurStr,
-      meetingLink: m.meetingLink ?? '',
       attendees: (m.attendees ?? []).join(', '),
     });
     setIsModalOpen(true);
@@ -264,7 +262,6 @@ export default function MeetingsClient() {
           meetingDate: data.meetingDate,
           startTime: data.startTime,
           endTime: computedEndTime,
-          meetingLink: data.meetingLink || undefined,
           attendees: selectedAttendees,
         });
         setMeetings(p => p.map(m => m.id === editingMeeting.id ? updated : m));
@@ -284,9 +281,6 @@ export default function MeetingsClient() {
         // Only add optional fields if they have values
         if (data.description && data.description.trim()) {
           payload.description = data.description.trim();
-        }
-        if (data.meetingLink && data.meetingLink.trim()) {
-          payload.meetingLink = data.meetingLink.trim();
         }
 
         const created = await apiCreateMeeting(payload);
@@ -476,7 +470,7 @@ export default function MeetingsClient() {
                       {m.project?.name && <p className="text-xs text-gray-400 mt-0.5">{m.project.name}</p>}
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className={classNames('px-2.5 py-1 rounded-full text-xs font-semibold', TYPE_COLORS[m.meetingType] ?? TYPE_COLORS.OTHER)}>
+                      <span className={classNames('inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap', TYPE_COLORS[m.meetingType] ?? TYPE_COLORS.OTHER)}>
                         {TYPE_LABELS[m.meetingType] ?? m.meetingType}
                       </span>
                     </td>
@@ -702,15 +696,16 @@ export default function MeetingsClient() {
             </div>
           )}
           {watchDuration !== 'CUSTOM' && (
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              <span className="font-semibold text-gray-700 dark:text-gray-300">Calculated End Time:</span> {dynamicEndTime}
-            </div>
+            <>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Calculated End Time:</span> {dynamicEndTime}
+              </div>
+              <div className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5 mt-2 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg">
+                <Video size={14} />
+                A Google Meet link will be automatically generated.
+              </div>
+            </>
           )}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5"><Video size={12} className="inline mr-1" />Meeting Link</label>
-            <input {...register('meetingLink')} placeholder="https://zoom.us/j/..." className={inputCls} />
-            {errors.meetingLink && <p className="text-xs text-red-500 mt-1">{errors.meetingLink.message}</p>}
-          </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
               <Users size={12} className="inline mr-1" />Attendees

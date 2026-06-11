@@ -98,10 +98,29 @@ export function SprintSelector({ sprints, selectedSprintId, onSelectSprint, isLo
                   >
                     <div>
                       <div className="font-medium text-sm text-gray-800 dark:text-gray-200">{sprint.name}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{getSprintDateText(sprint)}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2">
+                        <span>{getSprintDateText(sprint)}</span>
+                        {sprint.totalEstimatedPoints !== undefined && (
+                          <>
+                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                            <span className="font-semibold text-blue-600 dark:text-blue-400">{sprint.totalEstimatedPoints} Pts</span>
+                          </>
+                        )}
+                        {sprint.capacity !== undefined && sprint.capacity > 0 && (
+                          <>
+                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                            <span className="font-semibold text-indigo-500">{sprint.capacity} Cap</span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    {sprint.status === 'Active' && (
-                      <Badge variant="success" className="text-[10px] py-0">Active</Badge>
+                    {sprint.status && (
+                      <Badge 
+                        variant={sprint.status === 'Active' ? 'success' : sprint.status === 'Completed' ? 'info' : 'default'} 
+                        className="text-[10px] py-0"
+                      >
+                        {sprint.status}
+                      </Badge>
                     )}
                   </button>
                 ))

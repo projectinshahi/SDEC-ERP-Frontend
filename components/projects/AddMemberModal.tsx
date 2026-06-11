@@ -25,7 +25,6 @@ export function AddMemberModal({ isOpen, onClose, onSubmit, existingMembers }: A
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
   
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +34,6 @@ export function AddMemberModal({ isOpen, onClose, onSubmit, existingMembers }: A
       loadUsers();
       setSearchQuery('');
       setSelectedUserId(null);
-      setSelectedRole('viewer');
     }
   }, [isOpen]);
 
@@ -57,7 +55,7 @@ export function AddMemberModal({ isOpen, onClose, onSubmit, existingMembers }: A
     
     setIsSubmitting(true);
     try {
-      await onSubmit({ userId: selectedUserId, role: selectedRole });
+      await onSubmit({ userId: selectedUserId, role: 'viewer' });
     } finally {
       setIsSubmitting(false);
     }
@@ -132,34 +130,7 @@ export function AddMemberModal({ isOpen, onClose, onSubmit, existingMembers }: A
           </div>
         </div>
 
-        {/* Role Selection */}
-        <div className="space-y-2">
-          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
-            Assign Role <span className="text-red-500">*</span>
-          </label>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { id: 'admin', label: 'Admin', desc: 'Full access' },
-              { id: 'editor', label: 'Editor', desc: 'Can edit' },
-              { id: 'viewer', label: 'Viewer', desc: 'Read-only' },
-            ].map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setSelectedRole(r.id as any)}
-                className={classNames(
-                  'p-3 border rounded-lg text-left transition-all cursor-pointer',
-                  selectedRole === r.id 
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500 shadow-sm' 
-                    : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
-                )}
-              >
-                <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{r.label}</div>
-                <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{r.desc}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         {/* Actions */}
         <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-800/60 mt-6">

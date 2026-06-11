@@ -6,7 +6,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { 
-  Activity, CheckCircle, Clock, AlertTriangle, Layers, Loader2, Calendar, User
+  Activity, CheckCircle, Clock, AlertTriangle, Layers, Loader2, Calendar, User, Target
 } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/Card';
 import { fetchBoardAnalytics, BoardAnalyticsFilters } from '@/lib/api/kanban';
@@ -144,7 +144,7 @@ export function BoardAnalytics({ boardId, sprintId, sprints }: BoardAnalyticsPro
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card variant="outlined" className="bg-white dark:bg-gray-800 border-gray-200 shadow-sm relative overflow-hidden">
           <CardBody className="p-5 flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
@@ -205,6 +205,30 @@ export function BoardAnalytics({ boardId, sprintId, sprints }: BoardAnalyticsPro
                 </span>
               )}
             </div>
+          </CardBody>
+        </Card>
+
+        <Card variant="outlined" className="bg-white dark:bg-gray-800 border-gray-200 shadow-sm md:col-span-1">
+          <CardBody className="p-5 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
+                <Target size={18} />
+              </span>
+              <span className="text-[11px] font-bold text-purple-500 uppercase tracking-wider">Est. Points</span>
+            </div>
+            <span className="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-auto">{overview.totalEstimatedPoints ?? 0}</span>
+          </CardBody>
+        </Card>
+
+        <Card variant="outlined" className="bg-white dark:bg-gray-800 border-gray-200 shadow-sm md:col-span-1">
+          <CardBody className="p-5 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+                <User size={18} />
+              </span>
+              <span className="text-[11px] font-bold text-indigo-500 uppercase tracking-wider">Capacity</span>
+            </div>
+            <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-auto">{overview.teamCapacity ?? 0}</span>
           </CardBody>
         </Card>
       </div>

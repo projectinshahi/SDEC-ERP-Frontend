@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/Button';
 import { X } from 'lucide-react';
 import { createBoardApi, updateBoardApi, type Board as Sprint } from '@/lib/api/kanban';
+import { apiClient } from '@/lib/api/api-client';
 
 interface SprintModalProps {
   isOpen: boolean;
@@ -26,6 +27,28 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId 
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [totalDailyCapacity, setTotalDailyCapacity] = useState(0);
+
+  useEffect(() => {
+    if (projectId && isOpen) {
+      apiClient.get(`/projects/${projectId}/members`)
+        .then(res => {
+          if (Array.isArray(res.data)) {
+            const sum = res.data.reduce((acc, m) => acc + (Number(m.capacity_points) || 0), 0);
+            setTotalDailyCapacity(sum);
+          }
+        })
+        .catch(err => console.error('Failed to fetch members for capacity:', err));
+    }
+  }, [projectId, isOpen]);
+
+  // Recalculate capacity based on totalDailyCapacity
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      capacity: 5 * totalDailyCapacity
+    }));
+  }, [totalDailyCapacity]);
 
   useEffect(() => {
     if (editSprint) {
@@ -65,11 +88,11 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId 
     setError(null);
 
     try {
-      const { id: _id, ...dataToSave } = formData;
+      const { id: _id, estimatedHours, capacity, ...dataToSave } = formData;
       if (editSprint) {
-        await updateBoardApi(Number(editSprint.id), { ...dataToSave, estimatedHours: Number(formData.estimatedHours), capacity: Number(formData.capacity) });
+        await updateBoardApi(Number(editSprint.id), { ...dataToSave });
       } else {
-        await createBoardApi({ ...dataToSave, estimatedHours: Number(formData.estimatedHours), capacity: Number(formData.capacity) });
+        await createBoardApi({ ...dataToSave });
       }
       onSuccess();
       onClose();
@@ -102,19 +125,10 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId 
           )}
 
           <form id="sprint-form" onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 gap-5">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Sprint Name <span className="text-red-500">*</span></label>
                 <input required type="text" name="name" value={formData.name} onChange={handleChange} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none" placeholder="e.g. Sprint 42" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
-                <select name="status" value={formData.status} onChange={handleChange} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none">
-                  <option value="Planned">Planned</option>
-                  <option value="Active">Active</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Closed">Closed</option>
-                </select>
               </div>
             </div>
 
@@ -136,12 +150,16 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId 
 
             <div className="grid grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Estimated Hours</label>
-                <input type="number" name="estimatedHours" value={formData.estimatedHours} onChange={handleChange} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none" />
+                <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                  Estimated Hours <span title="System calculated based on task estimates">🔒</span>
+                </label>
+                <input type="number" readOnly disabled name="estimatedHours" value={formData.estimatedHours} className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-200 rounded-lg cursor-not-allowed transition-all outline-none" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Team Capacity (Hours)</label>
-                <input type="number" name="capacity" value={formData.capacity} onChange={handleChange} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none" />
+                <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                  Team Capacity <span title="System calculated based on project member capacities and sprint duration">🔒</span>
+                </label>
+                <input type="number" readOnly disabled name="capacity" value={formData.capacity} className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-200 rounded-lg cursor-not-allowed transition-all outline-none" />
               </div>
             </div>
 

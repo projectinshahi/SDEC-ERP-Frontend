@@ -92,10 +92,10 @@ export function MeetingDetailsModal({ isOpen, onClose, meeting }: MeetingDetails
                     <span>{meeting.startTime} - {meeting.endTime}</span>
                   </div>
                   {meeting.meetingLink && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <Video size={16} className="text-blue-500" />
-                      <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
-                        {meeting.meetingLink}
+                    <div className="mt-4">
+                      <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                        <Video size={16} />
+                        Join Google Meet
                       </a>
                     </div>
                   )}
