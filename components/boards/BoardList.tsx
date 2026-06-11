@@ -27,6 +27,7 @@ export function BoardList() {
         projectName: b.projectName,
         taskCount: 0,
         lastUpdated: b.createdAt || new Date().toISOString(),
+        totalEstimatedPoints: b.totalEstimatedPoints || 0,
       })));
     } catch (err) {
       setError('Failed to load boards');
@@ -123,6 +124,7 @@ export function BoardList() {
                 projectName={board.projectName}
                 taskCount={board.taskCount}
                 lastUpdated={board.lastUpdated}
+                totalEstimatedPoints={board.totalEstimatedPoints}
               />
             ))}
           </div>

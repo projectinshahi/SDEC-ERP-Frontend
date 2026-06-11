@@ -18,6 +18,7 @@ export interface Project {
   is_archived?: boolean;
   owner_id?: number | null;
   owner?: { id: number; name: string } | null;
+  memberDetails?: { userId: number; role: string; capacityPoints: number; name: string; email: string }[];
 }
 
 export interface ProjectMember {
@@ -214,9 +215,16 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
                 </div>
               )}
             </div>
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium ml-2">
-              {project.members.length} {project.members.length === 1 ? 'member' : 'members'}
-            </span>
+            <div className="flex flex-col ml-3">
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                {project.members.length} {project.members.length === 1 ? 'member' : 'members'}
+              </span>
+              {project.memberDetails && project.memberDetails.reduce((sum, m) => sum + (m.capacityPoints || 0), 0) > 0 && (
+                <span className="text-[10px] font-bold text-indigo-500 mt-0.5">
+                  {project.memberDetails.reduce((sum, m) => sum + (m.capacityPoints || 0), 0)} pts/day
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Last Updated Timestamp */}

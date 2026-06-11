@@ -33,6 +33,7 @@ export interface Board {
   estimatedHours?: number;
   capacity?: number;
   createdAt?: string;
+  totalEstimatedPoints?: number;
 }
 
 export interface Sprint {
@@ -46,6 +47,7 @@ export interface Sprint {
   status: string;
   estimatedHours?: number;
   capacity?: number;
+  totalEstimatedPoints?: number;
 }
 
 // ─────────────────────────────────────────────

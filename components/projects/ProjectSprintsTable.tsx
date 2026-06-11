@@ -24,13 +24,11 @@ interface ProjectSprintsTableProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  Planned: '#f59e0b', // amber
-  Active: '#3b82f6',  // blue
-  Completed: '#10b981', // emerald
-  Closed: '#6b7280',  // gray
+  'Not Started': '#f59e0b', // amber
+  'Active': '#3b82f6',  // blue
+  'Completed': '#10b981', // emerald
 };
 
-import { updateBoardStatusApi } from '@/lib/api/kanban';
 import { useToast } from '@/lib/hooks/useToast';
 
 export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTableProps) {
@@ -74,15 +72,7 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
     }
   };
 
-  const handleStatusChange = async (sprintId: string, newStatus: string) => {
-    try {
-      await updateBoardStatusApi(Number(sprintId), newStatus);
-      toast('Sprint status updated successfully!');
-      fetchSprintsList();
-    } catch (err: any) {
-      toast(err.message || 'Failed to update sprint status', 'error');
-    }
-  };
+
 
   if (loading) {
     return (
@@ -143,7 +133,8 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
                   <th className="p-4">Start Date</th>
                   <th className="p-4">End Date</th>
                   <th className="p-4">Tasks</th>
-                  <th className="p-4">Est. Hours</th>
+                  <th className="p-4">Est. Points</th>
+                  <th className="p-4">Capacity</th>
                   {userRole !== 'viewer' && <th className="p-4">Actions</th>}
                 </tr>
               </thead>
@@ -154,34 +145,16 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
                       <p className="font-semibold text-gray-800 dark:text-gray-200">{s.name}</p>
                     </td>
                     <td className="p-4">
-                      {userRole === 'viewer' ? (
-                        <span
-                          className="px-2.5 py-1 rounded-full text-[10px] font-bold border"
-                          style={{
-                            backgroundColor: (STATUS_COLORS[s.status] || '#6b7280') + '18',
-                            color: STATUS_COLORS[s.status] || '#6b7280',
-                            borderColor: (STATUS_COLORS[s.status] || '#6b7280') + '40',
-                          }}
-                        >
-                          {s.status}
-                        </span>
-                      ) : (
-                        <select
-                          value={s.status}
-                          onChange={(e) => handleStatusChange(s.id, e.target.value)}
-                          className="px-2 py-1 text-xs font-semibold rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          style={{
-                            color: STATUS_COLORS[s.status] || '#6b7280',
-                          }}
-                        >
-                          <option value="Planned">Planned</option>
-                          <option value="Active">Active</option>
-                          <option value="In Progress">In Progress</option>
-                          <option value="Review">Review</option>
-                          <option value="Completed">Completed</option>
-                          <option value="Closed">Closed</option>
-                        </select>
-                      )}
+                      <span
+                        className="px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap inline-block"
+                        style={{
+                          backgroundColor: (STATUS_COLORS[s.status] || '#6b7280') + '18',
+                          color: STATUS_COLORS[s.status] || '#6b7280',
+                          borderColor: (STATUS_COLORS[s.status] || '#6b7280') + '40',
+                        }}
+                      >
+                        {s.status}
+                      </span>
                     </td>
                     <td className="p-4 text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {formatDate(s.startDate)}
@@ -193,7 +166,10 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
                       {s.tasksCount}
                     </td>
                     <td className="p-4 text-gray-600 dark:text-gray-400">
-                      {s.estimatedHours || 0}h
+                      {s.estimatedHours || 0} pts
+                    </td>
+                    <td className="p-4 font-semibold text-indigo-600 dark:text-indigo-400">
+                      {s.capacity || 0} pts
                     </td>
                     {userRole !== 'viewer' && (
                       <td className="p-4">

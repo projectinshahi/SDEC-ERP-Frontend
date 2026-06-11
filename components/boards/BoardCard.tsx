@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, CheckSquare, ChevronRight, FolderKanban } from 'lucide-react';
+import { Calendar, CheckSquare, ChevronRight, FolderKanban, Target } from 'lucide-react';
 import Link from 'next/link';
 
 export interface BoardCardProps {
@@ -10,9 +10,10 @@ export interface BoardCardProps {
   projectName: string;
   taskCount?: number;
   lastUpdated?: string;
+  totalEstimatedPoints?: number;
 }
 
-export function BoardCard({ id, name, projectName, taskCount, lastUpdated }: BoardCardProps) {
+export function BoardCard({ id, name, projectName, taskCount, lastUpdated, totalEstimatedPoints }: BoardCardProps) {
   // Format the date if it exists
   const formattedDate = lastUpdated 
     ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(lastUpdated))
@@ -55,6 +56,13 @@ export function BoardCard({ id, name, projectName, taskCount, lastUpdated }: Boa
             <div className="flex items-center gap-1.5" title="Last Updated">
               <Calendar size={14} />
               <span>{formattedDate}</span>
+            </div>
+          )}
+
+          {totalEstimatedPoints !== undefined && (
+            <div className="flex items-center gap-1.5 ml-auto text-blue-600 dark:text-blue-400" title="Total Estimated Points">
+              <Target size={14} />
+              <span className="font-semibold">{totalEstimatedPoints} Pts</span>
             </div>
           )}
         </div>

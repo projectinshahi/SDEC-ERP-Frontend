@@ -9,8 +9,17 @@ import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuar
 import { useToast } from '@/lib/hooks/useToast';
 import { apiClient } from '@/lib/api/api-client';
 
+interface Deal {
+  id: string | number;
+  title: string;
+  amount: number;
+  status: string;
+  customer?: { name: string };
+  owner?: { name: string };
+}
+
 export default function SalesDealsPage() {
-  const [deals, setDeals] = useState<any[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
@@ -22,7 +31,7 @@ export default function SalesDealsPage() {
   const fetchDeals = async () => {
     try {
       setIsLoading(true);
-      const res = await apiClient.get<any[]>('/sales/deals');
+      const res = await apiClient.get<Deal[]>('/sales/deals');
       setDeals(res.data);
     } catch (error) {
       toast('Failed to fetch deals', 'error');

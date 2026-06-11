@@ -141,9 +141,16 @@ export function ProjectList({ projects, onEdit, onArchive, onRestore, onDelete }
                       </div>
                     )}
                   </div>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                    ({project.members.length})
-                  </span>
+                  <div className="flex flex-col ml-2">
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                      ({project.members.length})
+                    </span>
+                    {project.memberDetails && project.memberDetails.reduce((sum, m) => sum + (m.capacityPoints || 0), 0) > 0 && (
+                      <span className="text-[10px] font-bold text-indigo-500 mt-0.5 whitespace-nowrap">
+                        {project.memberDetails.reduce((sum, m) => sum + (m.capacityPoints || 0), 0)} pts/d
+                      </span>
+                    )}
+                  </div>
                 </div>
               </td>
 
