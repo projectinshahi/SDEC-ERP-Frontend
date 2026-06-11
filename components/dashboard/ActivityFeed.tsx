@@ -68,7 +68,11 @@ export function ActivityFeed({
     'blocker_updated',
     'blocker_deleted',
     'attachment_uploaded',
-    'attachment_removed'
+    'attachment_removed',
+    'task_created',
+    'task_updated',
+    'task_deleted',
+    'task_moved_board'
   ];
 
   const filteredActivities = activities?.filter(a => ALLOWED_ACTIVITY_TYPES.includes(a.type)) || [];
@@ -91,6 +95,7 @@ export function ActivityFeed({
       case 'task_created': return { label: 'New Task', variant: 'success' as any };
       case 'task_updated': return { label: 'Task Update', variant: 'warning' as any };
       case 'task_deleted': return { label: 'Task Deleted', variant: 'danger' as any };
+      case 'task_moved_board': return { label: 'Task Moved', variant: 'info' as any };
       case 'user_created': return { label: 'User Created', variant: 'success' as any };
       case 'user_deleted': return { label: 'User Deleted', variant: 'danger' as any };
       case 'role_created': return { label: 'Role Created', variant: 'info' as any };
@@ -123,7 +128,7 @@ export function ActivityFeed({
     const parts = text.split(/(@[a-zA-Z0-9_]+)/g);
     return parts.map((part, i) => 
       part.startsWith('@') ? (
-        <span key={i} className="text-indigo-600 dark:text-indigo-400 font-semibold">{part}</span>
+        <span key={i} className="text-indigo-600 font-semibold">{part}</span>
       ) : (
         <span key={i}>{part}</span>
       )
@@ -131,15 +136,15 @@ export function ActivityFeed({
   };
 
   return (
-    <Card className="h-full border border-gray-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm">
-      <CardHeader className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800/80 px-6 py-4">
+    <Card className="h-full border border-gray-200 shadow-sm !bg-white !border-gray-200">
+      <CardHeader className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
         <div className="flex items-center gap-2.5">
-          <Activity size={18} className="text-indigo-600 dark:text-indigo-400" />
-          <h2 className="text-lg font-bold text-gray-800 dark:text-white">Recent Activity</h2>
+          <Activity size={18} className="text-indigo-600" />
+          <h2 className="text-lg font-bold text-gray-800">Recent Activity</h2>
         </div>
         {!isLoading && !isError && filteredActivities.length > 0 && (
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-full shrink-0">
+            <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full shrink-0">
               {filteredActivities.length} total
             </span>
             {onClear && (
@@ -148,7 +153,7 @@ export function ActivityFeed({
                 size="sm"
                 onClick={() => setIsClearModalOpen(true)}
                 isLoading={isClearing}
-                className="text-gray-500 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 px-2 h-7"
+                className="text-gray-500 hover:text-rose-600:text-rose-400 px-2 h-7"
               >
                 Clear All
               </Button>
@@ -168,13 +173,13 @@ export function ActivityFeed({
         ) : isError ? (
           /* 2. Error State */
           <div className="flex flex-col items-center justify-center min-h-[260px] text-center p-4">
-            <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/20 rounded-full flex items-center justify-center text-rose-500 mb-4 animate-bounce">
+            <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mb-4 animate-bounce">
               <AlertTriangle size={24} />
             </div>
-            <h3 className="text-sm font-bold text-gray-850 dark:text-white">
+            <h3 className="text-sm font-bold text-gray-850">
               Failed to load activity feed
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-[200px] mx-auto">
+            <p className="text-xs text-gray-500 mt-1 max-w-[200px] mx-auto">
               Please double check database connectivity or configurations
             </p>
             {onRetry && (
@@ -182,7 +187,7 @@ export function ActivityFeed({
                 variant="secondary"
                 size="sm"
                 onClick={onRetry}
-                className="mt-5 inline-flex items-center gap-1.5 dark:border-slate-700 dark:text-slate-300"
+                className="mt-5 inline-flex items-center gap-1.5"
               >
                 <RefreshCw size={14} />
                 <span>Retry Feed</span>
@@ -192,19 +197,19 @@ export function ActivityFeed({
         ) : isEmpty ? (
           /* 3. Empty State */
           <div className="flex flex-col items-center justify-center min-h-[260px] text-center p-4">
-            <div className="w-12 h-12 bg-gray-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-gray-400 mb-4">
+            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-4">
               <Inbox size={22} />
             </div>
-            <h3 className="text-sm font-bold text-gray-850 dark:text-white">
+            <h3 className="text-sm font-bold text-gray-850">
               No recent activity
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 max-w-[200px] mx-auto">
+            <p className="text-xs text-gray-500 mt-1.5 max-w-[200px] mx-auto">
               Operate tasks or create new users to view logs
             </p>
           </div>
         ) : (
           /* 4. Normal Activity List presentation */
-          <div className="divide-y divide-gray-100 dark:divide-slate-800">
+          <div className="divide-y divide-gray-100">
             {filteredActivities.map((activity) => {
               const { label, variant } = getTypeConfig(activity.type);
               
@@ -213,28 +218,28 @@ export function ActivityFeed({
               const avatarChar = actorName.charAt(0).toUpperCase();
               
               const avatarColors = [
-                'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
-                'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
-                'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400',
-                'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400',
+                'bg-blue-100 text-blue-700',
+                'bg-emerald-100 text-emerald-700',
+                'bg-indigo-100 text-indigo-700',
+                'bg-purple-100 text-purple-700',
               ];
               const colorClass = avatarColors[actorName.length % avatarColors.length];
 
               return (
-                <div key={activity.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0 hover:bg-gray-50/50 dark:hover:bg-slate-800/30 transition-colors px-2 -mx-2 rounded-lg">
+                <div key={activity.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0 hover:bg-gray-50/50:bg-slate-800/30 transition-colors px-2 -mx-2 rounded-lg">
                   <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-4">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow-sm ${colorClass}`}>
                       {avatarChar}
                     </div>
                     
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">
+                      <p className="font-medium text-gray-800 text-sm">
                         <span className="font-semibold">{actorName}</span>{' '}
-                        <span className="text-gray-600 dark:text-gray-400 font-normal">
+                        <span className="text-gray-600 font-normal">
                           {renderDescription(activity.description)}
                         </span>
                       </p>
-                      <div className="flex items-center gap-1.5 mt-1 text-gray-500 dark:text-gray-400 text-xs">
+                      <div className="flex items-center gap-1.5 mt-1 text-gray-500 text-xs">
                         <Clock size={12} className="shrink-0 text-gray-400" />
                         <span className="truncate">{formatRelativeTime(activity.created_at)}</span>
                       </div>
@@ -258,7 +263,7 @@ export function ActivityFeed({
         title="Clear Activity Feed"
         size="sm"
       >
-        <div className="text-gray-600 dark:text-gray-300 mb-6">
+        <div className="text-gray-600 mb-6">
           Are you sure you want to clear your activity feed? This action cannot be undone.
         </div>
         <div className="flex justify-end gap-3">

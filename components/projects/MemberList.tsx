@@ -52,7 +52,14 @@ export function MemberList({ members, onRoleChange, onRemove, isUpdating, readOn
               {member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{member.name}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                {member.name}
+                {member.capacityPoints ? (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400">
+                    Capacity: {member.capacityPoints}
+                  </span>
+                ) : null}
+              </p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{member.email}</p>
             </div>
           </div>

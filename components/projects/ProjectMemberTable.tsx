@@ -15,9 +15,10 @@ interface ProjectMemberTableProps {
   memberDetails: MemberDetail[];
   onChange: (details: MemberDetail[]) => void;
   error?: string;
+  existingMembers?: any[];
 }
 
-export function ProjectMemberTable({ memberDetails, onChange, error }: ProjectMemberTableProps) {
+export function ProjectMemberTable({ memberDetails, onChange, error, existingMembers = [] }: ProjectMemberTableProps) {
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -60,7 +61,7 @@ export function ProjectMemberTable({ memberDetails, onChange, error }: ProjectMe
   };
 
   const availableUsers = users.filter(
-    (u) => !memberDetails.some((m) => m.userId === u.id)
+    (u) => !memberDetails.some((m) => m.userId === u.id) && !existingMembers.some((em) => em.userId === u.id)
   );
 
   return (
@@ -112,8 +113,8 @@ export function ProjectMemberTable({ memberDetails, onChange, error }: ProjectMe
                         type="number"
                         min="0"
                         step="0.5"
-                        value={member.capacityPoints}
-                        onChange={(e) => handleChange(index, 'capacityPoints', Number(e.target.value))}
+                        value={member.capacityPoints === 0 ? '' : member.capacityPoints}
+                        onChange={(e) => handleChange(index, 'capacityPoints', e.target.value === '' ? 0 : Number(e.target.value))}
                         className="w-full bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500/20"
                         placeholder="0"
                       />

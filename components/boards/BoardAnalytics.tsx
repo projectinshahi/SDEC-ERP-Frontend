@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { 
+import {
   Activity, CheckCircle, Clock, AlertTriangle, Layers, Loader2, Calendar, User, Target
 } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/Card';
@@ -20,6 +20,24 @@ const PRIORITY_COLORS: Record<string, string> = {
   Low: '#10b981'
 };
 
+const CustomPriorityTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700 z-50">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PRIORITY_COLORS[data.name] || '#ccc' }} />
+          <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{data.name} Priority</p>
+        </div>
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 ml-5">
+          Tasks: <span className="text-gray-800 dark:text-gray-100">{data.value}</span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 interface BoardAnalyticsProps {
   boardId: number;
   sprintId: string | null;
@@ -30,7 +48,7 @@ export function BoardAnalytics({ boardId, sprintId, sprints }: BoardAnalyticsPro
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Local filter states
   const [filterSprint, setFilterSprint] = useState<string | null>(sprintId);
 
@@ -41,16 +59,16 @@ export function BoardAnalytics({ boardId, sprintId, sprints }: BoardAnalyticsPro
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const loadAnalytics = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         const filters: BoardAnalyticsFilters = {
           sprintId: filterSprint
         };
-        
+
         const res = await fetchBoardAnalytics(boardId, filters);
         if (isMounted) {
           setData(res);
@@ -123,25 +141,7 @@ export function BoardAnalytics({ boardId, sprintId, sprints }: BoardAnalyticsPro
 
   return (
     <div className="space-y-6 mt-4">
-      {/* Filters Bar */}
-      <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Filters:</span>
-          <SprintSelector 
-            sprints={sprints} 
-            selectedSprintId={filterSprint} 
-            onSelectSprint={setFilterSprint} 
-            isLoading={loading} 
-          />
-        </div>
-        <div className="flex items-center gap-3 px-4 py-1.5 rounded-full border shadow-sm font-semibold text-sm"
-             style={{ backgroundColor: `var(--tw-colors-${healthConfig.bg.replace('bg-', '')})`, color: `var(--tw-colors-${healthConfig.color.replace('text-', '')})`, borderColor: `var(--tw-colors-${healthConfig.border.replace('border-', '')})` }}>
-          <span>Board Health:</span>
-          <span className={classNames("px-2 py-0.5 rounded text-xs font-bold uppercase", healthConfig.color, healthConfig.bg)}>
-            {overview.healthScore}
-          </span>
-        </div>
-      </div>
+
 
       {/* Overview Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -235,21 +235,21 @@ export function BoardAnalytics({ boardId, sprintId, sprints }: BoardAnalyticsPro
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Charts - Column Distribution */}
-        <Card variant="outlined" className="lg:col-span-2 bg-white dark:bg-gray-800 border-gray-200 shadow-sm">
+        <Card variant="outlined" className="bg-white dark:bg-gray-800 border-gray-200 shadow-sm flex flex-col">
           <CardHeader>
             <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
               <Layers size={18} className="text-indigo-500" />
               Column Distribution
             </h3>
           </CardHeader>
-          <CardBody className="h-72 w-full p-4">
+          <CardBody className="h-64 w-full p-4 flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={columnDistribution} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                <RechartsTooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px' }} />
-                <Bar dataKey="value" name="Tasks" radius={[4, 4, 0, 0]}>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px' }} />
+                <Bar dataKey="value" name="Tasks" radius={[4, 4, 0, 0]} maxBarSize={50}>
                   {columnDistribution.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -259,61 +259,76 @@ export function BoardAnalytics({ boardId, sprintId, sprints }: BoardAnalyticsPro
           </CardBody>
         </Card>
 
-        {/* Priority & Due Dates */}
-        <div className="space-y-6">
-          <Card variant="outlined" className="bg-white dark:bg-gray-800 border-gray-200 shadow-sm">
-            <CardHeader>
-              <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                <AlertTriangle size={18} className="text-amber-500" />
-                Priority Distribution
-              </h3>
-            </CardHeader>
-            <CardBody className="h-48 w-full p-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={priorityDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={70}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {priorityDistribution.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={PRIORITY_COLORS[entry.name] || COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip contentStyle={{ borderRadius: '8px' }} />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardBody>
-          </Card>
+        {/* Priority Distribution */}
+        <Card variant="outlined" className="bg-white dark:bg-gray-800 border-gray-200 shadow-sm flex flex-col">
+          <CardHeader>
+            <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+              <AlertTriangle size={18} className="text-amber-500" />
+              Priority Distribution
+            </h3>
+          </CardHeader>
+          <CardBody className="h-64 w-full py-2 px-0 flex items-center justify-center flex-1 relative">
+            {priorityDistribution.filter((p: any) => p.value > 0).length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={priorityDistribution.filter((p: any) => p.value > 0)}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      nameKey="name"
+                      name="Tasks"
+                      stroke="none"
+                    >
+                      {priorityDistribution.filter((p: any) => p.value > 0).map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={PRIORITY_COLORS[entry.name] || COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip content={<CustomPriorityTooltip />} cursor={{ fill: 'transparent' }} />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Total Tasks in Center of Donut */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-6">
+                  <span className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                    {priorityDistribution.reduce((sum: number, p: any) => sum + p.value, 0)}
+                  </span>
+                  <span className="text-xs text-gray-500">Tasks</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500 italic">No priority data available</p>
+            )}
+          </CardBody>
+        </Card>
 
-          <Card variant="outlined" className="bg-white dark:bg-gray-800 border-gray-200 shadow-sm">
-            <CardHeader>
-              <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                <Calendar size={18} className="text-blue-500" />
-                Due Dates Overview
-              </h3>
-            </CardHeader>
-            <CardBody className="p-4 space-y-4">
-              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/10 rounded-lg">
-                <span className="text-sm font-semibold text-red-600 dark:text-red-400">Overdue</span>
-                <span className="text-base font-bold text-red-700 dark:text-red-300">{dueDateAnalytics.overdue}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-amber-50 dark:bg-amber-900/10 rounded-lg">
-                <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">Due Today</span>
-                <span className="text-base font-bold text-amber-700 dark:text-amber-300">{dueDateAnalytics.dueToday}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
-                <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">Due This Week</span>
-                <span className="text-base font-bold text-blue-700 dark:text-blue-300">{dueDateAnalytics.dueThisWeek}</span>
-              </div>
-            </CardBody>
-          </Card>
-        </div>
+        {/* Due Dates Overview */}
+        <Card variant="outlined" className="bg-white dark:bg-gray-800 border-gray-200 shadow-sm flex flex-col">
+          <CardHeader>
+            <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+              <Calendar size={18} className="text-blue-500" />
+              Due Dates Overview
+            </h3>
+          </CardHeader>
+          <CardBody className="p-5 flex flex-col justify-center gap-4 flex-1 h-64">
+            <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/20">
+              <span className="text-sm font-semibold text-red-600 dark:text-red-400 flex items-center gap-2"><Clock size={16} /> Overdue</span>
+              <span className="text-xl font-bold text-red-700 dark:text-red-300">{dueDateAnalytics.overdue}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-900/20">
+              <span className="text-sm font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2"><Target size={16} /> Due Today</span>
+              <span className="text-xl font-bold text-amber-700 dark:text-amber-300">{dueDateAnalytics.dueToday}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
+              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-2"><Calendar size={16} /> Due This Week</span>
+              <span className="text-xl font-bold text-blue-700 dark:text-blue-300">{dueDateAnalytics.dueThisWeek}</span>
+            </div>
+          </CardBody>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

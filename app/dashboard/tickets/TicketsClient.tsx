@@ -242,6 +242,11 @@ export function TicketsClient() {
         onClose={() => setViewingTicket(null)}
         ticket={viewingTicket}
         currentUserId={currentUser?.id}
+        onUpdate={async (ticketId, updates) => {
+          await updateTicket(ticketId, updates);
+          setViewingTicket(prev => prev ? { ...prev, ...updates } : null);
+          loadTickets();
+        }}
       />
 
       {/* Delete Confirmation Modal */}

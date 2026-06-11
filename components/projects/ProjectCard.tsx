@@ -28,6 +28,7 @@ export interface ProjectMember {
   role: 'admin' | 'editor' | 'viewer';
   name: string;
   email: string;
+  capacityPoints?: number;
 }
 
 interface ProjectCardProps {

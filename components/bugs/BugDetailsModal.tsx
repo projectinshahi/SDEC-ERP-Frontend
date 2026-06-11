@@ -7,14 +7,21 @@ import { ImageViewer } from './ImageViewer';
 import { X, Calendar, User, Tag, AlertTriangle, Monitor, Activity, FileText, Settings, Bug as BugIcon, File as FileIcon, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 
+import { InlineEditableText } from '../ui/InlineEditableText';
+import { InlineSelect } from '../ui/InlineSelect';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+
 interface BugDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   bug: BugType | null;
   currentUserId?: number | string;
+  onUpdate?: (bugId: number, updates: Partial<BugType>) => Promise<void>;
 }
 
-export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDetailsModalProps) {
+export function BugDetailsModal({ isOpen, onClose, bug, currentUserId, onUpdate }: BugDetailsModalProps) {
+  const { hasPermission } = usePermissions();
+  const canEdit = hasPermission('bugs.update');
   const [attachments, setAttachments] = useState<BugAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
 
@@ -73,21 +80,43 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
+          <div className="flex items-center gap-3 w-full max-w-2xl">
+            <div className="w-10 h-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
               <BugIcon size={20} />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold text-gray-400">BUG-{bug.id}</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getStatusColor(bug.status)}`}>
-                  {bug.status.replace('_', ' ')}
-                </span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getPriorityColor(bug.priority)}`}>
-                  {bug.priority} Priority
-                </span>
+                <InlineSelect
+                  value={bug.status}
+                  options={[
+                    { label: 'Open', value: 'open', colorClass: getStatusColor('open') },
+                    { label: 'In Progress', value: 'in_progress', colorClass: getStatusColor('in_progress') },
+                    { label: 'Resolved', value: 'resolved', colorClass: getStatusColor('resolved') },
+                    { label: 'Closed', value: 'closed', colorClass: getStatusColor('closed') }
+                  ]}
+                  onSave={(val) => onUpdate?.(bug.id, { status: val })}
+                  permission={canEdit}
+                />
+                <InlineSelect
+                  value={bug.priority}
+                  options={[
+                    { label: 'Critical', value: 'critical', colorClass: getPriorityColor('critical') },
+                    { label: 'High', value: 'high', colorClass: getPriorityColor('high') },
+                    { label: 'Medium', value: 'medium', colorClass: getPriorityColor('medium') },
+                    { label: 'Low', value: 'low', colorClass: getPriorityColor('low') }
+                  ]}
+                  onSave={(val) => onUpdate?.(bug.id, { priority: val })}
+                  permission={canEdit}
+                />
               </div>
-              <h2 className="text-xl font-bold text-gray-800 mt-0.5">{bug.title}</h2>
+              <InlineEditableText
+                value={bug.title}
+                onSave={(val) => onUpdate?.(bug.id, { title: val })}
+                permission={canEdit}
+                textClassName="text-xl font-bold text-gray-800 mt-0.5"
+                inputClassName="text-xl font-bold text-gray-800 mt-0.5"
+              />
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -112,7 +141,14 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
                   <User size={14} />
                   <span className="text-xs font-semibold uppercase tracking-wider">Assignee</span>
                 </div>
-                <div className="font-medium text-sm text-gray-800">{bug.assignedTo || 'Unassigned'}</div>
+                <InlineEditableText
+                  value={bug.assignedTo || ''}
+                  onSave={(val) => onUpdate?.(bug.id, { assignedTo: val || null })}
+                  permission={canEdit}
+                  placeholder="Unassigned"
+                  textClassName="font-medium text-sm text-gray-800"
+                  inputClassName="font-medium text-sm text-gray-800"
+                />
               </div>
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                 <div className="flex items-center gap-2 text-gray-500 mb-1">
@@ -135,7 +171,19 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
                   <AlertTriangle size={14} />
                   <span className="text-xs font-semibold uppercase tracking-wider">Severity</span>
                 </div>
-                <div className="font-medium text-sm text-gray-800 capitalize">{bug.severity || 'Not set'}</div>
+                <InlineSelect
+                  value={bug.severity || ''}
+                  options={[
+                    { label: 'Not set', value: '' },
+                    { label: 'Critical', value: 'critical' },
+                    { label: 'Major', value: 'major' },
+                    { label: 'Minor', value: 'minor' },
+                    { label: 'Trivial', value: 'trivial' }
+                  ]}
+                  onSave={(val) => onUpdate?.(bug.id, { severity: val || null })}
+                  permission={canEdit}
+                  className="font-medium text-sm text-gray-800 capitalize"
+                />
               </div>
             </div>
 
@@ -146,8 +194,14 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId }: BugDeta
                   <FileText size={18} className="text-gray-400" />
                   <h3 className="text-lg font-bold text-gray-800">Description</h3>
                 </div>
-                <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  {bug.description || 'No description provided.'}
+                <div className="text-sm leading-relaxed bg-gray-50 p-2 rounded-xl border border-gray-100">
+                  <InlineEditableText
+                    value={bug.description || ''}
+                    onSave={(val) => onUpdate?.(bug.id, { description: val || null })}
+                    permission={canEdit}
+                    type="textarea"
+                    placeholder="No description provided."
+                  />
                 </div>
               </section>
 

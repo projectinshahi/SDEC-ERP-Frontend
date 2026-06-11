@@ -25,7 +25,7 @@ export function TasksPageClient() {
   const { activeProject } = useProject();
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
-  
+
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
   const [isSprintsLoading, setIsSprintsLoading] = useState(false);
@@ -166,7 +166,7 @@ export function TasksPageClient() {
           setIsSprintsLoading(true);
           const data = await fetchSprintsForBoard(selectedBoardId);
           setSprints(data);
-          
+
           // Optionally auto-select active sprint
           const activeSprint = data.find(s => s.status === 'Active');
           if (activeSprint) {
@@ -218,7 +218,7 @@ export function TasksPageClient() {
   // Handle board delete
   const handleDeleteBoard = () => {
     if (!selectedBoardId) return;
-    
+
     setDialog({
       isOpen: true,
       type: 'confirm',
@@ -295,8 +295,8 @@ export function TasksPageClient() {
               onClick={() => setActiveTab('board')}
               className={classNames(
                 'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors',
-                activeTab === 'board' 
-                  ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                activeTab === 'board'
+                  ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               )}
             >
@@ -307,8 +307,8 @@ export function TasksPageClient() {
               onClick={() => setActiveTab('analytics')}
               className={classNames(
                 'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors',
-                activeTab === 'analytics' 
-                  ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                activeTab === 'analytics'
+                  ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               )}
             >
@@ -341,23 +341,25 @@ export function TasksPageClient() {
       ) : selectedBoardId ? (
         <div key={`${selectedBoardId}-${selectedSprintId}`} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           {activeTab === 'board' ? (
-            <KanbanBoard 
-              boardId={selectedBoardId} 
-              sprintId={selectedSprintId} 
-              headerActions={
-                <SprintSelector
-                  sprints={sprints}
-                  selectedSprintId={selectedSprintId}
-                  onSelectSprint={handleSelectSprint}
-                  isLoading={isSprintsLoading || isLoading}
-                />
-              }
+            <KanbanBoard
+              boardId={selectedBoardId}
+              sprintId={selectedSprintId}
+              projectId={activeProject.id}
+              boards={sprints}
+            // headerActions={
+            //   <SprintSelector
+            //     sprints={sprints}
+            //     selectedSprintId={selectedSprintId}
+            //     onSelectSprint={handleSelectSprint}
+            //     isLoading={isSprintsLoading || isLoading}
+            //   />
+            // }
             />
           ) : (
-            <BoardAnalytics 
-              boardId={selectedBoardId} 
-              sprintId={selectedSprintId} 
-              sprints={sprints} 
+            <BoardAnalytics
+              boardId={selectedBoardId}
+              sprintId={selectedSprintId}
+              sprints={sprints}
             />
           )}
         </div>

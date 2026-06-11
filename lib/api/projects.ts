@@ -74,6 +74,14 @@ export async function addProjectMemberApi(projectId: string, data: { userId: num
 }
 
 /**
+ * Bulk update members of a project
+ */
+export async function bulkUpdateProjectMembersApi(projectId: string, members: any[]): Promise<any> {
+  const response = await apiClient.put(`/projects/${projectId}/members/bulk`, { members });
+  return response.data;
+}
+
+/**
  * Update the role of a project member
  */
 export async function updateProjectMemberRoleApi(projectId: string, memberId: string | number, role: string): Promise<any> {
@@ -106,8 +114,13 @@ export async function fetchProjectBugs(projectId: string): Promise<any[]> {
   return response.data.data;
 }
 
-export async function fetchProjectDashboardStats(projectId: string): Promise<any> {
-  const response = await apiClient.get<any>(`/projects/${projectId}/dashboard-stats`);
+export async function fetchProjectAnalytics(projectId: string): Promise<any> {
+  const response = await apiClient.get<any>(`/projects/${projectId}/analytics`);
+  return response.data;
+}
+
+export async function fetchGlobalAnalytics(): Promise<any> {
+  const response = await apiClient.get<any>(`/projects/global/analytics`);
   return response.data;
 }
 

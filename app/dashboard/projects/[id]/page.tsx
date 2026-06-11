@@ -12,21 +12,22 @@ import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuar
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { ROUTES } from '@/lib/constants';
-import { 
-  ArrowLeft, 
-  Briefcase, 
-  Calendar, 
-  Users, 
-  LayoutDashboard, 
-  Clock, 
-  CheckSquare, 
+import {
+  ArrowLeft,
+  Briefcase,
+  Calendar,
+  Users,
+  LayoutDashboard,
+  Clock,
+  CheckSquare,
   BarChart3,
   AlertCircle,
   Plus,
   Upload,
-  FileText
+  FileText,
+  Bug
 } from 'lucide-react';
-import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi, importProjectBacklogApi } from '@/lib/api/projects';
+import { fetchProjectById, fetchProjectMembers, bulkUpdateProjectMembersApi, updateProjectMemberRoleApi, removeProjectMemberApi, importProjectBacklogApi, fetchProjectAnalytics } from '@/lib/api/projects';
 import { Project, ProjectMember } from '@/components/projects/ProjectCard';
 import { MemberList } from '@/components/projects/MemberList';
 import { AddMemberModal } from '@/components/projects/AddMemberModal';
@@ -35,7 +36,9 @@ import { Modal } from '@/components/Modal';
 import { ProjectSprintsTable } from '@/components/projects/ProjectSprintsTable';
 import { SprintStatsSidebar } from '@/components/projects/SprintStatsSidebar';
 import { ProjectDocsLibrary } from '@/components/projects/docs/ProjectDocsLibrary';
+import { StatCard } from '@/components/dashboard/StatCard';
 import { classNames } from '@/lib/utils';
+import { io, Socket } from 'socket.io-client';
 
 export default function ProjectDetailsPage() {
   const params = useParams();
@@ -50,7 +53,7 @@ export default function ProjectDetailsPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'docs'>('overview');
-  
+
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -60,6 +63,35 @@ export default function ProjectDetailsPage() {
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
 
+  const [stats, setStats] = useState({
+    totalTasks: 0,
+    activeTasks: 0,
+    completedTasks: 0,
+    openBugs: 0,
+    teamMembers: 0
+  });
+  const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true);
+  const [isStatsError, setIsStatsError] = useState<boolean>(false);
+
+  const getStatsData = async () => {
+    try {
+      setIsStatsLoading(true);
+      setIsStatsError(false);
+      const data = await fetchProjectAnalytics(projectId);
+      setStats({
+        totalTasks: data.totalTasks || 0,
+        activeTasks: data.activeTasks || 0,
+        completedTasks: data.completedTasks || 0,
+        openBugs: data.openBugs || 0,
+        teamMembers: data.teamMembers || 0
+      });
+    } catch (error) {
+      setIsStatsError(true);
+    } finally {
+      setIsStatsLoading(false);
+    }
+  };
+
   const loadProjectAndMembers = async () => {
     setIsLoading(true);
     setIsMembersLoading(true);
@@ -68,7 +100,7 @@ export default function ProjectDetailsPage() {
       const data = await fetchProjectById(projectId);
       setProject(data);
       let membersData = await fetchProjectMembers(projectId);
-      
+
       // If the members API returns empty but the project has members assigned,
       // derive ProjectMember objects from the project's members name array
       if ((!membersData || membersData.length === 0) && data.members && data.members.length > 0) {
@@ -98,7 +130,7 @@ export default function ProjectDetailsPage() {
           }));
         }
       }
-      
+
       setMembers(membersData);
 
       // Determine current user role
@@ -145,26 +177,55 @@ export default function ProjectDetailsPage() {
     }
   }
 
-  const canManageMembers = currentUserRole === 'admin' && hasPermission('project.manage_members');
+  const canManageMembers = currentUserRole === 'admin' || hasPermission('project.manage_members');
   const canEditProject = hasPermission('project.edit') && currentUserRole !== 'viewer';
   const canViewSettings = canEditProject || canManageMembers;
   const canImportBacklog = hasPermission('project.create') && hasPermission('project.edit') && currentUserRole !== 'viewer';
   const canViewAnalytics = hasPermission('project.analytics');
 
   useEffect(() => {
-    if (projectId) {
+    let active = true;
+    let socket: Socket | null = null;
+
+    if (projectId && active) {
       loadProjectAndMembers();
+      getStatsData();
+
+      // Initialize Socket.io for dynamic updates
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const socketUrl = apiUrl.endsWith('/api') ? apiUrl.replace('/api', '') : apiUrl;
+
+      const token = localStorage.getItem('token');
+      socket = io(socketUrl, {
+        auth: { token }
+      });
+
+      socket.on('connect', () => {
+        socket?.emit('join_project_room', { projectId });
+      });
+
+      socket.on('project_analytics_updated', () => {
+        getStatsData();
+      });
     }
+
+    return () => {
+      active = false;
+      if (socket && projectId) {
+        socket.emit('leave_project_room', { projectId });
+        socket.disconnect();
+      }
+    };
   }, [projectId]);
 
-  const handleAddMemberSubmit = async (data: { userId: number; role: 'admin' | 'editor' | 'viewer' }) => {
+  const handleAddMemberSubmit = async (updatedMembers: any[]) => {
     try {
-      await addProjectMemberApi(projectId, data);
-      toast('Member added successfully!');
+      await bulkUpdateProjectMembersApi(projectId, updatedMembers);
+      toast('Members updated successfully!');
       setIsAddMemberOpen(false);
       loadMembersOnly();
     } catch (error: any) {
-      toast(error.message || 'Failed to add member', 'error');
+      toast(error.message || 'Failed to update members', 'error');
     }
   };
 
@@ -329,9 +390,9 @@ export default function ProjectDetailsPage() {
                 {project.status} status
               </Badge>
               {canImportBacklog && (
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setIsImportModalOpen(true)}
                   className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
                 >
@@ -340,9 +401,9 @@ export default function ProjectDetailsPage() {
                 </Button>
               )}
               {canViewSettings && (
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
                   className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
                 >
@@ -381,77 +442,135 @@ export default function ProjectDetailsPage() {
 
           {/* Details layout: main columns */}
           {activeTab === 'overview' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
-            {/* Main Content Column (Left - 70%) */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Project Description Card */}
-              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
-                <CardHeader className="border-b border-gray-100 bg-white dark:bg-gray-800">
-                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Workspace Overview</h3>
-                </CardHeader>
-                <CardBody className="p-6 space-y-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
-                    {project.description}
-                  </p>
-                </CardBody>
-              </Card>
-
-              {/* Sprint Tracking Table */}
-              <ProjectSprintsTable projectId={projectId} userRole={currentUserRole} />
-            </div>
-
-            {/* Sidebar metadata card */}
-            <div className="space-y-6">
-              {/* Project Members List */}
-              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm flex flex-col">
-                <CardHeader className="border-b border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-800 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users size={16} className="text-gray-500" />
-                    <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Directory</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md shadow-sm">
-                      {members.length} Total
-                    </span>
-                    {canManageMembers && (
-                      <Button variant="primary" size="sm" className="px-2 py-1 text-[10px] h-7" onClick={() => setIsAddMemberOpen(true)}>
-                        <Plus size={12} className="mr-1" />
-                        Add
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardBody className="p-0 flex-1">
-                  {isMembersLoading ? (
-                    <div className="p-6 space-y-4">
-                      <Skeleton className="h-10 w-full rounded-md" />
-                      <Skeleton className="h-10 w-full rounded-md" />
-                      <Skeleton className="h-10 w-full rounded-md" />
-                    </div>
-                  ) : (
-                    <MemberList 
-                      members={members}
-                      onRoleChange={canManageMembers ? handleRoleChange : undefined}
-                      onRemove={canManageMembers ? setMemberToRemove : undefined}
-                      isUpdating={isUpdatingRole}
-                      readOnly={!canManageMembers}
-                    />
-                  )}
-                </CardBody>
-              </Card>
-
-              {/* Minimal Sprint Stats Sidebar */}
+            <div className="space-y-6 animate-fade-in">
+              {/* Project Analytics Cards */}
               {canViewAnalytics && (
-                <SprintStatsSidebar projectId={projectId} />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                  <StatCard
+                    label="Total Tasks"
+                    value={stats.totalTasks}
+                    change=""
+                    icon={BarChart3}
+                    variant="info"
+                    isLoading={isStatsLoading}
+                    isError={isStatsError}
+                    onRetry={getStatsData}
+                  />
+                  <StatCard
+                    label="Active Tasks"
+                    value={stats.activeTasks}
+                    change=""
+                    icon={CheckSquare}
+                    variant="success"
+                    isLoading={isStatsLoading}
+                    isError={isStatsError}
+                    onRetry={getStatsData}
+                  />
+                  <StatCard
+                    label="Completed Tasks"
+                    value={stats.completedTasks}
+                    change=""
+                    icon={CheckSquare}
+                    variant="primary"
+                    isLoading={isStatsLoading}
+                    isError={isStatsError}
+                    onRetry={getStatsData}
+                  />
+                  <StatCard
+                    label="Open Bugs"
+                    value={stats.openBugs}
+                    change=""
+                    icon={Bug}
+                    variant="danger"
+                    isLoading={isStatsLoading}
+                    isError={isStatsError}
+                    onRetry={getStatsData}
+                  />
+                  <StatCard
+                    label="Team Members"
+                    value={stats.teamMembers}
+                    change=""
+                    icon={Users}
+                    variant="warning"
+                    isLoading={isStatsLoading}
+                    isError={isStatsError}
+                    onRetry={getStatsData}
+                  />
+                </div>
               )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Content Column (Left - 70%) */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Project Description Card */}
+                  <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
+                    <CardHeader className="border-b border-gray-100 bg-white dark:bg-gray-800">
+                      <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Workspace Overview</h3>
+                    </CardHeader>
+                    <CardBody className="p-6 space-y-4">
+                      <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                        {project.description}
+                      </p>
+                    </CardBody>
+                  </Card>
+
+                  {/* Sprint Tracking Table */}
+                  <ProjectSprintsTable projectId={projectId} userRole={currentUserRole} />
+                </div>
+
+                {/* Sidebar metadata card */}
+                <div className="space-y-6">
+                  {/* Project Members List */}
+                  <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm flex flex-col">
+                    <CardHeader className="border-b border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users size={16} className="text-gray-500" />
+                        <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Directory</h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md shadow-sm">
+                          {members.length} Total
+                        </span>
+                        {canManageMembers && (
+                          <Button variant="primary" size="sm" className="px-2 py-1 text-[10px] h-7" onClick={() => setIsAddMemberOpen(true)}>
+                            <Users size={12} className="mr-1" />
+                            Manage
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardBody className="p-0 flex-1">
+                      {isMembersLoading ? (
+                        <div className="p-6 space-y-4">
+                          <Skeleton className="h-10 w-full rounded-md" />
+                          <Skeleton className="h-10 w-full rounded-md" />
+                          <Skeleton className="h-10 w-full rounded-md" />
+                        </div>
+                      ) : (
+                        <MemberList
+                          members={members}
+                          onRoleChange={canManageMembers ? handleRoleChange : undefined}
+                          onRemove={canManageMembers ? setMemberToRemove : undefined}
+                          isUpdating={isUpdatingRole}
+                          readOnly={!canManageMembers}
+                        />
+                      )}
+                    </CardBody>
+                  </Card>
+
+                  {/* Minimal Sprint Stats Sidebar */}
+                  {canViewAnalytics && (
+                    <SprintStatsSidebar projectId={projectId} />
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
           ) : (
             <div className="animate-fade-in">
-              <ProjectDocsLibrary 
-                projectId={projectId} 
-                userRole={currentUserRole} 
-                currentUserId={currentUserId} 
+              <ProjectDocsLibrary
+                projectId={projectId}
+                userRole={currentUserRole}
+                currentUserId={currentUserId}
               />
             </div>
           )}

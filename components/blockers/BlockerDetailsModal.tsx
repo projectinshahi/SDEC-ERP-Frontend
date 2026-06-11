@@ -9,6 +9,9 @@ import { FileUploader, QueuedFile } from '../bugs/FileUploader';
 import { X, Calendar, User, Tag, AlertTriangle, Activity, FileText, File as FileIcon, Paperclip, UploadCloud, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '../ToastProvider';
+import { InlineEditableText } from '../ui/InlineEditableText';
+import { InlineSelect } from '../ui/InlineSelect';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 interface BlockerDetailsModalProps {
   isOpen: boolean;
@@ -28,6 +31,9 @@ export function BlockerDetailsModal({ isOpen, onClose, blocker, currentUserId, o
   // Image viewer state
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+
+  const { hasPermission } = usePermissions();
+  const canEdit = hasPermission('blockers.update');
 
   const [attachmentsForbidden, setAttachmentsForbidden] = useState(false);
 
@@ -141,26 +147,48 @@ export function BlockerDetailsModal({ isOpen, onClose, blocker, currentUserId, o
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-gray-400">BLK-{blocker.id}</span>
-                <select 
+                <InlineSelect
                   value={blocker.status}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border cursor-pointer outline-none ${getStatusColor(blocker.status)}`}
-                >
-                  <option value="Open">Open</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Closed">Closed</option>
-                </select>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getSeverityColor(blocker.severity)}`}>
-                  {blocker.severity} Severity
-                </span>
+                  options={[
+                    { label: 'Open', value: 'Open', colorClass: getStatusColor('Open') },
+                    { label: 'In Progress', value: 'In Progress', colorClass: getStatusColor('In Progress') },
+                    { label: 'Resolved', value: 'Resolved', colorClass: getStatusColor('Resolved') },
+                    { label: 'Closed', value: 'Closed', colorClass: getStatusColor('Closed') }
+                  ]}
+                  onSave={handleStatusChange}
+                  permission={canEdit}
+                />
+                <InlineSelect
+                  value={blocker.severity}
+                  options={[
+                    { label: 'Critical', value: 'critical', colorClass: getSeverityColor('critical') },
+                    { label: 'High', value: 'high', colorClass: getSeverityColor('high') },
+                    { label: 'Medium', value: 'medium', colorClass: getSeverityColor('medium') },
+                    { label: 'Low', value: 'low', colorClass: getSeverityColor('low') }
+                  ]}
+                  onSave={async (val) => {
+                    const updated = await updateBlocker(blocker.id, { severity: val });
+                    toast(`Severity updated to ${val}`, 'success');
+                    if (onBlockerUpdated) onBlockerUpdated(updated);
+                  }}
+                  permission={canEdit}
+                />
                 {blocker.project && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border bg-purple-100 text-purple-700 border-purple-200">
                     {blocker.project.name}
                   </span>
                 )}
               </div>
-              <h2 className="text-xl font-bold text-gray-800 mt-0.5">{blocker.title}</h2>
+              <InlineEditableText
+                value={blocker.title}
+                onSave={async (val) => {
+                  const updated = await updateBlocker(blocker.id, { title: val });
+                  if (onBlockerUpdated) onBlockerUpdated(updated);
+                }}
+                permission={canEdit}
+                textClassName="text-xl font-bold text-gray-800 mt-0.5"
+                inputClassName="text-xl font-bold text-gray-800 mt-0.5"
+              />
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -219,8 +247,17 @@ export function BlockerDetailsModal({ isOpen, onClose, blocker, currentUserId, o
                   <FileText size={18} className="text-gray-400" />
                   <h3 className="text-lg font-bold text-gray-800">Description</h3>
                 </div>
-                <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  {blocker.description || 'No description provided.'}
+                <div className="text-sm leading-relaxed bg-gray-50 p-2 rounded-xl border border-gray-100">
+                  <InlineEditableText
+                    value={blocker.description || ''}
+                    onSave={async (val) => {
+                      const updated = await updateBlocker(blocker.id, { description: val || undefined });
+                      if (onBlockerUpdated) onBlockerUpdated(updated);
+                    }}
+                    permission={canEdit}
+                    type="textarea"
+                    placeholder="No description provided."
+                  />
                 </div>
               </section>
 

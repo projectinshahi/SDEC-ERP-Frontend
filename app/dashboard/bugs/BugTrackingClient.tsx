@@ -245,6 +245,11 @@ export function BugTrackingClient() {
         onClose={() => setViewingBug(null)}
         bug={viewingBug}
         currentUserId={currentUser?.id}
+        onUpdate={async (bugId, updates) => {
+          await updateBug(bugId, updates);
+          setViewingBug(prev => prev ? { ...prev, ...updates } : null);
+          loadBugs();
+        }}
       />
 
       {/* Delete Confirmation Modal */}

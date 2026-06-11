@@ -6,15 +6,21 @@ import { Ticket as TicketType, TicketAttachment, fetchTicketAttachments } from '
 import { ImageViewer } from './ImageViewer';
 import { X, Calendar, User, Tag, AlertTriangle, Monitor, Activity, FileText, Settings, Ticket as TicketIcon, File as FileIcon, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
+import { InlineEditableText } from '../ui/InlineEditableText';
+import { InlineSelect } from '../ui/InlineSelect';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 interface TicketDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   ticket: TicketType | null;
   currentUserId?: number | string;
+  onUpdate?: (ticketId: number, updates: Partial<TicketType>) => Promise<void>;
 }
 
-export function TicketDetailsModal({ isOpen, onClose, ticket, currentUserId }: TicketDetailsModalProps) {
+export function TicketDetailsModal({ isOpen, onClose, ticket, currentUserId, onUpdate }: TicketDetailsModalProps) {
+  const { hasPermission } = usePermissions();
+  const canEdit = hasPermission('tickets.update');
   const [attachments, setAttachments] = useState<TicketAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
 
@@ -73,21 +79,43 @@ export function TicketDetailsModal({ isOpen, onClose, ticket, currentUserId }: T
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
+          <div className="flex items-center gap-3 w-full max-w-2xl">
+            <div className="w-10 h-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
               <TicketIcon size={20} />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400">BUG-{ticket.id}</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getStatusColor(ticket.status)}`}>
-                  {ticket.status.replace('_', ' ')}
-                </span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getPriorityColor(ticket.priority)}`}>
-                  {ticket.priority} Priority
-                </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-gray-400">TICKET-{ticket.id}</span>
+                <InlineSelect
+                  value={ticket.status}
+                  options={[
+                    { label: 'Open', value: 'open', colorClass: getStatusColor('open') },
+                    { label: 'In Progress', value: 'in_progress', colorClass: getStatusColor('in_progress') },
+                    { label: 'Resolved', value: 'resolved', colorClass: getStatusColor('resolved') },
+                    { label: 'Closed', value: 'closed', colorClass: getStatusColor('closed') }
+                  ]}
+                  onSave={(val) => onUpdate?.(ticket.id, { status: val })}
+                  permission={canEdit}
+                />
+                <InlineSelect
+                  value={ticket.priority}
+                  options={[
+                    { label: 'Critical', value: 'critical', colorClass: getPriorityColor('critical') },
+                    { label: 'High', value: 'high', colorClass: getPriorityColor('high') },
+                    { label: 'Medium', value: 'medium', colorClass: getPriorityColor('medium') },
+                    { label: 'Low', value: 'low', colorClass: getPriorityColor('low') }
+                  ]}
+                  onSave={(val) => onUpdate?.(ticket.id, { priority: val })}
+                  permission={canEdit}
+                />
               </div>
-              <h2 className="text-xl font-bold text-gray-800 mt-0.5">{ticket.title}</h2>
+              <InlineEditableText
+                value={ticket.title}
+                onSave={(val) => onUpdate?.(ticket.id, { title: val })}
+                permission={canEdit}
+                textClassName="text-xl font-bold text-gray-800 mt-0.5"
+                inputClassName="text-xl font-bold text-gray-800 mt-0.5"
+              />
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -112,6 +140,7 @@ export function TicketDetailsModal({ isOpen, onClose, ticket, currentUserId }: T
                   <User size={14} />
                   <span className="text-xs font-semibold uppercase tracking-wider">Assignee</span>
                 </div>
+                {/* Note: In TicketType assignee is an object, so inline editing might require a special ID selector, or just leave it readonly if API doesn't support string names */}
                 <div className="font-medium text-sm text-gray-800">{ticket.assignee?.name || 'Unassigned'}</div>
               </div>
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
@@ -133,7 +162,7 @@ export function TicketDetailsModal({ isOpen, onClose, ticket, currentUserId }: T
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                 <div className="flex items-center gap-2 text-gray-500 mb-1">
                   <AlertTriangle size={14} />
-                  <span className="text-xs font-semibold uppercase tracking-wider">Severity</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider">Priority</span>
                 </div>
                 <div className="font-medium text-sm text-gray-800 capitalize">{ticket.priority || 'Not set'}</div>
               </div>
@@ -146,8 +175,14 @@ export function TicketDetailsModal({ isOpen, onClose, ticket, currentUserId }: T
                   <FileText size={18} className="text-gray-400" />
                   <h3 className="text-lg font-bold text-gray-800">Description</h3>
                 </div>
-                <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  {ticket.description || 'No description provided.'}
+                <div className="text-sm leading-relaxed bg-gray-50 p-2 rounded-xl border border-gray-100">
+                  <InlineEditableText
+                    value={ticket.description || ''}
+                    onSave={(val) => onUpdate?.(ticket.id, { description: val || null })}
+                    permission={canEdit}
+                    type="textarea"
+                    placeholder="No description provided."
+                  />
                 </div>
               </section>
 
