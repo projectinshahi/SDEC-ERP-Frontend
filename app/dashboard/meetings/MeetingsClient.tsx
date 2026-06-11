@@ -60,21 +60,21 @@ const TYPE_LABELS: Record<string, string> = {
   BUG_REVIEW: 'Bug Review', EMERGENCY_MEETING: 'Emergency', OTHER: 'Other',
 };
 const TYPE_COLORS: Record<string, string> = {
-  DAILY_STANDUP: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  SPRINT_PLANNING: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  SPRINT_REVIEW: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-  RETROSPECTIVE: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
-  CLIENT_MEETING: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300',
-  INTERNAL_DISCUSSION: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
-  BUG_REVIEW: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  EMERGENCY_MEETING: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
-  OTHER: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  DAILY_STANDUP: 'bg-blue-100 text-blue-700',
+  SPRINT_PLANNING: 'bg-purple-100 text-purple-700',
+  SPRINT_REVIEW: 'bg-green-100 text-green-700',
+  RETROSPECTIVE: 'bg-orange-100 text-orange-700',
+  CLIENT_MEETING: 'bg-pink-100 text-pink-700',
+  INTERNAL_DISCUSSION: 'bg-cyan-100 text-cyan-700',
+  BUG_REVIEW: 'bg-red-100 text-red-700',
+  EMERGENCY_MEETING: 'bg-rose-100 text-rose-700',
+  OTHER: 'bg-gray-100 text-gray-700',
 };
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'default'> = {
   UPCOMING: 'info', ONGOING: 'warning', COMPLETED: 'success', CANCELLED: 'default',
 };
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400';
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function MeetingsClient() {
@@ -332,15 +332,15 @@ export default function MeetingsClient() {
       {/* Header */}
       <section className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight flex items-center gap-2.5">
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
             <Calendar className="text-blue-500 w-8 h-8" />
             Meeting Management
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-sm max-w-xl leading-relaxed">
+          <p className="text-gray-500 mt-1.5 text-sm max-w-xl leading-relaxed">
             Manage project meetings, attendees, schedules, and action items.
           </p>
           {!activeProject && (
-            <div className="mt-2 flex items-center gap-2 text-amber-600 dark:text-amber-400">
+            <div className="mt-2 flex items-center gap-2 text-amber-600">
               <Info size={14} />
               <span className="text-xs font-medium">Select a project from the sidebar to create meetings</span>
             </div>
@@ -367,14 +367,14 @@ export default function MeetingsClient() {
           { label: 'Completed', value: stats.completed, icon: CheckCircle, from: 'from-green-50', to: 'to-green-100', border: 'border-green-200', text: 'text-green-700', sub: 'text-green-600', iconBg: 'bg-green-500/10', iconColor: 'text-green-600' },
           { label: 'Open Action Items', value: stats.actionItems, icon: ListTodo, from: 'from-orange-50', to: 'to-orange-100', border: 'border-orange-200', text: 'text-orange-700', sub: 'text-orange-600', iconBg: 'bg-orange-500/10', iconColor: 'text-orange-600' },
         ].map(({ label, value, icon: Icon, from, to, border, text, sub, iconBg, iconColor }) => (
-          <Card key={label} className={classNames('bg-gradient-to-br dark:from-gray-800 dark:to-gray-800/80 dark:border-gray-700/50', from, to, border)}>
+          <Card key={label} className={classNames('!bg-white !bg-none border !border-gray-200 shadow-sm')}>
             <div className="flex items-center justify-between p-5">
               <div>
-                <p className={classNames('text-xs font-semibold uppercase tracking-wide dark:text-gray-400', sub)}>{label}</p>
-                <p className={classNames('text-3xl font-bold mt-2 dark:text-gray-100', text)}>{value}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+                <p className="text-3xl font-bold mt-2 text-black">{value}</p>
               </div>
-              <div className={classNames('w-12 h-12 rounded-full flex items-center justify-center dark:bg-white/5', iconBg)}>
-                <Icon className={classNames('w-6 h-6 dark:text-gray-300', iconColor)} />
+              <div className={classNames('w-12 h-12 rounded-full flex items-center justify-center', iconBg)}>
+                <Icon className={classNames('w-6 h-6', iconColor)} />
               </div>
             </div>
           </Card>
@@ -390,21 +390,21 @@ export default function MeetingsClient() {
             placeholder="Search by title, description or project..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-9 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400 shadow-sm"
+            className="w-full pl-10 pr-9 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400 shadow-sm"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+            <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600:text-gray-200">
               <X size={14} />
             </button>
           )}
         </div>
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-          className="px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm cursor-pointer">
+          className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm cursor-pointer">
           <option value="ALL">All Types</option>
           {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm cursor-pointer">
+          className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm cursor-pointer">
           <option value="ALL">All Status</option>
           <option value="UPCOMING">Upcoming</option>
           <option value="ONGOING">Ongoing</option>
@@ -413,11 +413,11 @@ export default function MeetingsClient() {
       </section>
 
       {/* Meetings Table */}
-      <Card variant="outlined" className="overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/60 flex items-center gap-2">
+      <Card variant="outlined" className="overflow-hidden mb-8 !bg-white !border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
           <CalendarDays size={17} className="text-blue-500" />
-          <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">Meetings</h2>
-          <span className="ml-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">{filtered.length}</span>
+          <h2 className="text-sm font-bold text-gray-800">Meetings</h2>
+          <span className="ml-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{filtered.length}</span>
         </div>
 
         {isLoading ? (
@@ -426,10 +426,10 @@ export default function MeetingsClient() {
           </div>
         ) : loadError ? (
           <div className="py-16 flex flex-col items-center gap-3 text-center px-6">
-            <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
               <AlertTriangle size={22} className="text-red-500" />
             </div>
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{loadError}</p>
+            <p className="text-sm font-semibold text-gray-700">{loadError}</p>
             <Button variant="secondary" size="sm" onClick={loadAll}>Retry</Button>
           </div>
         ) : filtered.length === 0 ? (
@@ -456,17 +456,17 @@ export default function MeetingsClient() {
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/60">
+                <tr className="bg-gray-50">
                   {['Meeting Title', 'Type', 'Date', 'Start', 'End', 'Organizer', 'Status', 'Attendees', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+              <tbody className="divide-y divide-gray-100">
                 {filtered.map(m => (
-                  <tr key={m.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors group cursor-pointer" onClick={() => openDetails(m)}>
+                  <tr key={m.id} className="hover:bg-gray-50/80:bg-gray-800/40 transition-colors group cursor-pointer" onClick={() => openDetails(m)}>
                     <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                      <p className="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer transition-colors" onClick={() => openDetails(m)}>{m.title}</p>
+                      <p className="font-semibold text-blue-600 hover:underline cursor-pointer transition-colors" onClick={() => openDetails(m)}>{m.title}</p>
                       {m.project?.name && <p className="text-xs text-gray-400 mt-0.5">{m.project.name}</p>}
                     </td>
                     <td className="px-4 py-3.5">
@@ -474,15 +474,15 @@ export default function MeetingsClient() {
                         {TYPE_LABELS[m.meetingType] ?? m.meetingType}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">
                       <div className="flex items-center gap-1.5"><CalendarDays size={13} className="text-gray-400" />
                         {new Date(m.meetingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">
                       <div className="flex items-center gap-1.5"><Clock size={13} className="text-gray-400" />{m.startTime}</div>
                     </td>
-                    <td className="px-4 py-3.5 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">
                       <div className="flex items-center gap-1.5"><Clock size={13} className="text-gray-400" />{m.endTime}</div>
                     </td>
                     <td className="px-4 py-3.5">
@@ -490,7 +490,7 @@ export default function MeetingsClient() {
                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                           {(m.organizer?.name ?? 'U').charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">{m.organizer?.name ?? `User #${m.organizerId}`}</span>
+                        <span className="text-xs font-medium text-gray-700 whitespace-nowrap">{m.organizer?.name ?? `User #${m.organizerId}`}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
@@ -513,16 +513,16 @@ export default function MeetingsClient() {
                                   const color = colors[id % colors.length];
                                   return (
                                     <div key={id} title={u?.name ?? `User #${id}`}
-                                      className={`w-7 h-7 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white dark:ring-gray-800 flex-shrink-0`}>
+                                      className={`w-7 h-7 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white flex-shrink-0`}>
                                       {initials}
                                     </div>
                                   );
                                 })}
                               </div>
                               {extra > 0 && (
-                                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">+{extra}</span>
+                                <span className="text-xs font-semibold text-gray-500">+{extra}</span>
                               )}
-                              <span className="text-xs text-gray-400 dark:text-gray-500">({ids.length})</span>
+                              <span className="text-xs text-gray-400">({ids.length})</span>
                             </div>
                           );
                         })()}
@@ -531,20 +531,20 @@ export default function MeetingsClient() {
                     <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <button onClick={() => openDetails(m)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-all" title="View Details">
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50:bg-blue-900/20:text-blue-400 transition-all" title="View Details">
                           <Eye size={14} />
                         </button>
                         <button onClick={() => openEdit(m)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-all" title="Edit">
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50:bg-blue-900/20:text-blue-400 transition-all" title="Edit">
                           <Edit size={14} />
                         </button>
                         <button onClick={() => void handleDeleteMeeting(m)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all" title="Delete">
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50:bg-red-900/20:text-red-400 transition-all" title="Delete">
                           <Trash2 size={14} />
                         </button>
                         {m.meetingLink && (
                           <a href={m.meetingLink} target="_blank" rel="noopener noreferrer"
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 dark:hover:text-green-400 transition-all" title="Join">
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50:bg-green-900/20:text-green-400 transition-all" title="Join">
                             <Video size={14} />
                           </a>
                         )}
@@ -560,10 +560,10 @@ export default function MeetingsClient() {
 
       {/* Action Items */}
       {/* <Card variant="outlined" className="overflow-hidden mb-8"> */}
-      {/* <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/60 flex items-center gap-2">
+      {/* <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
           <ListTodo size={17} className="text-orange-500" />
-          <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">Open Action Items</h2>
-          <span className="ml-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">{stats.actionItems}</span>
+          <h2 className="text-sm font-bold text-gray-800">Open Action Items</h2>
+          <span className="ml-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">{stats.actionItems}</span>
         </div> */}
       {/* {(() => {
           const openItems: Array<{ meetingTitle: string; id: number; title: string; description: string | null; assignedTo: number; dueDate: string; status: string; priority: string; meetingId: number; createdAt: string; updatedAt: string; }> = meetings.flatMap(m =>
@@ -571,36 +571,36 @@ export default function MeetingsClient() {
           );
           if (openItems.length === 0) return (
             <div className="py-12 flex flex-col items-center gap-2 text-center">
-              <div className="w-11 h-11 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-full bg-green-50 flex items-center justify-center">
                 <CheckCircle size={20} className="text-green-500" />
               </div>
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">All caught up!</p>
+              <p className="text-sm font-semibold text-gray-700">All caught up!</p>
               <p className="text-xs text-gray-400">No open action items.</p>
             </div>
           );
           const priorityColors: Record<string, string> = {
-            HIGH: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-            CRITICAL: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
-            MEDIUM: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-            LOW: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+            HIGH: 'bg-red-100 text-red-700',
+            CRITICAL: 'bg-rose-100 text-rose-700',
+            MEDIUM: 'bg-yellow-100 text-yellow-700',
+            LOW: 'bg-green-100 text-green-700',
           };
           const statusColors: Record<string, string> = {
-            OPEN: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-            IN_PROGRESS: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+            OPEN: 'bg-gray-100 text-gray-600',
+            IN_PROGRESS: 'bg-blue-100 text-blue-700',
           };
           return (
-            <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
+            <div className="divide-y divide-gray-100">
               {openItems.map(item => (
-                <div key={item.id} className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/80 dark:hover:bg-gray-800/30 transition-colors">
+                <div key={item.id} className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/80:bg-gray-800/30 transition-colors">
                   <div className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full bg-orange-400 mt-2 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{item.title}</p>
+                      <p className="text-sm font-semibold text-gray-800">{item.title}</p>
                       <p className="text-xs text-gray-400 mt-0.5">From: {item.meetingTitle}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 ml-5 sm:ml-0">
-                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
                       <CalendarDays size={11} />
                       {item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                     </div>
@@ -620,10 +620,10 @@ export default function MeetingsClient() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Active Project Display for Create */}
           {!editingMeeting && activeProject && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                <span className="text-sm font-medium text-blue-800">
                   Creating meeting for: <span className="font-semibold">{activeProject.name}</span>
                 </span>
               </div>
@@ -632,10 +632,10 @@ export default function MeetingsClient() {
           
           {/* Project Display for Edit */}
           {editingMeeting && editingMeeting.project && (
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-gray-500"></div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="text-sm font-medium text-gray-700">
                   Project: <span className="font-semibold">{editingMeeting.project.name}</span>
                 </span>
               </div>
@@ -643,17 +643,17 @@ export default function MeetingsClient() {
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Meeting Title *</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Meeting Title *</label>
             <input {...register('title')} placeholder="e.g. Sprint Planning Q2" className={inputCls} />
             {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
             <textarea {...register('description')} rows={2} placeholder="Meeting agenda or purpose..." className={classNames(inputCls, 'resize-none')} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Meeting Type *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Meeting Type *</label>
               <select {...register('meetingType')} className={inputCls}>
                 {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
@@ -661,17 +661,17 @@ export default function MeetingsClient() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Date *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Date *</label>
               <input {...register('meetingDate')} type="date" className={inputCls} />
               {errors.meetingDate && <p className="text-xs text-red-500 mt-1">{errors.meetingDate.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Start Time *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Start Time *</label>
               <input {...register('startTime')} type="time" className={inputCls} />
               {errors.startTime && <p className="text-xs text-red-500 mt-1">{errors.startTime.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Duration *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Duration *</label>
               <select {...register('duration')} className={inputCls}>
                 <option value="15">15 Minutes</option>
                 <option value="30">30 Minutes</option>
@@ -685,41 +685,41 @@ export default function MeetingsClient() {
           {watchDuration === 'CUSTOM' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Custom Duration (Minutes) *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Custom Duration (Minutes) *</label>
                 <input {...register('customDuration')} type="number" min="1" className={inputCls} placeholder="e.g. 90" />
                 {errors.customDuration && <p className="text-xs text-red-500 mt-1">{errors.customDuration.message}</p>}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">End Time</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">End Time</label>
                 <input value={dynamicEndTime} disabled className={classNames(inputCls, 'bg-gray-50 text-gray-500 cursor-not-allowed')} />
               </div>
             </div>
           )}
           {watchDuration !== 'CUSTOM' && (
             <>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Calculated End Time:</span> {dynamicEndTime}
+              <div className="text-sm text-gray-500">
+                <span className="font-semibold text-gray-700">Calculated End Time:</span> {dynamicEndTime}
               </div>
-              <div className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5 mt-2 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg">
+              <div className="text-sm text-blue-600 flex items-center gap-1.5 mt-2 bg-blue-50 p-2 rounded-lg">
                 <Video size={14} />
                 A Google Meet link will be automatically generated.
               </div>
             </>
           )}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               <Users size={12} className="inline mr-1" />Attendees
               {selectedAttendees.length > 0 && (
-                <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
                   {selectedAttendees.length} selected
                 </span>
               )}
             </label>
-            <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+            <div className="border border-gray-300 rounded-lg overflow-hidden">
               {users.length === 0 ? (
                 <p className="text-xs text-gray-400 px-3 py-3 italic">No users available</p>
               ) : (
-                <div className="max-h-44 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/50">
+                <div className="max-h-44 overflow-y-auto divide-y divide-gray-100">
                   {users.map(u => {
                     const checked = selectedAttendees.includes(u.id);
                     const initials = u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -730,8 +730,8 @@ export default function MeetingsClient() {
                         className={classNames(
                           'flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors select-none',
                           checked
-                            ? 'bg-blue-50 dark:bg-blue-900/20'
-                            : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
+                            ? 'bg-blue-50'
+                            : 'hover:bg-gray-50:bg-gray-700/30'
                         )}>
                         <input
                           type="checkbox"
@@ -747,7 +747,7 @@ export default function MeetingsClient() {
                           {initials}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{u.name}</p>
+                          <p className="text-sm font-medium text-gray-800 truncate">{u.name}</p>
                           <p className="text-xs text-gray-400 truncate">{u.email}</p>
                         </div>
                         {checked && <CheckCircle2 size={15} className="text-blue-500 flex-shrink-0" />}
@@ -762,10 +762,10 @@ export default function MeetingsClient() {
                 {selectedAttendees.map(id => {
                   const u = users.find(u => u.id === id);
                   return (
-                    <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium">
+                    <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
                       {u?.name ?? `User #${id}`}
                       <button type="button" onClick={() => setSelectedAttendees(p => p.filter(x => x !== id))}
-                        className="hover:text-blue-900 dark:hover:text-blue-100 transition-colors">
+                        className="hover:text-blue-900:text-blue-100 transition-colors">
                         <X size={11} />
                       </button>
                     </span>
@@ -775,7 +775,7 @@ export default function MeetingsClient() {
             )}
           </div>
 
-          <div className="flex gap-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+          <div className="flex gap-3 pt-3 border-t border-gray-100">
             <Button type="button" variant="secondary" className="flex-1" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancel</Button>
             <Button type="submit" variant="primary" className="flex-1" isLoading={isSubmitting}>
               {editingMeeting ? 'Update Meeting' : 'Save Meeting'}
@@ -789,6 +789,15 @@ export default function MeetingsClient() {
         isOpen={isDetailsModalOpen} 
         onClose={() => setIsDetailsModalOpen(false)} 
         meeting={selectedMeeting} 
+        onUpdate={async (meetingId, updates) => {
+          const payload = {
+            ...updates,
+            description: updates.description === null ? undefined : updates.description
+          };
+          await apiUpdateMeeting(meetingId, payload as any);
+          setSelectedMeeting(prev => prev ? { ...prev, ...updates } : null);
+          loadAll();
+        }}
       />
 
     </>

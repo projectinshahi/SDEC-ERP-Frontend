@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
+
 import { Calendar, User, Flag, CheckCircle, FileIcon, Download, AlertCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Task } from './CreateTaskModal';
@@ -7,7 +9,12 @@ import { Modal } from '@/components/Modal';
 import { TaskDiscussionPanel } from './TaskDiscussionPanel';
 import { useAuth } from '@/lib/hooks/useAuth';
 
-const MDEditor = dynamic(() => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown), { ssr: false });
+const MarkdownViewer = dynamic(() => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown), { ssr: false });
+const MarkdownEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
+
+import { InlineEditableText } from '../ui/InlineEditableText';
+import { InlineSelect } from '../ui/InlineSelect';
+import { InlineDatePicker } from '../ui/InlineDatePicker';
 
 interface TaskDetailsDrawerProps {
   isOpen: boolean;
@@ -15,66 +22,179 @@ interface TaskDetailsDrawerProps {
   task: Task | null;
   onEdit: () => void;
   canEdit: boolean;
+  columns?: { id: string; label: string }[];
+  onStatusChange?: (taskId: string, newStatus: string) => void;
+  availableAssignees?: string[];
+  boards?: any[];
+  onTaskUpdate?: (taskId: string, updates: Partial<Task>) => void;
 }
 
-export function TaskDetailsDrawer({ isOpen, onClose, task, onEdit, canEdit }: TaskDetailsDrawerProps) {
+export function TaskDetailsDrawer({ isOpen, onClose, task, onEdit, canEdit, columns = [], onStatusChange, availableAssignees = [], boards = [], onTaskUpdate }: TaskDetailsDrawerProps) {
   const { user } = useAuth();
+  
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [descriptionValue, setDescriptionValue] = useState(task?.description || '');
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (task) {
+      setDescriptionValue(task.description || '');
+      setIsEditingDescription(false);
+    }
+  }, [task?.id, task?.description]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
+
   if (!task) return null;
+
+  const handleDoubleClickDescription = () => {
+    if (canEdit && onTaskUpdate) {
+      setIsEditingDescription(true);
+    }
+  };
+
+  const handleDescriptionChange = (val: string | undefined) => {
+    const newVal = val || '';
+    setDescriptionValue(newVal);
+    
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    debounceTimer.current = setTimeout(() => {
+      if (onTaskUpdate && task) {
+        onTaskUpdate(task.id, { description: newVal });
+        setIsEditingDescription(false);
+      }
+    }, 5000);
+  };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={task.title}
+      title={
+        <div className="flex items-center gap-2">
+          <InlineEditableText
+            value={task.title}
+            onSave={(val) => onTaskUpdate?.(task.id, { title: val })}
+            permission={canEdit}
+            textClassName="text-xl font-bold"
+            inputClassName="text-xl font-bold"
+          />
+        </div>
+      }
       size="xl"
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:h-[80vh] lg:max-h-[800px] lg:overflow-hidden">
         {/* Left Side: Task Information */}
-        <div className="space-y-6 lg:border-r lg:border-gray-100 lg:pr-6">
+        <div className="space-y-6 lg:border-r lg:border-gray-100 lg:pr-6 lg:overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 lg:h-full pb-4">
           {/* Meta Information */}
-          <div className="grid grid-cols-2 gap-y-4 gap-x-6 pb-4 border-b border-gray-100">
-            <div className="flex items-center gap-3 text-sm">
-              <CheckCircle className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-500 w-20">Status</span>
-              <span className="font-medium text-gray-900 capitalize px-2.5 py-0.5 bg-gray-100 rounded-full">{task.status}</span>
+          <div className="flex flex-col gap-y-4 pb-4 border-b border-gray-100 dark:border-gray-800">
+            {/* Board / Sprint */}
+            {boards && boards.length > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="w-4 h-4 shrink-0 text-gray-400 flex items-center justify-center border border-gray-400 rounded-sm text-[10px] font-bold">B</span>
+                <span className="text-gray-500 w-20 shrink-0">Board</span>
+                <InlineSelect
+                  value={task.boardId?.toString() || ''}
+                  options={boards.map(b => ({ label: b.name || `Board ${b.id}`, value: b.id.toString() }))}
+                  onSave={(val) => onTaskUpdate?.(task.id, { boardId: parseInt(val) })}
+                  permission={canEdit}
+                />
+              </div>
+            )}
+
+            {/* Status */}
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className="text-gray-500 w-20 shrink-0">Status</span>
+              <InlineSelect
+                value={task.status}
+                options={columns.map(c => ({ label: c.label, value: c.id }))}
+                onSave={(val) => onStatusChange?.(task.id, val)}
+                permission={canEdit && columns.length > 0}
+              />
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-500 w-20">Assignee</span>
-              <span className="font-medium text-gray-900">{task.assignee || 'Unassigned'}</span>
+
+            {/* Assignee */}
+            <div className="flex items-center gap-2 text-sm">
+              <User className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className="text-gray-500 w-20 shrink-0">Assignee</span>
+              <InlineSelect
+                value={task.assignee || ''}
+                options={[
+                  { label: 'Unassigned', value: '' },
+                  ...availableAssignees.map(a => ({ label: a, value: a }))
+                ]}
+                onSave={(val) => onTaskUpdate?.(task.id, { assignee: val })}
+                permission={canEdit && availableAssignees.length > 0}
+              />
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <Flag className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-500 w-20">Priority</span>
-              <span className={`font-medium capitalize ${
-                task.priority === 'high' ? 'text-red-600' :
-                task.priority === 'medium' ? 'text-orange-500' :
-                'text-green-600'
-              }`}>{task.priority}</span>
+
+            {/* Priority */}
+            <div className="flex items-center gap-2 text-sm">
+              <Flag className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className="text-gray-500 w-20 shrink-0">Priority</span>
+              <InlineSelect
+                value={task.priority}
+                options={[
+                  { label: 'High', value: 'high', colorClass: 'text-red-600 dark:text-red-400' },
+                  { label: 'Medium', value: 'medium', colorClass: 'text-orange-500 dark:text-orange-400' },
+                  { label: 'Low', value: 'low', colorClass: 'text-green-600 dark:text-green-400' }
+                ]}
+                onSave={(val) => onTaskUpdate?.(task.id, { priority: val as Task['priority'] })}
+                permission={canEdit}
+              />
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-500 w-20">Due Date</span>
-              <span className="font-medium text-gray-900">{task.dueDate}</span>
+
+            {/* Due Date */}
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className="text-gray-500 w-20 shrink-0">Due Date</span>
+              <InlineDatePicker
+                value={task.dueDate}
+                onSave={(val) => onTaskUpdate?.(task.id, { dueDate: val || undefined })}
+                permission={canEdit}
+              />
             </div>
+
+            {/* Story Points */}
             {task.storyPoints !== undefined && (
-              <div className="flex items-center gap-3 text-sm col-span-2">
-                <span className="text-blue-500 bg-blue-50 px-2 py-0.5 rounded text-xs font-semibold w-8 text-center">{task.storyPoints}</span>
-                <span className="text-gray-500">Story Points</span>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="w-4 h-4 shrink-0 text-gray-400 flex items-center justify-center text-[10px] font-bold border border-gray-400 rounded-full">SP</span>
+                <span className="text-gray-500 w-20 shrink-0">Points</span>
+                {canEdit && onTaskUpdate ? (
+                  <input
+                    type="number"
+                    min="0"
+                    value={task.storyPoints || 0}
+                    onChange={(e) => onTaskUpdate(task.id, { storyPoints: parseInt(e.target.value) || 0 })}
+                    className="flex-1 min-w-0 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md text-sm font-semibold text-left border-none focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors"
+                  />
+                ) : (
+                  <span className="flex-1 min-w-0 text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md text-sm font-semibold truncate">{task.storyPoints}</span>
+                )}
               </div>
             )}
           </div>
 
           {/* Description */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Description</h3>
-            <div className="prose prose-sm max-w-none text-gray-600 bg-gray-50/50 p-4 rounded-lg border border-gray-100" data-color-mode="light">
-              {task.description ? (
-                <MDEditor source={task.description} className="!bg-transparent !text-gray-700" />
-              ) : (
-                <p className="italic text-gray-400">No description provided.</p>
-              )}
-            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center gap-2">
+              Description
+            </h3>
+            <InlineEditableText
+              value={task.description || ''}
+              onSave={(val) => onTaskUpdate?.(task.id, { description: val })}
+              permission={canEdit}
+              type="textarea"
+              placeholder="Add a description..."
+            />
           </div>
 
           {/* Attachments */}
@@ -129,25 +249,10 @@ export function TaskDetailsDrawer({ isOpen, onClose, task, onEdit, canEdit }: Ta
             )}
           </div>
 
-          {/* Actions */}
-          {canEdit && (
-            <div className="pt-4 border-t border-gray-100 flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onEdit();
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                Edit Task
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Right Side: Task Discussion */}
-        <div className="h-[600px] lg:h-auto">
+        <div className="h-[500px] lg:h-full flex flex-col min-h-0">
           <TaskDiscussionPanel taskId={task.id} currentUserId={user?.id ? Number(user.id) : undefined} />
         </div>
       </div>

@@ -86,17 +86,6 @@ export function TaskCard({
   const { initials, colorClass } = getUserAvatarDetails(task.assignee);
   const dueStatus = getDueStatus(task.dueDate);
 
-  const getPriorityVariant = (priority: Task['priority']) => {
-    switch (priority) {
-      case 'high':
-        return 'danger';
-      case 'medium':
-        return 'warning';
-      default:
-        return 'success';
-    }
-  };
-
   // Drag start handler
   const handleDragStart = (e: React.DragEvent) => {
     setDraggedTaskId(task.id);
@@ -259,9 +248,14 @@ export function TaskCard({
         <div className="flex items-center justify-between mt-auto gap-2">
           {/* Priority badge */}
           <div className="flex items-center gap-2">
-            <Badge variant={getPriorityVariant(task.priority)} className="capitalize text-[10px] px-2 py-0.5 font-bold">
-              {task.priority}
-            </Badge>
+            <div 
+              className={`w-2.5 h-2.5 rounded-full shadow-sm ${
+                task.priority === 'high' ? 'bg-red-500 dark:bg-red-500' :
+                task.priority === 'medium' ? 'bg-yellow-500 dark:bg-yellow-500' :
+                'bg-green-500 dark:bg-green-500'
+              }`}
+              title={`Priority: ${task.priority}`}
+            />
             {task.storyPoints !== undefined && task.storyPoints > 0 && (
               <Badge variant="default" className="text-[10px] px-2 py-0.5 font-bold bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
                 {task.storyPoints} {task.storyPoints === 1 ? 'pt' : 'pts'}

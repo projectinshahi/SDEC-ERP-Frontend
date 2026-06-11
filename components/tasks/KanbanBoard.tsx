@@ -9,6 +9,7 @@ import { TaskDetailsDrawer } from './TaskDetailsDrawer';
 import { Card, CardBody } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { fetchUsers, UserDbResponse } from '@/lib/api/users';
+import { fetchProjectMembers } from '@/lib/api/projects';
 import { Modal } from '@/components/Modal';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -34,18 +35,24 @@ const INITIAL_TASKS: Task[] = [];
 
 const INITIAL_COLUMNS: BoardColumn[] = [];
 
+interface KanbanBoardProps {
+  boardId?: number | null;
+  sprintId?: string | null;
+  projectId?: string | null;
+  boards?: any[];
+  headerActions?: React.ReactNode;
+}
+
 /**
  * KanbanBoard orchestrator - Manages main state and operations of the tasks and dynamic columns.
  */
 export function KanbanBoard({ 
   boardId, 
   sprintId,
+  projectId,
+  boards = [],
   headerActions
-}: { 
-  boardId?: number | null, 
-  sprintId?: string | null,
-  headerActions?: React.ReactNode
-}) {
+}: KanbanBoardProps) {
   const [columns, setColumns] = useState<BoardColumn[]>(INITIAL_COLUMNS);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
@@ -145,9 +152,18 @@ export function KanbanBoard({
       try {
         const cols = await fetchKanbanColumns(boardId ?? undefined);
         const tsk = await fetchKanbanTasks(boardId ?? undefined, sprintId ?? undefined);
-        const usrs = await fetchUsers();
+        
+        let usrs: { name: string }[] = [];
+        if (projectId) {
+          const members = await fetchProjectMembers(projectId);
+          usrs = members.map(m => ({ name: m.name }));
+        } else {
+          usrs = await fetchUsers();
+        }
+        
         setColumns(cols);
         setTasks(tsk);
+        // @ts-ignore - Temporary cast to handle both UserDbResponse and ProjectMember shape
         setUsers(usrs);
       } catch (error) {
         console.error('Failed to load Kanban board from PostgreSQL database:', error);
@@ -156,7 +172,7 @@ export function KanbanBoard({
       }
     };
     init();
-  }, [boardId, sprintId]);
+  }, [boardId, sprintId, projectId]);
 
   // Setup Socket.IO for real-time unread messages
   useEffect(() => {
@@ -256,6 +272,30 @@ export function KanbanBoard({
       await moveKanbanTask(taskId, targetStatus, targetColTaskIds);
     } catch (err) {
       console.error('Failed to move task in database:', err);
+    }
+  };
+
+  const handleInlineTaskUpdate = async (taskId: string, updates: Partial<Task>) => {
+    if (!hasPermission('task.update')) return;
+
+    if (updates.boardId !== undefined && updates.boardId !== boardId) {
+      // Task moved to another board, remove it from current board view
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      if (viewingTask?.id === taskId) {
+        setViewingTask(null);
+      }
+    } else {
+      // Regular update
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t)));
+      if (viewingTask?.id === taskId) {
+        setViewingTask({ ...viewingTask, ...updates });
+      }
+    }
+
+    try {
+      await updateKanbanTask(taskId, updates);
+    } catch (err) {
+      console.error('Failed to update task inline:', err);
     }
   };
 
@@ -838,7 +878,7 @@ export function KanbanBoard({
         </div>
       </Modal>
       <TaskDetailsDrawer
-        isOpen={!!viewingTask}
+        isOpen={viewingTask !== null}
         onClose={() => setViewingTask(null)}
         task={viewingTask}
         canEdit={hasPermission('task.update')}
@@ -847,6 +887,17 @@ export function KanbanBoard({
             handleEditTaskOpen(viewingTask);
           }
         }}
+        columns={columns}
+        boards={boards}
+        availableAssignees={availableAssignees}
+        onStatusChange={(taskId, newStatus) => {
+          handleMoveTask(taskId, newStatus);
+          // Optimistically update the viewingTask state so UI reflects immediately
+          if (viewingTask && viewingTask.id === taskId) {
+            setViewingTask({ ...viewingTask, status: newStatus });
+          }
+        }}
+        onTaskUpdate={handleInlineTaskUpdate}
       />
     </div>
   );

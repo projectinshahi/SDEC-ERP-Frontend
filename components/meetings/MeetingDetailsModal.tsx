@@ -6,11 +6,15 @@ import { CalendarDays, Clock, Video, Info, User, FileText } from 'lucide-react';
 import { MeetingNotesPanel } from './MeetingNotesPanel';
 import { type Meeting } from '@/lib/api/meetings';
 import { classNames } from '@/lib/utils';
+import { InlineEditableText } from '../ui/InlineEditableText';
+import { InlineSelect } from '../ui/InlineSelect';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 interface MeetingDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   meeting: Meeting | null;
+  onUpdate?: (meetingId: number, updates: Partial<Meeting>) => Promise<void>;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -24,13 +28,23 @@ const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'default'>
   UPCOMING: 'info', ONGOING: 'warning', COMPLETED: 'success', CANCELLED: 'default',
 };
 
-export function MeetingDetailsModal({ isOpen, onClose, meeting }: MeetingDetailsModalProps) {
+export function MeetingDetailsModal({ isOpen, onClose, meeting, onUpdate }: MeetingDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview');
+  const { hasPermission } = usePermissions();
+  const canEdit = hasPermission('meetings.update');
 
   if (!meeting) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={meeting.title} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={
+      <InlineEditableText
+        value={meeting.title}
+        onSave={(val) => onUpdate?.(meeting.id, { title: val })}
+        permission={canEdit}
+        textClassName="text-xl font-bold text-gray-900 dark:text-white"
+        inputClassName="text-xl font-bold text-gray-900 dark:text-white bg-transparent border-b border-gray-300 focus:border-blue-500 outline-none w-full max-w-md"
+      />
+    } size="xl">
       <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
         <button
           onClick={() => setActiveTab('overview')}
@@ -69,7 +83,12 @@ export function MeetingDetailsModal({ isOpen, onClose, meeting }: MeetingDetails
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-gray-500">Type</span>
-                    <span>{TYPE_LABELS[meeting.meetingType] || meeting.meetingType}</span>
+                    <InlineSelect
+                      value={meeting.meetingType}
+                      options={Object.entries(TYPE_LABELS).map(([val, label]) => ({ label, value: val }))}
+                      onSave={(val) => onUpdate?.(meeting.id, { meetingType: val })}
+                      permission={canEdit}
+                    />
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-gray-500">Status</span>
@@ -103,14 +122,18 @@ export function MeetingDetailsModal({ isOpen, onClose, meeting }: MeetingDetails
               </Card>
             </div>
 
-            {meeting.description && (
-              <div>
-                <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2">Description</h4>
-                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                  {meeting.description}
-                </div>
+            <div className="mt-6">
+              <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2">Description</h4>
+              <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300">
+                <InlineEditableText
+                  value={meeting.description || ''}
+                  onSave={(val) => onUpdate?.(meeting.id, { description: val || null })}
+                  permission={canEdit}
+                  type="textarea"
+                  placeholder="Meeting agenda or purpose..."
+                />
               </div>
-            )}
+            </div>
             
             <div>
               <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2">

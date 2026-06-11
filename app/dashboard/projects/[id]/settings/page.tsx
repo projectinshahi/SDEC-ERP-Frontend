@@ -20,14 +20,14 @@ import {
   AlertCircle,
   Info
 } from 'lucide-react';
-import { 
-  fetchProjectById, 
-  updateProjectApi, 
-  fetchProjectMembers, 
-  addProjectMemberApi, 
-  updateProjectMemberRoleApi, 
+import {
+  fetchProjectById,
+  updateProjectApi,
+  fetchProjectMembers,
+  updateProjectMemberRoleApi,
   removeProjectMemberApi,
-  deleteProjectApi
+  deleteProjectApi,
+  bulkUpdateProjectMembersApi
 } from '@/lib/api/projects';
 import { Project, ProjectMember } from '@/components/projects/ProjectCard';
 import { MemberList } from '@/components/projects/MemberList';
@@ -44,7 +44,7 @@ export default function ProjectSettingsPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [members, setMembers] = useState<ProjectMember[]>([]);
-  
+
   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'editor' | 'viewer' | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -137,14 +137,14 @@ export default function ProjectSettingsPage() {
     }
   };
 
-  const handleAddMemberSubmit = async (data: { userId: number; role: 'admin' | 'editor' | 'viewer' }) => {
+  const handleAddMemberSubmit = async (updatedMembers: any[]) => {
     try {
-      await addProjectMemberApi(projectId, data);
-      toast('Member added successfully!');
+      await bulkUpdateProjectMembersApi(projectId, updatedMembers);
+      toast('Members updated successfully!');
       setIsAddMemberOpen(false);
       loadMembersOnly();
     } catch (error: any) {
-      toast(error.message || 'Failed to add member', 'error');
+      toast(error.message || 'Failed to update members', 'error');
     }
   };
 
@@ -163,7 +163,7 @@ export default function ProjectSettingsPage() {
 
   const handleRemoveConfirm = async () => {
     if (!memberToRemove) return;
-    
+
     // Check if removing last admin
     if (memberToRemove.role === 'admin') {
       const adminCount = members.filter(m => m.role === 'admin').length;
@@ -239,7 +239,7 @@ export default function ProjectSettingsPage() {
         {currentUserRole && (
           <div className="flex items-center gap-2 text-sm font-medium">
             <span className="text-gray-500">Your Role:</span>
-            <Badge 
+            <Badge
               variant={currentUserRole === 'admin' ? 'danger' : currentUserRole === 'editor' ? 'info' : 'default'}
               className="uppercase text-[10px] tracking-wider"
             >
@@ -286,22 +286,20 @@ export default function ProjectSettingsPage() {
             <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/20">
               <button
                 onClick={() => setActiveTab('details')}
-                className={`px-6 py-3.5 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${
-                  activeTab === 'details' 
-                    ? 'border-blue-500 text-blue-600 bg-white dark:bg-gray-800' 
+                className={`px-6 py-3.5 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'details'
+                    ? 'border-blue-500 text-blue-600 bg-white dark:bg-gray-800'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-                }`}
+                  }`}
               >
                 <Settings size={16} />
                 General Details
               </button>
               <button
                 onClick={() => setActiveTab('members')}
-                className={`px-6 py-3.5 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${
-                  activeTab === 'members' 
-                    ? 'border-blue-500 text-blue-600 bg-white dark:bg-gray-800' 
+                className={`px-6 py-3.5 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'members'
+                    ? 'border-blue-500 text-blue-600 bg-white dark:bg-gray-800'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-                }`}
+                  }`}
               >
                 <Users size={16} />
                 Members & Roles
@@ -322,9 +320,9 @@ export default function ProjectSettingsPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Project Name</label>
-                      <input 
-                        type="text" 
-                        value={name} 
+                      <input
+                        type="text"
+                        value={name}
                         onChange={(e) => setName(e.target.value)}
                         disabled={!canEditDetails}
                         className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60 disabled:bg-gray-50"
@@ -333,8 +331,8 @@ export default function ProjectSettingsPage() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
-                      <textarea 
-                        value={description} 
+                      <textarea
+                        value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         disabled={!canEditDetails}
                         rows={4}
@@ -344,8 +342,8 @@ export default function ProjectSettingsPage() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Status</label>
-                      <select 
-                        value={status} 
+                      <select
+                        value={status}
                         onChange={(e) => setStatus(e.target.value as any)}
                         disabled={!canEditDetails}
                         className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60 disabled:bg-gray-50"
@@ -393,7 +391,7 @@ export default function ProjectSettingsPage() {
                   </div>
 
                   <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <MemberList 
+                    <MemberList
                       members={members}
                       onRoleChange={canManageMembers ? handleRoleChange : undefined}
                       onRemove={canManageMembers ? setMemberToRemove : undefined}

@@ -59,13 +59,13 @@ export function SprintSelector({ sprints, selectedSprintId, onSelectSprint, isLo
 
       {isOpen && !isLoading && (
         <>
-          <div 
-            className="fixed inset-0 z-10" 
+          <div
+            className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
           <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-20 overflow-hidden animate-in fade-in slide-in-from-top-2">
             <div className="max-h-80 overflow-y-auto py-2">
-              
+
               {/* All Sprints Option */}
               <button
                 className={classNames(
@@ -115,8 +115,8 @@ export function SprintSelector({ sprints, selectedSprintId, onSelectSprint, isLo
                       </div>
                     </div>
                     {sprint.status && (
-                      <Badge 
-                        variant={sprint.status === 'Active' ? 'success' : sprint.status === 'Completed' ? 'info' : 'default'} 
+                      <Badge
+                        variant={sprint.status === 'Active' ? 'success' : sprint.status === 'Completed' ? 'info' : 'default'}
                         className="text-[10px] py-0"
                       >
                         {sprint.status}

@@ -22,6 +22,7 @@ export interface Task {
   originTaskId?: string;
   attachments?: TaskAttachment[];
   unreadCount?: number;
+  boardId?: number;
 }
 
 export interface TaskFormData {
