@@ -212,18 +212,7 @@ export function TaskCard({
 
           {/* Hover Actions */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 pl-1">
-            {hasPermission('task.update') && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(task);
-                }}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 rounded transition-colors"
-                title="Edit Task"
-              >
-                <Edit size={14} />
-              </button>
-            )}
+
             {hasPermission('task.delete') && (
               <button
                 onClick={(e) => {

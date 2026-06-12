@@ -162,7 +162,7 @@ export function ActivityFeed({
         )}
       </CardHeader>
       
-      <CardBody className="p-6">
+      <CardBody className="p-6 overflow-y-auto max-h-[400px] custom-scrollbar">
         {/* 1. Loading State */}
         {isLoading ? (
           <div className="space-y-1">

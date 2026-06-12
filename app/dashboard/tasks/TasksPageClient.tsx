@@ -167,13 +167,9 @@ export function TasksPageClient() {
           const data = await fetchSprintsForBoard(selectedBoardId);
           setSprints(data);
 
-          // Optionally auto-select active sprint
-          const activeSprint = data.find(s => s.status === 'Active');
-          if (activeSprint) {
-            setSelectedSprintId(activeSprint.id);
-          } else {
-            setSelectedSprintId(null); // Default to all tasks
-          }
+          // The SprintSelector is disabled because Sprints are now treated as standalone Boards.
+          // We should not auto-select a sprintId, as it overrides the selectedBoardId's data.
+          setSelectedSprintId(null);
         } catch (err) {
           console.error('Failed to load sprints', err);
         } finally {
