@@ -14,11 +14,15 @@ export function classNames(
 /**
  * Format date to readable string
  */
-export function formatDate(date: Date | string, format: 'short' | 'long' = 'short'): string {
+export function formatDate(date: Date | string, format: 'short' | 'long' | 'compact' = 'short'): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
 
   if (isNaN(dateObj.getTime())) {
     return 'Invalid date';
+  }
+
+  if (format === 'compact') {
+    return dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
   }
 
   const options: Record<'short' | 'long', Intl.DateTimeFormatOptions> = {

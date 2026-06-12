@@ -409,6 +409,9 @@ export function CreateTaskModal({
               onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
               className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
             >
+              {formData.assignee && !availableAssignees.includes(formData.assignee) && (
+                <option value={formData.assignee}>{formData.assignee}</option>
+              )}
               {availableAssignees.map((name) => (
                 <option key={name} value={name}>
                   {name}
