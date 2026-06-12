@@ -490,7 +490,7 @@ export default function MeetingsClient() {
                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                           {(m.organizer?.name ?? 'U').charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-xs font-medium text-gray-700 whitespace-nowrap">{m.organizer?.name ?? `User #${m.organizerId}`}</span>
+                        <span className="text-xs font-medium text-gray-700 whitespace-nowrap">{m.organizer?.name ?? 'Unknown User'}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
@@ -512,7 +512,7 @@ export default function MeetingsClient() {
                                   const colors = ['from-blue-500 to-blue-600', 'from-purple-500 to-purple-600', 'from-green-500 to-green-600', 'from-pink-500 to-pink-600', 'from-orange-500 to-orange-600'];
                                   const color = colors[id % colors.length];
                                   return (
-                                    <div key={id} title={u?.name ?? `User #${id}`}
+                                    <div key={id} title={u?.name ?? 'Unknown User'}
                                       className={`w-7 h-7 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white flex-shrink-0`}>
                                       {initials}
                                     </div>
@@ -530,10 +530,7 @@ export default function MeetingsClient() {
                     </td>
                     <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => openDetails(m)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50:bg-blue-900/20:text-blue-400 transition-all" title="View Details">
-                          <Eye size={14} />
-                        </button>
+
                         <button onClick={() => openEdit(m)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50:bg-blue-900/20:text-blue-400 transition-all" title="Edit">
                           <Edit size={14} />
@@ -763,7 +760,7 @@ export default function MeetingsClient() {
                   const u = users.find(u => u.id === id);
                   return (
                     <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
-                      {u?.name ?? `User #${id}`}
+                      {u?.name ?? 'Unknown User'}
                       <button type="button" onClick={() => setSelectedAttendees(p => p.filter(x => x !== id))}
                         className="hover:text-blue-900:text-blue-100 transition-colors">
                         <X size={11} />
@@ -798,6 +795,7 @@ export default function MeetingsClient() {
           setSelectedMeeting(prev => prev ? { ...prev, ...updates } : null);
           loadAll();
         }}
+        users={users}
       />
 
     </>

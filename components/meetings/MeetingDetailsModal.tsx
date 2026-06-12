@@ -15,6 +15,7 @@ interface MeetingDetailsModalProps {
   onClose: () => void;
   meeting: Meeting | null;
   onUpdate?: (meetingId: number, updates: Partial<Meeting>) => Promise<void>;
+  users?: { id: number; name: string; email: string }[];
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -28,7 +29,7 @@ const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'default'>
   UPCOMING: 'info', ONGOING: 'warning', COMPLETED: 'success', CANCELLED: 'default',
 };
 
-export function MeetingDetailsModal({ isOpen, onClose, meeting, onUpdate }: MeetingDetailsModalProps) {
+export function MeetingDetailsModal({ isOpen, onClose, meeting, onUpdate, users = [] }: MeetingDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview');
   const { hasPermission } = usePermissions();
   const canEdit = hasPermission('meetings.update');
@@ -143,12 +144,17 @@ export function MeetingDetailsModal({ isOpen, onClose, meeting, onUpdate }: Meet
                 </span>
               </h4>
               <div className="flex flex-wrap gap-2">
-                {Array.isArray(meeting.attendees) && meeting.attendees.map(id => (
-                  <div key={id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                    <User size={14} className="text-gray-400" />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">User #{id}</span>
-                  </div>
-                ))}
+                {Array.isArray(meeting.attendees) && meeting.attendees.map(id => {
+                  const u = users.find(user => user.id === id);
+                  return (
+                    <div key={id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                      <User size={14} className="text-gray-400" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300" title={u?.email}>
+                        {u?.name || 'Unknown User'}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
