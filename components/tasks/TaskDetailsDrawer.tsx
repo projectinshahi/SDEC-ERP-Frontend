@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-import { Calendar, User, Flag, CheckCircle, FileIcon, Download, AlertCircle } from 'lucide-react';
+import { Calendar, User, Flag, CheckCircle, FileIcon, Download, AlertCircle, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Task } from './CreateTaskModal';
 import { Modal } from '@/components/Modal';
 import { TaskDiscussionPanel } from './TaskDiscussionPanel';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { uploadTaskAttachment } from '@/lib/api/kanban';
 
 const MarkdownViewer = dynamic(() => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown), { ssr: false });
 const MarkdownEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
@@ -36,12 +37,47 @@ export function TaskDetailsDrawer({ isOpen, onClose, task, onEdit, canEdit, colu
   const [descriptionValue, setDescriptionValue] = useState(task?.description || '');
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
+  const [localAttachments, setLocalAttachments] = useState<any[]>(task?.attachments || []);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   useEffect(() => {
     if (task) {
       setDescriptionValue(task.description || '');
       setIsEditingDescription(false);
+      setLocalAttachments(task.attachments || []);
     }
-  }, [task?.id, task?.description]);
+  }, [task?.id, task?.description, task?.attachments]);
+
+  const handleAttachmentDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (canEdit && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!task || !files || files.length === 0) return;
+    try {
+      setIsUploading(true);
+      const formData = new FormData();
+      Array.from(files).forEach(file => formData.append('files', file));
+      const response = await uploadTaskAttachment(task.id, formData);
+      if (response && response.attachments) {
+        setLocalAttachments(prev => [...prev, ...response.attachments]);
+        if (onTaskUpdate) {
+          // Keep a shallow copy of task and overwrite attachments so parent state knows.
+          onTaskUpdate(task.id, { attachments: [...localAttachments, ...response.attachments] } as any);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to upload attachment', err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -129,6 +165,9 @@ export function TaskDetailsDrawer({ isOpen, onClose, task, onEdit, canEdit, colu
                 value={task.assignee || ''}
                 options={[
                   { label: 'Unassigned', value: '' },
+                  ...(task.assignee && !availableAssignees.includes(task.assignee) 
+                    ? [{ label: task.assignee, value: task.assignee }] 
+                    : []),
                   ...availableAssignees.map(a => ({ label: a, value: a }))
                 ]}
                 onSave={(val) => onTaskUpdate?.(task.id, { assignee: val })}
@@ -198,17 +237,31 @@ export function TaskDetailsDrawer({ isOpen, onClose, task, onEdit, canEdit, colu
           </div>
 
           {/* Attachments */}
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center gap-2">
+          <div 
+            onDoubleClick={handleAttachmentDoubleClick} 
+            className={`relative rounded-lg p-2 -mx-2 transition-colors ${canEdit ? 'hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer' : ''}`}
+            title={canEdit ? 'Double click to upload attachments' : ''}
+          >
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
               Attachments
-              <span className="bg-gray-100 text-gray-600 text-xs py-0.5 px-2 rounded-full font-medium">
-                {task.attachments?.length || 0}
+              <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs py-0.5 px-2 rounded-full font-medium">
+                {localAttachments.length}
               </span>
+              {isUploading && <Loader2 size={14} className="animate-spin text-blue-500 ml-2" />}
             </h3>
             
-            {task.attachments && task.attachments.length > 0 ? (
+            <input 
+              type="file" 
+              multiple 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              onClick={(e) => e.stopPropagation()} 
+            />
+
+            {localAttachments.length > 0 ? (
               <ul className="grid grid-cols-1 gap-3">
-                {task.attachments.map((att) => (
+                {localAttachments.map((att) => (
                   <li key={att.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow bg-white group">
                     <div className="flex items-center gap-3 overflow-hidden">
                       {att.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) || att.file_url.includes('image/upload') ? (
@@ -245,6 +298,7 @@ export function TaskDetailsDrawer({ isOpen, onClose, task, onEdit, canEdit, colu
               <div className="flex flex-col items-center justify-center py-6 px-4 text-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
                 <AlertCircle className="w-6 h-6 text-gray-400 mb-2" />
                 <p className="text-sm text-gray-500">No attachments</p>
+                {canEdit && <p className="text-xs text-gray-400 mt-1">Double click to upload</p>}
               </div>
             )}
           </div>

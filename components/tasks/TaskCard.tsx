@@ -210,21 +210,31 @@ export function TaskCard({
             </h3>
           </div>
 
-          {/* Hover Actions */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 pl-1">
-
-            {hasPermission('task.delete') && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(task.id);
-                }}
-                className="p-1 hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 rounded transition-colors"
-                title="Delete Task"
-              >
-                <Trash2 size={14} />
-              </button>
+          {/* Top Right Items */}
+          <div className="flex items-center gap-2 pl-1 shrink-0 bg-white dark:bg-gray-800">
+            {/* Attachment Indicator */}
+            {task.attachments && task.attachments.length > 0 && (
+              <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/50 px-1.5 py-0.5 rounded text-[10px] font-medium" title={`${task.attachments.length} attachment(s)`}>
+                <Paperclip size={10} />
+                <span>{task.attachments.length}</span>
+              </div>
             )}
+
+            {/* Hover Actions */}
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {hasPermission('task.delete') && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(task.id);
+                  }}
+                  className="p-1 hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 rounded transition-colors"
+                  title="Delete Task"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -250,12 +260,6 @@ export function TaskCard({
                 {task.storyPoints} {task.storyPoints === 1 ? 'pt' : 'pts'}
               </Badge>
             )}
-            {task.attachments && task.attachments.length > 0 && (
-              <div className="flex items-center gap-1 text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-medium" title={`${task.attachments.length} attachment(s)`}>
-                <Paperclip size={10} />
-                <span>{task.attachments.length}</span>
-              </div>
-            )}
           </div>
 
           {/* Assignee & Due Date */}
@@ -275,7 +279,7 @@ export function TaskCard({
               ) : (
                 <Calendar size={12} className="text-gray-400" />
               )}
-              <span>{formatDate(task.dueDate)}</span>
+              <span>{formatDate(task.dueDate, 'compact')}</span>
               {dueStatus === 'overdue' && (
                 <span className="ml-1 text-[9px] font-bold uppercase bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-full leading-none">
                   Overdue
