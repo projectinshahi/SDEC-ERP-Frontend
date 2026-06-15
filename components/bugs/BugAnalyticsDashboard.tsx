@@ -21,8 +21,25 @@ import {
   Line
 } from 'recharts';
 import { Bug, AlertCircle, CheckCircle2, RotateCcw, Clock, Target, FolderDot } from 'lucide-react';
+import { formatStatusLabel } from '@/lib/utils';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+// Renders the percentage inside each donut slice, anchored to the slice centre so
+// it never clips or overflows the chart container — regardless of status name length.
+// Full (formatted) status names are shown in the Legend instead of as outside labels.
+const renderStatusSliceLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  if (!percent || percent < 0.05) return null;
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) / 2;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text x={x} y={y} fill="#ffffff" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={700}>
+      {`${Math.round(percent * 100)}%`}
+    </text>
+  );
+};
 
 export function BugAnalyticsDashboard() {
   const { activeProject } = useProject();
@@ -140,7 +157,8 @@ export function BugAnalyticsDashboard() {
                   outerRadius={100}
                   paddingAngle={5}
                   dataKey="value"
-                  label={({ name, percent = 0 }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  nameKey="name"
+                  label={renderStatusSliceLabel}
                   labelLine={false}
                 >
                   {data.statusDistribution.map((entry, index) => (
@@ -150,8 +168,14 @@ export function BugAnalyticsDashboard() {
                 <Tooltip
                   contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
                   itemStyle={{ fontWeight: 600 }}
+                  formatter={(value: any, name: any) => [value, formatStatusLabel(name)]}
                 />
-                <Legend iconType="circle" />
+                <Legend
+                  iconType="circle"
+                  formatter={(value: any) => (
+                    <span className="text-sm text-slate-600 dark:text-slate-300">{formatStatusLabel(String(value))}</span>
+                  )}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>

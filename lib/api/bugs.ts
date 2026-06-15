@@ -12,6 +12,13 @@ export interface Bug {
   severity: string | null;
   assignedTo: string | null;
   reportedBy: string | null;
+  project_id?: string | null;
+  sprint_id?: string | null;
+  reproductionSteps?: string | null;
+  expectedResult?: string | null;
+  actualResult?: string | null;
+  resolutionNotes?: string | null;
+  environmentDetails?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -210,9 +210,13 @@ export function TaskDetailsDrawer({ isOpen, onClose, task, onEdit, canEdit, colu
                 {canEdit && onTaskUpdate ? (
                   <input
                     type="number"
+                    step="any"
                     min="0"
-                    value={task.storyPoints || 0}
-                    onChange={(e) => onTaskUpdate(task.id, { storyPoints: parseInt(e.target.value) || 0 })}
+                    value={task.storyPoints ? task.storyPoints : ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      onTaskUpdate(task.id, { storyPoints: val === '' ? 0 : parseFloat(val) });
+                    }}
                     className="flex-1 min-w-0 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md text-sm font-semibold text-left border-none focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors"
                   />
                 ) : (

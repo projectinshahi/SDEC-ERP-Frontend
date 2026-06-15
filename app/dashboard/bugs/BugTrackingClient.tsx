@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Breadcrumb } from '@/components/Breadcrumb';
@@ -14,7 +15,7 @@ import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuar
 import { Modal } from '@/components/Modal';
 import { Plus, Bug, AlertTriangle, X, CheckCircle2, Info, FolderDot } from 'lucide-react';
 import type { Bug as BugType } from '@/lib/api/bugs';
-import { createBug, updateBug, deleteBug, uploadBugAttachments } from '@/lib/api/bugs';
+import { createBug, updateBug, deleteBug, uploadBugAttachments, getBugById } from '@/lib/api/bugs';
 import { fetchProjectBugs } from '@/lib/api/projects';
 import { fetchUsers, type UserDbResponse } from '@/lib/api/users';
 import { useToast } from '@/lib/hooks/useToast';
@@ -29,7 +30,6 @@ export function BugTrackingClient() {
   const [bugs, setBugs] = useState<BugType[]>([]);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingBug, setEditingBug] = useState<BugType | null>(null);
   const [viewingBug, setViewingBug] = useState<BugType | null>(null);
 
   const [bugToDelete, setBugToDelete] = useState<BugType | null>(null);
@@ -38,6 +38,7 @@ export function BugTrackingClient() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const searchParams = useSearchParams();
 
   const loadBugs = async () => {
     if (!activeProject) {
@@ -63,6 +64,27 @@ export function BugTrackingClient() {
   useEffect(() => {
     fetchUsers().then(setUsers).catch(console.error);
   }, []);
+
+  // Open a specific bug from a ?bugId= deep link (e.g. from an assignment notification)
+  useEffect(() => {
+    const bugIdParam = searchParams.get('bugId');
+    if (!bugIdParam) return;
+    const openBugFromUrl = async () => {
+      try {
+        const bug = await getBugById(parseInt(bugIdParam, 10));
+        if (bug) setViewingBug(bug);
+      } catch (err: any) {
+        console.error('Failed to load bug from URL parameter', err);
+        toast('This bug may have been deleted or you do not have permission to view it.', 'error');
+      } finally {
+        // Remove the param so the modal doesn't reopen on reload
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('bugId');
+        window.history.replaceState({}, '', newUrl.toString());
+      }
+    };
+    openBugFromUrl();
+  }, [searchParams]);
 
   const handleAddBug = async (data: Partial<BugType>, queuedFiles: QueuedFile[] = []) => {
     if (!activeProject) return;
@@ -91,39 +113,7 @@ export function BugTrackingClient() {
     }
   };
 
-  const handleUpdateBug = async (data: Partial<BugType>, queuedFiles: QueuedFile[] = []) => {
-    if (editingBug) {
-      setIsSubmitting(true);
-      try {
-        await updateBug(editingBug.id, data);
 
-        // Handle new attachments
-        if (queuedFiles.length > 0) {
-          const formData = new FormData();
-          queuedFiles.forEach(qf => {
-            formData.append('files', qf.file);
-            formData.append('descriptions', qf.description || '');
-          });
-          await uploadBugAttachments(editingBug.id, formData);
-        }
-
-        toast(`Bug "${data.title}" successfully updated!`, 'success');
-        setIsModalOpen(false);
-        setEditingBug(null);
-        loadBugs();
-      } catch (err: any) {
-        console.error('Error updating bug:', err);
-        toast('Failed to update bug', 'error');
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
-  };
-
-  const handleEditBug = (bug: BugType) => {
-    setEditingBug(bug);
-    setIsModalOpen(true);
-  };
 
   const handleStatusChange = async (bugId: number, newStatus: string) => {
     try {
@@ -191,7 +181,6 @@ export function BugTrackingClient() {
                 size="lg"
                 disabled={!activeProject}
                 onClick={() => {
-                  setEditingBug(null);
                   setIsModalOpen(true);
                 }}
               >
@@ -219,7 +208,7 @@ export function BugTrackingClient() {
                   <p className="text-gray-500 font-bold text-xs mt-4">Loading issues...</p>
                 </div>
               ) : (
-                <BugTable bugs={bugs} onEdit={handleEditBug} onDelete={handleDeleteBug} onView={setViewingBug} onStatusChange={handleStatusChange} />
+                <BugTable bugs={bugs} onDelete={handleDeleteBug} onView={setViewingBug} onStatusChange={handleStatusChange} />
               )}
             </Card>
           )}
@@ -230,12 +219,8 @@ export function BugTrackingClient() {
 
       <BugModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingBug(null);
-        }}
-        onSubmit={editingBug ? handleUpdateBug : handleAddBug}
-        editBug={editingBug}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddBug}
         isSubmitting={isSubmitting}
         users={users}
       />
@@ -245,6 +230,7 @@ export function BugTrackingClient() {
         onClose={() => setViewingBug(null)}
         bug={viewingBug}
         currentUserId={currentUser?.id}
+        users={users}
         onUpdate={async (bugId, updates) => {
           await updateBug(bugId, updates);
           setViewingBug(prev => prev ? { ...prev, ...updates } : null);

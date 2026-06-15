@@ -10,6 +10,11 @@ interface InlineEditableTextProps {
   placeholder?: string;
   textClassName?: string;
   inputClassName?: string;
+  /**
+   * Optional transform applied to the DISPLAYED value only (e.g. 24h -> 12h time).
+   * Editing still uses the raw `value`, so stored data is unchanged.
+   */
+  displayFormatter?: (val: string) => string;
 }
 
 export function InlineEditableText({
@@ -19,7 +24,8 @@ export function InlineEditableText({
   permission = true,
   placeholder = 'Click to add text...',
   textClassName = '',
-  inputClassName = ''
+  inputClassName = '',
+  displayFormatter
 }: InlineEditableTextProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
@@ -78,14 +84,14 @@ export function InlineEditableText({
         className={`group relative rounded-md transition-colors ${permission ? 'cursor-text hover:bg-gray-100 dark:hover:bg-gray-800' : ''}`}
         onClick={() => permission && setIsEditing(true)}
       >
-        <div className={`py-1 px-1.5 min-h-[1.5rem] break-words ${!value ? 'text-gray-400 italic' : ''} ${textClassName}`}>
+        <div className={`py-1 px-1.5 min-h-[1.5rem] break-words whitespace-pre-wrap ${!value ? 'text-gray-400 italic' : ''} ${textClassName}`}>
           {value ? (
              type === 'textarea' ? (
                <div className="prose prose-sm max-w-none text-gray-600 dark:text-gray-300 pointer-events-none">
-                 {value}
+                 {displayFormatter ? displayFormatter(value) : value}
                </div>
              ) : (
-               value
+               displayFormatter ? displayFormatter(value) : value
              )
           ) : placeholder}
         </div>

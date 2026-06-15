@@ -12,7 +12,7 @@ import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Modal } from '@/components/Modal';
 import { Breadcrumb } from '@/components/Breadcrumb';
-import { AlertTriangle, Plus, X, CheckCircle2, Info, Search, Filter, RefreshCw, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Plus, X, CheckCircle2, Info, Search, Filter, RefreshCw, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Eye, Edit, Trash2 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useToast } from '@/lib/hooks/useToast';
@@ -71,8 +71,8 @@ export default function BlockersClient() {
 
   const [blockers, setBlockers] = useState<Blocker[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [users, setUsers] = useState<{id: number, name: string}[]>([]);
-  
+  const [users, setUsers] = useState<{ id: number, name: string }[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBlocker, setEditingBlocker] = useState<Blocker | null>(null);
@@ -89,10 +89,10 @@ export default function BlockersClient() {
   const [filterEscalation, setFilterEscalation] = useState('all');
   const [filterLoggedBy, setFilterLoggedBy] = useState('all');
   const [filterAssignedTo, setFilterAssignedTo] = useState('all');
-  
+
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  
+
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
@@ -380,7 +380,7 @@ export default function BlockersClient() {
             </button>
           )}
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
           {/* Search */}
           <div className="relative lg:col-span-2">
@@ -519,13 +519,37 @@ export default function BlockersClient() {
                           {b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <Button variant="secondary" size="sm" onClick={() => openDetails(b)}>View</Button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => openDetails(b)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-all"
+                              title="View"
+                              aria-label="View blocker"
+                            >
+                              <Eye size={14} />
+                            </button>
                             <PermissionGuard require="blockers.update">
-                              <Button variant="secondary" size="sm" onClick={() => openEdit(b)}>Edit</Button>
+                              <button
+                                type="button"
+                                onClick={() => openEdit(b)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 dark:hover:text-amber-400 transition-all"
+                                title="Edit"
+                                aria-label="Edit blocker"
+                              >
+                                <Edit size={14} />
+                              </button>
                             </PermissionGuard>
                             <PermissionGuard require="blockers.delete">
-                              <Button variant="danger" size="sm" onClick={() => setBlockerToDelete(b)}>Delete</Button>
+                              <button
+                                type="button"
+                                onClick={() => setBlockerToDelete(b)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all"
+                                title="Delete"
+                                aria-label="Delete blocker"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </PermissionGuard>
                           </div>
                         </td>
@@ -543,10 +567,10 @@ export default function BlockersClient() {
                   Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, totalRecords)}</span> of <span className="font-medium">{totalRecords}</span> results
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    disabled={page === 1} 
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={page === 1}
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                   >
                     <ChevronLeft size={16} /> Previous
@@ -562,8 +586,8 @@ export default function BlockersClient() {
                             onClick={() => setPage(p)}
                             className={classNames(
                               "w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors",
-                              page === p 
-                                ? "bg-blue-600 text-white" 
+                              page === p
+                                ? "bg-blue-600 text-white"
                                 : "text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700"
                             )}
                           >
@@ -577,10 +601,10 @@ export default function BlockersClient() {
                       return null;
                     })}
                   </div>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    disabled={page === totalPages} 
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={page === totalPages}
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   >
                     Next <ChevronRight size={16} />
@@ -661,9 +685,9 @@ export default function BlockersClient() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
-              <select 
-                {...register('helpNeededFromId')} 
-                className={inputCls} 
+              <select
+                {...register('helpNeededFromId')}
+                className={inputCls}
                 disabled={!selectedProjectId || !canAssign}
               >
                 <option value="">Unassigned</option>

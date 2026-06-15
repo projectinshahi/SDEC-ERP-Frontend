@@ -334,7 +334,7 @@ export function SprintAnalytics({ projectId }: SprintAnalyticsProps) {
                 <div key={idx} className="relative pl-4 border-l-2 border-slate-200 dark:border-slate-700 pb-1">
                   <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500" />
                   <p className="text-xs text-slate-500 mb-0.5">
-                    {new Date(activity.timestamp).toLocaleDateString()} at {new Date(activity.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    {new Date(activity.timestamp).toLocaleDateString()} at {new Date(activity.timestamp).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true})}
                   </p>
                   <p className="text-sm text-slate-700 dark:text-slate-300">
                     <span className="font-medium">{activity.actor}</span> {activity.action}
