@@ -14,7 +14,6 @@ interface BugModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: Partial<Bug>, files: QueuedFile[]) => void;
-  editBug?: Bug | null;
   isSubmitting?: boolean;
   users?: UserDbResponse[];
 }
@@ -23,7 +22,6 @@ export function BugModal({
   isOpen,
   onClose,
   onSubmit,
-  editBug,
   isSubmitting = false,
   users = [],
 }: BugModalProps) {
@@ -38,33 +36,21 @@ export function BugModal({
   });
 
   const [queuedFiles, setQueuedFiles] = useState<QueuedFile[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<BugAttachment[]>([]);
-  const [loadingAttachments, setLoadingAttachments] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        title: editBug?.title || '',
-        description: editBug?.description || '',
-        status: editBug?.status || 'open',
-        priority: editBug?.priority || 'medium',
-        severity: editBug?.severity || 'low',
-        assignedTo: editBug?.assignedTo || '',
-        reportedBy: editBug?.reportedBy || '',
+        title: '',
+        description: '',
+        status: 'open',
+        priority: 'medium',
+        severity: 'low',
+        assignedTo: '',
+        reportedBy: '',
       });
       setQueuedFiles([]);
-      
-      if (editBug?.id) {
-        setLoadingAttachments(true);
-        fetchBugAttachments(editBug.id)
-          .then(setExistingAttachments)
-          .catch(console.error)
-          .finally(() => setLoadingAttachments(false));
-      } else {
-        setExistingAttachments([]);
-      }
     }
-  }, [isOpen, editBug]);
+  }, [isOpen]);
 
   const handleChange = (field: keyof Bug, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -75,16 +61,7 @@ export function BugModal({
     onSubmit(formData, queuedFiles);
   };
 
-  const handleDeleteAttachment = async (attachmentId: number) => {
-    if (!editBug?.id) return;
-    try {
-      await deleteBugAttachment(editBug.id, attachmentId);
-      setExistingAttachments(prev => prev.filter(a => a.id !== attachmentId));
-    } catch (error) {
-      console.error('Failed to delete attachment', error);
-      alert('Failed to delete attachment. You may not have permission.');
-    }
-  };
+
 
   const isFormValid = formData.title?.trim().length;
 
@@ -92,7 +69,7 @@ export function BugModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editBug ? 'Edit Bug Report' : 'Report New Bug'}
+      title="Report New Bug"
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -132,37 +109,6 @@ export function BugModal({
             Attachments
           </label>
           <FileUploader files={queuedFiles} onChange={setQueuedFiles} />
-          
-          {editBug && existingAttachments.length > 0 && (
-            <div className="mt-4 space-y-2">
-              <h4 className="text-xs font-semibold text-gray-500 uppercase">Existing Attachments</h4>
-              <ul className="space-y-2">
-                {existingAttachments.map(att => (
-                  <li key={att.id} className="flex items-center justify-between p-2.5 border border-gray-100 rounded-lg bg-gray-50">
-                    <div className="flex flex-col overflow-hidden truncate">
-                      <span className="text-sm font-semibold text-gray-800 truncate" title={att.description || att.file_name}>
-                        {att.description || att.file_name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {att.description ? att.file_name + ' • ' : ''}{(att.file_size / 1024).toFixed(1)} KB • {new Date(att.uploaded_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteAttachment(att.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 bg-white hover:bg-red-50 rounded-full shadow-sm border border-gray-200 transition-colors ml-2"
-                      title="Remove Attachment"
-                    >
-                      <X className="w-4 h-4 text-gray-500 hover:text-red-600" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {loadingAttachments && (
-            <p className="text-xs text-gray-400 mt-2">Loading existing attachments...</p>
-          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -237,7 +183,7 @@ export function BugModal({
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={isSubmitting || !isFormValid} fullWidth>
-            {isSubmitting ? 'Saving...' : (editBug ? 'Save Changes' : 'Create Bug')}
+            {isSubmitting ? 'Saving...' : 'Create Bug'}
           </Button>
         </div>
       </form>

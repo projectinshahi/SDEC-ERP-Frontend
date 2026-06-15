@@ -279,7 +279,7 @@ export function BlockerDetailsModal({ isOpen, onClose, blocker, currentUserId, o
                       </div>
                     )}
                     {blocker.notes && (
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 whitespace-pre-wrap">
                         <span className="font-semibold text-gray-700">Notes: </span>
                         {blocker.notes}
                       </div>

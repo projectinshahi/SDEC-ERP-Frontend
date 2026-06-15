@@ -94,6 +94,8 @@ export const NotificationBell = () => {
 
     if (notif.entity_type === 'blocker') {
       router.push(`/dashboard/blockers?blockerId=${notif.entity_id}`);
+    } else if (notif.entity_type === 'bug') {
+      router.push(`/dashboard/bugs?bugId=${notif.entity_id}`);
     }
   };
 

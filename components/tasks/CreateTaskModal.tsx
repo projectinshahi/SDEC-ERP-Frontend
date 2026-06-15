@@ -449,7 +449,7 @@ export function CreateTaskModal({
             </label>
             <input
               type="number"
-              step="0.5"
+              step="any"
               min="0"
               id="task-story-points"
               value={formData.storyPoints === 0 ? '' : formData.storyPoints ?? ''}

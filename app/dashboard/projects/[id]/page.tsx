@@ -508,7 +508,7 @@ export default function ProjectDetailsPage() {
                       <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Workspace Overview</h3>
                     </CardHeader>
                     <CardBody className="p-6 space-y-4">
-                      <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                      <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium whitespace-pre-wrap">
                         {project.description}
                       </p>
                     </CardBody>

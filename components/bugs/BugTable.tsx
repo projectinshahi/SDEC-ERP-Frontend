@@ -4,7 +4,7 @@ import { ArrowUp, ArrowDown, ArrowUpDown, Edit, Trash2, Bug } from 'lucide-react
 import type { Bug as BugType } from '@/lib/api/bugs';
 import type { BugQueryParams } from '@/lib/api/bugs';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
-import { classNames } from '@/lib/utils';
+import { classNames, formatStatusLabel } from '@/lib/utils';
 
 interface BugTableProps {
   bugs: BugType[];
@@ -12,7 +12,6 @@ interface BugTableProps {
   sortBy?: BugQueryParams['sortBy'];
   sortOrder?: BugQueryParams['sortOrder'];
   onSort?: (field: BugQueryParams['sortBy']) => void;
-  onEdit: (bug: BugType) => void;
   onDelete: (bugId: number) => void;
   onView: (bug: BugType) => void;
   onResetFilters?: () => void;
@@ -35,7 +34,7 @@ function getStatusConfig(statusStr: string) {
     case 'resolved':    return { label: 'Resolved',    className: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
     case 'closed':      return { label: 'Closed',      className: 'bg-slate-100 text-slate-700 border-slate-200' };
     case 'reopened':    return { label: 'Reopened',    className: 'bg-purple-50 text-purple-700 border-purple-100' };
-    default:            return { label: statusStr,     className: 'bg-gray-50 text-gray-700 border-gray-100' };
+    default:            return { label: formatStatusLabel(statusStr), className: 'bg-gray-50 text-gray-700 border-gray-100' };
   }
 }
 
@@ -87,7 +86,6 @@ export function BugTable({
   sortBy,
   sortOrder,
   onSort,
-  onEdit,
   onDelete,
   onView,
   onResetFilters,
@@ -224,15 +222,7 @@ export function BugTable({
                   {/* Actions */}
                   <td className="py-4 px-6">
                     <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                      <PermissionGuard require="bugs.update">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onEdit(bug); }}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                          title="Edit bug"
-                        >
-                          <Edit size={15} />
-                        </button>
-                      </PermissionGuard>
+
                       <PermissionGuard require="bugs.delete">
                         <button
                           onClick={(e) => { e.stopPropagation(); onDelete(bug.id); }}

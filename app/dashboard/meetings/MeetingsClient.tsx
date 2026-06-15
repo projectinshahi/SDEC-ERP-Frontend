@@ -14,9 +14,9 @@ import { TableSkeleton } from '@/components/Skeleton';
 import {
   Calendar, Plus, X, CheckCircle2, Info, AlertTriangle,
   Search, Users, Clock, MapPin, Video, Edit, Trash2,
-  CalendarDays, CheckCircle, ListTodo, Eye
+  CalendarDays, CheckCircle, ListTodo
 } from 'lucide-react';
-import { classNames } from '@/lib/utils';
+import { classNames, formatTime } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useToast } from '@/lib/hooks/useToast';
@@ -92,7 +92,7 @@ export default function MeetingsClient() {
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
 
@@ -346,10 +346,10 @@ export default function MeetingsClient() {
             </div>
           )}
         </div>
-        <Button 
-          variant={activeProject ? "primary" : "secondary"} 
-          size="lg" 
-          onClick={openCreate} 
+        <Button
+          variant={activeProject ? "primary" : "secondary"}
+          size="lg"
+          onClick={openCreate}
           className="self-start sm:self-center"
           disabled={!activeProject}
           title={!activeProject ? "Select a project from the sidebar to create meetings" : "Create a new meeting"}
@@ -464,9 +464,9 @@ export default function MeetingsClient() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map(m => (
-                  <tr key={m.id} className="hover:bg-gray-50/80:bg-gray-800/40 transition-colors group cursor-pointer" onClick={() => openDetails(m)}>
-                    <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                      <p className="font-semibold text-blue-600 hover:underline cursor-pointer transition-colors" onClick={() => openDetails(m)}>{m.title}</p>
+                  <tr key={m.id} className="hover:bg-gray-50/80 transition-colors group cursor-pointer" onClick={() => openDetails(m)}>
+                    <td className="px-4 py-3.5">
+                      <p className="font-semibold text-blue-600 group-hover:underline transition-colors">{m.title}</p>
                       {m.project?.name && <p className="text-xs text-gray-400 mt-0.5">{m.project.name}</p>}
                     </td>
                     <td className="px-4 py-3.5">
@@ -480,10 +480,10 @@ export default function MeetingsClient() {
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5"><Clock size={13} className="text-gray-400" />{m.startTime}</div>
+                      <div className="flex items-center gap-1.5"><Clock size={13} className="text-gray-400" />{formatTime(m.startTime)}</div>
                     </td>
                     <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5"><Clock size={13} className="text-gray-400" />{m.endTime}</div>
+                      <div className="flex items-center gap-1.5"><Clock size={13} className="text-gray-400" />{formatTime(m.endTime)}</div>
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
@@ -626,7 +626,7 @@ export default function MeetingsClient() {
               </div>
             </div>
           )}
-          
+
           {/* Project Display for Edit */}
           {editingMeeting && editingMeeting.project && (
             <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
@@ -782,10 +782,10 @@ export default function MeetingsClient() {
       </Modal>
 
       {/* Details Modal */}
-      <MeetingDetailsModal 
-        isOpen={isDetailsModalOpen} 
-        onClose={() => setIsDetailsModalOpen(false)} 
-        meeting={selectedMeeting} 
+      <MeetingDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        meeting={selectedMeeting}
         onUpdate={async (meetingId, updates) => {
           const payload = {
             ...updates,

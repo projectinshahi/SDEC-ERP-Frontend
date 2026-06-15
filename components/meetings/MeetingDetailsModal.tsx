@@ -5,7 +5,7 @@ import { Badge } from '@/components/Badge';
 import { CalendarDays, Clock, Video, Info, User, FileText } from 'lucide-react';
 import { MeetingNotesPanel } from './MeetingNotesPanel';
 import { type Meeting } from '@/lib/api/meetings';
-import { classNames } from '@/lib/utils';
+import { classNames, formatTime } from '@/lib/utils';
 import { InlineEditableText } from '../ui/InlineEditableText';
 import { InlineSelect } from '../ui/InlineSelect';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -91,34 +91,68 @@ export function MeetingDetailsModal({ isOpen, onClose, meeting, onUpdate, users 
                       permission={canEdit}
                     />
                   </div>
-                  <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center">
                     <span className="font-semibold text-gray-500">Status</span>
-                    <Badge variant={STATUS_VARIANT[(meeting as any).computedStatus] || 'default'}>
-                      {(meeting as any).computedStatus || meeting.status}
-                    </Badge>
+                    <InlineSelect
+                      value={meeting.status}
+                      options={[
+                        { label: 'Upcoming', value: 'UPCOMING' },
+                        { label: 'Ongoing', value: 'ONGOING' },
+                        { label: 'Completed', value: 'COMPLETED' },
+                        { label: 'Cancelled', value: 'CANCELLED' }
+                      ]}
+                      onSave={(val) => onUpdate?.(meeting.id, { status: val })}
+                      permission={canEdit}
+                    />
                   </div>
                 </div>
               </Card>
 
-              <Card variant="outlined" className="p-4 bg-gray-50 dark:bg-gray-800/50">
+                            <Card variant="outlined" className="p-4 bg-gray-50 dark:bg-gray-800/50">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Schedule</h4>
                 <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
                   <div className="flex items-center gap-2">
                     <CalendarDays size={16} className="text-gray-400" />
-                    <span>{new Date(meeting.meetingDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <InlineEditableText
+                      value={meeting.meetingDate.split('T')[0]}
+                      onSave={(val) => onUpdate?.(meeting.id, { meetingDate: new Date(val).toISOString() })}
+                      permission={canEdit}
+                      type="text"
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock size={16} className="text-gray-400" />
-                    <span>{meeting.startTime} - {meeting.endTime}</span>
+                    <span>
+                      <InlineEditableText
+                        value={meeting.startTime}
+                        onSave={(val) => onUpdate?.(meeting.id, { startTime: val })}
+                        permission={canEdit}
+                        displayFormatter={formatTime}
+                        textClassName="inline-block"
+                        inputClassName="inline-block w-24 border p-1"
+                      />
+                      {' - '}
+                      <InlineEditableText
+                        value={meeting.endTime}
+                        onSave={(val) => onUpdate?.(meeting.id, { endTime: val })}
+                        permission={canEdit}
+                        displayFormatter={formatTime}
+                        textClassName="inline-block"
+                        inputClassName="inline-block w-24 border p-1"
+                      />
+                    </span>
                   </div>
-                  {meeting.meetingLink && (
-                    <div className="mt-4">
-                      <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
-                        <Video size={16} />
-                        Join Google Meet
-                      </a>
+                  <div className="mt-4 flex items-center gap-2">
+                    <Video size={16} className="text-gray-400" />
+                    <div className="flex-1">
+                      <InlineEditableText
+                        value={meeting.meetingLink || ''}
+                        onSave={(val) => onUpdate?.(meeting.id, { meetingLink: val })}
+                        permission={canEdit}
+                        placeholder="Add Meeting Link"
+                      />
                     </div>
-                  )}
+                  </div>
                 </div>
               </Card>
             </div>
@@ -167,3 +201,4 @@ export function MeetingDetailsModal({ isOpen, onClose, meeting, onUpdate, users 
     </Modal>
   );
 }
+

@@ -166,10 +166,10 @@ export function BugDiscussionPanel({ bugId, currentUserId }: { bugId: number, cu
                   {!isMe && (
                     <span className="text-xs text-gray-500 mb-1 ml-1 font-medium">{msg.sender.name}</span>
                   )}
-                  <div 
-                    className={`px-4 py-2 rounded-2xl text-sm shadow-sm ${
-                      isMe 
-                        ? 'bg-blue-600 text-white rounded-tr-sm' 
+                  <div
+                    className={`px-4 py-2 rounded-2xl text-sm shadow-sm whitespace-pre-wrap break-words ${
+                      isMe
+                        ? 'bg-blue-600 text-white rounded-tr-sm'
                         : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
                     }`}
                   >
