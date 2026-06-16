@@ -26,6 +26,7 @@ interface ColumnProps {
   onCreateTaskInColumn: (status: string) => void;
   onRenameColumnClick?: (statusId: string, currentName: string) => void;
   onDeleteColumnClick?: (statusId: string, title: string) => void;
+  isCompletedColumn?: boolean;
 }
 
 /**
@@ -52,6 +53,7 @@ export function Column({
   onCreateTaskInColumn,
   onRenameColumnClick,
   onDeleteColumnClick,
+  isCompletedColumn,
 }: ColumnProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const { hasPermission } = usePermissions();
@@ -381,6 +383,7 @@ export function Column({
               dropIndicator={dropIndicator}
               setDropIndicator={setDropIndicator}
               onMoveTask={onMoveTask}
+              isCompletedColumn={isCompletedColumn}
             />
           ))
         ) : tasks.length > 0 && hasColumnFilters ? (

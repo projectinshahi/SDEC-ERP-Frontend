@@ -1,0 +1,1682 @@
+﻿commit 0c3e8b38a9e10ef614df29d4e74615c525fccda5
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Mon Jun 15 15:13:46 2026 +0530
+
+    upddete some bugs ans
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index fcf6ca6..801cc03 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -508,7 +508,7 @@ export default function ProjectDetailsPage() {
+                       <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Workspace Overview</h3>
+                     </CardHeader>
+                     <CardBody className="p-6 space-y-4">
+-                      <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
++                      <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium whitespace-pre-wrap">
+                         {project.description}
+                       </p>
+                     </CardBody>
+
+commit 5745564b92a572a2bf348beb602f2fc8645b3721
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Thu Jun 11 23:07:53 2026 +0530
+
+    upda
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index 8d5850a..fcf6ca6 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -12,21 +12,22 @@ import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuar
+ import { PermissionGuard } from '@/components/permissions/PermissionGuard';
+ import { usePermissions } from '@/lib/hooks/usePermissions';
+ import { ROUTES } from '@/lib/constants';
+-import { 
+-  ArrowLeft, 
+-  Briefcase, 
+-  Calendar, 
+-  Users, 
+-  LayoutDashboard, 
+-  Clock, 
+-  CheckSquare, 
++import {
++  ArrowLeft,
++  Briefcase,
++  Calendar,
++  Users,
++  LayoutDashboard,
++  Clock,
++  CheckSquare,
+   BarChart3,
+   AlertCircle,
+   Plus,
+   Upload,
+-  FileText
++  FileText,
++  Bug
+ } from 'lucide-react';
+-import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi, importProjectBacklogApi } from '@/lib/api/projects';
++import { fetchProjectById, fetchProjectMembers, bulkUpdateProjectMembersApi, updateProjectMemberRoleApi, removeProjectMemberApi, importProjectBacklogApi, fetchProjectAnalytics } from '@/lib/api/projects';
+ import { Project, ProjectMember } from '@/components/projects/ProjectCard';
+ import { MemberList } from '@/components/projects/MemberList';
+ import { AddMemberModal } from '@/components/projects/AddMemberModal';
+@@ -35,7 +36,9 @@ import { Modal } from '@/components/Modal';
+ import { ProjectSprintsTable } from '@/components/projects/ProjectSprintsTable';
+ import { SprintStatsSidebar } from '@/components/projects/SprintStatsSidebar';
+ import { ProjectDocsLibrary } from '@/components/projects/docs/ProjectDocsLibrary';
++import { StatCard } from '@/components/dashboard/StatCard';
+ import { classNames } from '@/lib/utils';
++import { io, Socket } from 'socket.io-client';
+ 
+ export default function ProjectDetailsPage() {
+   const params = useParams();
+@@ -50,7 +53,7 @@ export default function ProjectDetailsPage() {
+   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
+   const [activeTab, setActiveTab] = useState<'overview' | 'docs'>('overview');
+-  
++
+   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
+   const [isRemoving, setIsRemoving] = useState(false);
+@@ -60,6 +63,35 @@ export default function ProjectDetailsPage() {
+   const { toast } = useToast();
+   const { hasPermission } = usePermissions();
+ 
++  const [stats, setStats] = useState({
++    totalTasks: 0,
++    activeTasks: 0,
++    completedTasks: 0,
++    openBugs: 0,
++    teamMembers: 0
++  });
++  const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true);
++  const [isStatsError, setIsStatsError] = useState<boolean>(false);
++
++  const getStatsData = async () => {
++    try {
++      setIsStatsLoading(true);
++      setIsStatsError(false);
++      const data = await fetchProjectAnalytics(projectId);
++      setStats({
++        totalTasks: data.totalTasks || 0,
++        activeTasks: data.activeTasks || 0,
++        completedTasks: data.completedTasks || 0,
++        openBugs: data.openBugs || 0,
++        teamMembers: data.teamMembers || 0
++      });
++    } catch (error) {
++      setIsStatsError(true);
++    } finally {
++      setIsStatsLoading(false);
++    }
++  };
++
+   const loadProjectAndMembers = async () => {
+     setIsLoading(true);
+     setIsMembersLoading(true);
+@@ -68,7 +100,7 @@ export default function ProjectDetailsPage() {
+       const data = await fetchProjectById(projectId);
+       setProject(data);
+       let membersData = await fetchProjectMembers(projectId);
+-      
++
+       // If the members API returns empty but the project has members assigned,
+       // derive ProjectMember objects from the project's members name array
+       if ((!membersData || membersData.length === 0) && data.members && data.members.length > 0) {
+@@ -98,7 +130,7 @@ export default function ProjectDetailsPage() {
+           }));
+         }
+       }
+-      
++
+       setMembers(membersData);
+ 
+       // Determine current user role
+@@ -145,26 +177,55 @@ export default function ProjectDetailsPage() {
+     }
+   }
+ 
+-  const canManageMembers = currentUserRole === 'admin' && hasPermission('project.manage_members');
++  const canManageMembers = currentUserRole === 'admin' || hasPermission('project.manage_members');
+   const canEditProject = hasPermission('project.edit') && currentUserRole !== 'viewer';
+   const canViewSettings = canEditProject || canManageMembers;
+   const canImportBacklog = hasPermission('project.create') && hasPermission('project.edit') && currentUserRole !== 'viewer';
+   const canViewAnalytics = hasPermission('project.analytics');
+ 
+   useEffect(() => {
+-    if (projectId) {
++    let active = true;
++    let socket: Socket | null = null;
++
++    if (projectId && active) {
+       loadProjectAndMembers();
++      getStatsData();
++
++      // Initialize Socket.io for dynamic updates
++      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
++      const socketUrl = apiUrl.endsWith('/api') ? apiUrl.replace('/api', '') : apiUrl;
++
++      const token = localStorage.getItem('token');
++      socket = io(socketUrl, {
++        auth: { token }
++      });
++
++      socket.on('connect', () => {
++        socket?.emit('join_project_room', { projectId });
++      });
++
++      socket.on('project_analytics_updated', () => {
++        getStatsData();
++      });
+     }
++
++    return () => {
++      active = false;
++      if (socket && projectId) {
++        socket.emit('leave_project_room', { projectId });
++        socket.disconnect();
++      }
++    };
+   }, [projectId]);
+ 
+-  const handleAddMemberSubmit = async (data: { userId: number; role: 'admin' | 'editor' | 'viewer' }) => {
++  const handleAddMemberSubmit = async (updatedMembers: any[]) => {
+     try {
+-      await addProjectMemberApi(projectId, data);
+-      toast('Member added successfully!');
++      await bulkUpdateProjectMembersApi(projectId, updatedMembers);
++      toast('Members updated successfully!');
+       setIsAddMemberOpen(false);
+       loadMembersOnly();
+     } catch (error: any) {
+-      toast(error.message || 'Failed to add member', 'error');
++      toast(error.message || 'Failed to update members', 'error');
+     }
+   };
+ 
+@@ -329,9 +390,9 @@ export default function ProjectDetailsPage() {
+                 {project.status} status
+               </Badge>
+               {canImportBacklog && (
+-                <Button 
+-                  variant="secondary" 
+-                  size="sm" 
++                <Button
++                  variant="secondary"
++                  size="sm"
+                   onClick={() => setIsImportModalOpen(true)}
+                   className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+                 >
+@@ -340,9 +401,9 @@ export default function ProjectDetailsPage() {
+                 </Button>
+               )}
+               {canViewSettings && (
+-                <Button 
+-                  variant="secondary" 
+-                  size="sm" 
++                <Button
++                  variant="secondary"
++                  size="sm"
+                   onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
+                   className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+                 >
+@@ -381,77 +442,135 @@ export default function ProjectDetailsPage() {
+ 
+           {/* Details layout: main columns */}
+           {activeTab === 'overview' ? (
+-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+-            {/* Main Content Column (Left - 70%) */}
+-            <div className="lg:col-span-2 space-y-6">
+-              {/* Project Description Card */}
+-              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
+-                <CardHeader className="border-b border-gray-100 bg-white dark:bg-gray-800">
+-                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Workspace Overview</h3>
+-                </CardHeader>
+-                <CardBody className="p-6 space-y-4">
+-                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+-                    {project.description}
+-                  </p>
+-                </CardBody>
+-              </Card>
++            <div className="space-y-6 animate-fade-in">
++              {/* Project Analytics Cards */}
++              {canViewAnalytics && (
++                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
++                  <StatCard
++                    label="Total Tasks"
++                    value={stats.totalTasks}
++                    change=""
++                    icon={BarChart3}
++                    variant="info"
++                    isLoading={isStatsLoading}
++                    isError={isStatsError}
++                    onRetry={getStatsData}
++                  />
++                  <StatCard
++                    label="Active Tasks"
++                    value={stats.activeTasks}
++                    change=""
++                    icon={CheckSquare}
++                    variant="success"
++                    isLoading={isStatsLoading}
++                    isError={isStatsError}
++                    onRetry={getStatsData}
++                  />
++                  <StatCard
++                    label="Completed Tasks"
++                    value={stats.completedTasks}
++                    change=""
++                    icon={CheckSquare}
++                    variant="primary"
++                    isLoading={isStatsLoading}
++                    isError={isStatsError}
++                    onRetry={getStatsData}
++                  />
++                  <StatCard
++                    label="Open Bugs"
++                    value={stats.openBugs}
++                    change=""
++                    icon={Bug}
++                    variant="danger"
++                    isLoading={isStatsLoading}
++                    isError={isStatsError}
++                    onRetry={getStatsData}
++                  />
++                  <StatCard
++                    label="Team Members"
++                    value={stats.teamMembers}
++                    change=""
++                    icon={Users}
++                    variant="warning"
++                    isLoading={isStatsLoading}
++                    isError={isStatsError}
++                    onRetry={getStatsData}
++                  />
++                </div>
++              )}
+ 
+-              {/* Sprint Tracking Table */}
+-              <ProjectSprintsTable projectId={projectId} userRole={currentUserRole} />
+-            </div>
++              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
++                {/* Main Content Column (Left - 70%) */}
++                <div className="lg:col-span-2 space-y-6">
++                  {/* Project Description Card */}
++                  <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
++                    <CardHeader className="border-b border-gray-100 bg-white dark:bg-gray-800">
++                      <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Workspace Overview</h3>
++                    </CardHeader>
++                    <CardBody className="p-6 space-y-4">
++                      <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
++                        {project.description}
++                      </p>
++                    </CardBody>
++                  </Card>
+ 
+-            {/* Sidebar metadata card */}
+-            <div className="space-y-6">
+-              {/* Project Members List */}
+-              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm flex flex-col">
+-                <CardHeader className="border-b border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-800 flex items-center justify-between">
+-                  <div className="flex items-center gap-2">
+-                    <Users size={16} className="text-gray-500" />
+-                    <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Directory</h3>
+-                  </div>
+-                  <div className="flex items-center gap-2">
+-                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md shadow-sm">
+-                      {members.length} Total
+-                    </span>
+-                    {canManageMembers && (
+-                      <Button variant="primary" size="sm" className="px-2 py-1 text-[10px] h-7" onClick={() => setIsAddMemberOpen(true)}>
+-                        <Plus size={12} className="mr-1" />
+-                        Add
+-                      </Button>
+-                    )}
+-                  </div>
+-                </CardHeader>
+-                <CardBody className="p-0 flex-1">
+-                  {isMembersLoading ? (
+-                    <div className="p-6 space-y-4">
+-                      <Skeleton className="h-10 w-full rounded-md" />
+-                      <Skeleton className="h-10 w-full rounded-md" />
+-                      <Skeleton className="h-10 w-full rounded-md" />
+-                    </div>
+-                  ) : (
+-                    <MemberList 
+-                      members={members}
+-                      onRoleChange={canManageMembers ? handleRoleChange : undefined}
+-                      onRemove={canManageMembers ? setMemberToRemove : undefined}
+-                      isUpdating={isUpdatingRole}
+-                      readOnly={!canManageMembers}
+-                    />
+-                  )}
+-                </CardBody>
+-              </Card>
++                  {/* Sprint Tracking Table */}
++                  <ProjectSprintsTable projectId={projectId} userRole={currentUserRole} />
++                </div>
+ 
+-              {/* Minimal Sprint Stats Sidebar */}
+-              {canViewAnalytics && (
+-                <SprintStatsSidebar projectId={projectId} />
+-              )}
++                {/* Sidebar metadata card */}
++                <div className="space-y-6">
++                  {/* Project Members List */}
++                  <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm flex flex-col">
++                    <CardHeader className="border-b border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-800 flex items-center justify-between">
++                      <div className="flex items-center gap-2">
++                        <Users size={16} className="text-gray-500" />
++                        <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Directory</h3>
++                      </div>
++                      <div className="flex items-center gap-2">
++                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md shadow-sm">
++                          {members.length} Total
++                        </span>
++                        {canManageMembers && (
++                          <Button variant="primary" size="sm" className="px-2 py-1 text-[10px] h-7" onClick={() => setIsAddMemberOpen(true)}>
++                            <Users size={12} className="mr-1" />
++                            Manage
++                          </Button>
++                        )}
++                      </div>
++                    </CardHeader>
++                    <CardBody className="p-0 flex-1">
++                      {isMembersLoading ? (
++                        <div className="p-6 space-y-4">
++                          <Skeleton className="h-10 w-full rounded-md" />
++                          <Skeleton className="h-10 w-full rounded-md" />
++                          <Skeleton className="h-10 w-full rounded-md" />
++                        </div>
++                      ) : (
++                        <MemberList
++                          members={members}
++                          onRoleChange={canManageMembers ? handleRoleChange : undefined}
++                          onRemove={canManageMembers ? setMemberToRemove : undefined}
++                          isUpdating={isUpdatingRole}
++                          readOnly={!canManageMembers}
++                        />
++                      )}
++                    </CardBody>
++                  </Card>
++
++                  {/* Minimal Sprint Stats Sidebar */}
++                  {canViewAnalytics && (
++                    <SprintStatsSidebar projectId={projectId} />
++                  )}
++                </div>
++              </div>
+             </div>
+-          </div>
+           ) : (
+             <div className="animate-fade-in">
+-              <ProjectDocsLibrary 
+-                projectId={projectId} 
+-                userRole={currentUserRole} 
+-                currentUserId={currentUserId} 
++              <ProjectDocsLibrary
++                projectId={projectId}
++                userRole={currentUserRole}
++                currentUserId={currentUserId}
+               />
+             </div>
+           )}
+
+commit dd83cbeb5080c97d47b023495b25675579411538
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Tue Jun 9 14:39:22 2026 +0530
+
+    add project owner in project page
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index fad1107..8d5850a 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -23,7 +23,8 @@ import {
+   BarChart3,
+   AlertCircle,
+   Plus,
+-  Upload
++  Upload,
++  FileText
+ } from 'lucide-react';
+ import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi, importProjectBacklogApi } from '@/lib/api/projects';
+ import { Project, ProjectMember } from '@/components/projects/ProjectCard';
+@@ -33,6 +34,7 @@ import { ImportBacklogModal } from '@/components/projects/ImportBacklogModal';
+ import { Modal } from '@/components/Modal';
+ import { ProjectSprintsTable } from '@/components/projects/ProjectSprintsTable';
+ import { SprintStatsSidebar } from '@/components/projects/SprintStatsSidebar';
++import { ProjectDocsLibrary } from '@/components/projects/docs/ProjectDocsLibrary';
+ import { classNames } from '@/lib/utils';
+ 
+ export default function ProjectDetailsPage() {
+@@ -45,7 +47,9 @@ export default function ProjectDetailsPage() {
+   const [error, setError] = useState<string | null>(null);
+   const [members, setMembers] = useState<ProjectMember[]>([]);
+   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'editor' | 'viewer' | null>(null);
++  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
++  const [activeTab, setActiveTab] = useState<'overview' | 'docs'>('overview');
+   
+   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
+@@ -102,6 +106,7 @@ export default function ProjectDetailsPage() {
+       if (storedUser) {
+         try {
+           const userObj = JSON.parse(storedUser);
++          setCurrentUserId(userObj.id);
+           const currentMember = membersData.find((m: ProjectMember) => m.userId === userObj.id || m.email === userObj.email);
+           if (currentMember) {
+             setCurrentUserRole(currentMember.role);
+@@ -346,8 +351,37 @@ export default function ProjectDetailsPage() {
+               )}
+             </div>
+           </div>
++
++          {/* Tabs Navigation */}
++          <div className="flex items-center gap-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
++            <button
++              onClick={() => setActiveTab('overview')}
++              className={classNames(
++                'pb-3 pt-1 text-sm font-bold border-b-2 transition-colors whitespace-nowrap outline-none',
++                activeTab === 'overview'
++                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
++                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
++              )}
++            >
++              Overview
++            </button>
++            <button
++              onClick={() => setActiveTab('docs')}
++              className={classNames(
++                'pb-3 pt-1 text-sm font-bold border-b-2 transition-colors whitespace-nowrap outline-none flex items-center gap-1.5',
++                activeTab === 'docs'
++                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
++                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
++              )}
++            >
++              <FileText size={15} className={activeTab === 'docs' ? 'text-blue-500' : 'text-gray-400'} />
++              Project Docs
++            </button>
++          </div>
++
+           {/* Details layout: main columns */}
+-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
++          {activeTab === 'overview' ? (
++          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+             {/* Main Content Column (Left - 70%) */}
+             <div className="lg:col-span-2 space-y-6">
+               {/* Project Description Card */}
+@@ -412,6 +446,15 @@ export default function ProjectDetailsPage() {
+               )}
+             </div>
+           </div>
++          ) : (
++            <div className="animate-fade-in">
++              <ProjectDocsLibrary 
++                projectId={projectId} 
++                userRole={currentUserRole} 
++                currentUserId={currentUserId} 
++              />
++            </div>
++          )}
+         </div>
+       )}
+ 
+
+commit b14d076fefb651c578fa03e2b912c344020f4abd
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Mon Jun 8 20:43:48 2026 +0530
+
+    fixed bugs:
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index 890a915..fad1107 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -196,7 +196,11 @@ export default function ProjectDetailsPage() {
+     try {
+       const result = await importProjectBacklogApi(projectId, tasks);
+       if (result.success) {
+-        toast(`Import completed successfully! Boards: ${result.summary.boardsCreated}, Columns: ${result.summary.columnsCreated}, Tasks: ${result.summary.tasksImported}`);
++        if (result.summary.skippedDueToInvalidDate > 0) {
++          toast(`Imported: ${result.summary.tasksImported} rows\nSkipped: ${result.summary.skippedDueToInvalidDate} rows\nReason: Invalid Date Format`);
++        } else {
++          toast(`Import completed successfully! Boards: ${result.summary.boardsCreated}, Columns: ${result.summary.columnsCreated}, Tasks: ${result.summary.tasksImported}`);
++        }
+         setIsImportModalOpen(false);
+         loadProjectAndMembers(); // Reload data
+       } else {
+
+commit 4ece4639a7d08dbae82114c43376b3b8c3c2b36a
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Mon Jun 8 17:05:46 2026 +0530
+
+    update some changes
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index 0c977bd..890a915 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -8,6 +8,9 @@ import { Button } from '@/components/Button';
+ import { Card, CardBody, CardHeader } from '@/components/Card';
+ import { Badge } from '@/components/Badge';
+ import { Skeleton } from '@/components/Skeleton';
++import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
++import { PermissionGuard } from '@/components/permissions/PermissionGuard';
++import { usePermissions } from '@/lib/hooks/usePermissions';
+ import { ROUTES } from '@/lib/constants';
+ import { 
+   ArrowLeft, 
+@@ -51,6 +54,7 @@ export default function ProjectDetailsPage() {
+   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+   const [isImporting, setIsImporting] = useState(false);
+   const { toast } = useToast();
++  const { hasPermission } = usePermissions();
+ 
+   const loadProjectAndMembers = async () => {
+     setIsLoading(true);
+@@ -136,7 +140,11 @@ export default function ProjectDetailsPage() {
+     }
+   }
+ 
+-  const canManageMembers = currentUserRole === 'admin';
++  const canManageMembers = currentUserRole === 'admin' && hasPermission('project.manage_members');
++  const canEditProject = hasPermission('project.edit') && currentUserRole !== 'viewer';
++  const canViewSettings = canEditProject || canManageMembers;
++  const canImportBacklog = hasPermission('project.create') && hasPermission('project.edit') && currentUserRole !== 'viewer';
++  const canViewAnalytics = hasPermission('project.analytics');
+ 
+   useEffect(() => {
+     if (projectId) {
+@@ -217,7 +225,7 @@ export default function ProjectDetailsPage() {
+   };
+ 
+   return (
+-    <>
++    <PermissionPageGuard require="project.view" module="project">
+       {/* Breadcrumb Navigation */}
+       <div className="mb-6">
+         <Breadcrumb
+@@ -311,26 +319,26 @@ export default function ProjectDetailsPage() {
+               >
+                 {project.status} status
+               </Badge>
+-              {currentUserRole !== 'viewer' && (
+-                <>
+-                  <Button 
+-                    variant="secondary" 
+-                    size="sm" 
+-                    onClick={() => setIsImportModalOpen(true)}
+-                    className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+-                  >
+-                    <Upload size={14} />
+-                    Import Backlog
+-                  </Button>
+-                  <Button 
+-                    variant="secondary" 
+-                    size="sm" 
+-                    onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
+-                    className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+-                  >
+-                    Settings
+-                  </Button>
+-                </>
++              {canImportBacklog && (
++                <Button 
++                  variant="secondary" 
++                  size="sm" 
++                  onClick={() => setIsImportModalOpen(true)}
++                  className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
++                >
++                  <Upload size={14} />
++                  Import Backlog
++                </Button>
++              )}
++              {canViewSettings && (
++                <Button 
++                  variant="secondary" 
++                  size="sm" 
++                  onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
++                  className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
++                >
++                  Settings
++                </Button>
+               )}
+             </div>
+           </div>
+@@ -395,7 +403,9 @@ export default function ProjectDetailsPage() {
+               </Card>
+ 
+               {/* Minimal Sprint Stats Sidebar */}
+-              <SprintStatsSidebar projectId={projectId} />
++              {canViewAnalytics && (
++                <SprintStatsSidebar projectId={projectId} />
++              )}
+             </div>
+           </div>
+         </div>
+@@ -456,6 +466,6 @@ export default function ProjectDetailsPage() {
+       />
+ 
+       {/* Floating Dynamic status toast message alerts */}
+-    </>
++    </PermissionPageGuard>
+   );
+ }
+
+commit feffc72f077764dc990b595370f95a1faa720ad5
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Fri Jun 5 15:26:25 2026 +0530
+
+    fixed some bugs
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index 863d59f..0c977bd 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -351,7 +351,7 @@ export default function ProjectDetailsPage() {
+               </Card>
+ 
+               {/* Sprint Tracking Table */}
+-              <ProjectSprintsTable projectId={projectId} />
++              <ProjectSprintsTable projectId={projectId} userRole={currentUserRole} />
+             </div>
+ 
+             {/* Sidebar metadata card */}
+
+commit c363610a66c67ef24bda24a3baa1ee192727c5ce
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Thu Jun 4 16:32:12 2026 +0530
+
+    email setup and some changes
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index 8bd76da..863d59f 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -28,6 +28,8 @@ import { MemberList } from '@/components/projects/MemberList';
+ import { AddMemberModal } from '@/components/projects/AddMemberModal';
+ import { ImportBacklogModal } from '@/components/projects/ImportBacklogModal';
+ import { Modal } from '@/components/Modal';
++import { ProjectSprintsTable } from '@/components/projects/ProjectSprintsTable';
++import { SprintStatsSidebar } from '@/components/projects/SprintStatsSidebar';
+ import { classNames } from '@/lib/utils';
+ 
+ export default function ProjectDetailsPage() {
+@@ -332,14 +334,13 @@ export default function ProjectDetailsPage() {
+               )}
+             </div>
+           </div>
+-
+           {/* Details layout: main columns */}
+           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+-            {/* Main description and interactive stats */}
++            {/* Main Content Column (Left - 70%) */}
+             <div className="lg:col-span-2 space-y-6">
+               {/* Project Description Card */}
+               <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
+-                <CardHeader className="border-b border-gray-100 bg-white">
++                <CardHeader className="border-b border-gray-100 bg-white dark:bg-gray-800">
+                   <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Workspace Overview</h3>
+                 </CardHeader>
+                 <CardBody className="p-6 space-y-4">
+@@ -349,34 +350,8 @@ export default function ProjectDetailsPage() {
+                 </CardBody>
+               </Card>
+ 
+-              {/* ERP Project Workspace Mockup Feature */}
+-              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
+-                <CardHeader className="border-b border-gray-100 bg-white flex items-center justify-between">
+-                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Deliverables & Timeline</h3>
+-                  <Badge variant="info" className="text-[9px] font-bold tracking-widest px-2 uppercase shadow-sm">
+-                    Premium Workspace
+-                  </Badge>
+-                </CardHeader>
+-                <CardBody className="p-6 text-center flex flex-col items-center justify-center min-h-[220px] bg-slate-50/50 dark:bg-slate-900/40 rounded-b-lg">
+-                  <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-500 mb-3 border border-blue-100 dark:border-blue-900/30 shadow-sm">
+-                    <BarChart3 size={20} />
+-                  </div>
+-                  <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200">Interactive Workspace Details</h4>
+-                  <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5 mb-5 max-w-sm leading-relaxed">
+-                    Interactive milestones, Gantt timelines, performance trackers, and financial audit worksheets are presently under construction for this project slot.
+-                  </p>
+-                  <div className="flex gap-3">
+-                    <Button variant="primary" size="sm" onClick={() => router.push('/dashboard/tasks')}>
+-                      <CheckSquare size={14} className="mr-1.5" />
+-                      View Board Tasks
+-                    </Button>
+-                    <Button variant="secondary" size="sm" disabled>
+-                      <LayoutDashboard size={14} className="mr-1.5" />
+-                      Analytics Hub
+-                    </Button>
+-                  </div>
+-                </CardBody>
+-              </Card>
++              {/* Sprint Tracking Table */}
++              <ProjectSprintsTable projectId={projectId} />
+             </div>
+ 
+             {/* Sidebar metadata card */}
+@@ -419,29 +394,8 @@ export default function ProjectDetailsPage() {
+                 </CardBody>
+               </Card>
+ 
+-              {/* Date Metadata details card */}
+-              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
+-                <CardBody className="p-5 space-y-4">
+-                  <div className="flex items-start gap-3">
+-                    <Calendar size={16} className="text-gray-400 mt-0.5" />
+-                    <div>
+-                      <h4 className="text-xs font-semibold text-gray-400">Created Workspace</h4>
+-                      <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mt-0.5">
+-                        {formatDate(project.updatedAt)}
+-                      </p>
+-                    </div>
+-                  </div>
+-                  <div className="flex items-start gap-3">
+-                    <Briefcase size={16} className="text-gray-400 mt-0.5" />
+-                    <div>
+-                      <h4 className="text-xs font-semibold text-gray-400">Access ID Reference</h4>
+-                      <code className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-900/10 px-2 py-1 rounded border border-blue-100/20 mt-1 block">
+-                        {project.id}
+-                      </code>
+-                    </div>
+-                  </div>
+-                </CardBody>
+-              </Card>
++              {/* Minimal Sprint Stats Sidebar */}
++              <SprintStatsSidebar projectId={projectId} />
+             </div>
+           </div>
+         </div>
+
+commit 6bcd40a93e6a5355d51fab9826251a865e62ef21
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Thu Jun 4 10:59:48 2026 +0530
+
+    implement csv file import
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index d21606f..8bd76da 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -19,12 +19,14 @@ import {
+   CheckSquare, 
+   BarChart3,
+   AlertCircle,
+-  Plus
++  Plus,
++  Upload
+ } from 'lucide-react';
+-import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi } from '@/lib/api/projects';
++import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi, importProjectBacklogApi } from '@/lib/api/projects';
+ import { Project, ProjectMember } from '@/components/projects/ProjectCard';
+ import { MemberList } from '@/components/projects/MemberList';
+ import { AddMemberModal } from '@/components/projects/AddMemberModal';
++import { ImportBacklogModal } from '@/components/projects/ImportBacklogModal';
+ import { Modal } from '@/components/Modal';
+ import { classNames } from '@/lib/utils';
+ 
+@@ -44,6 +46,8 @@ export default function ProjectDetailsPage() {
+   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
+   const [isRemoving, setIsRemoving] = useState(false);
+   const [isUpdatingRole, setIsUpdatingRole] = useState<string | number | null>(null);
++  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
++  const [isImporting, setIsImporting] = useState(false);
+   const { toast } = useToast();
+ 
+   const loadProjectAndMembers = async () => {
+@@ -177,6 +181,24 @@ export default function ProjectDetailsPage() {
+     }
+   };
+ 
++  const handleImportBacklog = async (tasks: any[]) => {
++    setIsImporting(true);
++    try {
++      const result = await importProjectBacklogApi(projectId, tasks);
++      if (result.success) {
++        toast(`Import completed successfully! Boards: ${result.summary.boardsCreated}, Columns: ${result.summary.columnsCreated}, Tasks: ${result.summary.tasksImported}`);
++        setIsImportModalOpen(false);
++        loadProjectAndMembers(); // Reload data
++      } else {
++        toast('Failed to import backlog.', 'error');
++      }
++    } catch (error: any) {
++      toast(error.message || 'Error importing backlog', 'error');
++    } finally {
++      setIsImporting(false);
++    }
++  };
++
+   const formatDate = (dateStr: string) => {
+     try {
+       const date = new Date(dateStr);
+@@ -288,14 +310,25 @@ export default function ProjectDetailsPage() {
+                 {project.status} status
+               </Badge>
+               {currentUserRole !== 'viewer' && (
+-                <Button 
+-                  variant="secondary" 
+-                  size="sm" 
+-                  onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
+-                  className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
+-                >
+-                  Settings
+-                </Button>
++                <>
++                  <Button 
++                    variant="secondary" 
++                    size="sm" 
++                    onClick={() => setIsImportModalOpen(true)}
++                    className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
++                  >
++                    <Upload size={14} />
++                    Import Backlog
++                  </Button>
++                  <Button 
++                    variant="secondary" 
++                    size="sm" 
++                    onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
++                    className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
++                  >
++                    Settings
++                  </Button>
++                </>
+               )}
+             </div>
+           </div>
+@@ -460,6 +493,14 @@ export default function ProjectDetailsPage() {
+         </div>
+       </Modal>
+ 
++      {/* Import Backlog Modal */}
++      <ImportBacklogModal
++        isOpen={isImportModalOpen}
++        onClose={() => setIsImportModalOpen(false)}
++        onImport={handleImportBacklog}
++        isImporting={isImporting}
++      />
++
+       {/* Floating Dynamic status toast message alerts */}
+     </>
+   );
+
+commit 9f3c628cc62c0c7e943e7fb5c281d91cba600a54
+Author: Hrithik <hrithikelayur12@gmail.com>
+Date:   Sat May 30 15:30:34 2026 +0530
+
+    fixed the tost and validation
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index 0d828e0..d21606f 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -1,6 +1,7 @@
+ 'use client';
+ 
+ import { useState, useEffect } from 'react';
++import { useToast } from '@/lib/hooks/useToast';
+ import { useParams, useRouter } from 'next/navigation';
+ import { Breadcrumb } from '@/components/Breadcrumb';
+ import { Button } from '@/components/Button';
+@@ -18,10 +19,7 @@ import {
+   CheckSquare, 
+   BarChart3,
+   AlertCircle,
+-  Plus,
+-  CheckCircle2,
+-  Info,
+-  X
++  Plus
+ } from 'lucide-react';
+ import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi } from '@/lib/api/projects';
+ import { Project, ProjectMember } from '@/components/projects/ProjectCard';
+@@ -46,17 +44,7 @@ export default function ProjectDetailsPage() {
+   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
+   const [isRemoving, setIsRemoving] = useState(false);
+   const [isUpdatingRole, setIsUpdatingRole] = useState<string | number | null>(null);
+-
+-  interface ToastMessage { id: string; message: string; type: 'success' | 'error' | 'info'; }
+-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+-
+-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+-    const id = Math.random().toString(36).substring(2, 9);
+-    setToasts((prev) => [...prev, { id, message, type }]);
+-    setTimeout(() => {
+-      setToasts((prev) => prev.filter((t) => t.id !== id));
+-    }, 4000);
+-  };
++  const { toast } = useToast();
+ 
+   const loadProjectAndMembers = async () => {
+     setIsLoading(true);
+@@ -153,11 +141,11 @@ export default function ProjectDetailsPage() {
+   const handleAddMemberSubmit = async (data: { userId: number; role: 'admin' | 'editor' | 'viewer' }) => {
+     try {
+       await addProjectMemberApi(projectId, data);
+-      showToast('Member added successfully!');
++      toast('Member added successfully!');
+       setIsAddMemberOpen(false);
+       loadMembersOnly();
+     } catch (error: any) {
+-      showToast(error.message || 'Failed to add member', 'error');
++      toast(error.message || 'Failed to add member', 'error');
+     }
+   };
+ 
+@@ -165,10 +153,10 @@ export default function ProjectDetailsPage() {
+     setIsUpdatingRole(memberId);
+     try {
+       await updateProjectMemberRoleApi(projectId, memberId, newRole);
+-      showToast('Role updated successfully!');
++      toast('Role updated successfully!');
+       loadMembersOnly();
+     } catch (error: any) {
+-      showToast(error.message || 'Failed to update role', 'error');
++      toast(error.message || 'Failed to update role', 'error');
+     } finally {
+       setIsUpdatingRole(null);
+     }
+@@ -179,11 +167,11 @@ export default function ProjectDetailsPage() {
+     setIsRemoving(true);
+     try {
+       await removeProjectMemberApi(projectId, memberToRemove.id);
+-      showToast('Member removed successfully!');
++      toast('Member removed successfully!');
+       setMemberToRemove(null);
+       loadMembersOnly();
+     } catch (error: any) {
+-      showToast(error.message || 'Failed to remove member', 'error');
++      toast(error.message || 'Failed to remove member', 'error');
+     } finally {
+       setIsRemoving(false);
+     }
+@@ -473,47 +461,6 @@ export default function ProjectDetailsPage() {
+       </Modal>
+ 
+       {/* Floating Dynamic status toast message alerts */}
+-      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+-        {toasts.map((toast) => (
+-          <div
+-            key={toast.id}
+-            className={classNames(
+-              'pointer-events-auto flex items-center gap-3.5 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white dark:bg-gray-800',
+-              toast.type === 'success'
+-                ? 'border-green-100 dark:border-green-900/30 text-green-800 dark:text-green-300'
+-                : toast.type === 'error'
+-                  ? 'border-red-100 dark:border-red-900/30 text-red-800 dark:text-red-300'
+-                  : 'border-blue-100 dark:border-blue-900/30 text-blue-800 dark:text-blue-300'
+-            )}
+-            role="alert"
+-          >
+-            <div className="flex-shrink-0">
+-              {toast.type === 'success' ? (
+-                <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-950/20 flex items-center justify-center text-green-500 animate-pulse">
+-                  <CheckCircle2 size={16} />
+-                </div>
+-              ) : toast.type === 'error' ? (
+-                <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center text-red-500 animate-bounce">
+-                  <AlertCircle size={16} />
+-                </div>
+-              ) : (
+-                <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-500">
+-                  <Info size={16} />
+-                </div>
+-              )}
+-            </div>
+-
+-            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
+-
+-            <button
+-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+-              className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+-            >
+-              <X size={14} />
+-            </button>
+-          </div>
+-        ))}
+-      </div>
+     </>
+   );
+ }
+
+commit 02ff3ddbf68b39699430f9bfeeed711ef611eb5e
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Wed May 27 16:11:15 2026 +0530
+
+    update board and activity section
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index 6758007..0d828e0 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -38,8 +38,8 @@ export default function ProjectDetailsPage() {
+   const [project, setProject] = useState<Project | null>(null);
+   const [isLoading, setIsLoading] = useState<boolean>(true);
+   const [error, setError] = useState<string | null>(null);
+-
+   const [members, setMembers] = useState<ProjectMember[]>([]);
++  const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'editor' | 'viewer' | null>(null);
+   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
+   
+   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+@@ -98,6 +98,29 @@ export default function ProjectDetailsPage() {
+       }
+       
+       setMembers(membersData);
++
++      // Determine current user role
++      const storedUser = localStorage.getItem('user');
++      if (storedUser) {
++        try {
++          const userObj = JSON.parse(storedUser);
++          const currentMember = membersData.find((m: ProjectMember) => m.userId === userObj.id || m.email === userObj.email);
++          if (currentMember) {
++            setCurrentUserRole(currentMember.role);
++          } else {
++            if (userObj.role?.toLowerCase() === 'admin' || userObj.role?.toLowerCase() === 'super admin') {
++              setCurrentUserRole('admin');
++            } else {
++              setCurrentUserRole('viewer');
++            }
++          }
++        } catch (e) {
++          setCurrentUserRole('viewer');
++        }
++      } else {
++        setCurrentUserRole('viewer');
++      }
++
+     } catch (err: any) {
+       console.error('Failed to load project details:', err);
+       setError(err.message || 'The requested project could not be loaded or does not exist.');
+@@ -119,6 +142,8 @@ export default function ProjectDetailsPage() {
+     }
+   }
+ 
++  const canManageMembers = currentUserRole === 'admin';
++
+   useEffect(() => {
+     if (projectId) {
+       loadProjectAndMembers();
+@@ -242,7 +267,9 @@ export default function ProjectDetailsPage() {
+           <div className="w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30 mb-4 shadow-sm">
+             <AlertCircle size={26} />
+           </div>
+-          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Project Not Found</h3>
++          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
++            {error?.includes('Forbidden') ? 'Access Denied' : 'Project Not Found'}
++          </h3>
+           <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5 max-w-sm mb-6 leading-relaxed">
+             {error || 'The requested project could not be found. It may have been deleted or you do not have permission to view it.'}
+           </p>
+@@ -265,13 +292,23 @@ export default function ProjectDetailsPage() {
+                 Last updated on {formatDate(project.updatedAt)}
+               </p>
+             </div>
+-            <div className="flex items-center gap-2">
++            <div className="flex items-center gap-3">
+               <Badge
+                 variant={project.status === 'active' ? 'success' : 'default'}
+                 className="capitalize text-xs font-bold px-3 py-1 tracking-wider shadow-sm shrink-0"
+               >
+                 {project.status} status
+               </Badge>
++              {currentUserRole !== 'viewer' && (
++                <Button 
++                  variant="secondary" 
++                  size="sm" 
++                  onClick={() => router.push(`/dashboard/projects/${projectId}/settings`)}
++                  className="flex items-center gap-2 border-gray-200 dark:border-gray-700 shadow-sm"
++                >
++                  Settings
++                </Button>
++              )}
+             </div>
+           </div>
+ 
+@@ -334,10 +371,12 @@ export default function ProjectDetailsPage() {
+                     <span className="text-[10px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md shadow-sm">
+                       {members.length} Total
+                     </span>
+-                    <Button variant="primary" size="sm" className="px-2 py-1 text-[10px] h-7" onClick={() => setIsAddMemberOpen(true)}>
+-                      <Plus size={12} className="mr-1" />
+-                      Add
+-                    </Button>
++                    {canManageMembers && (
++                      <Button variant="primary" size="sm" className="px-2 py-1 text-[10px] h-7" onClick={() => setIsAddMemberOpen(true)}>
++                        <Plus size={12} className="mr-1" />
++                        Add
++                      </Button>
++                    )}
+                   </div>
+                 </CardHeader>
+                 <CardBody className="p-0 flex-1">
+@@ -350,9 +389,10 @@ export default function ProjectDetailsPage() {
+                   ) : (
+                     <MemberList 
+                       members={members}
+-                      onRoleChange={handleRoleChange}
+-                      onRemove={setMemberToRemove}
++                      onRoleChange={canManageMembers ? handleRoleChange : undefined}
++                      onRemove={canManageMembers ? setMemberToRemove : undefined}
+                       isUpdating={isUpdatingRole}
++                      readOnly={!canManageMembers}
+                     />
+                   )}
+                 </CardBody>
+
+commit 940a95b4b89b1ae63be07bff6de768d6eea7ab03
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Mon May 25 22:59:22 2026 +0530
+
+    update project module bug fix in member adding and listing
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+index 41f8781..6758007 100644
+--- a/app/dashboard/projects/[id]/page.tsx
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -65,7 +65,38 @@ export default function ProjectDetailsPage() {
+     try {
+       const data = await fetchProjectById(projectId);
+       setProject(data);
+-      const membersData = await fetchProjectMembers(projectId);
++      let membersData = await fetchProjectMembers(projectId);
++      
++      // If the members API returns empty but the project has members assigned,
++      // derive ProjectMember objects from the project's members name array
++      if ((!membersData || membersData.length === 0) && data.members && data.members.length > 0) {
++        try {
++          const { fetchUsers } = await import('@/lib/api/users');
++          const allUsers = await fetchUsers();
++          membersData = data.members.map((name: string, idx: number) => {
++            const user = allUsers.find((u) => u.name.toLowerCase() === name.toLowerCase());
++            return {
++              id: user ? user.id : `derived-${idx}`,
++              project_id: data.id,
++              userId: user ? user.id : idx + 1,
++              role: (idx === 0 ? 'admin' : 'editor') as 'admin' | 'editor' | 'viewer',
++              name: name,
++              email: user ? user.email : `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
++            };
++          });
++        } catch (userErr) {
++          // If users fetch fails, still show members with basic info
++          membersData = data.members.map((name: string, idx: number) => ({
++            id: `derived-${idx}`,
++            project_id: data.id,
++            userId: idx + 1,
++            role: (idx === 0 ? 'admin' : 'editor') as 'admin' | 'editor' | 'viewer',
++            name: name,
++            email: `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
++          }));
++        }
++      }
++      
+       setMembers(membersData);
+     } catch (err: any) {
+       console.error('Failed to load project details:', err);
+
+commit 6cdc446b9a2804e32e3a5238c3d6746839012f2d
+Author: Muhammedminhaj798 <muhammedminhaj798@gmail.com>
+Date:   Mon May 25 16:16:33 2026 +0530
+
+    project management module
+
+diff --git a/app/dashboard/projects/[id]/page.tsx b/app/dashboard/projects/[id]/page.tsx
+new file mode 100644
+index 0000000..41f8781
+--- /dev/null
++++ b/app/dashboard/projects/[id]/page.tsx
+@@ -0,0 +1,448 @@
++'use client';
++
++import { useState, useEffect } from 'react';
++import { useParams, useRouter } from 'next/navigation';
++import { Breadcrumb } from '@/components/Breadcrumb';
++import { Button } from '@/components/Button';
++import { Card, CardBody, CardHeader } from '@/components/Card';
++import { Badge } from '@/components/Badge';
++import { Skeleton } from '@/components/Skeleton';
++import { ROUTES } from '@/lib/constants';
++import { 
++  ArrowLeft, 
++  Briefcase, 
++  Calendar, 
++  Users, 
++  LayoutDashboard, 
++  Clock, 
++  CheckSquare, 
++  BarChart3,
++  AlertCircle,
++  Plus,
++  CheckCircle2,
++  Info,
++  X
++} from 'lucide-react';
++import { fetchProjectById, fetchProjectMembers, addProjectMemberApi, updateProjectMemberRoleApi, removeProjectMemberApi } from '@/lib/api/projects';
++import { Project, ProjectMember } from '@/components/projects/ProjectCard';
++import { MemberList } from '@/components/projects/MemberList';
++import { AddMemberModal } from '@/components/projects/AddMemberModal';
++import { Modal } from '@/components/Modal';
++import { classNames } from '@/lib/utils';
++
++export default function ProjectDetailsPage() {
++  const params = useParams();
++  const router = useRouter();
++  const projectId = params.id as string;
++
++  const [project, setProject] = useState<Project | null>(null);
++  const [isLoading, setIsLoading] = useState<boolean>(true);
++  const [error, setError] = useState<string | null>(null);
++
++  const [members, setMembers] = useState<ProjectMember[]>([]);
++  const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
++  
++  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
++  const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
++  const [isRemoving, setIsRemoving] = useState(false);
++  const [isUpdatingRole, setIsUpdatingRole] = useState<string | number | null>(null);
++
++  interface ToastMessage { id: string; message: string; type: 'success' | 'error' | 'info'; }
++  const [toasts, setToasts] = useState<ToastMessage[]>([]);
++
++  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
++    const id = Math.random().toString(36).substring(2, 9);
++    setToasts((prev) => [...prev, { id, message, type }]);
++    setTimeout(() => {
++      setToasts((prev) => prev.filter((t) => t.id !== id));
++    }, 4000);
++  };
++
++  const loadProjectAndMembers = async () => {
++    setIsLoading(true);
++    setIsMembersLoading(true);
++    setError(null);
++    try {
++      const data = await fetchProjectById(projectId);
++      setProject(data);
++      const membersData = await fetchProjectMembers(projectId);
++      setMembers(membersData);
++    } catch (err: any) {
++      console.error('Failed to load project details:', err);
++      setError(err.message || 'The requested project could not be loaded or does not exist.');
++    } finally {
++      setIsLoading(false);
++      setIsMembersLoading(false);
++    }
++  };
++
++  const loadMembersOnly = async () => {
++    setIsMembersLoading(true);
++    try {
++      const membersData = await fetchProjectMembers(projectId);
++      setMembers(membersData);
++    } catch (err: any) {
++      console.error('Failed to load members:', err);
++    } finally {
++      setIsMembersLoading(false);
++    }
++  }
++
++  useEffect(() => {
++    if (projectId) {
++      loadProjectAndMembers();
++    }
++  }, [projectId]);
++
++  const handleAddMemberSubmit = async (data: { userId: number; role: 'admin' | 'editor' | 'viewer' }) => {
++    try {
++      await addProjectMemberApi(projectId, data);
++      showToast('Member added successfully!');
++      setIsAddMemberOpen(false);
++      loadMembersOnly();
++    } catch (error: any) {
++      showToast(error.message || 'Failed to add member', 'error');
++    }
++  };
++
++  const handleRoleChange = async (memberId: string | number, newRole: 'admin' | 'editor' | 'viewer') => {
++    setIsUpdatingRole(memberId);
++    try {
++      await updateProjectMemberRoleApi(projectId, memberId, newRole);
++      showToast('Role updated successfully!');
++      loadMembersOnly();
++    } catch (error: any) {
++      showToast(error.message || 'Failed to update role', 'error');
++    } finally {
++      setIsUpdatingRole(null);
++    }
++  };
++
++  const handleRemoveConfirm = async () => {
++    if (!memberToRemove) return;
++    setIsRemoving(true);
++    try {
++      await removeProjectMemberApi(projectId, memberToRemove.id);
++      showToast('Member removed successfully!');
++      setMemberToRemove(null);
++      loadMembersOnly();
++    } catch (error: any) {
++      showToast(error.message || 'Failed to remove member', 'error');
++    } finally {
++      setIsRemoving(false);
++    }
++  };
++
++  const formatDate = (dateStr: string) => {
++    try {
++      const date = new Date(dateStr);
++      return date.toLocaleDateString('en-US', {
++        month: 'long',
++        day: 'numeric',
++        year: 'numeric',
++        hour: '2-digit',
++        minute: '2-digit',
++      });
++    } catch {
++      return dateStr;
++    }
++  };
++
++  return (
++    <>
++      {/* Breadcrumb Navigation */}
++      <div className="mb-6">
++        <Breadcrumb
++          items={[
++            { label: 'Dashboard', href: ROUTES.DASHBOARD },
++            { label: 'Projects', href: ROUTES.PROJECTS },
++            { label: isLoading ? 'Loading...' : project?.name || 'Project Details' },
++          ]}
++        />
++      </div>
++
++      {/* Back Button */}
++      <div className="mb-6">
++        <Button
++          variant="secondary"
++          size="sm"
++          onClick={() => router.push(ROUTES.PROJECTS)}
++          className="flex items-center gap-1.5 cursor-pointer shadow-none border-gray-200"
++        >
++          <ArrowLeft size={15} />
++          Back to Projects
++        </Button>
++      </div>
++
++      {isLoading ? (
++        /* LOADING STATE SKELETON */
++        <div className="space-y-6">
++          <div className="flex justify-between items-start">
++            <div className="space-y-2.5 w-1/3">
++              <Skeleton className="h-8 w-full" />
++              <Skeleton className="h-4 w-2/3" />
++            </div>
++            <Skeleton className="h-6 w-20 rounded-full" />
++          </div>
++          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
++            <div className="lg:col-span-2 space-y-6">
++              <Card variant="outlined">
++                <CardBody className="space-y-4 p-6">
++                  <Skeleton className="h-6 w-1/4" />
++                  <Skeleton className="h-4 w-full" />
++                  <Skeleton className="h-4 w-5/6" />
++                </CardBody>
++              </Card>
++            </div>
++            <div className="space-y-6">
++              <Card variant="outlined">
++                <CardBody className="space-y-4 p-6">
++                  <Skeleton className="h-6 w-1/3" />
++                  <Skeleton className="h-8 w-full rounded-lg" />
++                  <Skeleton className="h-8 w-full rounded-lg" />
++                </CardBody>
++              </Card>
++            </div>
++          </div>
++        </div>
++      ) : error || !project ? (
++        /* ERROR STATE */
++        <div className="flex flex-col items-center justify-center text-center py-16 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/60 p-6 shadow-sm">
++          <div className="w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500 border border-rose-100 dark:border-rose-900/30 mb-4 shadow-sm">
++            <AlertCircle size={26} />
++          </div>
++          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Project Not Found</h3>
++          <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5 max-w-sm mb-6 leading-relaxed">
++            {error || 'The requested project could not be found. It may have been deleted or you do not have permission to view it.'}
++          </p>
++          <Button variant="primary" size="md" onClick={() => router.push(ROUTES.PROJECTS)}>
++            Return to Projects List
++          </Button>
++        </div>
++      ) : (
++        /* PROJECT DETAILS DASHBOARD SUCCESS STATE */
++        <div className="space-y-6 animate-fade-in">
++          {/* Header section with status badge */}
++          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
++            <div className="space-y-1">
++              <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight flex items-center gap-3">
++                <Briefcase className="text-blue-500 w-7 h-7" />
++                {project.name}
++              </h1>
++              <p className="text-xs text-gray-400 dark:text-gray-500 font-medium flex items-center gap-1.5 mt-1">
++                <Clock size={13} />
++                Last updated on {formatDate(project.updatedAt)}
++              </p>
++            </div>
++            <div className="flex items-center gap-2">
++              <Badge
++                variant={project.status === 'active' ? 'success' : 'default'}
++                className="capitalize text-xs font-bold px-3 py-1 tracking-wider shadow-sm shrink-0"
++              >
++                {project.status} status
++              </Badge>
++            </div>
++          </div>
++
++          {/* Details layout: main columns */}
++          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
++            {/* Main description and interactive stats */}
++            <div className="lg:col-span-2 space-y-6">
++              {/* Project Description Card */}
++              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
++                <CardHeader className="border-b border-gray-100 bg-white">
++                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Workspace Overview</h3>
++                </CardHeader>
++                <CardBody className="p-6 space-y-4">
++                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
++                    {project.description}
++                  </p>
++                </CardBody>
++              </Card>
++
++              {/* ERP Project Workspace Mockup Feature */}
++              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
++                <CardHeader className="border-b border-gray-100 bg-white flex items-center justify-between">
++                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Deliverables & Timeline</h3>
++                  <Badge variant="info" className="text-[9px] font-bold tracking-widest px-2 uppercase shadow-sm">
++                    Premium Workspace
++                  </Badge>
++                </CardHeader>
++                <CardBody className="p-6 text-center flex flex-col items-center justify-center min-h-[220px] bg-slate-50/50 dark:bg-slate-900/40 rounded-b-lg">
++                  <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-500 mb-3 border border-blue-100 dark:border-blue-900/30 shadow-sm">
++                    <BarChart3 size={20} />
++                  </div>
++                  <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200">Interactive Workspace Details</h4>
++                  <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5 mb-5 max-w-sm leading-relaxed">
++                    Interactive milestones, Gantt timelines, performance trackers, and financial audit worksheets are presently under construction for this project slot.
++                  </p>
++                  <div className="flex gap-3">
++                    <Button variant="primary" size="sm" onClick={() => router.push('/dashboard/tasks')}>
++                      <CheckSquare size={14} className="mr-1.5" />
++                      View Board Tasks
++                    </Button>
++                    <Button variant="secondary" size="sm" disabled>
++                      <LayoutDashboard size={14} className="mr-1.5" />
++                      Analytics Hub
++                    </Button>
++                  </div>
++                </CardBody>
++              </Card>
++            </div>
++
++            {/* Sidebar metadata card */}
++            <div className="space-y-6">
++              {/* Project Members List */}
++              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm flex flex-col">
++                <CardHeader className="border-b border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-800 flex items-center justify-between">
++                  <div className="flex items-center gap-2">
++                    <Users size={16} className="text-gray-500" />
++                    <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Project Directory</h3>
++                  </div>
++                  <div className="flex items-center gap-2">
++                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md shadow-sm">
++                      {members.length} Total
++                    </span>
++                    <Button variant="primary" size="sm" className="px-2 py-1 text-[10px] h-7" onClick={() => setIsAddMemberOpen(true)}>
++                      <Plus size={12} className="mr-1" />
++                      Add
++                    </Button>
++                  </div>
++                </CardHeader>
++                <CardBody className="p-0 flex-1">
++                  {isMembersLoading ? (
++                    <div className="p-6 space-y-4">
++                      <Skeleton className="h-10 w-full rounded-md" />
++                      <Skeleton className="h-10 w-full rounded-md" />
++                      <Skeleton className="h-10 w-full rounded-md" />
++                    </div>
++                  ) : (
++                    <MemberList 
++                      members={members}
++                      onRoleChange={handleRoleChange}
++                      onRemove={setMemberToRemove}
++                      isUpdating={isUpdatingRole}
++                    />
++                  )}
++                </CardBody>
++              </Card>
++
++              {/* Date Metadata details card */}
++              <Card variant="outlined" className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-sm">
++                <CardBody className="p-5 space-y-4">
++                  <div className="flex items-start gap-3">
++                    <Calendar size={16} className="text-gray-400 mt-0.5" />
++                    <div>
++                      <h4 className="text-xs font-semibold text-gray-400">Created Workspace</h4>
++                      <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mt-0.5">
++                        {formatDate(project.updatedAt)}
++                      </p>
++                    </div>
++                  </div>
++                  <div className="flex items-start gap-3">
++                    <Briefcase size={16} className="text-gray-400 mt-0.5" />
++                    <div>
++                      <h4 className="text-xs font-semibold text-gray-400">Access ID Reference</h4>
++                      <code className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-900/10 px-2 py-1 rounded border border-blue-100/20 mt-1 block">
++                        {project.id}
++                      </code>
++                    </div>
++                  </div>
++                </CardBody>
++              </Card>
++            </div>
++          </div>
++        </div>
++      )}
++
++      {/* Add Member Modal */}
++      <AddMemberModal
++        isOpen={isAddMemberOpen}
++        onClose={() => setIsAddMemberOpen(false)}
++        onSubmit={handleAddMemberSubmit}
++        existingMembers={members}
++      />
++
++      {/* Remove Member Confirmation Dialog Modal */}
++      <Modal
++        isOpen={!!memberToRemove}
++        onClose={() => setMemberToRemove(null)}
++        title="Remove Member"
++        size="sm"
++      >
++        <div className="space-y-4">
++          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-semibold">
++            Are you sure you want to remove <span className="text-blue-600 dark:text-blue-400">{memberToRemove?.name}</span> from this project?
++          </p>
++          <p className="text-xs text-rose-500 dark:text-rose-400 leading-relaxed font-medium">
++            This user will immediately lose access to this project workspace.
++          </p>
++          <div className="flex gap-3 pt-5 border-t border-gray-100 dark:border-gray-700/50 mt-6">
++            <Button
++              type="button"
++              variant="secondary"
++              onClick={() => setMemberToRemove(null)}
++              disabled={isRemoving}
++              fullWidth
++            >
++              Cancel
++            </Button>
++            <Button
++              type="button"
++              variant="danger"
++              onClick={handleRemoveConfirm}
++              isLoading={isRemoving}
++              disabled={isRemoving}
++              fullWidth
++            >
++              Remove Member
++            </Button>
++          </div>
++        </div>
++      </Modal>
++
++      {/* Floating Dynamic status toast message alerts */}
++      <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
++        {toasts.map((toast) => (
++          <div
++            key={toast.id}
++            className={classNames(
++              'pointer-events-auto flex items-center gap-3.5 p-4 rounded-xl shadow-xl border animate-slide-in-right bg-white dark:bg-gray-800',
++              toast.type === 'success'
++                ? 'border-green-100 dark:border-green-900/30 text-green-800 dark:text-green-300'
++                : toast.type === 'error'
++                  ? 'border-red-100 dark:border-red-900/30 text-red-800 dark:text-red-300'
++                  : 'border-blue-100 dark:border-blue-900/30 text-blue-800 dark:text-blue-300'
++            )}
++            role="alert"
++          >
++            <div className="flex-shrink-0">
++              {toast.type === 'success' ? (
++                <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-950/20 flex items-center justify-center text-green-500 animate-pulse">
++                  <CheckCircle2 size={16} />
++                </div>
++              ) : toast.type === 'error' ? (
++                <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center text-red-500 animate-bounce">
++                  <AlertCircle size={16} />
++                </div>
++              ) : (
++                <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-500">
++                  <Info size={16} />
++                </div>
++              )}
++            </div>
++
++            <div className="flex-1 text-xs font-bold leading-normal">{toast.message}</div>
++
++            <button
++              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
++              className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
++            >
++              <X size={14} />
++            </button>
++          </div>
++        ))}
++      </div>
++    </>
++  );
++}

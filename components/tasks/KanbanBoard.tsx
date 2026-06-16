@@ -704,6 +704,7 @@ export function KanbanBoard({
                   tasks={columnTasks}
                   unreadCount={columnUnreadCount}
                   availableAssignees={availableAssignees}
+                  isCompletedColumn={index === columns.length - 1}
                   onEdit={(task) => {
                     setEditingTask(task);
                     setIsModalOpen(true);
