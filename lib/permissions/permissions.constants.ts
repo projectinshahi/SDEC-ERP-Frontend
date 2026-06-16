@@ -367,6 +367,18 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: 'Configure lead scoring criteria and weights (Admin)',
         module: 'sales',
       },
+      {
+        key: 'sales.approve',
+        label: 'Approve Documents',
+        description: 'Approve, reject or request rework on submitted client documents',
+        module: 'sales',
+      },
+      {
+        key: 'sales.config',
+        label: 'Configure Pipeline',
+        description: 'Configure stalled-deal thresholds and pipeline settings',
+        module: 'sales',
+      },
     ],
   },
 ];
