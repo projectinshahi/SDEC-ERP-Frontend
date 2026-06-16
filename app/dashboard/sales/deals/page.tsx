@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, LayoutGrid } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { useToast } from '@/lib/hooks/useToast';
 import { apiClient } from '@/lib/api/api-client';
@@ -14,6 +15,7 @@ interface Deal {
   title: string;
   amount: number;
   status: string;
+  stage?: string;
   customer?: { name: string };
   owner?: { name: string };
 }
@@ -51,10 +53,18 @@ export default function SalesDealsPage() {
               { label: 'Deals', href: '/dashboard/sales/deals' }
             ]} 
           />
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            New Deal
-          </Button>
+          <div className="flex gap-2">
+            <Link href="/dashboard/sales/deals/pipeline">
+              <Button variant="secondary">
+                <LayoutGrid className="w-4 h-4 mr-2" />
+                Pipeline
+              </Button>
+            </Link>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              New Deal
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -77,6 +87,7 @@ export default function SalesDealsPage() {
                 <tr>
                   <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Title</th>
                   <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Amount</th>
+                  <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Stage</th>
                   <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Status</th>
                   <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Customer</th>
                   <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Owner</th>
@@ -86,17 +97,22 @@ export default function SalesDealsPage() {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading deals...</td>
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Loading deals...</td>
                   </tr>
                 ) : deals.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">No deals found</td>
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">No deals found</td>
                   </tr>
                 ) : (
                   deals.filter(d => d.title.toLowerCase().includes(searchQuery.toLowerCase())).map((deal) => (
                     <tr key={deal.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{deal.title}</td>
                       <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">${deal.amount?.toLocaleString()}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400">
+                          {deal.stage || '—'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                           {deal.status}
