@@ -180,7 +180,12 @@ export default function ProjectDetailsPage() {
   const canManageMembers = currentUserRole === 'admin' || hasPermission('project.manage_members');
   const canEditProject = hasPermission('project.edit') && currentUserRole !== 'viewer';
   const canViewSettings = canEditProject || canManageMembers;
-  const canImportBacklog = hasPermission('project.create') && hasPermission('project.edit') && currentUserRole !== 'viewer';
+  // Regression fix: the "Import Backlog" affordance silently disappeared because
+  // commit 4ece463 over-tightened this gate to ALSO require global permissions,
+  // hiding it from editors/admins who previously had it. Restore it
+  // to the project-level capability — matching the original intent and
+  // the backend authorization checkProjectRole(['admin','editor']) on POST /projects/:id/import.
+  const canImportBacklog = currentUserRole === 'admin' || currentUserRole === 'editor';
   const canViewAnalytics = hasPermission('project.analytics');
 
   useEffect(() => {
@@ -262,10 +267,17 @@ export default function ProjectDetailsPage() {
     try {
       const result = await importProjectBacklogApi(projectId, tasks);
       if (result.success) {
-        if (result.summary.skippedDueToInvalidDate > 0) {
-          toast(`Imported: ${result.summary.tasksImported} rows\nSkipped: ${result.summary.skippedDueToInvalidDate} rows\nReason: Invalid Date Format`);
+        // Defensive: tolerate a response that omits/partially fills summary so a
+        // successful import never surfaces as a generic error.
+        const summary: any = result.summary ?? {};
+        const tasksImported = summary.tasksImported ?? 0;
+        const skipped = summary.skippedDueToInvalidDate ?? 0;
+        const boardsCreated = summary.boardsCreated ?? 0;
+        const columnsCreated = summary.columnsCreated ?? 0;
+        if (skipped > 0) {
+          toast(`Imported: ${tasksImported} rows\nSkipped: ${skipped} rows\nReason: Invalid Date Format`);
         } else {
-          toast(`Import completed successfully! Boards: ${result.summary.boardsCreated}, Columns: ${result.summary.columnsCreated}, Tasks: ${result.summary.tasksImported}`);
+          toast(`Import completed successfully! Boards: ${boardsCreated}, Columns: ${columnsCreated}, Tasks: ${tasksImported}`);
         }
         setIsImportModalOpen(false);
         loadProjectAndMembers(); // Reload data
@@ -497,6 +509,33 @@ export default function ProjectDetailsPage() {
                     onRetry={getStatsData}
                   />
                 </div>
+              )}
+
+              {canImportBacklog && (
+                <Card variant="outlined" className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800/30 shadow-sm">
+                  <CardBody className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
+                        <Upload size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-blue-900 dark:text-blue-100">Import Project Data</h3>
+                        <p className="text-xs text-blue-700/80 dark:text-blue-300/80 mt-1 max-w-xl">
+                          Quickly bring your team's work into this workspace. Upload a CSV or Excel file to automatically generate sprints, boards, and populate tasks.
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="primary" 
+                      size="sm" 
+                      onClick={() => setIsImportModalOpen(true)} 
+                      className="shrink-0 shadow-sm"
+                    >
+                      <Upload size={14} className="mr-1.5" />
+                      Import Backlog
+                    </Button>
+                  </CardBody>
+                </Card>
               )}
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -19,6 +19,7 @@ interface TaskCardProps {
   setDropIndicator: (val: { taskId: string; position: 'before' | 'after' } | null) => void;
   onMoveTask: (taskId: string, targetStatus: Task['status'], targetIndex?: number) => void;
   index: number;
+  isCompletedColumn?: boolean;
 }
 
 /**
@@ -54,8 +55,8 @@ type DueStatus = 'overdue' | 'due-today' | 'normal';
  * Determines due date status by comparing YYYY-MM-DD strings.
  * Timezone-safe: uses local date for both sides.
  */
-function getDueStatus(dueDate: string): DueStatus {
-  if (!dueDate) return 'normal';
+function getDueStatus(dueDate: string, isCompletedColumn?: boolean): DueStatus {
+  if (!dueDate || isCompletedColumn) return 'normal';
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const dueDateStr = dueDate.split('T')[0]; // normalize ISO strings
@@ -80,11 +81,12 @@ export function TaskCard({
   setDropIndicator,
   onMoveTask,
   index,
+  isCompletedColumn,
 }: TaskCardProps) {
   const { hasPermission } = usePermissions();
   const isDragging = draggedTaskId === task.id;
   const { initials, colorClass } = getUserAvatarDetails(task.assignee);
-  const dueStatus = getDueStatus(task.dueDate);
+  const dueStatus = getDueStatus(task.dueDate, isCompletedColumn);
 
   // Drag start handler
   const handleDragStart = (e: React.DragEvent) => {

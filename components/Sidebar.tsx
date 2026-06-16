@@ -180,7 +180,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
                     Switch Project
                   </div>
                   <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-                    {projects.map(p => (
+                    {projects.filter(p => !p.is_archived).map(p => (
                       <button
                         key={p.id}
                         onClick={() => setActiveProjectId(p.id)}
