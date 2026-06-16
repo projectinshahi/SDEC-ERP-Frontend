@@ -139,12 +139,18 @@ export default function ProjectDetailsPage() {
         try {
           const userObj = JSON.parse(storedUser);
           setCurrentUserId(userObj.id);
-          const currentMember = membersData.find((m: ProjectMember) => m.userId === userObj.id || m.email === userObj.email);
+          const currentMember = membersData.find((m: ProjectMember) => 
+            String(m.userId) === String(userObj.id) || 
+            (m.email && userObj.email && m.email.toLowerCase() === userObj.email.toLowerCase())
+          );
           if (currentMember) {
             setCurrentUserRole(currentMember.role);
           } else {
-            if (userObj.role?.toLowerCase() === 'admin' || userObj.role?.toLowerCase() === 'super admin') {
+            const roleStr = userObj.role?.toLowerCase() || userObj.roleName?.toLowerCase() || '';
+            if (roleStr.includes('admin') || roleStr === 'super admin') {
               setCurrentUserRole('admin');
+            } else if (roleStr.includes('editor') || roleStr.includes('manager') || hasPermission('project.edit')) {
+              setCurrentUserRole('editor');
             } else {
               setCurrentUserRole('viewer');
             }
