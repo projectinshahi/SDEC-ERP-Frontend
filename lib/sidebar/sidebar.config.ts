@@ -90,6 +90,12 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: 'sales',
   },
   {
+    label: 'My Day (BDE)',
+    href: '/dashboard/sales/bde',
+    icon: 'LayoutDashboard',
+    module: 'sales',
+  },
+  {
     label: 'Leads',
     href: '/dashboard/sales/leads',
     icon: 'Target',
@@ -129,6 +135,24 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     label: 'Deal Pipeline',
     href: '/dashboard/sales/deals/pipeline',
     icon: 'LayoutGrid',
+    module: 'sales',
+  },
+  {
+    label: 'Pipeline Views',
+    href: '/dashboard/sales/pipeline',
+    icon: 'BarChart3',
+    module: 'sales',
+  },
+  {
+    label: 'Sales Tasks',
+    href: '/dashboard/sales/tasks',
+    icon: 'CheckSquare',
+    module: 'sales',
+  },
+  {
+    label: 'Approvals',
+    href: '/dashboard/sales/approvals',
+    icon: 'ShieldCheck',
     module: 'sales',
   },
   {

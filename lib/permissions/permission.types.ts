@@ -68,7 +68,9 @@ export type PermissionKey =
   | 'sales.edit'
   | 'sales.delete'
   | 'sales.assign'
-  | 'sales.scoring';
+  | 'sales.scoring'
+  | 'sales.approve'
+  | 'sales.config';
 
 /**
  * Module names used for sidebar filtering and route protection.
