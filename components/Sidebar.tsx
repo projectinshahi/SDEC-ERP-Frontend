@@ -24,6 +24,8 @@ import {
   ChevronDown,
   Target,
   TrendingUp,
+  BarChart3,
+  LayoutGrid,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
 import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
@@ -42,14 +44,17 @@ const iconMap = {
   CalendarDays,
   Target,
   TrendingUp,
+  BarChart3,
+  LayoutGrid,
 } as const;
 
 export interface SidebarItem {
   label: string;
-  href: string;
-  icon: keyof typeof iconMap;
+  href?: string;
+  icon?: keyof typeof iconMap;
   /** Module this item belongs to. null = always visible (no permission gating). */
   module?: ModuleName | null;
+  isPartition?: boolean;
 }
 
 interface SidebarProps {
@@ -196,20 +201,21 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
         {/* <nav className="flex-1 py-6 overflow-y-auto space-y-1.5 px-3 overflow-x-hidden"> */}
         <nav className="flex-1 py-6 overflow-y-auto overflow-x-hidden space-y-1.5 px-3 scrollbar-hide">
           {items.map((item) => {
-            const Icon = iconMap[item.icon];
-            const active = isActive(item.href);
+            if (item.isPartition) {
+              return (
+                <div key={item.label} className={classNames("pt-4 pb-1 mt-2 mb-1", isCollapsed ? "px-0 text-center" : "px-4")}>
+                  {!isCollapsed ? (
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{item.label}</span>
+                  ) : (
+                    <div className="w-6 border-b-2 border-zinc-800 mx-auto"></div>
+                  )}
+                </div>
+              );
+            }
 
-            // if (item.label === 'Boards') {
-            //   return (
-            //     <SidebarBoardsItem 
-            //       key={item.label}
-            //       active={active}
-            //       isCollapsed={isCollapsed}
-            //       mounted={mounted}
-            //       onMobileToggle={onToggle}
-            //     />
-            //   );
-            // }
+            const Icon = iconMap[item.icon!];
+            const active = item.href ? isActive(item.href) : false;
+
             if (item.label === 'Boards') {
   const boardActive =
     pathname === '/dashboard/tasks' ||
@@ -250,7 +256,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
             return (
               <div key={item.label} className="relative group">
                 <Link
-                  href={item.href}
+                  href={item.href!}
                   className={classNames(
                     'flex items-center rounded-xl py-3 relative',
                     mounted ? 'transition-all duration-200 ease-out' : '',
@@ -273,13 +279,13 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
                     )} />
                   )}
 
-                  <Icon
+                  {Icon && <Icon
                     size={20}
                     className={classNames(
                       'transition-transform duration-200 group-hover:scale-105 flex-shrink-0',
                       active ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'
                     )}
-                  />
+                  />}
 
                   {!isCollapsed && (
                     <span className="text-sm tracking-wide">{item.label}</span>

@@ -355,6 +355,18 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: 'Permanently remove sales records',
         module: 'sales',
       },
+      {
+        key: 'sales.assign',
+        label: 'Assign Leads',
+        description: 'Assign or reassign leads to Business Development Executives',
+        module: 'sales',
+      },
+      {
+        key: 'sales.scoring',
+        label: 'Manage Lead Scoring',
+        description: 'Configure lead scoring criteria and weights (Admin)',
+        module: 'sales',
+      },
     ],
   },
 ];

@@ -3,9 +3,11 @@
 import React from 'react';
 import { classNames } from '@/lib/utils';
 
+export type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
+
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
+  variant?: BadgeVariant;
   className?: string;
 }
 

@@ -7,15 +7,18 @@ import { fetchGlobalAnalytics } from '@/lib/api/projects';
 import { fetchActivityFeed } from '@/lib/api/activity';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { FollowUpRemindersWidget } from '@/components/dashboard/FollowUpRemindersWidget';
 import { ActivityLog } from '@/lib/api/activity';
 import { classNames } from '@/lib/utils';
 import { useToast } from '@/lib/hooks/useToast';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 /**
  * Dashboard page - main overview of the system
  */
 export default function DashboardPage() {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
 
   // Dashboard Stats
   const [stats, setStats] = useState({
@@ -155,15 +158,17 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Recent Activity & Quick Access Grid */}
+      {/* Recent Activity, Follow-up Reminders & Quick Access Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <ActivityFeed
             activities={activities}
             isLoading={isActivitiesLoading}
             isError={isActivitiesError}
             onRetry={getActivitiesData}
           />
+          {/* Follow-up reminders for users who can view sales (owner-scoped). */}
+          {hasPermission('sales.view') && <FollowUpRemindersWidget />}
         </div>
 
         {/* Quick Links Panel */}
