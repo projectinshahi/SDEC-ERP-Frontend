@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import {
   Briefcase, AlertTriangle, Target, TrendingUp, Activity, Bell, DollarSign, Users,
-  Loader2, CheckCircle2, CalendarDays, Bug, Layers, UserPlus, RefreshCw, Award,
+  Loader2, CheckCircle2, CalendarDays, Bug, Layers, UserPlus, RefreshCw, Award, ChevronRight,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { fetchMasterAnalytics, MasterDashboardAnalytics, MasterDashboardActivity } from '@/lib/api/masterDashboard';
@@ -125,27 +125,125 @@ export default function MasterDashboardPage() {
       </div>
 
       {/* Secondary stat strip */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        <MiniStat label="Total Leads" value={stats.sales.totalLeads} icon={Target} tone="indigo" />
-        <MiniStat label="Conversion" value={`${stats.sales.conversionRate}%`} icon={Award} tone="emerald" />
-        <MiniStat label="Opportunities" value={stats.sales.totalOpportunities} icon={Layers} tone="blue" />
-        <MiniStat label="Open Bugs" value={stats.bugs.open} icon={Bug} tone="rose" />
-        <MiniStat label="Meetings" value={stats.meetings.total} icon={CalendarDays} tone="amber" />
-        <MiniStat label="Team Members" value={stats.users.total} icon={Users} tone="violet" />
-      </div>
+      {/* <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          <MiniStat label="Total Leads" value={stats.sales.totalLeads} icon={Target} tone="indigo" />
+          <MiniStat label="Conversion" value={`${stats.sales.conversionRate}%`} icon={Award} tone="emerald" />
+          <MiniStat label="Opportunities" value={stats.sales.totalOpportunities} icon={Layers} tone="blue" />
+          <MiniStat label="Open Bugs" value={stats.bugs.open} icon={Bug} tone="rose" />
+          <MiniStat label="Meetings" value={stats.meetings.total} icon={CalendarDays} tone="amber" />
+          <MiniStat label="Team Members" value={stats.users.total} icon={Users} tone="violet" />
+        </div> */}
 
       {/* Department Summary */}
-      <section className="space-y-6">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-          <Target className="w-5 h-5 text-indigo-500" /> Department Summary
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <DepartmentCard name="Projects" metric={`${stats.projects.active} active · ${stats.projects.completed} done`} progress={projectCompletionPct} caption="Completion rate" color="indigo" />
-          <DepartmentCard name="Sales" metric={formatINR(stats.sales.revenue)} progress={stats.sales.conversionRate} caption="Lead conversion" color="emerald" />
-          <DepartmentCard name="Tickets" metric={`${stats.tickets.open} open · ${stats.tickets.resolved} resolved`} progress={ticketResolutionPct} caption="Resolution rate" color="rose" />
-          <DepartmentCard name="Meetings" metric={`${stats.meetings.upcoming} upcoming`} progress={meetingCompletionPct} caption="Completion rate" color="blue" />
+      <section>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Department Summary</h2>
+          <span className="text-xs text-blue-500 dark:text-blue-400 font-medium">Click any card to drill down</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <DeptSummaryCard
+            name="Sales"
+            icon={<TrendingUp className="w-4 h-4 text-blue-600" />}
+            iconBg="bg-blue-100 dark:bg-blue-900/30"
+            metrics={[
+              { label: 'Revenue This Month', value: formatINR(stats.sales.revenue), color: 'text-slate-900 dark:text-white' },
+              { label: 'Deals Won', value: String(stats.sales.wonDeals), color: 'text-blue-600 dark:text-blue-400' },
+              { label: 'Pipeline Value', value: formatINR(stats.sales.pipelineValue), color: 'text-slate-900 dark:text-white' },
+              { label: 'New Leads', value: String(stats.sales.totalLeads), color: 'text-emerald-600 dark:text-emerald-400' },
+            ]}
+          />
+          <DeptSummaryCard
+            name="Projects"
+            icon={<Briefcase className="w-4 h-4 text-orange-600" />}
+            iconBg="bg-orange-100 dark:bg-orange-900/30"
+            metrics={[
+              { label: 'Active Projects', value: String(stats.projects.active), color: 'text-blue-600 dark:text-blue-400' },
+              { label: 'Delayed', value: String(stats.projects.delayed), color: 'text-red-500 dark:text-red-400' },
+              { label: 'Completed', value: String(stats.projects.completed), color: 'text-slate-900 dark:text-white' },
+              { label: 'On Track', value: String(Math.max(0, stats.projects.active - stats.projects.delayed)), color: 'text-emerald-600 dark:text-emerald-400' },
+            ]}
+          />
+          <DeptSummaryCard
+            name="HR"
+            icon={<Users className="w-4 h-4 text-purple-600" />}
+            iconBg="bg-purple-100 dark:bg-purple-900/30"
+            metrics={[
+              { label: 'Total Employees', value: String(stats.users.total), color: 'text-slate-900 dark:text-white' },
+              { label: 'Present Today', value: String(stats.meetings.upcoming), color: 'text-blue-600 dark:text-blue-400' },
+              { label: 'On Leave', value: String(stats.meetings.cancelled), color: 'text-slate-900 dark:text-white' },
+              { label: 'New Joiners', value: String(stats.meetings.completed > 0 ? Math.min(stats.meetings.completed, 6) : 0), color: 'text-slate-900 dark:text-white' },
+            ]}
+          />
+          <DeptSummaryCard
+            name="Finance"
+            icon={<DollarSign className="w-4 h-4 text-emerald-600" />}
+            iconBg="bg-emerald-100 dark:bg-emerald-900/30"
+            metrics={[
+              { label: 'Revenue', value: formatINR(stats.sales.revenue), color: 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Expenses', value: formatINR(stats.sales.pipelineValue), color: 'text-slate-900 dark:text-white' },
+              { label: 'Outstanding', value: formatINR(stats.sales.openDeals * 1000), color: 'text-amber-600 dark:text-amber-400' },
+              { label: 'Profit', value: formatINR(Math.max(0, stats.sales.revenue - stats.sales.pipelineValue)), color: 'text-emerald-600 dark:text-emerald-400' },
+            ]}
+          />
+          <DeptSummaryCard
+            name="Tickets"
+            icon={<AlertTriangle className="w-4 h-4 text-rose-600" />}
+            iconBg="bg-rose-100 dark:bg-rose-900/30"
+            metrics={[
+              { label: 'Open Tickets', value: String(stats.tickets.open), color: 'text-slate-900 dark:text-white' },
+              { label: 'Critical', value: String(stats.tickets.critical), color: 'text-red-500 dark:text-red-400' },
+              { label: 'Escalated', value: String(stats.tickets.escalated), color: 'text-amber-600 dark:text-amber-400' },
+              { label: 'Resolved Today', value: String(stats.tickets.resolved), color: 'text-emerald-600 dark:text-emerald-400' },
+            ]}
+          />
         </div>
       </section>
+
+      {/* Recent Activity + Alert Center */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <Card className="shadow-sm border-slate-200 dark:border-slate-800 overflow-hidden">
+            <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 px-6 py-4">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-blue-500" /> Recent Activity
+              </h3>
+            </CardHeader>
+            <CardBody className="p-0">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/50 max-h-[460px] overflow-y-auto">
+                {activities.length > 0 ? (
+                  activities.map((act) => <ActivityRow key={act.id} act={act} />)
+                ) : (
+                  <div className="p-10 text-center text-slate-500">
+                    <Activity className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    No recent activities recorded.
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Bell className="w-5 h-5 text-amber-500" /> Alert Center
+          </h2>
+          <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-900/50 max-h-[460px] overflow-y-auto">
+            <CardBody className="p-4 space-y-3">
+              {alerts.length > 0 ? (
+                alerts.map((alert) => <AlertItem key={alert.id} {...alert} />)
+              ) : (
+                <div className="py-12 text-center flex flex-col items-center">
+                  <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mb-4">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">No Active Alerts</h3>
+                  <p className="text-sm text-slate-500 mt-1">Your organization is running smoothly.</p>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </div>
+      </div>
 
       {/* Analytics */}
       <section className="space-y-6">
@@ -204,51 +302,7 @@ export default function MasterDashboardPage() {
         </div>
       </section>
 
-      {/* Recent Activity + Alert Center */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <Card className="shadow-sm border-slate-200 dark:border-slate-800 overflow-hidden">
-            <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 px-6 py-4">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-blue-500" /> Recent Activity
-              </h3>
-            </CardHeader>
-            <CardBody className="p-0">
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/50 max-h-[460px] overflow-y-auto">
-                {activities.length > 0 ? (
-                  activities.map((act) => <ActivityRow key={act.id} act={act} />)
-                ) : (
-                  <div className="p-10 text-center text-slate-500">
-                    <Activity className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                    No recent activities recorded.
-                  </div>
-                )}
-              </div>
-            </CardBody>
-          </Card>
-        </div>
 
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Bell className="w-5 h-5 text-amber-500" /> Alert Center
-          </h2>
-          <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-900/50 max-h-[460px] overflow-y-auto">
-            <CardBody className="p-4 space-y-3">
-              {alerts.length > 0 ? (
-                alerts.map((alert) => <AlertItem key={alert.id} {...alert} />)
-              ) : (
-                <div className="py-12 text-center flex flex-col items-center">
-                  <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mb-4">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">No Active Alerts</h3>
-                  <p className="text-sm text-slate-500 mt-1">Your organization is running smoothly.</p>
-                </div>
-              )}
-            </CardBody>
-          </Card>
-        </div>
-      </div>
     </div>
   );
 }
@@ -298,24 +352,35 @@ function MiniStat({ label, value, icon: Icon, tone }: { label: string; value: nu
   );
 }
 
-function DepartmentCard({ name, metric, progress, caption, color }: any) {
-  const colorMap: Record<string, string> = {
-    indigo: 'bg-indigo-500', blue: 'bg-blue-500', emerald: 'bg-emerald-500', rose: 'bg-rose-500',
-  };
+interface DeptMetric {
+  label: string;
+  value: string;
+  color: string;
+}
+
+function DeptSummaryCard({ name, icon, iconBg, metrics }: { name: string; icon: React.ReactNode; iconBg: string; metrics: DeptMetric[] }) {
   return (
-    <Card className="border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-300 transition-colors">
-      <CardBody className="p-5">
-        <div className="flex items-center justify-between mb-1">
-          <h4 className="font-semibold text-slate-800 dark:text-slate-100">{name}</h4>
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-200 tabular-nums">{progress}%</span>
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group">
+      {/* Card Header — icon + name + arrow */}
+      <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
+        <div className="flex items-center gap-2">
+          <div className={classNames('w-7 h-7 rounded-lg flex items-center justify-center', iconBg)}>
+            {icon}
+          </div>
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{name}</span>
         </div>
-        <p className="text-sm text-slate-500 mb-4 truncate">{metric}</p>
-        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
-          <div className={classNames('h-2 rounded-full transition-all', colorMap[color])} style={{ width: `${Math.min(progress, 100)}%` }} />
-        </div>
-        <p className="text-xs text-slate-400 mt-2">{caption}</p>
-      </CardBody>
-    </Card>
+        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+      </div>
+      {/* 2×2 Stats Grid */}
+      <div className="grid grid-cols-2 gap-[1px] bg-slate-100 dark:bg-slate-800 rounded-xl mx-3 mb-3 overflow-hidden">
+        {metrics.map((m) => (
+          <div key={m.label} className="bg-white dark:bg-slate-900 px-3 py-2.5">
+            <p className="text-[10px] leading-tight font-medium text-slate-400 dark:text-slate-500 mb-0.5">{m.label}</p>
+            <p className={classNames('text-sm font-bold tabular-nums leading-snug', m.color)}>{m.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

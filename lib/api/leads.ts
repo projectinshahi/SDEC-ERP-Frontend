@@ -52,6 +52,41 @@ export async function fetchLeadStages(): Promise<LeadStage[]> {
   return res.data;
 }
 
+// ── Pipeline stage management (board columns) ───────────────────────────────
+
+/** Create a custom pipeline stage (appended as the last column). */
+export async function createLeadStage(name: string): Promise<LeadStage> {
+  const res = await apiClient.post<LeadStage>('/sales/lead-stages', { name });
+  return res.data;
+}
+
+/** Rename a stage — the backend cascades the new name to every lead in it. */
+export async function updateLeadStage(id: number, name: string): Promise<LeadStage> {
+  const res = await apiClient.put<LeadStage>(`/sales/lead-stages/${id}`, { name });
+  return res.data;
+}
+
+/**
+ * Delete a stage. Leads in it are relocated to `reassignTo` (or the first
+ * remaining stage when omitted) so the pipeline never loses leads.
+ */
+export async function deleteLeadStage(
+  id: number,
+  reassignTo?: string,
+): Promise<{ success: boolean; reassignedTo: string }> {
+  const res = await apiClient.delete<{ success: boolean; reassignedTo: string }>(
+    `/sales/lead-stages/${id}`,
+    reassignTo ? { data: { reassignTo } } : undefined,
+  );
+  return res.data;
+}
+
+/** Persist a new column order. Pass every stage id, in the desired order. */
+export async function reorderLeadStages(orderedIds: number[]): Promise<LeadStage[]> {
+  const res = await apiClient.put<LeadStage[]>('/sales/lead-stages/reorder', { orderedIds });
+  return res.data;
+}
+
 export async function fetchAssignableUsers(): Promise<AssignableUser[]> {
   const res = await apiClient.get<AssignableUser[]>('/sales/assignable-users');
   return res.data;

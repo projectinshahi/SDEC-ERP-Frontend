@@ -30,7 +30,7 @@ export function SidebarBoardsItem({ active, isCollapsed, setIsCollapsed, mounted
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  
+
   useEffect(() => {
     if (active) {
       loadBoards();

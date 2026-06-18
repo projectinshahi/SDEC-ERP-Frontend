@@ -5,13 +5,15 @@ import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Search, List, Plus } from 'lucide-react';
+import { Search, List, Plus, Columns3 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { LeadPipelineBoard } from '@/components/leads/LeadPipelineBoard';
+import { StageFormModal } from '@/components/leads/StageFormModal';
+import { DeleteStageModal } from '@/components/leads/DeleteStageModal';
 import {
-  fetchLeads, fetchLeadStages, fetchAssignableUsers, moveLeadStage,
+  fetchLeads, fetchLeadStages, fetchAssignableUsers, moveLeadStage, reorderLeadStages,
 } from '@/lib/api/leads';
 import { LEAD_SOURCES, formatLeadSource } from '@/lib/data/leadSources';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
@@ -21,6 +23,9 @@ export default function LeadPipelinePage() {
   const { hasPermission } = usePermissions();
   const canMove = hasPermission('sales.edit');
   const canCreate = hasPermission('sales.create');
+  // Stage structure edits (add/rename/reorder) gate on edit; removal on delete.
+  const canManageStages = hasPermission('sales.edit');
+  const canDeleteStages = hasPermission('sales.delete');
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stages, setStages] = useState<LeadStage[]>([]);
@@ -30,6 +35,10 @@ export default function LeadPipelinePage() {
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [ownerFilter, setOwnerFilter] = useState('all');
+
+  // Stage-management modal state.
+  const [stageModal, setStageModal] = useState<{ mode: 'add' | 'rename'; stage: LeadStage | null } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LeadStage | null>(null);
 
   const loadLeads = useCallback(async () => {
     try {
@@ -46,10 +55,18 @@ export default function LeadPipelinePage() {
     loadLeads();
   }, [loadLeads]);
 
-  useEffect(() => {
-    fetchLeadStages().then(setStages).catch(() => setStages([]));
-    fetchAssignableUsers().then(setOwners).catch(() => setOwners([]));
+  const loadStages = useCallback(async () => {
+    try {
+      setStages(await fetchLeadStages());
+    } catch {
+      setStages([]);
+    }
   }, []);
+
+  useEffect(() => {
+    loadStages();
+    fetchAssignableUsers().then(setOwners).catch(() => setOwners([]));
+  }, [loadStages]);
 
   // Client-side search across title / company so typing feels instant.
   // Leads that have left the active pipeline (disqualified/converted/closed) are
@@ -98,6 +115,27 @@ export default function LeadPipelinePage() {
     }
   };
 
+  // Reorder a stage one position left/right. Optimistic; reverts on failure.
+  const handleMoveStage = async (stage: LeadStage, dir: -1 | 1) => {
+    const ordered = [...stages].sort((a, b) => a.orderIndex - b.orderIndex);
+    const idx = ordered.findIndex((s) => s.id === stage.id);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= ordered.length) return;
+    [ordered[idx], ordered[swap]] = [ordered[swap], ordered[idx]];
+
+    const previous = stages;
+    setStages(ordered.map((s, i) => ({ ...s, orderIndex: i + 1 })));
+    try {
+      const updated = await reorderLeadStages(ordered.map((s) => s.id));
+      setStages(updated);
+    } catch (error: any) {
+      setStages(previous);
+      toast(error?.message || 'Failed to reorder stages', 'error');
+    }
+  };
+
+  const existingStageNames = stages.map((s) => s.name);
+
   return (
     <PermissionPageGuard module="sales">
       <div className="space-y-6">
@@ -117,6 +155,12 @@ export default function LeadPipelinePage() {
                 List View
               </Button>
             </Link>
+            {canManageStages && (
+              <Button variant="secondary" onClick={() => setStageModal({ mode: 'add', stage: null })}>
+                <Columns3 className="w-4 h-4 mr-2" />
+                Add Stage
+              </Button>
+            )}
             {canCreate && (
               <Link href="/dashboard/sales/leads/new">
                 <Button>
@@ -175,9 +219,35 @@ export default function LeadPipelinePage() {
             stages={stages}
             leadsByStage={leadsByStage}
             canMove={canMove}
+            canManageStages={canManageStages}
+            canDeleteStages={canDeleteStages}
             onMove={handleMove}
+            onAddStage={() => setStageModal({ mode: 'add', stage: null })}
+            onRenameStage={(stage) => setStageModal({ mode: 'rename', stage })}
+            onDeleteStage={(stage) => setDeleteTarget(stage)}
+            onMoveStage={handleMoveStage}
           />
         )}
+
+        {/* Stage management modals */}
+        {stageModal && (
+          <StageFormModal
+            isOpen
+            mode={stageModal.mode}
+            stage={stageModal.stage}
+            existingNames={existingStageNames}
+            onClose={() => setStageModal(null)}
+            onSaved={loadStages}
+          />
+        )}
+        <DeleteStageModal
+          isOpen={!!deleteTarget}
+          stage={deleteTarget}
+          leadCount={deleteTarget ? leads.filter((l) => l.stage === deleteTarget.name).length : 0}
+          otherStages={stages.filter((s) => s.id !== deleteTarget?.id)}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => { loadStages(); loadLeads(); }}
+        />
       </div>
     </PermissionPageGuard>
   );

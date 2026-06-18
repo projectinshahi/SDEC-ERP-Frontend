@@ -5,12 +5,12 @@ import Link from 'next/link';
 import {
   Siren, Download, FileText, AlertTriangle, ShieldAlert, Flame, CheckCircle2,
   CheckCheck, Loader, MessageSquare, ArrowUp, ArrowDown, Search, ChevronLeft,
-  ChevronRight, ArrowRight, ArrowUpDown, Timer, Gauge, Users, RefreshCw, Zap,
+  ChevronRight, ArrowRight, ArrowUpDown, Users, RefreshCw,
 } from 'lucide-react';
 import { fetchMasterTickets, MasterTicket, AgentPerformance } from '@/lib/api/masterModules';
 import {
   useMasterResource, ModuleStateScreen, ModuleHeader, ChartCard, DonutChart,
-  CategoryBars, LineTrend, GroupedTrend, ActivityFeed, EmptyState, MiniStat,
+  CategoryBars, LineTrend, GroupedTrend, ActivityFeed, EmptyState,
 } from '@/components/master/MasterKit';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import { Card } from '@/components/Card';
@@ -143,11 +143,6 @@ export default function MasterTicketsPage() {
   const activeCount = Math.max(stats.total - stats.resolved - stats.closed, 0);
   const pctOf = (p: number, w: number) => (w > 0 ? Math.round((p / w) * 100) : 0);
 
-  // Overall SLA compliance across the tracked weeks.
-  const totRes = charts.weeklySla.reduce((s, w) => s + w.resolved, 0);
-  const totSla = charts.weeklySla.reduce((s, w) => s + w.withinSla, 0);
-  const slaPct = totRes > 0 ? Math.round((totSla / totRes) * 100) : 0;
-
   const exportCsv = () => {
     const headers = ['Ticket ID', 'Subject', 'Reporter', 'Project', 'Category', 'Priority', 'Status', 'Assignee', 'Created Date', 'Updated Date'];
     const cell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
@@ -237,14 +232,6 @@ export default function MasterTicketsPage() {
           description="Urgent / open" badge={{ text: `${indicators.criticalPctOfActive}% of active`, tone: 'rose' }} />
         <KpiCard label="Escalated" value={stats.escalated} icon={ShieldAlert} tone="rose"
           description="Needs attention" badge={{ text: `${indicators.escalatedPctOfActive}% of active`, tone: 'rose' }} />
-      </div>
-
-      {/* QUICK METRICS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MiniStat label="Avg Resolution Time" value={fmtHours(indicators.avgResolutionHours)} icon={Timer} tone="emerald" />
-        <MiniStat label="Avg Response Time" value={fmtHours(indicators.avgResponseHours)} icon={Zap} tone="amber" />
-        <MiniStat label={`SLA Compliance (${slaHours}h)`} value={`${slaPct}%`} icon={Gauge} tone="blue" />
-        <MiniStat label="Total Tickets" value={stats.total} icon={Siren} tone="rose" />
       </div>
 
       {/* ANALYTICS ROW 1 — SLA + trends */}

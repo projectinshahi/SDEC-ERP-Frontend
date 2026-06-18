@@ -126,7 +126,7 @@ export default function MasterSettingsPage() {
                       <p className="text-xs text-slate-500 mt-0.5">
                         {act.actorEmail && <span className="mr-2">{act.actorEmail}</span>}
                         {act.project && <span className="mr-2">· {act.project}</span>}
-                        <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold uppercase tracking-wide">{act.type}</span>
+                        <span className="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold uppercase tracking-wide">{act.type}</span>
                       </p>
                     </div>
                     <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">{new Date(act.created_at).toLocaleString()}</span>
