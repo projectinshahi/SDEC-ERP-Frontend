@@ -54,23 +54,29 @@ export default function ChangePasswordPage() {
   const passwordsMatch = newPassword !== '' && newPassword === confirmPassword;
 
   // Protect route
-  if (isAuthLoading) {
+  React.useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthLoading, isAuthenticated, router]);
+
+  // If they don't need to change password, redirect to appropriate dashboard
+  React.useEffect(() => {
+    if (!isAuthLoading && isAuthenticated && user && !user.mustChangePassword) {
+      if (user.roleName === 'SuperAdmin' || user.role === 'SuperAdmin') {
+        router.replace('/master-dashboard');
+      } else {
+        router.replace('/modules');
+      }
+    }
+  }, [isAuthLoading, isAuthenticated, user, router]);
+
+  if (isAuthLoading || !isAuthenticated || (user && !user.mustChangePassword)) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
         <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    router.replace('/login');
-    return null;
-  }
-
-  // If they don't need to change password, redirect to dashboard
-  if (user && !user.mustChangePassword) {
-    router.replace('/dashboard');
-    return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,14 +108,18 @@ export default function ChangePasswordPage() {
 
       // Update local storage user state
       if (user) {
-        const updatedUser = { ...user, mustChangePassword: false };
-        updateUser(updatedUser);
+        updateUser({ ...user, mustChangePassword: false });
       }
 
       toast.success('Password updated successfully!');
-      
-      // Redirect to dashboard now that password is changed
-      router.push('/dashboard');
+
+      // Redirect to correct dashboard now that password is changed. The password
+      // change does not alter the role, so the current `user` drives the target.
+      if (user?.roleName === 'SuperAdmin' || user?.role === 'SuperAdmin') {
+        router.push('/master-dashboard');
+      } else {
+        router.push('/modules');
+      }
     } catch (err: any) {
       console.error('[ChangePassword] Error:', err);
       setError(err.response?.data?.error || err.message || 'An error occurred while changing password.');

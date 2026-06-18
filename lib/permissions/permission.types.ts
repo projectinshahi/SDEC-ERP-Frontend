@@ -70,7 +70,11 @@ export type PermissionKey =
   | 'sales.assign'
   | 'sales.scoring'
   | 'sales.approve'
-  | 'sales.config';
+  | 'sales.config'
+  | 'sales.team.manage'
+  | 'sales.targets.manage'
+  | 'sales.incentive.manage'
+  | 'sales.reports.view';
 
 /**
  * Module names used for sidebar filtering and route protection.

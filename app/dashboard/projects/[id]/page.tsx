@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/Skeleton';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { ROUTES } from '@/lib/constants';
 import {
   ArrowLeft,
@@ -62,6 +63,7 @@ export default function ProjectDetailsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
+  const { user, isLoading: authIsLoading } = useAuth();
 
   const [stats, setStats] = useState({
     totalTasks: 0,
@@ -134,19 +136,17 @@ export default function ProjectDetailsPage() {
       setMembers(membersData);
 
       // Determine current user role
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
+      if (user) {
         try {
-          const userObj = JSON.parse(storedUser);
-          setCurrentUserId(userObj.id);
-          const currentMember = membersData.find((m: ProjectMember) => 
-            String(m.userId) === String(userObj.id) || 
-            (m.email && userObj.email && m.email.toLowerCase() === userObj.email.toLowerCase())
+          setCurrentUserId(Number(user.id) || null);
+          const currentMember = membersData.find((m: ProjectMember) =>
+            String(m.userId) === String(user.id) ||
+            (m.email && user.email && m.email.toLowerCase() === user.email.toLowerCase())
           );
           if (currentMember) {
             setCurrentUserRole(currentMember.role);
           } else {
-            const roleStr = userObj.role?.toLowerCase() || userObj.roleName?.toLowerCase() || '';
+            const roleStr = user.role?.toLowerCase() || user.roleName?.toLowerCase() || '';
             if (roleStr.includes('admin') || roleStr === 'super admin') {
               setCurrentUserRole('admin');
             } else if (roleStr.includes('editor') || roleStr.includes('manager') || hasPermission('project.edit')) {
@@ -195,6 +195,8 @@ export default function ProjectDetailsPage() {
   const canViewAnalytics = hasPermission('project.analytics');
 
   useEffect(() => {
+    if (authIsLoading) return;
+
     let active = true;
     let socket: Socket | null = null;
 
@@ -227,7 +229,7 @@ export default function ProjectDetailsPage() {
         socket.disconnect();
       }
     };
-  }, [projectId]);
+  }, [projectId, authIsLoading, user?.id]);
 
   const handleAddMemberSubmit = async (updatedMembers: any[]) => {
     try {
@@ -531,10 +533,10 @@ export default function ProjectDetailsPage() {
                         </p>
                       </div>
                     </div>
-                    <Button 
-                      variant="primary" 
-                      size="sm" 
-                      onClick={() => setIsImportModalOpen(true)} 
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setIsImportModalOpen(true)}
                       className="shrink-0 shadow-sm"
                     >
                       <Upload size={14} className="mr-1.5" />

@@ -19,7 +19,7 @@ export interface EntityLite {
 // ── SE-020.1 Saved Views ─────────────────────────────────────────────────────
 
 export type SavedViewScope = 'personal' | 'team' | 'global';
-export type SavedViewEntity = 'deal' | 'lead';
+export type SavedViewEntity = 'deal' | 'lead' | 'report';
 
 export interface PipelineFilters {
   valueMin?: number | string;
@@ -105,6 +105,18 @@ export type SalesTaskType = 'call' | 'meeting' | 'email' | 'follow_up' | 'propos
 export type SalesTaskStatus = 'open' | 'in_progress' | 'completed';
 export type SalesTaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+// SE-026.1 — completion outcomes.
+export type SalesTaskOutcome =
+  | 'call_completed' | 'client_interested' | 'follow_up_required' | 'meeting_scheduled'
+  | 'proposal_sent' | 'not_reachable' | 'lost_opportunity' | 'other';
+
+export const OUTCOME_LABELS: Record<SalesTaskOutcome, string> = {
+  call_completed: 'Call Completed', client_interested: 'Client Interested',
+  follow_up_required: 'Follow-up Required', meeting_scheduled: 'Meeting Scheduled',
+  proposal_sent: 'Proposal Sent', not_reachable: 'Not Reachable',
+  lost_opportunity: 'Lost Opportunity', other: 'Other',
+};
+
 export interface SalesTask {
   id: number;
   title: string;
@@ -116,6 +128,9 @@ export interface SalesTask {
   blocked: boolean;
   blockerReason?: string | null;
   completedAt?: string | null;
+  outcome?: SalesTaskOutcome | null;
+  completionNotes?: string | null;
+  recurrenceRuleId?: number | null;
   leadId?: number | null;
   dealId?: number | null;
   assigneeId: number;
@@ -147,6 +162,8 @@ export interface UpdateSalesTaskPayload {
   dueDate?: string | null;
   notes?: string | null;
   assigneeId?: number;
+  outcome?: SalesTaskOutcome;
+  completionNotes?: string | null;
 }
 
 export interface SalesTaskFilters {
@@ -220,12 +237,24 @@ export interface SmartAlert {
   count: number;
 }
 
+// SE-040 — target metric + period granularity.
+export type TargetType = 'revenue' | 'deal_count' | 'calls' | 'meetings' | 'conversions';
+export type PeriodType = 'monthly' | 'quarterly' | 'yearly';
+
+export const TARGET_TYPE_LABELS: Record<TargetType, string> = {
+  revenue: 'Revenue', deal_count: 'Deal Count', calls: 'Calls', meetings: 'Meetings', conversions: 'Conversions',
+};
+
 export interface TargetProgress {
   period: string;
+  type?: TargetType;
+  hasTarget?: boolean;
   target: number;
   achievement: number;
   remaining: number;
   achievementPct: number;
+  reached?: boolean;
+  incentiveEarned?: number;
 }
 
 export interface BdeDashboard {
@@ -251,7 +280,195 @@ export interface BdeDashboard {
 }
 
 export interface SalesTarget {
+  id?: number;
   ownerId: number;
+  type?: TargetType;
+  periodType?: PeriodType;
   period: string;
   targetAmount: number;
+}
+
+// ── SE-027 Recurring Tasks ───────────────────────────────────────────────────
+
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly';
+
+export interface RecurrenceRule {
+  id: number;
+  title: string;
+  type: SalesTaskType;
+  priority: SalesTaskPriority;
+  notes?: string | null;
+  frequency: RecurrenceFrequency;
+  interval: number;
+  startDate: string;
+  endDate?: string | null;
+  active: boolean;
+  assigneeId: number;
+  leadId?: number | null;
+  dealId?: number | null;
+  lastGeneratedAt?: string | null;
+  nextRunAt?: string | null;
+  createdById: number;
+  createdAt: string;
+  updatedAt: string;
+  assignee?: UserLite | null;
+  lead?: EntityLite | null;
+  deal?: EntityLite | null;
+}
+
+export interface CreateRecurrenceRulePayload {
+  title: string;
+  type?: SalesTaskType;
+  priority?: SalesTaskPriority;
+  notes?: string | null;
+  frequency: RecurrenceFrequency;
+  interval?: number;
+  startDate: string;
+  endDate?: string | null;
+  assigneeId?: number;
+  leadId?: number;
+  dealId?: number;
+}
+
+// ── SE-042 Incentives ────────────────────────────────────────────────────────
+
+export interface IncentiveSlab {
+  id: number;
+  ownerId: number;
+  minAchievementPct: number;
+  maxAchievementPct?: number | null;
+  incentivePct?: number | null;
+  incentiveAmount?: number | null;
+  active: boolean;
+  createdById: number;
+  createdAt: string;
+  updatedAt: string;
+  owner?: UserLite | null;
+}
+
+export interface IncentiveSlabPayload {
+  ownerId?: number;
+  minAchievementPct: number;
+  maxAchievementPct?: number | null;
+  incentivePct?: number | null;
+  incentiveAmount?: number | null;
+}
+
+// ── SE-043 Target History ────────────────────────────────────────────────────
+
+export interface TargetHistoryEntry {
+  id: number;
+  period: string;
+  periodType: PeriodType;
+  type: TargetType;
+  target: number;
+  actual: number;
+  achievementPct: number;
+  incentiveEarned: number;
+}
+
+export interface TargetHistoryResponse {
+  ownerId: number;
+  history: TargetHistoryEntry[];
+  note: string;
+}
+
+// ── SE-044 Teams ─────────────────────────────────────────────────────────────
+
+export type TeamMemberRole = 'bde' | 'team_lead';
+
+export interface SalesTeamMember {
+  id: number;
+  teamId: number;
+  userId: number;
+  role: TeamMemberRole;
+  joinedAt: string;
+  user?: { id: number; name: string; email?: string; role?: string | null } | null;
+}
+
+export interface SalesTeam {
+  id: number;
+  name: string;
+  description?: string | null;
+  managerId: number;
+  archived: boolean;
+  createdById: number;
+  createdAt: string;
+  updatedAt: string;
+  manager?: UserLite | null;
+  members?: SalesTeamMember[];
+}
+
+// ── SE-028 Manager team task view ────────────────────────────────────────────
+
+export interface TeamMemberTaskRow {
+  userId: number;
+  name: string;
+  email?: string | null;
+  total: number;
+  completed: number;
+  pending: number;
+  overdue: number;
+  blocked: number;
+  completionRate: number;
+}
+
+export interface TeamTasksResponse {
+  kpis: { total: number; completed: number; pending: number; overdue: number; blocked: number; completionRate: number };
+  members: TeamMemberTaskRow[];
+  tasks: SalesTask[];
+}
+
+// ── Manager + Executive dashboards ───────────────────────────────────────────
+
+export interface ManagerMemberRow {
+  userId: number;
+  name: string;
+  email?: string | null;
+  target: number;
+  achieved: number;
+  achievementPct: number;
+  incentiveEarned: number;
+  totalTasks: number;
+  completedTasks: number;
+  completionRate: number;
+  overdueTasks: number;
+  wonDeals: number;
+}
+
+export interface ManagerDashboard {
+  period: string;
+  kpis: {
+    memberCount: number;
+    target: number;
+    achieved: number;
+    attainmentPct: number;
+    totalTasks: number;
+    completedTasks: number;
+    taskCompletionRate: number;
+    overdueTasks: number;
+    incentiveRunRate: number;
+  };
+  members: ManagerMemberRow[];
+  topPerformers: ManagerMemberRow[];
+  bottomPerformers: ManagerMemberRow[];
+}
+
+export interface ExecutiveTeamRow {
+  teamId: number;
+  name: string;
+  manager?: string | null;
+  memberCount: number;
+  target: number;
+  achieved: number;
+  attainmentPct: number;
+}
+
+export interface ExecutiveDashboard {
+  period: string;
+  revenue: { wonThisMonth: number; pipelineValue: number; forecast: number };
+  target: { target: number; achieved: number; attainmentPct: number };
+  teams: ExecutiveTeamRow[];
+  topTeams: ExecutiveTeamRow[];
+  bottomTeams: ExecutiveTeamRow[];
 }

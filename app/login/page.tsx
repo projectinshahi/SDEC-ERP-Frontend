@@ -8,14 +8,18 @@ import { ShieldCheck, BarChart4, Users2, Activity } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
-  // If user is already authenticated, redirect straight to dashboard
+  // If user is already authenticated, redirect based on role
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace('/dashboard');
+    if (!isLoading && isAuthenticated && user) {
+      if (user.roleName === 'SuperAdmin' || user.role === 'SuperAdmin') {
+        router.replace('/master-dashboard');
+      } else {
+        router.replace('/modules');
+      }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, router, user]);
 
   // Render a full-page loading loader if auth state is initializing and we're redirecting
   if (isLoading || isAuthenticated) {
