@@ -379,6 +379,30 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: 'Configure stalled-deal thresholds and pipeline settings',
         module: 'sales',
       },
+      {
+        key: 'sales.team.manage',
+        label: 'Manage Teams',
+        description: 'Create, edit and archive sales teams and manage membership',
+        module: 'sales',
+      },
+      {
+        key: 'sales.targets.manage',
+        label: 'Manage Targets',
+        description: "Set and edit other team members' performance targets",
+        module: 'sales',
+      },
+      {
+        key: 'sales.incentive.manage',
+        label: 'Manage Incentives',
+        description: 'Configure per-BDE incentive slab structures',
+        module: 'sales',
+      },
+      {
+        key: 'sales.reports.view',
+        label: 'Org Reporting & Analytics',
+        description: 'Organization-wide reporting and executive analytics visibility (Director/CEO)',
+        module: 'sales',
+      },
     ],
   },
 ];

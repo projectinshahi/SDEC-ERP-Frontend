@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Building2, Link2 } from 'lucide-react';
+import { Building2, Link2, FolderKanban } from 'lucide-react';
 import type { Deal } from '@/lib/types/leadLifecycle';
 
 interface DealCardProps {
@@ -24,6 +24,10 @@ function avatar(name: string) {
 
 const money = (n: number) =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+
+/** Lightly humanize a status string: "in_progress" -> "In Progress". */
+const humanizeStatus = (s: string) =>
+  s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 /** A draggable deal card for the deal pipeline board. */
 export function DealCard({ deal, draggable, isDragging, onDragStart, onDragEnd }: DealCardProps) {
@@ -53,6 +57,18 @@ export function DealCard({ deal, draggable, isDragging, onDragStart, onDragEnd }
           <Building2 size={12} className="shrink-0" />
           {deal.customer.company}
         </p>
+      )}
+
+      {deal.linkedProject && (
+        <div className="mt-2">
+          <span
+            className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+            title={`Linked project: ${deal.linkedProject.name}`}
+          >
+            <FolderKanban size={11} className="shrink-0" />
+            Project: {humanizeStatus(deal.linkedProject.status)}
+          </span>
+        </div>
       )}
 
       <div className="flex items-center justify-between mt-3">

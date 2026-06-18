@@ -14,10 +14,11 @@ import {
   Plus,
   AlertTriangle,
   CalendarClock,
-  CalendarDays,
   CheckCircle2,
   Ban,
   Filter,
+  Repeat,
+  ChevronDown,
 } from 'lucide-react';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
@@ -29,6 +30,8 @@ import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuar
 import { SalesTaskCard } from '@/components/sales-execution/SalesTaskCard';
 import { CreateSalesTaskModal } from '@/components/sales-execution/CreateSalesTaskModal';
 import { BlockTaskModal } from '@/components/sales-execution/BlockTaskModal';
+import { CompleteTaskModal } from '@/components/sales-execution/CompleteTaskModal';
+import { RecurringTasksList } from '@/components/sales-execution/RecurringTasksList';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -125,6 +128,10 @@ function SalesTasksPageInner() {
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
   const [blockTask, setBlockTask] = useState<SalesTask | null>(null);
+  const [completeTask, setCompleteTask] = useState<SalesTask | null>(null);
+
+  // SE-027 — collapsible recurring tasks section.
+  const [showRecurring, setShowRecurring] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -355,6 +362,7 @@ function SalesTasksPageInner() {
                       key={task.id}
                       task={task}
                       onToggleStatus={handleToggleStatus}
+                      onComplete={(t) => setCompleteTask(t)}
                       onBlock={(t) => setBlockTask(t)}
                       onDelete={handleDelete}
                       canEdit={canEdit}
@@ -368,6 +376,35 @@ function SalesTasksPageInner() {
         </div>
       )}
 
+      {/* SE-027 — Recurring tasks (collapsible) */}
+      <Card className="border border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          onClick={() => setShowRecurring((v) => !v)}
+          aria-expanded={showRecurring}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        >
+          <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-800 dark:text-gray-100">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300">
+              <Repeat size={15} />
+            </span>
+            Recurring Tasks
+          </span>
+          <ChevronDown
+            size={18}
+            className={classNames(
+              'shrink-0 text-gray-400 transition-transform duration-200',
+              showRecurring && 'rotate-180'
+            )}
+          />
+        </button>
+        {showRecurring && (
+          <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-700">
+            <RecurringTasksList />
+          </div>
+        )}
+      </Card>
+
       {/* Modals */}
       <CreateSalesTaskModal
         isOpen={createOpen}
@@ -378,6 +415,12 @@ function SalesTasksPageInner() {
         isOpen={blockTask !== null}
         onClose={() => setBlockTask(null)}
         task={blockTask}
+        onDone={load}
+      />
+      <CompleteTaskModal
+        isOpen={completeTask !== null}
+        onClose={() => setCompleteTask(null)}
+        task={completeTask}
         onDone={load}
       />
     </div>

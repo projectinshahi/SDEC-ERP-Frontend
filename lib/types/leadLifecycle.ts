@@ -61,6 +61,7 @@ export interface Deal {
   owner?: DealOwner | null;
   customer?: { id: number; name: string; company?: string | null } | null;
   lead?: { id: number; title: string } | null;
+  linkedProject?: { id: string; name: string; status: string } | null;
 }
 
 export type ImportValidity = 'valid' | 'invalid' | 'duplicate';

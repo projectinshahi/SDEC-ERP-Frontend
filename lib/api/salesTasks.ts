@@ -7,6 +7,8 @@ import type {
   SalesTaskFilters,
   CreateSalesTaskPayload,
   UpdateSalesTaskPayload,
+  SalesTaskOutcome,
+  TeamTasksResponse,
 } from '@/lib/types/salesExecution';
 
 export async function fetchSalesTasks(filters: SalesTaskFilters = {}): Promise<SalesTask[]> {
@@ -45,4 +47,27 @@ export async function setSalesTaskBlocked(
 
 export async function deleteSalesTask(id: number): Promise<void> {
   await apiClient.delete(`/sales/tasks/${id}`);
+}
+
+/** SE-026.1 — complete a task with an outcome + optional notes. */
+export async function completeSalesTask(
+  id: number,
+  outcome: SalesTaskOutcome,
+  completionNotes?: string,
+): Promise<SalesTask> {
+  const res = await apiClient.put<SalesTask>(`/sales/tasks/${id}/complete`, { outcome, completionNotes });
+  return res.data;
+}
+
+/** SE-028.1 — manager team task view (KPIs + per-member rollup + task list). */
+export async function fetchTeamTasks(
+  filters: { userId?: number; status?: string; priority?: string } = {},
+): Promise<TeamTasksResponse> {
+  const params = new URLSearchParams();
+  if (filters.userId != null) params.set('userId', String(filters.userId));
+  if (filters.status) params.set('status', filters.status);
+  if (filters.priority) params.set('priority', filters.priority);
+  const qs = params.toString();
+  const res = await apiClient.get<TeamTasksResponse>(`/sales/tasks/team${qs ? `?${qs}` : ''}`);
+  return res.data;
 }
