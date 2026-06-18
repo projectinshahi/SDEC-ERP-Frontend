@@ -74,7 +74,7 @@ export default function MasterProjectsPage() {
   const cancelled = sumStatus(CANCELLED);
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* SuperAdmin Projects is monitoring/management only — no project creation
           (creation lives in the Development ERP module). */}
       <ModuleHeader
@@ -95,7 +95,7 @@ export default function MasterProjectsPage() {
       </div>
 
       {/* TOOLBAR */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -291,7 +291,7 @@ function ProjectRow({ project: p }: { project: MasterProject }) {
   const openTasks = Math.max(p.taskTotal - p.taskDone, 0);
   const created = fmtDate(p.createdAt);
   return (
-    <div className="grid grid-cols-12 gap-x-4 gap-y-4 items-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500/40 transition-all p-4">
+    <div className="grid grid-cols-12 gap-x-4 gap-y-4 items-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500/40 transition-all p-4">
       {/* LEFT — identity */}
       <div className="col-span-12 xl:col-span-3 flex items-center gap-3 min-w-0">
         <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
@@ -348,7 +348,7 @@ function ProjectGridCard({ project: p }: { project: MasterProject }) {
   const openTasks = Math.max(p.taskTotal - p.taskDone, 0);
   const created = fmtDate(p.createdAt);
   return (
-    <div className="group flex flex-col h-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/40 transition-all">
+    <div className="group flex flex-col h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/40 transition-all">
       <div className="p-5 flex-1 flex flex-col">
         {/* header */}
         <div className="flex items-start justify-between gap-2 mb-3">
@@ -395,7 +395,7 @@ function ProjectGridCard({ project: p }: { project: MasterProject }) {
       </div>
 
       {/* footer */}
-      <div className="border-t border-slate-100 dark:border-slate-800/60 p-4 bg-slate-50/50 dark:bg-slate-900/50 rounded-b-xl flex items-center justify-between gap-3">
+      <div className="border-t border-slate-100 dark:border-slate-800/60 p-4 bg-slate-50/50 dark:bg-slate-900/50 rounded-b-2xl flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Project Owner</p>
           <OwnerCell owner={p.owner} />

@@ -11,7 +11,6 @@ import {
   ChartCard, DonutChart, CategoryBars, AreaTrend, ActivityFeed, EmptyState,
 } from '@/components/master/MasterKit';
 import { Card } from '@/components/Card';
-import { classNames } from '@/lib/utils';
 import { formatINR } from '@/lib/utils/currency';
 
 export default function MasterSalesPage() {
@@ -44,22 +43,27 @@ export default function MasterSalesPage() {
 
       {/* Forecast highlight + key revenue stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-8 bg-gradient-to-br from-slate-900 to-slate-800 border-0 rounded-2xl shadow-xl overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-            <Wallet className="w-48 h-48 text-white" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-between h-full">
-            <div>
-              <h3 className="text-emerald-400 font-bold text-sm uppercase tracking-widest mb-1">Weighted Pipeline Forecast</h3>
-              <p className="text-slate-400 text-sm">Probability-weighted value of all open deals currently in negotiation.</p>
-            </div>
-            <div className="mt-8 flex items-baseline gap-4">
-              <h2 className="text-5xl md:text-6xl font-extrabold text-white tracking-tight tabular-nums drop-shadow-md">
-                {formatINR(stats.forecast)}
-              </h2>
-              <span className="px-3 py-1 rounded-full text-sm font-bold bg-emerald-500/20 text-emerald-400">
-                {stats.conversionRate}% conv.
+        {/* Forecast highlight — same card shell/typography as StatCard, with a
+            subtle emerald wash so it reads as the hero metric without breaking
+            the unified light design language. */}
+        <Card className="lg:col-span-2 p-6 shadow-sm rounded-2xl relative overflow-hidden border-slate-200 dark:border-slate-800 bg-gradient-to-br from-emerald-50/70 to-transparent dark:from-emerald-900/10">
+          <div className="flex items-start justify-between gap-4 h-full">
+            <div className="flex flex-col justify-between h-full min-w-0">
+              <div>
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2">Weighted Pipeline Forecast</p>
+                <h2 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums">
+                  {formatINR(stats.forecast)}
+                </h2>
+                <p className="text-xs font-medium text-slate-400 mt-2 max-w-md">
+                  Probability-weighted value of all open deals currently in negotiation.
+                </p>
+              </div>
+              <span className="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold w-fit bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
+                {stats.conversionRate}% conversion rate
               </span>
+            </div>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50">
+              <Wallet size={22} />
             </div>
           </div>
         </Card>
@@ -121,25 +125,25 @@ export default function MasterSalesPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-                      <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Deal</th>
-                      <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Stage</th>
-                      <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Owner</th>
-                      <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Value</th>
+                      <th className="py-3.5 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Deal</th>
+                      <th className="py-3.5 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Stage</th>
+                      <th className="py-3.5 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Owner</th>
+                      <th className="py-3.5 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Value</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {topDeals.map((deal) => (
                       <tr key={deal.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="py-3 px-6">
+                        <td className="py-3.5 px-5">
                           <p className="text-sm font-semibold text-slate-900 dark:text-white max-w-xs truncate">{deal.title}</p>
                         </td>
-                        <td className="py-3 px-6">
+                        <td className="py-3.5 px-5">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
                             {deal.stage}
                           </span>
                         </td>
-                        <td className="py-3 px-6 text-sm text-slate-600 dark:text-slate-400">{deal.owner?.name || 'Unassigned'}</td>
-                        <td className="py-3 px-6 text-right text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatINR(deal.amount)}</td>
+                        <td className="py-3.5 px-5 text-sm text-slate-600 dark:text-slate-400">{deal.owner?.name || 'Unassigned'}</td>
+                        <td className="py-3.5 px-5 text-right text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatINR(deal.amount)}</td>
                       </tr>
                     ))}
                   </tbody>

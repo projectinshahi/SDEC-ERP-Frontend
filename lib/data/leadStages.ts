@@ -6,8 +6,16 @@
  * columns, analytics ordering and lead progression.
  */
 
-// The default, ordered stage set. Names match the backend seed exactly.
-export const LEAD_STAGES = ['New', 'Contacted', 'Interested', 'Negotiating'] as const;
+// The default, ordered stage set (sales workflow). Names match the backend seed
+// exactly. Stages are now fully DB-managed at runtime, so this is only a typing
+// fallback — the live board always renders the stages returned by the API.
+export const LEAD_STAGES = [
+  'New',
+  'Discovery Meet',
+  'BRD Shared',
+  'Estimation Planning',
+  'Proposal',
+] as const;
 
 export type LeadStageName = (typeof LEAD_STAGES)[number];
 

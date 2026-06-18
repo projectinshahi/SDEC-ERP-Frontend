@@ -96,7 +96,7 @@ export function MeetingDetailsModal({ isOpen, onClose, meeting, onUpdate, users 
                     <InlineSelect
                       value={meeting.status}
                       options={[
-                        { label: 'Upcoming', value: 'UPCOMING' },
+                        { label: 'Scheduled', value: 'SCHEDULED' },
                         { label: 'Ongoing', value: 'ONGOING' },
                         { label: 'Completed', value: 'COMPLETED' },
                         { label: 'Cancelled', value: 'CANCELLED' }

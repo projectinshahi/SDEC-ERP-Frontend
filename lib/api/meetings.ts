@@ -34,6 +34,8 @@ export interface Meeting {
   project?: MeetingProject;
   organizer?: MeetingUser;
   actionItems?: ActionItem[];
+  /** Live, server-derived status (UPCOMING | ONGOING | COMPLETED | CANCELLED). */
+  computedStatus?: string;
 }
 
 export interface ActionItem {
@@ -49,6 +51,14 @@ export interface ActionItem {
   updatedAt: string;
 }
 
+export interface ActionItemInput {
+  title: string;
+  assignedTo: number;
+  dueDate?: string;
+  priority?: string;
+  description?: string;
+}
+
 export interface CreateMeetingPayload {
   title: string;
   description?: string;
@@ -61,6 +71,44 @@ export interface CreateMeetingPayload {
   meetingLink?: string;
   attendees?: number[];
   notes?: string;
+  actionItems?: ActionItemInput[];
+}
+
+// ─── Analytics & list pagination ────────────────────────────────────────────
+
+export interface MeetingAnalytics {
+  totalMeetings: number;
+  scheduled: number;
+  completed: number;
+  ongoing: number;
+  upcoming: number;
+  cancelled: number;
+  openActionItems: number;
+  meetingTypeCounts: Record<string, number>;
+}
+
+export interface MeetingPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface MeetingListResult {
+  data: Meeting[];
+  pagination: MeetingPagination;
+}
+
+export interface MeetingFilters {
+  search?: string;
+  type?: string;
+  status?: string;
+  projectId?: string;
+  organizerId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface UpdateMeetingPayload {
@@ -79,8 +127,41 @@ export interface UpdateMeetingPayload {
 
 // ─── API Functions ────────────────────────────────────────────────────────────
 
-export const getMeetings = async (): Promise<Meeting[]> => {
-  const response = await api.get<{ success: boolean; data: Meeting[] }>('/meetings');
+/**
+ * Server-side list: search + filters + pagination. Returns the current page of
+ * meetings (each with a live `computedStatus`) plus pagination metadata.
+ */
+export const getMeetings = async (filters: MeetingFilters = {}): Promise<MeetingListResult> => {
+  const params = new URLSearchParams();
+  const set = (k: string, v: unknown) => {
+    if (v !== undefined && v !== null && String(v).trim() !== '' && v !== 'ALL') {
+      params.set(k, String(v));
+    }
+  };
+  set('search', filters.search);
+  set('type', filters.type);
+  set('status', filters.status);
+  set('projectId', filters.projectId);
+  set('organizerId', filters.organizerId);
+  set('dateFrom', filters.dateFrom);
+  set('dateTo', filters.dateTo);
+  set('page', filters.page);
+  set('limit', filters.limit);
+  const qs = params.toString();
+  const response = await api.get<{ success: boolean; data: Meeting[]; pagination: MeetingPagination }>(
+    `/meetings${qs ? `?${qs}` : ''}`,
+  );
+  return {
+    data: response.data.data,
+    pagination: response.data.pagination ?? {
+      total: response.data.data.length, page: 1, limit: response.data.data.length || 10, totalPages: 1,
+    },
+  };
+};
+
+/** Live, organization-wide meeting analytics (KPI counts + per-type counts). */
+export const getMeetingAnalytics = async (): Promise<MeetingAnalytics> => {
+  const response = await api.get<{ success: boolean; data: MeetingAnalytics }>('/meetings/analytics');
   return response.data.data;
 };
 

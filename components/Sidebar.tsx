@@ -172,7 +172,7 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
                 </span>
                 <ChevronDown size={14} className="text-zinc-500" />
               </div>
-              
+
               {/* Dropdown Menu */}
               {!isLoading && projects.length > 0 && (
                 <div className="absolute top-full left-0 mt-1 w-full bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover/project:opacity-100 group-hover/project:visible transition-all duration-200 z-50 py-2">
@@ -217,41 +217,41 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
             const active = item.href ? isActive(item.href) : false;
 
             if (item.label === 'Boards') {
-  const boardActive =
-    pathname === '/dashboard/tasks' ||
-    pathname.startsWith('/dashboard/tasks');
+              const boardActive =
+                pathname === '/dashboard/tasks' ||
+                pathname.startsWith('/dashboard/tasks');
 
-  return (
-    // <SidebarBoardsItem
-    //   key={item.label}
-    //   active={boardActive}
-    //   isCollapsed={isCollapsed}
-    //   mounted={mounted}
-    //   onMobileToggle={onToggle}
-    // />
-//     <SidebarBoardsItem
-//   key={item.label}
-//   active={
-//     pathname === '/dashboard/tasks' ||
-//     pathname.startsWith('/dashboard/tasks')
-//   }
-//   isCollapsed={isCollapsed}
-//   mounted={mounted}
-//   onMobileToggle={onToggle}
-// />
-<SidebarBoardsItem
-  key={item.label}
-  active={
-    pathname === '/dashboard/tasks' ||
-    pathname.startsWith('/dashboard/tasks')
-  }
-  isCollapsed={isCollapsed}
-  setIsCollapsed={setIsCollapsed}
-  mounted={mounted}
-  onMobileToggle={onToggle}
-/>
-  );
-}
+              return (
+                // <SidebarBoardsItem
+                //   key={item.label}
+                //   active={boardActive}
+                //   isCollapsed={isCollapsed}
+                //   mounted={mounted}
+                //   onMobileToggle={onToggle}
+                // />
+                //     <SidebarBoardsItem
+                //   key={item.label}
+                //   active={
+                //     pathname === '/dashboard/tasks' ||
+                //     pathname.startsWith('/dashboard/tasks')
+                //   }
+                //   isCollapsed={isCollapsed}
+                //   mounted={mounted}
+                //   onMobileToggle={onToggle}
+                // />
+                <SidebarBoardsItem
+                  key={item.label}
+                  active={
+                    pathname === '/dashboard/tasks' ||
+                    pathname.startsWith('/dashboard/tasks')
+                  }
+                  isCollapsed={isCollapsed}
+                  setIsCollapsed={setIsCollapsed}
+                  mounted={mounted}
+                  onMobileToggle={onToggle}
+                />
+              );
+            }
 
             return (
               <div key={item.label} className="relative group">
