@@ -42,10 +42,16 @@ export interface MasterProject {
   createdAt: string | null;
   owner: OwnerRef | null;
   memberCount: number;
+  /** First few member names (for the avatar stack); `users` has no photo field. */
+  members: string[];
+  /** No column on `projects` yet — null today, renders an honest placeholder. */
+  client: string | null;
+  category: string | null;
   blockerCount: number;
   openBlockerCount: number;
-  taskTotal: number;
-  taskDone: number;
+  totalPoints: number;
+  completedPoints: number;
+  remainingPoints: number;
   progress: number;
   overdue: boolean;
 }
@@ -54,10 +60,14 @@ export interface MasterProjectsData {
   stats: {
     total: number;
     active: number;
-    completed: number;
-    onHold: number;
+    onTrack: number;
+    atRisk: number;
     delayed: number;
+    onHold: number;
+    planning: number;
+    completed: number;
     archived: number;
+    cancelled: number;
   };
   charts: {
     statusDistribution: DistributionPoint[];

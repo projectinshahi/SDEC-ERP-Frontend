@@ -4,11 +4,15 @@ import { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import {
   Briefcase, AlertTriangle, Target, TrendingUp, Activity, Bell, DollarSign, Users,
-  Loader2, CheckCircle2, CalendarDays, Bug, Layers, UserPlus, RefreshCw, Award, ChevronRight,
+  Loader2, CheckCircle2, CalendarDays, Bug, Layers, UserPlus, RefreshCw, Award, ChevronRight, FileText,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { fetchMasterAnalytics, MasterDashboardAnalytics, MasterDashboardActivity } from '@/lib/api/masterDashboard';
 import { formatINR } from '@/lib/utils/currency';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { getModuleAccess } from '@/lib/permissions/moduleAccess';
+import { useToast } from '@/components/ToastProvider';
+import { generateMasterDashboardPdf, type MasterDashboardReportModel } from '@/lib/reports/masterDashboardReport';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   Tooltip as RechartsTooltip, AreaChart, Area, CartesianGrid,
@@ -17,14 +21,27 @@ import {
 // Enterprise chart palette — consistent across every widget on the dashboard.
 const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
+// Feature flag — temporarily hides selected infographic cards (Revenue Trend,
+// Deal Pipeline, Lead Sources) while preserving their full implementation
+// (components, data wiring, analytics and chart configs stay intact).
+// Flip to `true` to reactivate these cards in a future release.
+const SHOW_FUTURE_ANALYTICS: boolean = false;
+
 export default function MasterDashboardPage() {
   const [data, setData] = useState<MasterDashboardAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const loadData = async () => {
+  // `refresh` re-fetches without blanking the page to a skeleton, so the
+  // header refresh control can show its own inline loading (spinning icon).
+  const loadData = async ({ refresh = false }: { refresh?: boolean } = {}) => {
     try {
-      setIsLoading(true);
+      if (refresh) setIsRefreshing(true);
+      else setIsLoading(true);
       setError(null);
       const analyticsData = await fetchMasterAnalytics();
       setData(analyticsData);
@@ -37,7 +54,8 @@ export default function MasterDashboardPage() {
       else if (status === 401) setError('Your session has expired. Please sign in again.');
       else setError('Failed to load dashboard data. Please check your connection and try again.');
     } finally {
-      setIsLoading(false);
+      if (refresh) setIsRefreshing(false);
+      else setIsLoading(false);
     }
   };
 
@@ -74,7 +92,7 @@ export default function MasterDashboardPage() {
         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Unable to Load Dashboard</h2>
         <p className="text-slate-500 max-w-sm">{error || 'Unknown error occurred.'}</p>
         <button
-          onClick={loadData}
+          onClick={() => loadData()}
           className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition inline-flex items-center gap-2"
         >
           <RefreshCw className="w-4 h-4" /> Retry
@@ -90,13 +108,97 @@ export default function MasterDashboardPage() {
   const ticketResolutionPct = stats.tickets.total > 0 ? Math.round((stats.tickets.resolved / stats.tickets.total) * 100) : 0;
   const meetingCompletionPct = stats.meetings.total > 0 ? Math.round((stats.meetings.completed / stats.meetings.total) * 100) : 0;
 
+  // ── Export the live dashboard as a branded, A4 executive PDF ───────────────
+  const handleExportPdf = async () => {
+    if (isExporting) return;
+    // Verify permission before generating (defense-in-depth — the layout
+    // already restricts this route to SuperAdmin).
+    if (!getModuleAccess(user).master) {
+      toast('You do not have permission to export this report.', 'error');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      // Empty-data safe: coerce every figure to a number (missing → 0).
+      const n = (v: number | null | undefined) => Number(v ?? 0);
+      const chartRows = (points: { label: string; value: number }[]) =>
+        (points ?? []).map((p) => ({ label: p.label || '—', value: String(n(p.value)) }));
+
+      const model: MasterDashboardReportModel = {
+        reportTitle: 'Master Dashboard Report',
+        subtitle: 'Organization-wide executive summary',
+        generatedAt: new Date(),
+        kpis: [
+          { label: 'Total Revenue', value: formatINR(n(stats.sales.revenue)), sub: `${n(stats.sales.wonDeals)} deals won` },
+          { label: 'Sales Pipeline', value: formatINR(n(stats.sales.pipelineValue)), sub: `${n(stats.sales.openDeals)} open deals` },
+          { label: 'Total Projects', value: String(n(stats.projects.total)) },
+          { label: 'Active Projects', value: String(n(stats.projects.active)), sub: `${n(stats.projects.total)} total` },
+          { label: 'Open Tickets', value: String(n(stats.tickets.open)), sub: `${n(stats.tickets.critical)} critical` },
+          { label: 'Meetings', value: String(n(stats.meetings.total)), sub: `${n(stats.meetings.upcoming)} upcoming` },
+        ],
+        departments: [
+          { title: 'Sales', rows: [
+            { label: 'Revenue This Month', value: formatINR(n(stats.sales.revenue)) },
+            { label: 'Deals Won', value: String(n(stats.sales.wonDeals)) },
+            { label: 'Pipeline Value', value: formatINR(n(stats.sales.pipelineValue)) },
+            { label: 'New Leads', value: String(n(stats.sales.totalLeads)) },
+          ] },
+          { title: 'Projects', rows: [
+            { label: 'Active Projects', value: String(n(stats.projects.active)) },
+            { label: 'Delayed', value: String(n(stats.projects.delayed)) },
+            { label: 'Completed', value: String(n(stats.projects.completed)) },
+            { label: 'On Track', value: String(Math.max(0, n(stats.projects.active) - n(stats.projects.delayed))) },
+          ] },
+          { title: 'Tickets', rows: [
+            { label: 'Open Tickets', value: String(n(stats.tickets.open)) },
+            { label: 'Critical', value: String(n(stats.tickets.critical)) },
+            { label: 'Escalated', value: String(n(stats.tickets.escalated)) },
+            { label: 'Resolved', value: String(n(stats.tickets.resolved)) },
+          ] },
+          { title: 'Meetings', rows: [
+            { label: 'Total Meetings', value: String(n(stats.meetings.total)) },
+            { label: 'Upcoming', value: String(n(stats.meetings.upcoming)) },
+            { label: 'Completed', value: String(n(stats.meetings.completed)) },
+            { label: 'Cancelled', value: String(n(stats.meetings.cancelled)) },
+          ] },
+        ],
+        // Mirror exactly the charts currently visible on the dashboard.
+        analytics: [
+          { title: 'Project Status', rows: chartRows(charts.projectStatus) },
+          { title: 'Ticket Severity', rows: chartRows(charts.ticketSeverity) },
+          { title: 'Meeting Status', rows: chartRows(charts.meetingStatus) },
+          { title: 'Bug Priority', rows: chartRows(charts.bugPriority) },
+          ...(SHOW_FUTURE_ANALYTICS ? [
+            { title: 'Revenue Trend', rows: charts.revenueTrend.map((d) => ({ label: d.label || '—', value: formatINR(n(d.revenue)) })) },
+            { title: 'Deal Pipeline', rows: chartRows(charts.dealStage) },
+            { title: 'Lead Sources', rows: chartRows(charts.leadSource) },
+          ] : []),
+        ],
+        activities: activities.map((a) => ({
+          actor: a.actor || 'System',
+          description: a.description || '',
+          time: a.created_at ? new Date(a.created_at).toLocaleString() : '—',
+        })),
+        alerts: alerts.map((al) => ({ title: al.title, desc: al.desc, type: al.type, time: al.time })),
+      };
+
+      await generateMasterDashboardPdf(model);
+      toast('Master Dashboard report generated. Choose “Save as PDF” to download.', 'success');
+    } catch (err) {
+      console.error('Master dashboard PDF export failed', err);
+      toast('Could not generate the PDF report. Please try again.', 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            SuperAdmin Control Center
+            Master Dashboard Center
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
             Organization-wide executive visibility &amp; analytics — live across every module.
@@ -104,24 +206,35 @@ export default function MasterDashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={loadData}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            type="button"
+            onClick={handleExportPdf}
+            disabled={isExporting}
+            title="Download Master Dashboard report as PDF"
+            aria-label="Export Master Dashboard report as PDF"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm transition disabled:opacity-70 disabled:cursor-wait"
           >
-            <RefreshCw className="w-4 h-4" /> Refresh
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+            {isExporting ? 'Generating…' : 'Export PDF'}
           </button>
-          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-sm font-semibold border border-emerald-200 dark:border-emerald-800/50">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live Data
-          </span>
+          <button
+            type="button"
+            onClick={() => loadData({ refresh: true })}
+            disabled={isRefreshing}
+            title="Refresh Dashboard"
+            aria-label="Refresh Dashboard"
+            className="inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white transition disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={classNames('w-4 h-4', isRefreshing && 'animate-spin')} />
+          </button>
         </div>
       </header>
 
       {/* Executive KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-        <KPICard title="Total Revenue" value={formatINR(stats.sales.revenue)} sub={`${stats.sales.wonDeals} deals won`} icon={DollarSign} color="bg-blue-500" bgGradient="from-blue-500/10 to-transparent" />
-        <KPICard title="Active Projects" value={String(stats.projects.active)} sub={`${stats.projects.total} total`} icon={Briefcase} color="bg-indigo-500" bgGradient="from-indigo-500/10 to-transparent" />
-        <KPICard title="Open Tickets" value={String(stats.tickets.open)} sub={`${stats.tickets.critical} critical`} icon={AlertTriangle} color="bg-rose-500" bgGradient="from-rose-500/10 to-transparent" />
-        <KPICard title="Sales Pipeline" value={formatINR(stats.sales.pipelineValue)} sub={`${stats.sales.openDeals} open deals`} icon={TrendingUp} color="bg-emerald-500" bgGradient="from-emerald-500/10 to-transparent" />
+        <KPICard title="Total Revenue" value={formatINR(stats.sales.revenue)} sub={`${stats.sales.wonDeals} deals won`} icon={DollarSign} tone="blue" />
+        <KPICard title="Active Projects" value={String(stats.projects.active)} sub={`${stats.projects.total} total`} icon={Briefcase} tone="indigo" />
+        <KPICard title="Open Tickets" value={String(stats.tickets.open)} sub={`${stats.tickets.critical} critical`} icon={AlertTriangle} tone="rose" />
+        <KPICard title="Sales Pipeline" value={formatINR(stats.sales.pipelineValue)} sub={`${stats.sales.openDeals} open deals`} icon={TrendingUp} tone="emerald" />
       </div>
 
       {/* Secondary stat strip */}
@@ -251,51 +364,66 @@ export default function MasterDashboardPage() {
           <Activity className="w-5 h-5 text-blue-500" /> Organization Analytics
         </h2>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Revenue trend spans 2 cols on large screens */}
-          <ChartCard title="Revenue Trend" subtitle="Won-deal value · last 6 months" className="lg:col-span-2">
-            {charts.revenueTrend.some((d) => d.revenue > 0) ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={charts.revenueTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={70} tickFormatter={(v) => formatINR(Number(v))} />
-                  <RechartsTooltip formatter={(v: any) => [formatINR(Number(v)), 'Revenue']} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }} />
-                  <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} fill="url(#revGradient)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <ChartEmpty label="No revenue recorded yet" />
-            )}
-          </ChartCard>
+        {/*
+          ── Future Release · temporarily hidden infographic cards ─────────────
+          Revenue Trend, Deal Pipeline and Lead Sources are hidden for now but
+          fully preserved — components, data wiring, analytics calculations and
+          chart configs are untouched. To restore them, flip
+          SHOW_FUTURE_ANALYTICS (declared at the top of this file) to `true`;
+          the original 3-column layout returns automatically.
+        */}
+        {SHOW_FUTURE_ANALYTICS && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Future Release · Revenue Trend Card — spans 2 cols on large screens */}
+            <ChartCard title="Revenue Trend" subtitle="Won-deal value · last 6 months" className="lg:col-span-2">
+              {charts.revenueTrend.some((d) => d.revenue > 0) ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={charts.revenueTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={70} tickFormatter={(v) => formatINR(Number(v))} />
+                    <RechartsTooltip formatter={(v: any) => [formatINR(Number(v)), 'Revenue']} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }} />
+                    <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} fill="url(#revGradient)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <ChartEmpty label="No revenue recorded yet" />
+              )}
+            </ChartCard>
 
+            {/* Future Release · Deal Pipeline Card */}
+            <ChartCard title="Deal Pipeline" subtitle="Deals by stage">
+              <CategoryBars data={charts.dealStage} />
+            </ChartCard>
+
+            {/* Future Release · Lead Sources Card */}
+            <ChartCard title="Lead Sources" subtitle="Where leads originate">
+              <CategoryBars data={charts.leadSource} />
+            </ChartCard>
+          </div>
+        )}
+
+        {/* Active analytics — reflowed into a balanced 2-column grid so no gaps
+            remain where the hidden cards used to sit. */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ChartCard title="Project Status" subtitle="Distribution across all projects">
             <DonutChart data={charts.projectStatus} />
-          </ChartCard>
-
-          <ChartCard title="Deal Pipeline" subtitle="Deals by stage">
-            <CategoryBars data={charts.dealStage} />
           </ChartCard>
 
           <ChartCard title="Ticket Severity" subtitle="Incidents by severity">
             <DonutChart data={charts.ticketSeverity} />
           </ChartCard>
 
-          <ChartCard title="Lead Sources" subtitle="Where leads originate">
-            <CategoryBars data={charts.leadSource} />
-          </ChartCard>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ChartCard title="Meeting Status" subtitle="Across the organization">
             <DonutChart data={charts.meetingStatus} />
           </ChartCard>
+
           <ChartCard title="Bug Priority" subtitle="Open + resolved bugs by priority">
             <CategoryBars data={charts.bugPriority} />
           </ChartCard>
@@ -309,22 +437,30 @@ export default function MasterDashboardPage() {
 
 /* ──────────────────────────── Subcomponents ──────────────────────────────── */
 
-function KPICard({ title, value, sub, icon: Icon, color, bgGradient }: any) {
+// KPI icon tints — the same soft-tile language the Department Summary cards use,
+// so the top KPI row reads as part of the same card system (no gradient, no
+// solid white-on-color tiles, identical border / radius / shadow / hover).
+const KPI_TONES: Record<string, string> = {
+  blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+  indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+  rose: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
+  emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+};
+
+function KPICard({ title, value, sub, icon: Icon, tone }: any) {
   return (
-    <Card className={classNames('relative overflow-hidden border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group bg-gradient-to-br', bgGradient)}>
-      <CardBody className="p-6">
-        <div className="flex justify-between items-start">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">{title}</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white truncate">{value}</h3>
-          </div>
-          <div className={classNames('w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transform group-hover:scale-110 transition-transform duration-300 shrink-0', color)}>
-            <Icon className="w-6 h-6" />
-          </div>
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 group p-6">
+      <div className="flex justify-between items-start gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">{title}</p>
+          <h3 className="text-2xl font-bold text-slate-900 dark:text-white truncate">{value}</h3>
         </div>
-        <p className="mt-4 text-sm font-semibold text-slate-500 dark:text-slate-400">{sub}</p>
-      </CardBody>
-    </Card>
+        <div className={classNames('w-11 h-11 rounded-xl flex items-center justify-center shrink-0', KPI_TONES[tone] || KPI_TONES.blue)}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+      <p className="mt-4 text-sm font-semibold text-slate-500 dark:text-slate-400 truncate">{sub}</p>
+    </div>
   );
 }
 
