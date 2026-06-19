@@ -13,6 +13,12 @@ import {
 import { Card } from '@/components/Card';
 import { formatINR } from '@/lib/utils/currency';
 
+// Feature flag — temporarily hides selected infographic cards (Revenue Trend,
+// Pipeline by Stage / "Deal Pipeline", Lead Sources) while preserving their
+// full implementation (components, data wiring and chart configs stay intact).
+// Flip to `true` to reactivate these cards in a future release.
+const SHOW_FUTURE_ANALYTICS: boolean = false;
+
 export default function MasterSalesPage() {
   const { data, status, errorMsg, reload } = useMasterResource(fetchMasterSales);
 
@@ -91,18 +97,36 @@ export default function MasterSalesPage() {
       </div>
 
       {/* Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ChartCard title="Revenue Trend" subtitle="Won-deal value · last 6 months" className="lg:col-span-2">
-          <AreaTrend data={charts.revenueTrend} dataKey="revenue" color="#10b981" valueFormatter={formatINR} />
-        </ChartCard>
+      {/*
+        ── Future Release · temporarily hidden infographic cards ───────────────
+        Revenue Trend, Pipeline by Stage ("Deal Pipeline") and Lead Sources are
+        hidden for now but fully preserved — components, data wiring and chart
+        configs are untouched. To restore them, flip SHOW_FUTURE_ANALYTICS
+        (declared at the top of this file) to `true`; the original 3-column
+        layout returns automatically.
+      */}
+      {SHOW_FUTURE_ANALYTICS && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Future Release · Revenue Trend Card — spans 2 cols on large screens */}
+          <ChartCard title="Revenue Trend" subtitle="Won-deal value · last 6 months" className="lg:col-span-2">
+            <AreaTrend data={charts.revenueTrend} dataKey="revenue" color="#10b981" valueFormatter={formatINR} />
+          </ChartCard>
+          {/* Future Release · Deal Pipeline Card */}
+          <ChartCard title="Pipeline by Stage" subtitle="Deal count per stage">
+            <CategoryBars data={charts.dealStage} />
+          </ChartCard>
+          {/* Future Release · Lead Sources Card */}
+          <ChartCard title="Lead Sources" subtitle="Where leads originate">
+            <CategoryBars data={charts.leadSource} />
+          </ChartCard>
+        </div>
+      )}
+
+      {/* Active analytics — reflowed into a balanced 2-column grid so no gaps
+          remain where the hidden cards used to sit. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Deal Status" subtitle="Open · won · lost">
           <DonutChart data={charts.dealStatus} />
-        </ChartCard>
-        <ChartCard title="Pipeline by Stage" subtitle="Deal count per stage">
-          <CategoryBars data={charts.dealStage} />
-        </ChartCard>
-        <ChartCard title="Lead Sources" subtitle="Where leads originate">
-          <CategoryBars data={charts.leadSource} />
         </ChartCard>
         <ChartCard title="Lead Stages" subtitle="Funnel distribution">
           <DonutChart data={charts.leadStage} />

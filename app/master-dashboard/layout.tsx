@@ -12,7 +12,9 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-// Hardcoded sidebar items for the Master Dashboard
+// Hardcoded sidebar items for the Master Dashboard.
+// Order is intentional and follows the business workflow:
+// Dashboard → Projects → Sales → Tickets → Meetings.
 const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
   {
     label: 'Dashboard',
@@ -27,15 +29,15 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     module: null,
   },
   {
-    label: 'Tickets',
-    href: '/master-dashboard/tickets',
-    icon: 'AlertTriangle',
-    module: null,
-  },
-  {
     label: 'Sales',
     href: '/master-dashboard/sales',
     icon: 'Target',
+    module: null,
+  },
+  {
+    label: 'Tickets',
+    href: '/master-dashboard/tickets',
+    icon: 'AlertTriangle',
     module: null,
   },
   {
@@ -44,18 +46,6 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     icon: 'CalendarDays',
     module: null,
   },
-  {
-    label: 'Settings',
-    href: '/master-dashboard/settings',
-    icon: 'ShieldCheck',
-    module: null,
-  },
-  {
-    label: 'Business Hub',
-    href: '/master-dashboard/business-hub',
-    icon: 'LayoutGrid',
-    module: null,
-  }
 ];
 
 export default function MasterDashboardLayout({ children }: LayoutProps) {

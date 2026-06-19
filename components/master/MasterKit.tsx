@@ -223,10 +223,16 @@ export function ChartEmpty({ label = 'No data available' }: { label?: string }) 
 
 export function ModuleHeader({
   icon: Icon, title, subtitle, accent = 'bg-indigo-600', shadow = 'shadow-indigo-500/20',
-  actions, onRefresh,
+  actions, onRefresh, hideLivePill = false, refreshIconOnly = false, isRefreshing = false,
 }: {
   icon: any; title: string; subtitle: string; accent?: string; shadow?: string;
   actions?: ReactNode; onRefresh?: () => void;
+  /** Hide the "Live Data" pill (opt-in per module; default keeps it visible). */
+  hideLivePill?: boolean;
+  /** Render Refresh as a compact icon-only control with a "Refresh Dashboard" tooltip. */
+  refreshIconOnly?: boolean;
+  /** Drives the spinner + disabled state on the refresh control (icon-only mode). */
+  isRefreshing?: boolean;
 }) {
   return (
     <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
@@ -242,17 +248,32 @@ export function ModuleHeader({
       <div className="flex items-center gap-3">
         {actions}
         {onRefresh && (
-          <button
-            onClick={onRefresh}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-          >
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </button>
+          refreshIconOnly ? (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              title="Refresh Dashboard"
+              aria-label="Refresh Dashboard"
+              className="inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={classNames('w-4 h-4', isRefreshing && 'animate-spin')} />
+            </button>
+          ) : (
+            <button
+              onClick={onRefresh}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            >
+              <RefreshCw className="w-4 h-4" /> Refresh
+            </button>
+          )
         )}
-        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-sm font-semibold border border-emerald-200 dark:border-emerald-800/50">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          Live Data
-        </span>
+        {!hideLivePill && (
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-sm font-semibold border border-emerald-200 dark:border-emerald-800/50">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live Data
+          </span>
+        )}
       </div>
     </header>
   );
@@ -402,23 +423,27 @@ export function LineTrend({
 }
 
 export function CategoryBars({
-  data, valueFormatter,
+  data, valueFormatter, dense = false,
 }: {
   data: Array<Point & { amount?: number }>; valueFormatter?: (n: number) => string;
+  /** Compact layout — thinner bars, shorter rows, narrower labels (executive-friendly). */
+  dense?: boolean;
 }) {
   if (!data || data.length === 0) return <ChartEmpty />;
+  const rowHeight = dense ? 30 : 38;
+  const minHeight = dense ? 140 : 220;
   return (
-    <ResponsiveContainer width="100%" height={Math.max(220, data.length * 38)}>
+    <ResponsiveContainer width="100%" height={Math.max(minHeight, data.length * rowHeight)}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-        <XAxis type="number" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
-        <YAxis type="category" dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={120} />
+        <XAxis type="number" tick={{ fontSize: dense ? 11 : 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+        <YAxis type="category" dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={dense ? 96 : 120} />
         <RechartsTooltip
           cursor={{ fill: 'rgba(99,102,241,0.06)' }}
           contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
           formatter={(v: any) => (valueFormatter ? valueFormatter(Number(v)) : v)}
         />
-        <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={18}>
+        <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={dense ? 12 : 18}>
           {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
         </Bar>
       </BarChart>
