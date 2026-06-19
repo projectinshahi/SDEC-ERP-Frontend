@@ -10,6 +10,8 @@ export interface UserDbResponse {
   email: string;
   role: string;
   status: string;
+  /** Real account creation timestamp (ISO) — null on legacy rows without one. */
+  createdAt?: string | null;
 }
 
 /**

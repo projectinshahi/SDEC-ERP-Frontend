@@ -61,13 +61,17 @@ interface SidebarProps {
   items: SidebarItem[];
   isOpen: boolean;
   onToggle: () => void;
+  /** Label of the module the user is currently inside (Development / Sales / …). */
+  moduleLabel?: string;
+  /** Whether to show the project picker (Development module only). */
+  showProjectPicker?: boolean;
 }
 
 /**
  * Sidebar component with collapsible desktop menu and responsive mobile drawer.
  * Items are pre-filtered by the parent (Layout) based on permissions before being passed in.
  */
-export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
+export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicker = true }: SidebarProps) => {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { projects, activeProject, setActiveProjectId, isLoading } = useProject();
@@ -138,9 +142,14 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
                 <LayoutDashboard size={18} className="text-white" />
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent tracking-tight">
-                SDEC ERP
-              </h1>
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent tracking-tight leading-none">
+                  SDEC ERP
+                </h1>
+                {moduleLabel && (
+                  <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mt-1 truncate">{moduleLabel}</span>
+                )}
+              </div>
             </div>
           ) : (
             <div className="mx-auto">
@@ -158,8 +167,8 @@ export const Sidebar = ({ items, isOpen, onToggle }: SidebarProps) => {
           </button>
         </div>
 
-        {/* Project Selector */}
-        {user && hasPermission('project.view') && (
+        {/* Project Selector — Development module only */}
+        {user && showProjectPicker && hasPermission('project.view') && (
           <div className={classNames(
             "px-4 py-3 border-b border-zinc-900/60 transition-all duration-300",
             isCollapsed ? "opacity-0 invisible h-0 overflow-hidden py-0 border-none" : "opacity-100 visible"

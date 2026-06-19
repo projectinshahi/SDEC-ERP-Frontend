@@ -89,8 +89,8 @@ export function LoginForm() {
 
       // Direct call to useAuth login action
       await login(trimmedEmail, trimmedPassword);
-      // Successful auth - redirect to dashboard
-      router.push('/dashboard');
+      // Successful auth → role-based module selection entry point.
+      router.push('/modules');
     } catch (err: any) {
       setAuthError(err?.message || 'Authentication failed. Please verify your credentials.');
       setIsLoading(false);
