@@ -37,8 +37,8 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
             <Menu size={20} className="text-gray-900" />
           </button>
 
-          {/* Center: App Title */}
-          <Link href="/dashboard" className="text-lg font-bold text-gray-900 hidden md:block">
+          {/* Center: App Title — links to the role-based module switcher (module-neutral) */}
+          <Link href="/modules" className="text-lg font-bold text-gray-900 hidden md:block">
             ERP System
           </Link>
         </div>

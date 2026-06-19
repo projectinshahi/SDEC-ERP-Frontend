@@ -1,0 +1,81 @@
+/**
+ * Top-level module isolation.
+ *
+ * The ERP is split into separate "products": Development, Sales, User Management
+ * and (SuperAdmin only) the Master Dashboard. This module is the single source of
+ * truth for:
+ *   • which top-level modules a user may access (role + RBAC permissions), and
+ *   • which top-level module a route / sidebar item belongs to.
+ *
+ * Used by the role-based entry screen (/modules), the dashboard layout guard, and
+ * the module-aware sidebar so navigation, routes and menus never overlap.
+ */
+
+import type { ModuleName } from './permission.types';
+
+export type TopModule = 'development' | 'sales' | 'user' | 'master';
+
+export interface ModuleAccessUser {
+  roleName?: string;
+  role?: string;
+  permissions?: string[];
+}
+
+export const MODULE_LABELS: Record<TopModule, string> = {
+  development: 'Development',
+  sales: 'Sales',
+  user: 'User Management',
+  master: 'Master Dashboard',
+};
+
+/** Lower-cases and strips spaces/underscores/hyphens so "Super Admin" === "superadmin". */
+export function normalizeRole(value?: string | null): string {
+  return (value || '').toLowerCase().replace(/[\s_-]/g, '');
+}
+
+/**
+ * Which top-level modules the user may access, decided by BOTH the normalised
+ * role name and the live RBAC permission set (so custom roles work too).
+ */
+export function getModuleAccess(user: ModuleAccessUser | null | undefined): Record<TopModule, boolean> {
+  const r = normalizeRole(user?.roleName) || normalizeRole(user?.role);
+  const perms = user?.permissions ?? [];
+  const hasAny = (...prefixes: string[]) => prefixes.some((pre) => perms.some((p) => p.startsWith(pre)));
+
+  const isSuper = r === 'superadmin';
+  const isAdmin = r === 'admin' || isSuper;
+
+  return {
+    master: isSuper,
+    development: isAdmin || r === 'developer' || r === 'dev'
+      || hasAny('project.', 'task.', 'sprints.', 'bugs.', 'blockers.', 'meetings.'),
+    sales: isAdmin || r === 'sales' || hasAny('sales.'),
+    user: isAdmin || hasAny('user.', 'role.'),
+  };
+}
+
+/** The first module (in priority order) the user can access — used as a landing fallback. */
+export function primaryModule(access: Record<TopModule, boolean>): TopModule | null {
+  return (['master', 'development', 'sales', 'user'] as TopModule[]).find((m) => access[m]) ?? null;
+}
+
+/** Routes that are shared across modules and must NOT be module-gated. */
+const SHARED_PREFIXES = ['/dashboard/profile', '/change-password'];
+export function isSharedPath(pathname: string): boolean {
+  return SHARED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'));
+}
+
+/** The top-level module that owns a given route. */
+export function moduleForPath(pathname: string): TopModule {
+  if (pathname.startsWith('/master-dashboard')) return 'master';
+  if (pathname.startsWith('/dashboard/user-management')) return 'user';
+  if (pathname.startsWith('/dashboard/sales')) return 'sales';
+  return 'development';
+}
+
+/** The top-level module a sidebar item belongs to (for isolation). */
+export function groupForModule(module?: ModuleName | null): TopModule {
+  if (module === 'sales') return 'sales';
+  if (module === 'user' || module === 'role') return 'user';
+  return 'development';
+}
