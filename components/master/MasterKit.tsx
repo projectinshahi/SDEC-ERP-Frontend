@@ -292,17 +292,37 @@ const TONES: Record<string, string> = {
 };
 
 export function StatCard({
-  label, value, format, sub, icon: Icon, tone = 'indigo', alert,
+  label, value, format, sub, icon: Icon, tone = 'indigo', alert, onClick, active = false,
 }: {
   label: string; value: number; format?: (n: number) => string; sub?: string;
   icon: any; tone?: keyof typeof TONES | string; alert?: boolean;
+  /** When provided, the whole card becomes a clickable filter control. */
+  onClick?: () => void;
+  /** Highlights the card as the currently-selected filter (active border/ring). */
+  active?: boolean;
 }) {
+  const interactive = typeof onClick === 'function';
   return (
     <Card className={classNames(
       'p-6 shadow-sm rounded-2xl relative overflow-hidden transition-all',
       alert ? 'border-rose-400 dark:border-rose-500' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700',
+      // Clickable affordance — pointer + subtle lift/elevation on hover.
+      interactive && 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md',
+      // Selected state — ring + accent border so the active filter stands out.
+      active && 'ring-2 ring-indigo-500 shadow-md border-indigo-400 dark:border-indigo-500',
     )}>
       {alert && <span className="absolute top-4 right-4 w-3 h-3 bg-rose-500 rounded-full animate-ping" />}
+      {/* Transparent overlay turns the entire card into one accessible button
+          without disturbing the existing layout/markup beneath it. */}
+      {interactive && (
+        <button
+          type="button"
+          onClick={onClick}
+          aria-pressed={active}
+          aria-label={`Filter by ${label}`}
+          className="absolute inset-0 z-20 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        />
+      )}
       <div className="flex items-start justify-between relative z-10">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2">{label}</p>

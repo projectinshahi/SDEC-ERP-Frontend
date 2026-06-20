@@ -3,9 +3,10 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, User, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/Badge';
 import { Project } from './ProjectCard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { classNames } from '@/lib/utils';
+import { projectStatusLabel, projectStatusBadgeClass } from '@/lib/projects/projectStatus';
 
 interface ProjectListProps {
   projects: Project[];
@@ -156,12 +157,9 @@ export function ProjectList({ projects, onEdit, onArchive, onRestore, onDelete }
 
               {/* Status Badge */}
               <td className="px-6 py-4.5 whitespace-nowrap text-center">
-                <Badge
-                  variant={project.status === 'active' ? 'success' : 'default'}
-                  className="capitalize font-semibold text-[10px] px-2.5 py-0.5 tracking-wider"
-                >
-                  {project.status}
-                </Badge>
+                <span className={classNames('inline-flex items-center font-semibold text-[10px] px-2.5 py-0.5 tracking-wide rounded-md border whitespace-nowrap', projectStatusBadgeClass(project.status))}>
+                  {projectStatusLabel(project.status)}
+                </span>
               </td>
 
               {/* Last Updated */}

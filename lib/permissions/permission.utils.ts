@@ -46,8 +46,15 @@ export function canAccessModule(permissions: string[], module: ModuleName): bool
  * Super Admin (and plain admin) bypasses all permission checks.
  */
 export function isSuperAdmin(roleName: string): boolean {
-  const normalized = String(roleName ?? '').trim().toLowerCase();
-  return normalized === SUPER_ADMIN_ROLE_NAME.toLowerCase() || normalized === 'admin';
+  // Normalise by lowercasing AND stripping spaces/underscores/hyphens — the same
+  // way moduleAccess.normalizeRole and the backend isGlobalAdmin do. The role is
+  // stored inconsistently ('Super Admin', 'SuperAdmin', 'super_admin', …); a
+  // looser check elsewhere (getModuleAccess) can grant a user Master-Dashboard
+  // access while this stricter one denied the permission bypass — bouncing them
+  // to /dashboard when they opened a project they aren't a member of.
+  const strip = (v: string) => String(v ?? '').toLowerCase().replace(/[\s_-]/g, '');
+  const normalized = strip(roleName);
+  return normalized === strip(SUPER_ADMIN_ROLE_NAME) || normalized === 'admin';
 }
 
 /**

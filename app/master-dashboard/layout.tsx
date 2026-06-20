@@ -67,6 +67,11 @@ export default function MasterDashboardLayout({ children }: LayoutProps) {
             items={MASTER_SIDEBAR_ITEMS}
             isOpen={sidebarOpen}
             onToggle={() => setSidebarOpen(!sidebarOpen)}
+            moduleLabel="Master Dashboard"
+            // The "Switch Project" picker is a Development-module affordance; the
+            // SuperAdmin dashboard reaches projects via the Projects menu item, so
+            // hide the dropdown here (Projects stays a plain, direct nav link).
+            showProjectPicker={false}
           />
 
           <div className="flex-1 flex flex-col overflow-hidden">

@@ -3,14 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { Calendar, User, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/Badge';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { classNames } from '@/lib/utils';
+import { ProjectStatus, projectStatusLabel, projectStatusBadgeClass } from '@/lib/projects/projectStatus';
 
 export interface Project {
   id: string;
   name: string;
   description: string;
-  status: 'active' | 'completed' | 'on-hold';
+  status: ProjectStatus;
   members: string[];
   updatedAt: string;
   startDate?: string;
@@ -124,12 +125,9 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
                       <Trash2 size={13} className="stroke-[2.5]" />
                     </button>
                   )}
-                  <Badge 
-                    variant="default" 
-                    className="capitalize font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 tracking-wide text-[10px] px-2 py-0.5 border border-gray-200 dark:border-gray-600 shadow-xs"
-                  >
-                    Archived
-                  </Badge>
+                  <span className={classNames('inline-flex items-center font-semibold tracking-wide text-[10px] px-2 py-0.5 rounded-md border whitespace-nowrap', projectStatusBadgeClass(project.status))}>
+                    {projectStatusLabel(project.status)}
+                  </span>
                 </>
               ) : (
                 <>
@@ -163,12 +161,9 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
                       <Archive size={13} className="stroke-[2.5]" />
                     </button>
                   )}
-                  <Badge 
-                    variant={project.status === 'active' ? 'success' : 'default'} 
-                    className="capitalize font-semibold tracking-wide text-[10px] px-2 py-0.5"
-                  >
-                    {project.status}
-                  </Badge>
+                  <span className={classNames('inline-flex items-center font-semibold tracking-wide text-[10px] px-2 py-0.5 rounded-md border whitespace-nowrap', projectStatusBadgeClass(project.status))}>
+                    {projectStatusLabel(project.status)}
+                  </span>
                 </>
               )}
             </div>
