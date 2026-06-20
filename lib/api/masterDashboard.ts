@@ -46,6 +46,8 @@ export interface MasterDashboardStats {
     onHold: number;
     delayed: number;
     archived: number;
+    onTrack: number;
+    atRisk: number;
   };
   tickets: {
     total: number;

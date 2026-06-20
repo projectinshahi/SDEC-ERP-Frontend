@@ -144,10 +144,10 @@ export default function MasterDashboardPage() {
             { label: 'New Leads', value: String(n(stats.sales.totalLeads)) },
           ] },
           { title: 'Projects', rows: [
-            { label: 'Active Projects', value: String(n(stats.projects.active)) },
+            { label: 'On Track', value: String(n(stats.projects.onTrack)) },
+            { label: 'At Risk', value: String(n(stats.projects.atRisk)) },
             { label: 'Delayed', value: String(n(stats.projects.delayed)) },
-            { label: 'Completed', value: String(n(stats.projects.completed)) },
-            { label: 'On Track', value: String(Math.max(0, n(stats.projects.active) - n(stats.projects.delayed))) },
+            { label: 'On Hold', value: String(n(stats.projects.onHold)) },
           ] },
           { title: 'Tickets', rows: [
             { label: 'Open Tickets', value: String(n(stats.tickets.open)) },
@@ -270,10 +270,10 @@ export default function MasterDashboardPage() {
             icon={<Briefcase className="w-4 h-4 text-orange-600" />}
             iconBg="bg-orange-100 dark:bg-orange-900/30"
             metrics={[
-              { label: 'Active Projects', value: String(stats.projects.active), color: 'text-blue-600 dark:text-blue-400' },
+              { label: 'On Track', value: String(stats.projects.onTrack), color: 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'At Risk', value: String(stats.projects.atRisk), color: 'text-amber-600 dark:text-amber-400' },
               { label: 'Delayed', value: String(stats.projects.delayed), color: 'text-red-500 dark:text-red-400' },
-              { label: 'Completed', value: String(stats.projects.completed), color: 'text-slate-900 dark:text-white' },
-              { label: 'On Track', value: String(Math.max(0, stats.projects.active - stats.projects.delayed)), color: 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'On Hold', value: String(stats.projects.onHold), color: 'text-violet-600 dark:text-violet-400' },
             ]}
           />
           <DeptSummaryCard
