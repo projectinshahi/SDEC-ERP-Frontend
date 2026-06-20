@@ -10,6 +10,7 @@ import { ProjectMemberTable, MemberDetail } from './ProjectMemberTable';
 import { SingleSelectMember } from './SingleSelectMember';
 import { Project } from './ProjectCard';
 import { fetchUsers } from '@/lib/api/users';
+import { PROJECT_STATUSES, ProjectStatus, normalizeProjectStatus } from '@/lib/projects/projectStatus';
 
 export interface ProjectFormData {
   name: string;
@@ -18,6 +19,8 @@ export interface ProjectFormData {
   endDate?: string;
   memberDetails: MemberDetail[];
   owner_id: number | null;
+  /** Manual lifecycle status — managed from the Edit Project modal. */
+  status?: ProjectStatus;
 }
 
 interface CreateProjectModalProps {
@@ -104,6 +107,7 @@ export function CreateProjectModal({
           endDate: projectToEdit.endDate || '',
           memberDetails: prefilledMemberDetails,
           owner_id: projectToEdit.owner_id || null,
+          status: normalizeProjectStatus(projectToEdit.status),
         });
       } else {
         setFormData(initialFormState());
@@ -272,6 +276,35 @@ export function CreateProjectModal({
   error={errors.endDate}
 />
           </div>
+
+          {/* Project Status — manual lifecycle management (Edit mode only) */}
+          {isEditMode && (
+            <div className="w-full">
+              <label
+                htmlFor="project-status"
+                className="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5"
+              >
+                Project Status <span className="text-rose-500" aria-hidden="true">*</span>
+              </label>
+              <select
+                id="project-status"
+                required
+                disabled={isSubmitting || isResolvingMembers}
+                value={formData.status ?? 'active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as ProjectStatus })}
+                className="w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 leading-normal border-gray-300/80 dark:border-gray-700/60 focus:border-blue-500 dark:focus:border-blue-400"
+              >
+                {PROJECT_STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+              {formData.status && (
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5 leading-snug">
+                  {PROJECT_STATUSES.find((s) => s.value === formData.status)?.description}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Team Member assignment searchable picker */}
           <ProjectMemberTable

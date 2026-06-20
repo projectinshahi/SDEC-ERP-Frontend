@@ -135,6 +135,12 @@ export default function MasterProjectsPage() {
   const { stats, charts, activities } = data;
   const listCapped = data.projects.length < stats.total;
 
+  // Stat-card filtering. Cards and the dropdown share `statusFilter`, so they
+  // stay in sync and compose with the search box. Clicking the active card
+  // again (or the Total card) clears back to "all".
+  const selectStatus = (value: string) =>
+    setStatusFilter((cur) => (cur === value && value !== 'all' ? 'all' : value));
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* SuperAdmin Projects is monitoring/management only — no project creation
@@ -151,18 +157,20 @@ export default function MasterProjectsPage() {
 
       {/* PROJECT STATUS — 10 live KPI cards (5 per row on desktop, 3 on tablet,
           2 on mobile). Counts come from the backend tally that mirrors the
-          per-row status badges, so cards and badges always agree. */}
+          per-row status badges, so cards and badges always agree. Each card is
+          a live filter: clicking it filters the list below (and the dropdown)
+          to that status; the active card is highlighted. */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <StatCard label="Total" value={stats.total} icon={FolderOpen} tone="blue" />
-        <StatCard label="Active" value={stats.active} icon={Target} tone="blue" />
-        <StatCard label="On Track" value={stats.onTrack} icon={TrendingUp} tone="emerald" />
-        <StatCard label="At Risk" value={stats.atRisk} icon={AlertCircle} tone="amber" alert={stats.atRisk > 0} />
-        <StatCard label="Delayed" value={stats.delayed} icon={AlertTriangle} tone="rose" alert={stats.delayed > 0} />
-        <StatCard label="On Hold" value={stats.onHold} icon={PauseCircle} tone="violet" />
-        <StatCard label="Planning" value={stats.planning} icon={ClipboardList} tone="indigo" />
-        <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} tone="emerald" />
-        <StatCard label="Archived" value={stats.archived} icon={Archive} tone="slate" />
-        <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} tone="rose" />
+        <StatCard label="Total" value={stats.total} icon={FolderOpen} tone="blue" active={statusFilter === 'all'} onClick={() => selectStatus('all')} />
+        <StatCard label="Active" value={stats.active} icon={Target} tone="blue" active={statusFilter === 'in-progress'} onClick={() => selectStatus('in-progress')} />
+        <StatCard label="On Track" value={stats.onTrack} icon={TrendingUp} tone="emerald" active={statusFilter === 'on-track'} onClick={() => selectStatus('on-track')} />
+        <StatCard label="At Risk" value={stats.atRisk} icon={AlertCircle} tone="amber" alert={stats.atRisk > 0} active={statusFilter === 'at-risk'} onClick={() => selectStatus('at-risk')} />
+        <StatCard label="Delayed" value={stats.delayed} icon={AlertTriangle} tone="rose" alert={stats.delayed > 0} active={statusFilter === 'delayed'} onClick={() => selectStatus('delayed')} />
+        <StatCard label="On Hold" value={stats.onHold} icon={PauseCircle} tone="violet" active={statusFilter === 'on-hold'} onClick={() => selectStatus('on-hold')} />
+        <StatCard label="Planning" value={stats.planning} icon={ClipboardList} tone="indigo" active={statusFilter === 'planning'} onClick={() => selectStatus('planning')} />
+        <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} tone="emerald" active={statusFilter === 'completed'} onClick={() => selectStatus('completed')} />
+        <StatCard label="Archived" value={stats.archived} icon={Archive} tone="slate" active={statusFilter === 'archived'} onClick={() => selectStatus('archived')} />
+        <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} tone="rose" active={statusFilter === 'cancelled'} onClick={() => selectStatus('cancelled')} />
       </div>
 
       {/* TOOLBAR — search + status filter + shown/archived count */}
@@ -184,11 +192,15 @@ export default function MasterProjectsPage() {
             className="py-2 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">All Statuses</option>
-            <option value="in-progress">In Progress</option>
+            <option value="in-progress">Active</option>
             <option value="on-track">On Track</option>
             <option value="at-risk">At Risk</option>
+            <option value="delayed">Delayed</option>
+            <option value="on-hold">On Hold</option>
+            <option value="planning">Planning</option>
             <option value="completed">Completed</option>
             <option value="archived">Archived</option>
+            <option value="cancelled">Cancelled</option>
           </select>
         </div>
 
@@ -288,7 +300,9 @@ function ProjectsTable({ projects }: { projects: MasterProject[] }) {
 
 function ProjectMobileCard({ p, index }: { p: MasterProject; index: number }) {
   const router = useRouter();
-  const open = () => router.push(`/dashboard/projects/${p.id}`);
+  // `from=master` lets the (shared) project details page render Master-Dashboard
+  // breadcrumbs/back-navigation instead of the Development hierarchy.
+  const open = () => router.push(`/dashboard/projects/${p.id}?from=master`);
   const ds = derivedStatus(p);
   const due = fmtDate(p.endDate);
   return (
@@ -363,7 +377,9 @@ function Td({ children, className, onClick }: { children: ReactNode; className?:
 
 function ProjectTableRow({ p, index }: { p: MasterProject; index: number }) {
   const router = useRouter();
-  const open = () => router.push(`/dashboard/projects/${p.id}`);
+  // `from=master` lets the (shared) project details page render Master-Dashboard
+  // breadcrumbs/back-navigation instead of the Development hierarchy.
+  const open = () => router.push(`/dashboard/projects/${p.id}?from=master`);
   const ds = derivedStatus(p);
   return (
     <tr
@@ -550,7 +566,7 @@ function RowActions({ id }: { id: string }) {
   const go = (e: React.MouseEvent) => {
     e.stopPropagation();
     setMenu(null);
-    router.push(`/dashboard/projects/${id}`);
+    router.push(`/dashboard/projects/${id}?from=master`);
   };
 
   // Close on any scroll (capture catches the table container) or viewport change.

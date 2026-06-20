@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import {
   Briefcase, AlertTriangle, Target, TrendingUp, Activity, Bell, DollarSign, Users,
@@ -251,11 +252,12 @@ export default function MasterDashboardPage() {
       <section>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Department Summary</h2>
-          <span className="text-xs text-blue-500 dark:text-blue-400 font-medium">Click any card to drill down</span>
+          <span className="text-xs text-blue-500 dark:text-blue-400 font-medium">Click a card to open its module</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <DeptSummaryCard
             name="Sales"
+            href="/master-dashboard/sales"
             icon={<TrendingUp className="w-4 h-4 text-blue-600" />}
             iconBg="bg-blue-100 dark:bg-blue-900/30"
             metrics={[
@@ -267,6 +269,7 @@ export default function MasterDashboardPage() {
           />
           <DeptSummaryCard
             name="Projects"
+            href="/master-dashboard/projects"
             icon={<Briefcase className="w-4 h-4 text-orange-600" />}
             iconBg="bg-orange-100 dark:bg-orange-900/30"
             metrics={[
@@ -300,6 +303,7 @@ export default function MasterDashboardPage() {
           />
           <DeptSummaryCard
             name="Tickets"
+            href="/master-dashboard/tickets"
             icon={<AlertTriangle className="w-4 h-4 text-rose-600" />}
             iconBg="bg-rose-100 dark:bg-rose-900/30"
             metrics={[
@@ -494,10 +498,19 @@ interface DeptMetric {
   color: string;
 }
 
-function DeptSummaryCard({ name, icon, iconBg, metrics }: { name: string; icon: React.ReactNode; iconBg: string; metrics: DeptMetric[] }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group">
-      {/* Card Header — icon + name + arrow */}
+function DeptSummaryCard({ name, icon, iconBg, metrics, href }: { name: string; icon: React.ReactNode; iconBg: string; metrics: DeptMetric[]; href?: string }) {
+  const interactive = Boolean(href);
+  // Shared card chrome. When a destination exists, the whole card lifts on hover
+  // and shows a pointer; otherwise it's a plain informational tile.
+  const className = classNames(
+    'block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all duration-300 group',
+    interactive
+      ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500'
+      : '',
+  );
+  const inner = (
+    <>
+      {/* Card Header — icon + name + (arrow only when navigable) */}
       <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
         <div className="flex items-center gap-2">
           <div className={classNames('w-7 h-7 rounded-lg flex items-center justify-center', iconBg)}>
@@ -505,7 +518,9 @@ function DeptSummaryCard({ name, icon, iconBg, metrics }: { name: string; icon: 
           </div>
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{name}</span>
         </div>
-        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+        {interactive && (
+          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
+        )}
       </div>
       {/* 2×2 Stats Grid */}
       <div className="grid grid-cols-2 gap-[1px] bg-slate-100 dark:bg-slate-800 rounded-xl mx-3 mb-3 overflow-hidden">
@@ -516,7 +531,12 @@ function DeptSummaryCard({ name, icon, iconBg, metrics }: { name: string; icon: 
           </div>
         ))}
       </div>
-    </div>
+    </>
+  );
+  return interactive ? (
+    <Link href={href!} aria-label={`Open ${name} module`} className={className}>{inner}</Link>
+  ) : (
+    <div className={className}>{inner}</div>
   );
 }
 

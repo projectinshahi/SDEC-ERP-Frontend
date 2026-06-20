@@ -55,6 +55,21 @@ export default function ProjectDetailsPage() {
   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'docs'>('overview');
 
+  // Breadcrumb / back-nav context. Arriving via the Master Dashboard flow
+  // (?from=master) shows the Master-Dashboard hierarchy instead of Development.
+  // Read from the URL on the client to avoid needing a useSearchParams Suspense
+  // boundary (and any hydration mismatch) — this page is fully client-rendered.
+  const [fromMaster, setFromMaster] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Sync the URL query (not available during SSR) into state on mount —
+      // avoids a useSearchParams Suspense boundary and any hydration mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFromMaster(new URLSearchParams(window.location.search).get('from') === 'master');
+    }
+  }, []);
+  const projectsHref = fromMaster ? '/master-dashboard/projects' : ROUTES.PROJECTS;
+
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -320,8 +335,10 @@ export default function ProjectDetailsPage() {
       <div className="mb-6">
         <Breadcrumb
           items={[
-            { label: 'Dashboard', href: ROUTES.DASHBOARD },
-            { label: 'Projects', href: ROUTES.PROJECTS },
+            fromMaster
+              ? { label: 'Master Dashboard', href: '/master-dashboard' }
+              : { label: 'Dashboard', href: ROUTES.DASHBOARD },
+            { label: 'Projects', href: projectsHref },
             { label: isLoading ? 'Loading...' : project?.name || 'Project Details' },
           ]}
         />
@@ -332,7 +349,7 @@ export default function ProjectDetailsPage() {
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => router.push(ROUTES.PROJECTS)}
+          onClick={() => router.push(projectsHref)}
           className="flex items-center gap-1.5 cursor-pointer shadow-none border-gray-200"
         >
           <ArrowLeft size={15} />
@@ -383,7 +400,7 @@ export default function ProjectDetailsPage() {
           <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5 max-w-sm mb-6 leading-relaxed">
             {error || 'The requested project could not be found. It may have been deleted or you do not have permission to view it.'}
           </p>
-          <Button variant="primary" size="md" onClick={() => router.push(ROUTES.PROJECTS)}>
+          <Button variant="primary" size="md" onClick={() => router.push(projectsHref)}>
             Return to Projects List
           </Button>
         </div>
