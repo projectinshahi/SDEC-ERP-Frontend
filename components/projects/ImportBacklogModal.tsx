@@ -89,7 +89,11 @@ export function ImportBacklogModal({ isOpen, onClose, onImport, isImporting }: I
         else if (cleanKey === 'priority') newRow['Priority'] = row[key];
         else if (cleanKey === 'status' || cleanKey === 'state') newRow['Status'] = row[key];
         else if (cleanKey.includes('assign')) newRow['Assign User'] = row[key];
-        else if (cleanKey.includes('due') || cleanKey.includes('date')) newRow['Due Date'] = row[key];
+        // Keep the two date columns distinct: 'Due Date'/'Due' → sprint end,
+        // 'Date'/'Start Date'/'Start' → sprint start. (A plain "date" header that
+        // isn't a due date is treated as the start date.)
+        else if (cleanKey.includes('due')) newRow['Due Date'] = row[key];
+        else if (cleanKey.includes('date') || cleanKey === 'start') newRow['Date'] = row[key];
         else if (cleanKey.includes('point') || cleanKey === 'story points') newRow['Points'] = row[key];
         else newRow[key.trim()] = row[key];
       });
@@ -114,6 +118,13 @@ export function ImportBacklogModal({ isOpen, onClose, onImport, isImporting }: I
 
     if (validRows.length < normalizedJson.length) {
       toast(`Warning: ${normalizedJson.length - validRows.length} rows have missing Board or Task Title and will be skipped.`, 'warning');
+    }
+
+    // Validation: a missing Due Date can't set a sprint end date. Surface it so
+    // the user knows, but still allow the task to import (no fabricated dates).
+    const missingDue = validRows.filter((row) => !row['Due Date'] || String(row['Due Date']).trim() === '').length;
+    if (missingDue > 0) {
+      toast(`Note: ${missingDue} task(s) have no Due Date — they'll import but won't contribute to the sprint end date.`, 'warning');
     }
 
     setParsedData(validRows);
