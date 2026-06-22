@@ -16,6 +16,7 @@ interface SprintRow {
   estimatedHours: number | null;
   capacity: number | null;
   tasksCount: number;
+  progress?: number;
 }
 
 interface ProjectSprintsTableProps {
@@ -70,6 +71,19 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
     } catch {
       return dateStr;
     }
+  };
+
+  // Duration = End − Start, in whole days (UTC, so it can't drift by a day).
+  const formatDuration = (start: string | null, end: string | null) => {
+    if (!start || !end) return '—';
+    const s = new Date(start);
+    const e = new Date(end);
+    if (isNaN(s.getTime()) || isNaN(e.getTime())) return '—';
+    const days = Math.round(
+      (Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()) -
+        Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate())) / 86400000,
+    );
+    return `${days} ${Math.abs(days) === 1 ? 'Day' : 'Days'}`;
   };
 
 
@@ -132,9 +146,11 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
                   <th className="p-4">Status</th>
                   <th className="p-4">Start Date</th>
                   <th className="p-4">End Date</th>
+                  <th className="p-4">Duration</th>
                   <th className="p-4">Tasks</th>
                   <th className="p-4">Est. Points</th>
                   <th className="p-4">Capacity</th>
+                  <th className="p-4">Progress</th>
                   {userRole !== 'viewer' && <th className="p-4">Actions</th>}
                 </tr>
               </thead>
@@ -156,12 +172,23 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
                         {s.status}
                       </span>
                     </td>
-                    <td className="p-4 text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                      {formatDate(s.startDate)}
-                    </td>
-                    <td className="p-4 text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                      {formatDate(s.endDate)}
-                    </td>
+                    {(s.startDate || s.endDate) ? (
+                      <>
+                        <td className="p-4 text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          {formatDate(s.startDate)}
+                        </td>
+                        <td className="p-4 text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          {formatDate(s.endDate)}
+                        </td>
+                        <td className="p-4 text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          {formatDuration(s.startDate, s.endDate)}
+                        </td>
+                      </>
+                    ) : (
+                      <td colSpan={3} className="p-4 text-xs italic text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                        No Sprint Dates Available
+                      </td>
+                    )}
                     <td className="p-4 font-semibold text-gray-700 dark:text-gray-300">
                       {s.tasksCount}
                     </td>
@@ -170,6 +197,16 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
                     </td>
                     <td className="p-4 font-semibold text-indigo-600 dark:text-indigo-400">
                       {s.capacity || 0} pts
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2 min-w-[90px]">
+                        <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-1.5 rounded-full bg-indigo-500 transition-all" style={{ width: `${s.progress ?? 0}%` }} />
+                        </div>
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 tabular-nums w-9 text-right">
+                          {s.progress ?? 0}%
+                        </span>
+                      </div>
                     </td>
                     {userRole !== 'viewer' && (
                       <td className="p-4">
