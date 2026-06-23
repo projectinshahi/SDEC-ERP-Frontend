@@ -54,7 +54,7 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     module: null,
   },
   {
-    label: 'Developer Performance',
+    label: 'Developers',
     href: '/master-dashboard/developer-performance',
     icon: 'BarChart3',
     module: null,
