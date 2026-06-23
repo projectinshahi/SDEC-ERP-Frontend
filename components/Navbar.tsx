@@ -38,8 +38,8 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           </button>
 
           {/* Center: App Title — links to the role-based module switcher (module-neutral) */}
-          <Link href="/modules" className="text-lg font-bold text-gray-900 hidden md:block">
-            ERP System
+          <Link href="/modules" className="text-lg font-bold text-gray-900 hidden md:block whitespace-nowrap">
+            SHAHI SOLUTIONS
           </Link>
         </div>
 

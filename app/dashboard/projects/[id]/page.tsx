@@ -77,7 +77,7 @@ export default function ProjectDetailsPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isSuperAdmin } = usePermissions();
   const { user, isLoading: authIsLoading } = useAuth();
 
   const [stats, setStats] = useState({
@@ -161,10 +161,12 @@ export default function ProjectDetailsPage() {
           if (currentMember) {
             setCurrentUserRole(currentMember.role);
           } else {
-            const roleStr = user.role?.toLowerCase() || user.roleName?.toLowerCase() || '';
-            if (roleStr.includes('admin') || roleStr === 'super admin') {
+            // Not a project member — derive capability from GLOBAL permissions,
+            // not the role-name string. SuperAdmin/Admin act as project admin;
+            // project.manage_members ⇒ admin, project.edit ⇒ editor, else viewer.
+            if (isSuperAdmin || hasPermission('project.manage_members')) {
               setCurrentUserRole('admin');
-            } else if (roleStr.includes('editor') || roleStr.includes('manager') || hasPermission('project.edit')) {
+            } else if (hasPermission('project.edit')) {
               setCurrentUserRole('editor');
             } else {
               setCurrentUserRole('viewer');

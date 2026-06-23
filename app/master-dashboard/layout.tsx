@@ -15,7 +15,7 @@ interface LayoutProps {
 
 // Hardcoded sidebar items for the Master Dashboard.
 // Order is intentional and follows the business workflow:
-// Dashboard → Projects → Sales → Tickets → Meetings.
+// Dashboard → Projects → Sales → HR → Tickets → Meetings → Developer Performance → Settings.
 const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
   {
     label: 'Dashboard',
@@ -51,6 +51,18 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     label: 'Meetings',
     href: '/master-dashboard/meetings',
     icon: 'CalendarDays',
+    module: null,
+  },
+  {
+    label: 'Developer Performance',
+    href: '/master-dashboard/developer-performance',
+    icon: 'BarChart3',
+    module: null,
+  },
+  {
+    label: 'Settings',
+    href: '/master-dashboard/settings',
+    icon: 'Settings',
     module: null,
   },
 ];

@@ -45,12 +45,14 @@ function formatTimestamp(iso: string): string {
  */
 export function LeadNotesPanel({ leadId, onChange }: LeadNotesPanelProps) {
   const { toast } = useToast();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isSuperAdmin } = usePermissions();
   const { user } = useAuth();
 
   const canAdd = hasPermission('sales.edit');
   const canDelete = hasPermission('sales.delete');
-  const isAdmin = String(user?.roleName || '').toLowerCase().includes('admin');
+  // Editing/deleting OTHER people's notes is an elevated capability — gate it on
+  // the canonical SuperAdmin/Admin check, not a "role name contains admin" string.
+  const isAdmin = isSuperAdmin;
   const currentUserId = Number(user?.id);
 
   const [notes, setNotes] = useState<LeadNote[]>([]);

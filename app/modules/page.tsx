@@ -6,7 +6,9 @@ import {
   Code2, ShieldCheck, Briefcase, Users, ArrowRight, LogOut, Building2, Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { getModuleAccess } from '@/lib/permissions/moduleAccess';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { getModuleAccess, type TopModule } from '@/lib/permissions/moduleAccess';
+import { firstAccessibleHref } from '@/lib/sidebar/sidebar.config';
 import { classNames } from '@/lib/utils';
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -53,6 +55,7 @@ const ACCENTS: Record<string, { ring: string; iconBg: string; iconText: string; 
 export default function ModulesPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user, logout } = useAuth();
+  const { hasAnyPermission } = usePermissions();
   const [navigating, setNavigating] = useState<string | null>(null);
 
   useEffect(() => {
@@ -63,17 +66,20 @@ export default function ModulesPage() {
   // Card order: Master Dashboard · Sales · Development · User Management.
   const modules = useMemo(() => {
     const access = getModuleAccess(user);
+    // Land on the first page the user can actually see in each module (e.g. a
+    // leads-only sales user opens directly on Leads, not the gated Overview).
+    const hrefFor = (m: TopModule, fallback: string) => firstAccessibleHref(m, hasAnyPermission) ?? fallback;
     return [
       { key: 'master', show: access.master, href: '/master-dashboard', icon: ShieldCheck, accent: 'indigo',
         title: 'Master Dashboard', desc: 'Enterprise-wide analytics, oversight, reporting & admin controls.' },
-      { key: 'sales', show: access.sales, href: '/dashboard/sales', icon: Briefcase, accent: 'emerald',
+      { key: 'sales', show: access.sales, href: hrefFor('sales', '/dashboard/sales'), icon: Briefcase, accent: 'emerald',
         title: 'Sales', desc: 'Leads, pipeline, deals & CRM.' },
-      { key: 'development', show: access.development, href: '/dashboard', icon: Code2, accent: 'blue',
+      { key: 'development', show: access.development, href: hrefFor('development', '/dashboard'), icon: Code2, accent: 'blue',
         title: 'Development', desc: 'Projects, boards, tasks & sprints.' },
-      { key: 'users', show: access.user, href: '/dashboard/user-management', icon: Users, accent: 'violet',
+      { key: 'users', show: access.user, href: hrefFor('user', '/dashboard/user-management'), icon: Users, accent: 'violet',
         title: 'User Management', desc: 'Users, roles & permissions.' },
     ].filter((m) => m.show);
-  }, [user]);
+  }, [user, hasAnyPermission]);
 
   const openModule = (key: string, href: string) => {
     if (navigating) return;
@@ -104,7 +110,7 @@ export default function ModulesPage() {
             <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-600/30">
               <Building2 className="w-5 h-5 text-white" />
             </div>
-            <span className="font-extrabold text-slate-900 dark:text-white tracking-tight">SDEC ERP</span>
+            <span className="font-extrabold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">SHAHI SOLUTIONS</span>
           </div>
           <button
             onClick={() => { logout?.(); router.replace('/login'); }}
