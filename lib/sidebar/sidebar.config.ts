@@ -88,7 +88,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     permission: 'blockers.read',
   },
   {
-    label: 'Developer Performance',
+    label: 'Developers',
     href: '/dashboard/developer-performance',
     icon: 'BarChart3',
     module: 'project',
