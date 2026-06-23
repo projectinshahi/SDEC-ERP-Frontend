@@ -48,7 +48,7 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
   return {
     master: isSuper,
     development: isAdmin || r === 'developer' || r === 'dev'
-      || hasAny('project.', 'task.', 'sprints.', 'bugs.', 'blockers.', 'meetings.'),
+      || hasAny('project.', 'task.', 'sprints.', 'bugs.', 'blockers.', 'meetings.', 'tickets.'),
     sales: isAdmin || r === 'sales' || hasAny('sales.'),
     user: isAdmin || hasAny('user.', 'role.'),
   };

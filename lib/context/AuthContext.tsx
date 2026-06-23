@@ -64,10 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem('user');
       if (token && raw) {
         const parsed = JSON.parse(raw) as AuthUser;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setState({
           user: {
             ...parsed,
-            roleName: parsed.roleName ?? SUPER_ADMIN_ROLE_NAME,
+            // Fail CLOSED: a missing roleName must NOT default to Super Admin
+            // (that would silently grant full access). No roleName ⇒ no module
+            // access until a fresh login repopulates it.
+            roleName: parsed.roleName ?? '',
             permissions: parsed.permissions ?? [],
           },
           isAuthenticated: true,
@@ -103,7 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const authUser: AuthUser = {
         ...user,
-        roleName: user.roleName ?? SUPER_ADMIN_ROLE_NAME,
+        // Fail CLOSED on a missing roleName (see note above) — never default to
+        // Super Admin. The backend always returns roleName for a real login.
+        roleName: user.roleName ?? '',
         permissions: user.permissions ?? [],
         mustChangePassword: user.mustChangePassword ?? false,
       };

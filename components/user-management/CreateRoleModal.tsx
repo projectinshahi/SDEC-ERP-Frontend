@@ -9,7 +9,6 @@ import {
   Shield,
   ShieldAlert,
   Loader2,
-  CheckCircle2,
   CheckSquare,
   Square,
 } from 'lucide-react';
@@ -18,6 +17,25 @@ import { PERMISSION_GROUPS, ALL_PERMISSION_KEYS } from '@/lib/permissions/permis
 import type { PermissionKey } from '@/lib/permissions/permission.types';
 import { classNames } from '@/lib/utils';
 import { useToast } from '@/lib/hooks/useToast';
+
+// ── Module filter (focuses the permission list by product area) ──────────────
+type ModuleFilter = 'all' | 'development' | 'sales' | 'hr' | 'finance';
+const MODULE_FILTERS: { value: ModuleFilter; label: string }[] = [
+  { value: 'all', label: 'All Modules' },
+  { value: 'development', label: 'Development' },
+  { value: 'sales', label: 'Sales' },
+  { value: 'hr', label: 'HR' },
+  { value: 'finance', label: 'Finance' },
+];
+// Permission groups that belong to the Development product area.
+const DEV_MODULES: string[] = ['task', 'bugs', 'tickets', 'sprints', 'blockers', 'meetings', 'project'];
+
+function filterPermissionGroups(filter: ModuleFilter) {
+  if (filter === 'all') return PERMISSION_GROUPS;
+  if (filter === 'sales') return PERMISSION_GROUPS.filter((g) => g.module === 'sales');
+  if (filter === 'development') return PERMISSION_GROUPS.filter((g) => DEV_MODULES.includes(g.module));
+  return []; // 'hr' / 'finance' — reserved for future modules (no permissions yet).
+}
 
 interface CreateRoleModalProps {
   isOpen: boolean;
@@ -61,12 +79,14 @@ export function CreateRoleModal({
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [moduleFilter, setModuleFilter] = useState<ModuleFilter>('all');
   const { toast } = useToast();
 
   // Reset / populate form when modal opens
   useEffect(() => {
     if (isOpen) {
       if (roleToEdit) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFormData({
           name: roleToEdit.name || '',
           description: roleToEdit.description || '',
@@ -78,6 +98,7 @@ export function CreateRoleModal({
       setErrors({});
       setTouched({});
       setSubmitError(null);
+      setModuleFilter('all');
     }
   }, [isOpen, roleToEdit]);
 
@@ -132,12 +153,20 @@ export function CreateRoleModal({
     handleFieldChange('permissions', next);
   };
 
-  const toggleAll = () => {
-    const allSelected = ALL_PERMISSION_KEYS.every((k) => formData.permissions.includes(k));
-    handleFieldChange('permissions', allSelected ? [] : [...ALL_PERMISSION_KEYS]);
-  };
+  // Permission groups currently shown (after the module filter) + their keys.
+  const visibleGroups = filterPermissionGroups(moduleFilter);
+  const visibleKeys = visibleGroups.flatMap((g) => g.permissions.map((p) => p.key));
 
-  const isAllSelected = ALL_PERMISSION_KEYS.every((k) => formData.permissions.includes(k));
+  // "Select all" acts on the VISIBLE permissions, so it respects the filter.
+  const isAllSelected = visibleKeys.length > 0 && visibleKeys.every((k) => formData.permissions.includes(k));
+  const toggleAll = () => {
+    handleFieldChange(
+      'permissions',
+      isAllSelected
+        ? formData.permissions.filter((k) => !visibleKeys.includes(k))
+        : [...new Set([...formData.permissions, ...visibleKeys])],
+    );
+  };
 
   // ─── Submit ─────────────────────────────────────────────────────────────────
 
@@ -272,33 +301,48 @@ export function CreateRoleModal({
                     of {ALL_PERMISSION_KEYS.length} permissions
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={toggleAll}
-                  className={classNames(
-                    'px-3 py-1.5 rounded-lg border text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 self-start sm:self-center',
-                    isAllSelected
-                      ? 'bg-red-50 hover:bg-red-100 text-red-600 border-red-200'
-                      : 'bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200'
-                  )}
-                >
-                  {isAllSelected ? (
-                    <>
-                      <Square size={14} />
-                      Deselect All
-                    </>
-                  ) : (
-                    <>
-                      <CheckSquare size={14} />
-                      Select All Permissions
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2 self-start sm:self-center">
+                  {/* Module filter — focus the list by product area */}
+                  <select
+                    value={moduleFilter}
+                    onChange={(e) => setModuleFilter(e.target.value as ModuleFilter)}
+                    aria-label="Filter permissions by module"
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                  >
+                    {MODULE_FILTERS.map((f) => (
+                      <option key={f.value} value={f.value}>{f.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    disabled={visibleKeys.length === 0}
+                    className={classNames(
+                      'px-3 py-1.5 rounded-lg border text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed',
+                      isAllSelected
+                        ? 'bg-red-50 hover:bg-red-100 text-red-600 border-red-200'
+                        : 'bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200'
+                    )}
+                  >
+                    {isAllSelected ? (
+                      <><Square size={14} /> Deselect All</>
+                    ) : (
+                      <><CheckSquare size={14} /> Select All</>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Permission groups */}
               <div className="max-h-[320px] overflow-y-auto pr-1 border border-gray-200/80 rounded-xl p-4 divide-y divide-gray-100/70 space-y-5 bg-white shadow-inner">
-                {PERMISSION_GROUPS.map((group, idx) => {
+                {visibleGroups.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <p className="text-sm font-semibold text-gray-500">
+                      {MODULE_FILTERS.find((f) => f.value === moduleFilter)?.label} is reserved for a future module.
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">No permissions are available here yet.</p>
+                  </div>
+                ) : visibleGroups.map((group, idx) => {
                   const groupKeys = group.permissions.map((p) => p.key);
                   const selectedInGroup = groupKeys.filter((k) =>
                     formData.permissions.includes(k)
@@ -306,7 +350,7 @@ export function CreateRoleModal({
                   const isGroupAllSelected = selectedInGroup === groupKeys.length;
 
                   return (
-                    <div key={group.module} className={classNames('space-y-2.5', idx > 0 && 'pt-4')}>
+                    <div key={group.label} className={classNames('space-y-2.5', idx > 0 && 'pt-4')}>
                       {/* Group header */}
                       <div className="flex justify-between items-center bg-gray-50/70 py-1.5 px-2.5 rounded-lg border border-gray-100">
                         <div className="flex items-center gap-2">

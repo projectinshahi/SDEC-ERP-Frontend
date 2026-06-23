@@ -1,45 +1,30 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { Search, Plus, Upload, AlertTriangle, LayoutGrid, BarChart3, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Clock } from 'lucide-react';
+import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Clock, List, Columns3 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { apiClient } from '@/lib/api/api-client';
-import { fetchLeadStages, fetchAssignableUsers } from '@/lib/api/leads';
+import { fetchLeadStages, fetchAssignableUsers, moveLeadStage, reorderLeadStages } from '@/lib/api/leads';
 import { ImportLeadsModal } from '@/components/leads/ImportLeadsModal';
+import { CreateLeadModal } from '@/components/leads/CreateLeadModal';
+import { LeadPipelineBoard } from '@/components/leads/LeadPipelineBoard';
+import { StageFormModal } from '@/components/leads/StageFormModal';
+import { DeleteStageModal } from '@/components/leads/DeleteStageModal';
 import {
   LEAD_SOURCES,
   formatLeadSource,
   leadSourceVariant,
 } from '@/lib/data/leadSources';
 import { formatScore, scoreColorClass } from '@/lib/data/leadRating';
-import type { LeadStage, AssignableUser } from '@/lib/types/lead';
-
-interface Owner {
-  id: number;
-  name: string;
-  email: string;
-}
-
-interface Lead {
-  id: number;
-  title: string;
-  description?: string | null;
-  source: string;
-  flaggedForReview: boolean;
-  status: string;
-  priority: string;
-  score: number;
-  customerId?: number | null;
-  owner?: Owner;
-  customer?: { id: number; name: string } | null;
-}
+import { classNames } from '@/lib/utils';
+import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
 
 type ScoreSort = 'none' | 'desc' | 'asc';
 
@@ -61,8 +46,13 @@ interface SourceAnalytics {
   }[];
 }
 
-const STATUS_OPTIONS = ['new', 'contacted', 'qualified', 'won', 'lost', 'converted', 'disqualified'];
+const STATUS_OPTIONS = ['new', 'contacted', 'qualified', 'won', 'lost', 'converted', 'disqualified', 'closed'];
 
+// Leads that have left the active pipeline are hidden from the Kanban board
+// (they remain visible in the table, which shows every status).
+const INACTIVE_PIPELINE_STATUSES = ['disqualified', 'converted', 'won', 'lost', 'closed'];
+
+type ViewMode = 'table' | 'pipeline';
 
 export default function SalesLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -83,11 +73,46 @@ export default function SalesLeadsPage() {
   const [owners, setOwners] = useState<AssignableUser[]>([]);
 
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [scoreSort, setScoreSort] = useState<ScoreSort>('none');
+
+  // Table ↔ Pipeline view (both render the SAME live `leads` dataset).
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+
+  // Stage-management modal state (Pipeline view).
+  const [stageModal, setStageModal] = useState<{ mode: 'add' | 'rename'; stage: LeadStage | null } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LeadStage | null>(null);
 
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const canConfigureScoring = hasPermission('sales.scoring');
+  // Stage structure edits (add/rename/reorder) + lead moves gate on edit;
+  // stage removal on delete; new-lead on create.
+  const canMove = hasPermission('sales.edit');
+  const canManageStages = hasPermission('sales.edit');
+  const canDeleteStages = hasPermission('sales.delete');
+  const canCreate = hasPermission('sales.create');
+
+  // Initialise the view from the URL (?view=pipeline) — read on the client to
+  // avoid a useSearchParams Suspense boundary / hydration mismatch. This also
+  // lets the old /leads/pipeline route redirect straight into the board.
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (new URLSearchParams(window.location.search).get('view') === 'pipeline') setViewMode('pipeline');
+    }
+  }, []);
+
+  // Switch view + keep the URL in sync without a navigation/refetch.
+  const changeView = (v: ViewMode) => {
+    setViewMode(v);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (v === 'pipeline') url.searchParams.set('view', 'pipeline');
+      else url.searchParams.delete('view');
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -95,7 +120,6 @@ export default function SalesLeadsPage() {
       const params = new URLSearchParams();
       if (sourceFilter !== 'all') params.set('source', sourceFilter);
       if (statusFilter !== 'all') params.set('status', statusFilter);
-      if (stageFilter !== 'all') params.set('stage', stageFilter);
       if (ownerFilter !== 'all') params.set('ownerId', ownerFilter);
       if (locationFilter.trim()) params.set('location', locationFilter.trim());
       if (scoreMin.trim()) params.set('scoreMin', scoreMin.trim());
@@ -108,7 +132,7 @@ export default function SalesLeadsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [sourceFilter, statusFilter, stageFilter, ownerFilter, locationFilter, scoreMin, scoreMax, searchQuery, toast]);
+  }, [sourceFilter, statusFilter, ownerFilter, locationFilter, scoreMin, scoreMax, searchQuery, toast]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -128,16 +152,26 @@ export default function SalesLeadsPage() {
     }
   }, []);
 
+  const loadStages = useCallback(async () => {
+    try {
+      setStages(await fetchLeadStages());
+    } catch {
+      setStages([]);
+    }
+  }, []);
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLeads();
   }, [fetchLeads]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAnalytics();
     fetchCustomers();
-    fetchLeadStages().then(setStages).catch(() => setStages([]));
+    loadStages();
     fetchAssignableUsers().then(setOwners).catch(() => setOwners([]));
-  }, [fetchAnalytics, fetchCustomers]);
+  }, [fetchAnalytics, fetchCustomers, loadStages]);
 
   const refresh = () => {
     fetchLeads();
@@ -149,16 +183,73 @@ export default function SalesLeadsPage() {
     setOwnerFilter('all'); setLocationFilter(''); setScoreMin(''); setScoreMax('');
   };
 
-  // Search + filtering happen server-side; only score sort is client-side.
-  const visibleLeads = [...leads].sort((a, b) => {
-    if (scoreSort === 'desc') return (b.score ?? 0) - (a.score ?? 0);
-    if (scoreSort === 'asc') return (a.score ?? 0) - (b.score ?? 0);
-    return 0;
-  });
+  // Most filters are server-side. Stage filter + score sort are client-side and
+  // apply to the TABLE only — the Pipeline board always shows every stage (that's
+  // the point of a Kanban board), so it reads the unfiltered `leads`.
+  const visibleLeads = [...leads]
+    .filter((l) => stageFilter === 'all' || l.stage === stageFilter)
+    .sort((a, b) => {
+      if (scoreSort === 'desc') return (b.score ?? 0) - (a.score ?? 0);
+      if (scoreSort === 'asc') return (a.score ?? 0) - (b.score ?? 0);
+      return 0;
+    });
 
   // Cycle the score sort: none → high→low → low→high → none.
   const cycleScoreSort = () =>
     setScoreSort((s) => (s === 'none' ? 'desc' : s === 'desc' ? 'asc' : 'none'));
+
+  // Pipeline grouping — derived from the SAME `leads` (already filtered
+  // server-side), minus inactive statuses, so a move in either view is reflected
+  // in the other instantly.
+  const leadsByStage = useMemo(() => {
+    const map: Record<string, Lead[]> = {};
+    for (const s of stages) map[s.name] = [];
+    for (const lead of leads) {
+      if (INACTIVE_PIPELINE_STATUSES.includes((lead.status || '').toLowerCase())) continue;
+      // A lead always belongs to exactly one stage; default unknown to first column.
+      const key = map[lead.stage] ? lead.stage : stages[0]?.name;
+      if (key) map[key].push(lead);
+    }
+    return map;
+  }, [leads, stages]);
+
+  // Optimistic move with revert on failure (invalid drops never reach here).
+  // Updates the shared `leads` state, so the table reflects the move too.
+  const handleMove = async (leadId: number, targetStage: string) => {
+    const target = leads.find((l) => l.id === leadId);
+    if (!target || target.stage === targetStage) return;
+
+    const previousStage = target.stage;
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: targetStage } : l)));
+    try {
+      await moveLeadStage(leadId, targetStage);
+      toast(`Moved "${target.title}" to ${targetStage}`, 'success');
+    } catch (error) {
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: previousStage } : l)));
+      toast(error instanceof Error ? error.message : 'Failed to move lead', 'error');
+    }
+  };
+
+  // Reorder a stage one position left/right. Optimistic; reverts on failure.
+  const handleMoveStage = async (stage: LeadStage, dir: -1 | 1) => {
+    const ordered = [...stages].sort((a, b) => a.orderIndex - b.orderIndex);
+    const idx = ordered.findIndex((s) => s.id === stage.id);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= ordered.length) return;
+    [ordered[idx], ordered[swap]] = [ordered[swap], ordered[idx]];
+
+    const previous = stages;
+    setStages(ordered.map((s, i) => ({ ...s, orderIndex: i + 1 })));
+    try {
+      const updated = await reorderLeadStages(ordered.map((s) => s.id));
+      setStages(updated);
+    } catch (error) {
+      setStages(previous);
+      toast(error instanceof Error ? error.message : 'Failed to reorder stages', 'error');
+    }
+  };
+
+  const existingStageNames = stages.map((s) => s.name);
 
   return (
     <PermissionPageGuard module="sales">
@@ -186,12 +277,12 @@ export default function SalesLeadsPage() {
                 </Button>
               </Link>
             )}
-            <Link href="/dashboard/sales/leads/pipeline">
-              <Button variant="secondary">
-                <LayoutGrid className="w-4 h-4 mr-2" />
-                Pipeline
+            {viewMode === 'pipeline' && canManageStages && (
+              <Button variant="secondary" onClick={() => setStageModal({ mode: 'add', stage: null })}>
+                <Columns3 className="w-4 h-4 mr-2" />
+                Add Stage
               </Button>
-            </Link>
+            )}
             <Link href="/dashboard/sales/leads/aging">
               <Button variant="secondary">
                 <Clock className="w-4 h-4 mr-2" />
@@ -202,13 +293,37 @@ export default function SalesLeadsPage() {
               <Upload className="w-4 h-4 mr-2" />
               Import
             </Button>
-            <Link href="/dashboard/sales/leads/new">
-              <Button>
+            {canCreate && (
+              <Button onClick={() => setIsCreateOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 New Lead
               </Button>
-            </Link>
+            )}
           </div>
+        </div>
+
+        {/* View switch — Table ⇄ Pipeline (same Leads dataset, no navigation) */}
+        <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 w-fit">
+          {([
+            { key: 'table', label: 'Table View', icon: List },
+            { key: 'pipeline', label: 'Pipeline View', icon: Columns3 },
+          ] as { key: ViewMode; label: string; icon: typeof List }[]).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={viewMode === key}
+              onClick={() => changeView(key)}
+              className={classNames(
+                'inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors',
+                viewMode === key
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white',
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Source analytics summary */}
@@ -233,7 +348,7 @@ export default function SalesLeadsPage() {
           </div>
         )}
 
-        {/* Filters */}
+        {/* Filters (apply to BOTH views — they drive the shared dataset) */}
         <div className="space-y-3">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1 max-w-md">
@@ -274,16 +389,20 @@ export default function SalesLeadsPage() {
 
           {showAdvanced && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 bg-gray-50/60 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800">
-              <select
-                value={stageFilter}
-                onChange={(e) => setStageFilter(e.target.value)}
-                className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
-              >
-                <option value="all">All Stages</option>
-                {stages.map((s) => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
-                ))}
-              </select>
+              {/* Stage filter is a Table-view concept (the Pipeline groups by
+                  stage already), so it's hidden in Pipeline view. */}
+              {viewMode === 'table' && (
+                <select
+                  value={stageFilter}
+                  onChange={(e) => setStageFilter(e.target.value)}
+                  className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+                >
+                  <option value="all">All Stages</option>
+                  {stages.map((s) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              )}
               <select
                 value={ownerFilter}
                 onChange={(e) => setOwnerFilter(e.target.value)}
@@ -318,88 +437,145 @@ export default function SalesLeadsPage() {
           )}
         </div>
 
-        <Card className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
-                <tr>
-                  <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Title</th>
-                  <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Source</th>
-                  <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Status</th>
-                  <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Priority</th>
-                  <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">
-                    <button
-                      onClick={cycleScoreSort}
-                      className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                      title="Sort by score"
-                    >
-                      Score
-                      {scoreSort === 'desc' ? <ArrowDown className="w-3.5 h-3.5" />
-                        : scoreSort === 'asc' ? <ArrowUp className="w-3.5 h-3.5" />
-                        : <ArrowUpDown className="w-3.5 h-3.5 opacity-50" />}
-                    </button>
-                  </th>
-                  <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Owner</th>
-                  <th className="px-6 py-4 text-right font-medium text-gray-500 dark:text-gray-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {isLoading ? (
+        {/* TABLE VIEW */}
+        {viewMode === 'table' && (
+          <Card className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Loading leads...</td>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Title</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Source</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Status</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Priority</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">
+                      <button
+                        onClick={cycleScoreSort}
+                        className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                        title="Sort by score"
+                      >
+                        Score
+                        {scoreSort === 'desc' ? <ArrowDown className="w-3.5 h-3.5" />
+                          : scoreSort === 'asc' ? <ArrowUp className="w-3.5 h-3.5" />
+                          : <ArrowUpDown className="w-3.5 h-3.5 opacity-50" />}
+                      </button>
+                    </th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Owner</th>
                   </tr>
-                ) : visibleLeads.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">No leads found</td>
-                  </tr>
-                ) : (
-                  visibleLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                        <div className="flex items-center gap-2">
-                          {lead.title}
-                          {lead.flaggedForReview && (
-                            <span title="Flagged for review" className="text-amber-500">
-                              <AlertTriangle className="w-4 h-4" />
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant={leadSourceVariant(lead.source)}>{formatLeadSource(lead.source)}</Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                          {lead.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.priority}</td>
-                      <td className="px-6 py-4">
-                        <span className={`font-semibold tabular-nums ${scoreColorClass(lead.score)}`}>
-                          {formatScore(lead.score)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.owner?.name}</td>
-                      <td className="px-6 py-4 text-right">
-                        <Link href={`/dashboard/sales/leads/${lead.id}`}>
-                          <Button variant="secondary" size="sm">View</Button>
-                        </Link>
-                      </td>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading leads...</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                  ) : visibleLeads.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">No leads found</td>
+                    </tr>
+                  ) : (
+                    visibleLeads.map((lead) => (
+                      <tr key={lead.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                        <td className="px-6 py-4 font-medium">
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/dashboard/sales/leads/${lead.id}`}
+                              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold hover:underline"
+                            >
+                              {lead.title}
+                            </Link>
+                            {lead.flaggedForReview && (
+                              <span title="Flagged for review" className="text-amber-500">
+                                <AlertTriangle className="w-4 h-4" />
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={leadSourceVariant(lead.source)}>{formatLeadSource(lead.source)}</Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                            {lead.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.priority}</td>
+                        <td className="px-6 py-4">
+                          <span className={`font-semibold tabular-nums ${scoreColorClass(lead.score)}`}>
+                            {formatScore(lead.score)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.owner?.name}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
+        {/* PIPELINE VIEW — same data, Kanban presentation (no separate route) */}
+        {viewMode === 'pipeline' && (
+          isLoading ? (
+            <Card className="p-8 text-center text-gray-500 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+              Loading pipeline…
+            </Card>
+          ) : stages.length === 0 ? (
+            <Card className="p-8 text-center text-gray-500 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+              No pipeline stages configured.
+            </Card>
+          ) : (
+            <LeadPipelineBoard
+              stages={stages}
+              leadsByStage={leadsByStage}
+              canMove={canMove}
+              canManageStages={canManageStages}
+              canDeleteStages={canDeleteStages}
+              onMove={handleMove}
+              onAddStage={() => setStageModal({ mode: 'add', stage: null })}
+              onRenameStage={(stage) => setStageModal({ mode: 'rename', stage })}
+              onDeleteStage={(stage) => setDeleteTarget(stage)}
+              onMoveStage={handleMoveStage}
+            />
+          )
+        )}
       </div>
 
+      {/* Create lead (modal — no page navigation). Mounted only while open so
+          its form state resets on each open. */}
+      {isCreateOpen && (
+        <CreateLeadModal
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={refresh}
+        />
+      )}
 
       {/* Import wizard (upload → preview + mapping → import) */}
       <ImportLeadsModal
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         onImported={refresh}
+      />
+
+      {/* Stage management modals (Pipeline view) */}
+      {stageModal && (
+        <StageFormModal
+          isOpen
+          mode={stageModal.mode}
+          stage={stageModal.stage}
+          existingNames={existingStageNames}
+          onClose={() => setStageModal(null)}
+          onSaved={loadStages}
+        />
+      )}
+      <DeleteStageModal
+        isOpen={!!deleteTarget}
+        stage={deleteTarget}
+        leadCount={deleteTarget ? leads.filter((l) => l.stage === deleteTarget.name).length : 0}
+        otherStages={stages.filter((s) => s.id !== deleteTarget?.id)}
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={() => { loadStages(); fetchLeads(); }}
       />
     </PermissionPageGuard>
   );

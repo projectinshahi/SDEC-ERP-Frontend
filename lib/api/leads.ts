@@ -42,6 +42,57 @@ export async function fetchLead(id: number | string): Promise<LeadDetail> {
   return res.data;
 }
 
+// ── Manual lead creation ────────────────────────────────────────────────────
+
+/** Optional initial "next action" created together with a new lead. */
+export interface CreateLeadNextAction {
+  type: string;
+  title: string;
+  description?: string;
+  /** Owner of the follow-up; defaults to the lead owner when omitted. */
+  assignedTo?: number;
+  /** ISO timestamp for the due date & time. */
+  dueDate: string;
+  priority?: string;
+}
+
+export interface CreateLeadPayload {
+  name: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  source: string;
+  /** Owner of the new lead; defaults to the creator when omitted. */
+  ownerId?: number;
+  industry?: string;
+  website?: string;
+  /** Maps to the customer's address (shown as Location). */
+  address?: string;
+  leadValue?: string;
+  priority?: string;
+  /** Free-text notes — stored as an editable lead note. */
+  notes?: string;
+  nextAction?: CreateLeadNextAction;
+}
+
+/** Create a lead by hand. Persists notes + an optional first action server-side. */
+export async function createManualLead(payload: CreateLeadPayload): Promise<Lead> {
+  const res = await apiClient.post<Lead>('/sales/leads/manual', payload);
+  return res.data;
+}
+
+/** Live duplicate check by email / phone while capturing a lead. */
+export async function checkLeadDuplicate(
+  email: string,
+  phone: string,
+): Promise<{ duplicate: boolean; message: string | null }> {
+  const res = await apiClient.post<{ duplicate: boolean; message: string | null }>(
+    '/sales/leads/check-duplicate',
+    { email, phone },
+  );
+  return res.data;
+}
+
 export async function updateLead(id: number | string, payload: UpdateLeadPayload): Promise<Lead> {
   const res = await apiClient.put<Lead>(`/sales/leads/${id}`, payload);
   return res.data;

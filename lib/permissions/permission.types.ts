@@ -62,7 +62,7 @@ export type PermissionKey =
   | 'project.delete'
   | 'project.manage_members'
   | 'project.analytics'
-  // Sales Module
+  // Sales Module — coarse access & configuration (enforced by existing routes)
   | 'sales.view'
   | 'sales.create'
   | 'sales.edit'
@@ -74,7 +74,33 @@ export type PermissionKey =
   | 'sales.team.manage'
   | 'sales.targets.manage'
   | 'sales.incentive.manage'
-  | 'sales.reports.view';
+  | 'sales.reports.view'
+  // Sales Module — granular per-area permissions (grouped in Role Management)
+  | 'sales.dashboard.view'
+  | 'sales.dashboard.analytics'
+  | 'sales.leads.view'
+  | 'sales.leads.create'
+  | 'sales.leads.edit'
+  | 'sales.leads.delete'
+  | 'sales.deals.view'
+  | 'sales.deals.create'
+  | 'sales.deals.edit'
+  | 'sales.deals.delete'
+  | 'sales.pipeline.view'
+  | 'sales.pipeline.manage'
+  | 'sales.contacts.view'
+  | 'sales.contacts.create'
+  | 'sales.contacts.edit'
+  | 'sales.contacts.delete'
+  | 'sales.followups.view'
+  | 'sales.followups.create'
+  | 'sales.followups.edit'
+  | 'sales.followups.complete'
+  | 'sales.teams.view'
+  | 'sales.teams.create'
+  | 'sales.teams.edit'
+  | 'sales.teams.delete'
+  | 'sales.reports.export';
 
 /**
  * Module names used for sidebar filtering and route protection.

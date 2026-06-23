@@ -50,7 +50,7 @@ export function InteractionTimeline({ leadId, refreshKey = 0, onChange }: Intera
       setIsLoading(true);
       setInteractions(await fetchLeadInteractions(leadId));
     } catch {
-      toast('Failed to load interactions', 'error');
+      toast('Failed to load next actions', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -65,23 +65,23 @@ export function InteractionTimeline({ leadId, refreshKey = 0, onChange }: Intera
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-gray-400" />
-          Interactions
+          Next Actions
           {interactions.length > 0 && (
             <span className="text-xs font-medium text-gray-400">({interactions.length})</span>
           )}
         </h2>
         {canLog && (
-          <Button size="sm" onClick={() => setIsAddOpen(true)}>
+          <Button size="sm" onClick={() => setIsAddOpen(true)} title="Add a next action (call, email, meeting, follow-up)">
             <Plus className="w-4 h-4 mr-1" />
-            Log Interaction
+            Add Action
           </Button>
         )}
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-gray-500">Loading interactions…</p>
+        <p className="text-sm text-gray-500">Loading next actions…</p>
       ) : interactions.length === 0 ? (
-        <p className="text-sm text-gray-500">No interactions logged.</p>
+        <p className="text-sm text-gray-500">No next actions yet.</p>
       ) : (
         <ul className="space-y-4">
           {interactions.map((it) => {

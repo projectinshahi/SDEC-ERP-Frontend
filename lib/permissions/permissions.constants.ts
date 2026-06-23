@@ -327,82 +327,98 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       },
     ],
   },
+  // ── Sales — grouped by area (mirrors the Development module's multi-group
+  //    structure). The coarse keys (sales.view/edit/…) are RETAINED for the
+  //    existing route enforcement; the per-area keys add granular role config.
   {
     module: 'sales',
-    label: 'Sales Management',
+    label: 'Sales · Dashboard',
     permissions: [
-      {
-        key: 'sales.view',
-        label: 'View Sales',
-        description: 'Access the sales dashboard and view leads',
-        module: 'sales',
-      },
-      {
-        key: 'sales.create',
-        label: 'Create Sales Entities',
-        description: 'Create new leads, opportunities, and deals',
-        module: 'sales',
-      },
-      {
-        key: 'sales.edit',
-        label: 'Edit Sales Entities',
-        description: 'Modify existing sales data and advance pipelines',
-        module: 'sales',
-      },
-      {
-        key: 'sales.delete',
-        label: 'Delete Sales Entities',
-        description: 'Permanently remove sales records',
-        module: 'sales',
-      },
-      {
-        key: 'sales.assign',
-        label: 'Assign Leads',
-        description: 'Assign or reassign leads to Business Development Executives',
-        module: 'sales',
-      },
-      {
-        key: 'sales.scoring',
-        label: 'Manage Lead Scoring',
-        description: 'Configure lead scoring criteria and weights (Admin)',
-        module: 'sales',
-      },
-      {
-        key: 'sales.approve',
-        label: 'Approve Documents',
-        description: 'Approve, reject or request rework on submitted client documents',
-        module: 'sales',
-      },
-      {
-        key: 'sales.config',
-        label: 'Configure Pipeline',
-        description: 'Configure stalled-deal thresholds and pipeline settings',
-        module: 'sales',
-      },
-      {
-        key: 'sales.team.manage',
-        label: 'Manage Teams',
-        description: 'Create, edit and archive sales teams and manage membership',
-        module: 'sales',
-      },
-      {
-        key: 'sales.targets.manage',
-        label: 'Manage Targets',
-        description: "Set and edit other team members' performance targets",
-        module: 'sales',
-      },
-      {
-        key: 'sales.incentive.manage',
-        label: 'Manage Incentives',
-        description: 'Configure per-BDE incentive slab structures',
-        module: 'sales',
-      },
-      {
-        key: 'sales.reports.view',
-        label: 'Org Reporting & Analytics',
-        description: 'Organization-wide reporting and executive analytics visibility (Director/CEO)',
-        module: 'sales',
-      },
+      { key: 'sales.dashboard.view', label: 'View Dashboard', description: 'Open the Sales dashboard / command center', module: 'sales' },
+      { key: 'sales.dashboard.analytics', label: 'View Analytics', description: 'View sales analytics, charts and KPIs', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Leads',
+    permissions: [
+      { key: 'sales.leads.view', label: 'View Leads', description: 'View leads and lead details', module: 'sales' },
+      { key: 'sales.leads.create', label: 'Create Leads', description: 'Add new leads', module: 'sales' },
+      { key: 'sales.leads.edit', label: 'Edit Leads', description: 'Update lead details and status', module: 'sales' },
+      { key: 'sales.leads.delete', label: 'Delete Leads', description: 'Remove leads', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Deals',
+    permissions: [
+      { key: 'sales.deals.view', label: 'View Deals', description: 'View deals and deal details', module: 'sales' },
+      { key: 'sales.deals.create', label: 'Create Deals', description: 'Add new deals', module: 'sales' },
+      { key: 'sales.deals.edit', label: 'Edit Deals', description: 'Update deals and advance stages', module: 'sales' },
+      { key: 'sales.deals.delete', label: 'Delete Deals', description: 'Remove deals', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Pipeline',
+    permissions: [
+      { key: 'sales.pipeline.view', label: 'View Pipeline', description: 'View the leads / deals pipeline board', module: 'sales' },
+      { key: 'sales.pipeline.manage', label: 'Manage Pipeline', description: 'Move records and manage pipeline stages', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Contacts',
+    permissions: [
+      { key: 'sales.contacts.view', label: 'View Contacts', description: 'View contacts and contact details', module: 'sales' },
+      { key: 'sales.contacts.create', label: 'Create Contacts', description: 'Add new contacts', module: 'sales' },
+      { key: 'sales.contacts.edit', label: 'Edit Contacts', description: 'Update contact information', module: 'sales' },
+      { key: 'sales.contacts.delete', label: 'Delete Contacts', description: 'Remove contacts', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Follow-ups',
+    permissions: [
+      { key: 'sales.followups.view', label: 'View Follow-ups', description: 'View the Follow-up Center', module: 'sales' },
+      { key: 'sales.followups.create', label: 'Create Follow-ups', description: 'Schedule new follow-ups', module: 'sales' },
+      { key: 'sales.followups.edit', label: 'Edit Follow-ups', description: 'Reschedule or update follow-ups', module: 'sales' },
+      { key: 'sales.followups.complete', label: 'Complete Follow-ups', description: 'Mark follow-ups as completed', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Team',
+    permissions: [
+      { key: 'sales.teams.view', label: 'View Teams', description: 'View sales teams and members', module: 'sales' },
+      { key: 'sales.teams.create', label: 'Create Teams', description: 'Create new sales teams', module: 'sales' },
+      { key: 'sales.teams.edit', label: 'Edit Teams', description: 'Edit teams and membership', module: 'sales' },
+      { key: 'sales.teams.delete', label: 'Delete Teams', description: 'Archive / remove sales teams', module: 'sales' },
+      { key: 'sales.team.manage', label: 'Manage Teams (full)', description: 'Create, edit and archive sales teams and manage membership', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Reports',
+    permissions: [
+      { key: 'sales.reports.view', label: 'View Reports', description: 'Organization-wide reporting and executive analytics visibility', module: 'sales' },
+      { key: 'sales.reports.export', label: 'Export Reports', description: 'Export sales reports (CSV / PDF)', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Access & Configuration',
+    permissions: [
+      { key: 'sales.view', label: 'View Sales', description: 'Access the sales dashboard and view leads', module: 'sales' },
+      { key: 'sales.create', label: 'Create Sales Entities', description: 'Create new leads, opportunities, and deals', module: 'sales' },
+      { key: 'sales.edit', label: 'Edit Sales Entities', description: 'Modify existing sales data and advance pipelines', module: 'sales' },
+      { key: 'sales.delete', label: 'Delete Sales Entities', description: 'Permanently remove sales records', module: 'sales' },
+      { key: 'sales.assign', label: 'Assign Leads', description: 'Assign or reassign leads to Business Development Executives', module: 'sales' },
+      { key: 'sales.scoring', label: 'Manage Lead Scoring', description: 'Configure lead scoring criteria and weights (Admin)', module: 'sales' },
+      { key: 'sales.approve', label: 'Approve Documents', description: 'Approve, reject or request rework on submitted client documents', module: 'sales' },
+      { key: 'sales.config', label: 'Configure Pipeline', description: 'Configure stalled-deal thresholds and pipeline settings', module: 'sales' },
+      { key: 'sales.targets.manage', label: 'Manage Targets', description: "Set and edit other team members' performance targets", module: 'sales' },
+      { key: 'sales.incentive.manage', label: 'Manage Incentives', description: 'Configure per-BDE incentive slab structures', module: 'sales' },
     ],
   },
 ];

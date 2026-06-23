@@ -1,12 +1,13 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Sidebar, type SidebarItem } from '@/components/Sidebar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { getModuleAccess } from '@/lib/permissions/moduleAccess';
 
 interface LayoutProps {
   children: ReactNode;
@@ -35,6 +36,12 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     module: null,
   },
   {
+    label: 'HR',
+    href: '/master-dashboard/hr',
+    icon: 'Users',
+    module: null,
+  },
+  {
     label: 'Tickets',
     href: '/master-dashboard/tickets',
     icon: 'AlertTriangle',
@@ -53,11 +60,15 @@ export default function MasterDashboardLayout({ children }: LayoutProps) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // Role protection: Only SuperAdmin allowed
-  if (!isLoading && user && user.roleName !== 'SuperAdmin' && user.role !== 'SuperAdmin') {
-    router.replace('/modules');
-    return null;
-  }
+  // Master Dashboard is SuperAdmin-only. Use the normalised access check
+  // (getModuleAccess().master === isSuperAdmin) so every role spelling
+  // ('SuperAdmin' / 'Super Admin' / 'superadmin') matches, and redirect via an
+  // effect rather than during render.
+  const denied = !isLoading && !!user && !getModuleAccess(user).master;
+  useEffect(() => {
+    if (denied) router.replace('/modules');
+  }, [denied, router]);
+  if (denied) return null;
 
   return (
     <ErrorBoundary>
