@@ -1,15 +1,24 @@
 /**
  * Sidebar Configuration
  *
- * Permission-aware sidebar menu items.
- * Each item optionally specifies a `module` which determines
- * whether the item is visible based on the user's permissions.
- * Items with `module: null` (e.g. Dashboard) are always visible.
+ * Permission-aware sidebar menu items. Each item declares:
+ *   • `module` — the top-level product it belongs to (for module isolation), and
+ *   • `permission` — the specific RBAC permission(s) that gate it. The menu item
+ *     (and its route) is hidden/blocked unless the user holds ANY of them.
+ *
+ * Items with `permission` omitted are "module-home" items (e.g. Dashboard) that
+ * are shown to anyone already inside that module. SuperAdmin/Admin bypass all
+ * gating (see usePermissions / getModuleAccess).
+ *
+ * This file is the SINGLE SOURCE OF TRUTH for both menu visibility AND route
+ * access — `permissionsForPath()` derives the required permission for any URL
+ * from these same entries, so the sidebar and the route guard can never drift.
  *
  * The `icon` values must match keys in the Sidebar component's `iconMap`.
  */
 
-import type { ModuleName } from '@/lib/permissions/permission.types';
+import type { ModuleName, PermissionKey } from '@/lib/permissions/permission.types';
+import { groupForModule, type TopModule } from '@/lib/permissions/moduleAccess';
 
 export interface SidebarMenuItem {
   label: string;
@@ -18,70 +27,72 @@ export interface SidebarMenuItem {
   icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module?: ModuleName | null;
+  /** Permission(s) that gate this item/route. ANY grants. Omit = no specific gate (module-home). */
+  permission?: PermissionKey | PermissionKey[];
   isPartition?: boolean;
 }
+
+// Sales pages historically gated only on the coarse `sales.view` key. We keep it
+// as a broad fallback alongside the granular per-area key so legacy roles that
+// only hold coarse keys are not locked out, while granular-only roles (e.g. a
+// "Sales Executive" with just sales.leads.view) see ONLY what they were granted.
+const SALES_REPORTS: PermissionKey[] = ['sales.reports.view', 'sales.view'];
 
 export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
   {
     label: 'Dashboard',
     href: '/dashboard',
     icon: 'LayoutDashboard',
-    module: null, // Always visible
+    module: null, // Always visible within the Development module
   },
   {
     label: 'Projects',
     href: '/dashboard/projects',
     icon: 'Briefcase',
     module: 'project',
+    permission: 'project.view',
   },
   {
     label: 'User Management',
     href: '/dashboard/user-management',
     icon: 'Users',
     module: 'user',
+    permission: ['user.read', 'role.read'],
   },
   {
     label: 'Boards',
     href: '/dashboard/boards',
     icon: 'CheckSquare',
     module: 'task',
+    permission: 'task.read',
   },
-  // {
-  //   label: 'Role Management',
-  //   href: '/dashboard/role-management',
-  //   icon: 'ShieldCheck',
-  //   module: 'role',
-  // },
   {
     label: 'Bug Tracking',
     href: '/dashboard/bugs',
     icon: 'Bug',
     module: 'bugs',
+    permission: 'bugs.read',
   },
-  // {
-  //   label: 'Sprint Tracking',
-  //   href: '/dashboard/sprints',
-  //   icon: 'Rocket',
-  //   module: 'sprints',
-  // },
-  // New Meetings item
   {
     label: 'Meetings',
     href: '/dashboard/meetings',
     icon: 'CalendarDays',
     module: 'meetings',
+    permission: 'meetings.read',
   },
   {
     label: 'Tickets',
     href: '/dashboard/blockers',
     icon: 'AlertTriangle',
     module: 'blockers',
+    permission: 'blockers.read',
   },
   {
     label: 'Developer Performance',
     href: '/dashboard/developer-performance',
     icon: 'BarChart3',
     module: 'project',
+    permission: 'project.view',
   },
   {
     label: 'Sales Division',
@@ -94,18 +105,21 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales',
     icon: 'LayoutDashboard',
     module: 'sales',
+    permission: ['sales.dashboard.view', 'sales.view'],
   },
   {
     label: 'My Day (BDE)',
     href: '/dashboard/sales/bde',
     icon: 'LayoutDashboard',
     module: 'sales',
+    permission: ['sales.dashboard.view', 'sales.view'],
   },
   {
     label: 'Leads',
     href: '/dashboard/sales/leads',
     icon: 'Target',
     module: 'sales',
+    permission: ['sales.leads.view', 'sales.view'],
   },
   // Lead Pipeline merged into the Leads page as an in-page "Pipeline View"
   // (toggle / ?view=pipeline) — no separate route/menu item.
@@ -114,24 +128,28 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/follow-ups',
     icon: 'CalendarDays',
     module: 'sales',
+    permission: ['sales.followups.view', 'sales.view'],
   },
   {
     label: 'Lead Analytics',
     href: '/dashboard/sales/analytics',
     icon: 'BarChart3',
     module: 'sales',
+    permission: ['sales.dashboard.analytics', 'sales.reports.view', 'sales.view'],
   },
   {
     label: 'Team',
     href: '/dashboard/sales/team',
     icon: 'Users',
     module: 'sales',
+    permission: ['sales.teams.view', 'sales.team.manage', 'sales.view'],
   },
   {
     label: 'Deals',
     href: '/dashboard/sales/deals',
     icon: 'TrendingUp',
     module: 'sales',
+    permission: ['sales.deals.view', 'sales.view'],
   },
   // Deal Pipeline merged into the Deals page as an in-page "Pipeline View"
   // (toggle / ?view=pipeline) — no separate route/menu item. ("Pipeline Views"
@@ -141,24 +159,28 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/pipeline',
     icon: 'BarChart3',
     module: 'sales',
+    permission: ['sales.pipeline.view', 'sales.view'],
   },
   {
     label: 'Sales Tasks',
     href: '/dashboard/sales/tasks',
     icon: 'CheckSquare',
     module: 'sales',
+    permission: ['sales.view'],
   },
   {
     label: 'Team Tasks',
     href: '/dashboard/sales/tasks/team',
     icon: 'CheckSquare',
     module: 'sales',
+    permission: ['sales.team.manage', 'sales.view'],
   },
   {
     label: 'Approvals',
     href: '/dashboard/sales/approvals',
     icon: 'ShieldCheck',
     module: 'sales',
+    permission: ['sales.approve', 'sales.view'],
   },
   // Team management consolidated into the single "Team" item (above) — its
   // "Teams" tab. The former "Teams" entry (/dashboard/sales/teams) was removed.
@@ -167,24 +189,28 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/targets/history',
     icon: 'Target',
     module: 'sales',
+    permission: ['sales.targets.manage', 'sales.view'],
   },
   {
     label: 'Incentives',
     href: '/dashboard/sales/incentives',
     icon: 'TrendingUp',
     module: 'sales',
+    permission: ['sales.incentive.manage', 'sales.view'],
   },
   {
     label: 'Manager Performance',
     href: '/dashboard/sales/performance/manager',
     icon: 'BarChart3',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Executive Dashboard',
     href: '/dashboard/sales/performance/executive',
     icon: 'BarChart3',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     // UI label is "Contacts"; route + API (/sales/customers) unchanged.
@@ -192,6 +218,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/customers',
     icon: 'Users',
     module: 'sales',
+    permission: ['sales.contacts.view', 'sales.view'],
   },
   {
     label: 'Sales Reports',
@@ -203,65 +230,119 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/reports/team-target',
     icon: 'Target',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Pipeline Report',
     href: '/dashboard/sales/reports/pipeline',
     icon: 'TrendingUp',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Win Rate',
     href: '/dashboard/sales/reports/win-rate',
     icon: 'BarChart3',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Lost Deal Analysis',
     href: '/dashboard/sales/reports/lost-deals',
     icon: 'AlertTriangle',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Lead Source Report',
     href: '/dashboard/sales/reports/lead-source',
     icon: 'BarChart3',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Daily Reports',
     href: '/dashboard/sales/reports/daily',
     icon: 'CalendarDays',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Report Scheduler',
     href: '/dashboard/sales/reports/scheduler',
     icon: 'CalendarDays',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Forecast vs Actual',
     href: '/dashboard/sales/reports/forecast',
     icon: 'TrendingUp',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Activity Report',
     href: '/dashboard/sales/reports/activity',
     icon: 'BarChart3',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
   {
     label: 'Export Center',
     href: '/dashboard/sales/reports/export-center',
     icon: 'LayoutGrid',
     module: 'sales',
+    permission: ['sales.reports.export', 'sales.reports.view', 'sales.view'],
   },
   {
     label: 'Executive Analytics',
     href: '/dashboard/sales/reports/executive',
     icon: 'LayoutDashboard',
     module: 'sales',
+    permission: SALES_REPORTS,
   },
 ];
+
+/** Normalises an item's `permission` field to an array (empty = no specific gate). */
+export function itemPermissions(item: SidebarMenuItem): PermissionKey[] {
+  if (!item.permission) return [];
+  return Array.isArray(item.permission) ? item.permission : [item.permission];
+}
+
+/**
+ * The permission(s) (ANY grants) that gate a given route, resolved by the
+ * longest matching item href so detail pages inherit their list's permission
+ * (e.g. /dashboard/sales/leads/123 → the Leads item). Empty array = no specific
+ * permission required (module-home or unmapped route).
+ */
+export function permissionsForPath(pathname: string): PermissionKey[] {
+  let best: SidebarMenuItem | null = null;
+  let bestLen = -1;
+  for (const item of SIDEBAR_ITEMS) {
+    if (!item.href || item.isPartition) continue;
+    if (pathname === item.href || pathname.startsWith(item.href + '/')) {
+      if (item.href.length > bestLen) { best = item; bestLen = item.href.length; }
+    }
+  }
+  return best ? itemPermissions(best) : [];
+}
+
+/**
+ * The href of the first menu item in `module` the user can access — used to land
+ * a user on a page they ARE allowed to see when the module's default page is not
+ * permitted (e.g. a leads-only sales user → /dashboard/sales/leads). `hasAny` is
+ * the caller's permission predicate (SuperAdmin-bypassing).
+ */
+export function firstAccessibleHref(
+  module: TopModule,
+  hasAny: (keys: PermissionKey[]) => boolean,
+): string | null {
+  for (const item of SIDEBAR_ITEMS) {
+    if (item.isPartition || !item.href) continue;
+    if (groupForModule(item.module) !== module) continue;
+    const perms = itemPermissions(item);
+    if (perms.length === 0 || hasAny(perms)) return item.href;
+  }
+  return null;
+}

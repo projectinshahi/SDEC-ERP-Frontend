@@ -117,7 +117,7 @@ function buildReportHtml(model: MasterDashboardReportModel, fileBase: string): s
   // fixed DOM element, so it can carry real page numbers via
   // counter(page)/counter(pages) — a normal positioned element cannot read
   // those print counters.
-  const footerBrand = cssStr(`SDEC ERP — ${model.reportTitle}`);
+  const footerBrand = cssStr(`SHAHI SOLUTIONS — ${model.reportTitle}`);
 
   const kpiCards = model.kpis.map((k) => `
     <div class="kpi no-break">
@@ -214,9 +214,9 @@ function buildReportHtml(model: MasterDashboardReportModel, fileBase: string): s
 <body>
   <header class="report-header">
     <div class="brand">
-      <div class="brand-mark">SDEC</div>
+      <div class="brand-mark">SH</div>
       <div>
-        <div class="brand-name">SDEC ERP</div>
+        <div class="brand-name">SHAHI SOLUTIONS</div>
         <div class="brand-tag">Enterprise Resource Planning</div>
       </div>
     </div>

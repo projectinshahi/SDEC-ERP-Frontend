@@ -34,8 +34,15 @@ export function normalizeRole(value?: string | null): string {
 }
 
 /**
- * Which top-level modules the user may access, decided by BOTH the normalised
- * role name and the live RBAC permission set (so custom roles work too).
+ * Which top-level modules the user may access — STRICTLY permission-driven.
+ *
+ * A module card/menu is visible ONLY when the user actually holds at least one
+ * permission in that module's area. Role-NAME shortcuts (e.g. "role is called
+ * Developer/Sales") were removed: a role with no permissions sees nothing, no
+ * matter what it is named. The single exception is the global admin bypass —
+ * SuperAdmin (master + everything) and Admin — which mirrors the backend
+ * `isGlobalAdmin` so the UI and API agree and the primary admin is never locked
+ * out. (Want ONLY SuperAdmin to bypass? Drop `r === 'admin'` from `isAdmin`.)
  */
 export function getModuleAccess(user: ModuleAccessUser | null | undefined): Record<TopModule, boolean> {
   const r = normalizeRole(user?.roleName) || normalizeRole(user?.role);
@@ -43,13 +50,12 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
   const hasAny = (...prefixes: string[]) => prefixes.some((pre) => perms.some((p) => p.startsWith(pre)));
 
   const isSuper = r === 'superadmin';
-  const isAdmin = r === 'admin' || isSuper;
+  const isAdmin = r === 'admin' || isSuper; // global admin (matches backend isGlobalAdmin)
 
   return {
     master: isSuper,
-    development: isAdmin || r === 'developer' || r === 'dev'
-      || hasAny('project.', 'task.', 'sprints.', 'bugs.', 'blockers.', 'meetings.', 'tickets.'),
-    sales: isAdmin || r === 'sales' || hasAny('sales.'),
+    development: isAdmin || hasAny('project.', 'task.', 'sprints.', 'bugs.', 'blockers.', 'meetings.', 'tickets.'),
+    sales: isAdmin || hasAny('sales.'),
     user: isAdmin || hasAny('user.', 'role.'),
   };
 }

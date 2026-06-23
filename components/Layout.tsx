@@ -1,12 +1,15 @@
 'use client';
 
-import { ReactNode, useState, useMemo, useEffect } from 'react';
+import { ReactNode, useState, useMemo, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Sidebar, type SidebarItem } from '@/components/Sidebar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AuthGuard } from '@/components/auth/AuthGuard';
-import { SIDEBAR_ITEMS } from '@/lib/sidebar/sidebar.config';
+import {
+  SIDEBAR_ITEMS, itemPermissions, permissionsForPath, firstAccessibleHref,
+  type SidebarMenuItem,
+} from '@/lib/sidebar/sidebar.config';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
 import {
@@ -25,7 +28,7 @@ interface LayoutProps {
  */
 export const DashboardLayout = ({ children }: LayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { canAccessModule } = usePermissions();
+  const { canAccessModule, hasAnyPermission, isSuperAdmin } = usePermissions();
   const { user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
@@ -39,25 +42,57 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
     [shared, access, pathname],
   );
 
-  // Is the user allowed in the module that owns this route?
-  const allowed = shared || access[moduleForPath(pathname)];
+  // Route guard (UI layer; APIs are independently permission-checked):
+  //   1. module isolation — user must have access to the module that owns the route, AND
+  //   2. STRICT per-page permission — user must hold the page's required permission.
+  const moduleOfPath = moduleForPath(pathname);
+  const requiredPerms = permissionsForPath(pathname);
+  const permitted = requiredPerms.length === 0 || isSuperAdmin || hasAnyPermission(requiredPerms);
+  const allowed = shared || (access[moduleOfPath] && permitted);
 
-  // Module-level route guard (UI layer; APIs are independently permission-checked).
   useEffect(() => {
-    if (user && !allowed) router.replace('/modules');
-  }, [user, allowed, router]);
+    if (!user || allowed) return;
+    // If the user CAN access this module but not this specific page, land them on
+    // the first page they ARE allowed to see; otherwise send them to /modules.
+    if (access[moduleOfPath]) {
+      const target = firstAccessibleHref(moduleOfPath, hasAnyPermission);
+      router.replace(target ?? '/modules');
+    } else {
+      router.replace('/modules');
+    }
+  }, [user, allowed, access, moduleOfPath, hasAnyPermission, router]);
+
+  // A single sidebar item is visible when: correct module + module access + the
+  // item's specific permission (SuperAdmin/Admin bypass via usePermissions).
+  const isItemVisible = useCallback((item: SidebarMenuItem): boolean => {
+    if (item.module === null || item.module === undefined) return true;
+    if (!canAccessModule(item.module)) return false;
+    const perms = itemPermissions(item);
+    return perms.length === 0 || hasAnyPermission(perms);
+  }, [canAccessModule, hasAnyPermission]);
 
   /**
-   * Sidebar items = items of the CURRENT module only, then permission-filtered.
-   * Items with module === null (Dashboard) are always shown within their module.
+   * Sidebar items = items of the CURRENT module only, permission-filtered. A
+   * partition (section header) is shown only when at least one of its child
+   * items (up to the next partition) is visible.
    */
   const visibleMenuItems = useMemo((): SidebarItem[] => {
-    return SIDEBAR_ITEMS.filter((item) => {
-      if (groupForModule(item.module) !== currentModule) return false;
-      if (item.module === null || item.module === undefined) return true;
-      return canAccessModule(item.module);
-    }) as SidebarItem[];
-  }, [canAccessModule, currentModule]);
+    const inModule = SIDEBAR_ITEMS.filter((i) => groupForModule(i.module) === currentModule);
+    const result: SidebarMenuItem[] = [];
+    for (let i = 0; i < inModule.length; i++) {
+      const item = inModule[i];
+      if (item.isPartition) {
+        let hasVisibleChild = false;
+        for (let j = i + 1; j < inModule.length && !inModule[j].isPartition; j++) {
+          if (isItemVisible(inModule[j])) { hasVisibleChild = true; break; }
+        }
+        if (hasVisibleChild) result.push(item);
+      } else if (isItemVisible(item)) {
+        result.push(item);
+      }
+    }
+    return result as SidebarItem[];
+  }, [currentModule, isItemVisible]);
 
   return (
     <ErrorBoundary>

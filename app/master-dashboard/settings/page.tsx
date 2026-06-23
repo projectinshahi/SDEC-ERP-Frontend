@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import {
   ShieldCheck, Users, KeyRound, ScrollText, LayoutGrid, UserCheck, UserX,
-  FolderKanban, Activity,
+  FolderKanban, Activity, Lock, type LucideIcon,
 } from 'lucide-react';
 import { UserManagementClient } from '@/app/dashboard/user-management/UserManagementClient';
 import { RoleManagementClient } from '@/app/dashboard/role-management/RoleManagementClient';
+import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { fetchMasterAudit } from '@/lib/api/masterModules';
 import {
   useMasterResource, ModuleStateScreen, ModuleHeader, MiniStat, EmptyState,
@@ -14,10 +15,11 @@ import {
 import { Card, CardBody } from '@/components/Card';
 import { classNames } from '@/lib/utils';
 
-type Tab = 'system' | 'users' | 'roles' | 'audit';
+type Tab = 'system' | 'security' | 'users' | 'roles' | 'audit';
 
-const TABS: Array<{ id: Tab; label: string; icon: any }> = [
+const TABS: Array<{ id: Tab; label: string; icon: LucideIcon }> = [
   { id: 'system', label: 'System', icon: LayoutGrid },
+  { id: 'security', label: 'Account Security', icon: Lock },
   { id: 'users', label: 'User Management', icon: Users },
   { id: 'roles', label: 'Role Management', icon: KeyRound },
   { id: 'audit', label: 'Audit Log', icon: ScrollText },
@@ -85,6 +87,13 @@ export default function MasterSettingsPage() {
             </Card>
           </div>
         )
+      )}
+
+      {/* Account security — change password */}
+      {tab === 'security' && (
+        <div className="py-2">
+          <ChangePasswordCard />
+        </div>
       )}
 
       {/* User management */}

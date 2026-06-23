@@ -26,6 +26,7 @@ import {
   TrendingUp,
   BarChart3,
   LayoutGrid,
+  Settings,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
 import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
@@ -46,6 +47,7 @@ const iconMap = {
   TrendingUp,
   BarChart3,
   LayoutGrid,
+  Settings,
 } as const;
 
 export interface SidebarItem {
@@ -143,8 +145,8 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
                 <LayoutDashboard size={18} className="text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent tracking-tight leading-none">
-                  SDEC ERP
+                <h1 className="text-sm md:text-lg font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent tracking-tight leading-none whitespace-nowrap">
+                  SHAHI SOLUTIONS
                 </h1>
                 {moduleLabel && (
                   <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mt-1 truncate">{moduleLabel}</span>
@@ -154,7 +156,7 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
           ) : (
             <div className="mx-auto">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-extrabold text-base shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform duration-200 cursor-pointer">
-                SD
+                SH
               </div>
             </div>
           )}

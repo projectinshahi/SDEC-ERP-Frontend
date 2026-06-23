@@ -87,6 +87,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: null, isAuthenticated: false, isLoading: false });
   }, []);
 
+  // Re-fetch the user's CURRENT role + permissions from the backend so RBAC stays
+  // in sync WITHOUT a re-login (a role-permission change takes effect on the next
+  // mount / tab focus). Fail-safe: on ANY error keep the cached permissions — the
+  // backend independently enforces permissions on every request regardless.
+  const refreshUser = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const token = localStorage.getItem('authToken');
+    // Skip the offline Super Admin fallback token (not a real backend session).
+    if (!token || !token.startsWith('user-token-')) return;
+    try {
+      const res = await apiClient.get<{ user: AuthUser }>('/auth/me');
+      // If logout cleared the session while this request was in flight, discard
+      // the response so we never re-establish an authenticated state post-logout.
+      if (!localStorage.getItem('authToken')) return;
+      const fresh = res.data?.user;
+      if (!fresh) return;
+      const merged: AuthUser = {
+        id: fresh.id,
+        name: fresh.name,
+        email: fresh.email,
+        role: fresh.role,
+        roleName: fresh.roleName ?? '',
+        permissions: fresh.permissions ?? [],
+        mustChangePassword: fresh.mustChangePassword ?? false,
+      };
+      localStorage.setItem('user', JSON.stringify(merged));
+      setState({ user: merged, isAuthenticated: true, isLoading: false });
+    } catch {
+      // Keep cached permissions (network/403/etc.) — never wipe access on refresh.
+    }
+  }, []);
+
+  // Sync permissions on mount and whenever the tab regains focus.
+  useEffect(() => {
+    // refreshUser only setStates after an awaited fetch (not synchronous).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refreshUser();
+    if (typeof window === 'undefined') return;
+    const onFocus = () => refreshUser();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refreshUser]);
+
   const login = useCallback(async (email: string, password: string): Promise<void> => {
     // DO NOT set isLoading: true here. 
     // It causes login/page.tsx to unmount the LoginForm and erases all error states!
