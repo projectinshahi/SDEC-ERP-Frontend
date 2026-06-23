@@ -74,7 +74,7 @@ export default function SalesCommandCenterPage() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <QuickLink href="/dashboard/sales/leads/pipeline" icon={LayoutGrid} label="Pipeline" />
+            <QuickLink href="/dashboard/sales/leads?view=pipeline" icon={LayoutGrid} label="Pipeline" />
             <QuickLink href="/dashboard/sales/follow-ups" icon={Clock} label="Follow-ups" />
             <QuickLink href="/dashboard/sales/team" icon={Trophy} label="Team" />
             <QuickLink href="/dashboard/sales/analytics" icon={BarChart3} label="Analytics" />

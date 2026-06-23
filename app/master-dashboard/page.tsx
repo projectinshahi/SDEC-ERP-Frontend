@@ -138,30 +138,38 @@ export default function MasterDashboardPage() {
           { label: 'Meetings', value: String(n(stats.meetings.total)), sub: `${n(stats.meetings.upcoming)} upcoming` },
         ],
         departments: [
-          { title: 'Sales', rows: [
-            { label: 'Revenue This Month', value: formatINR(n(stats.sales.revenue)) },
-            { label: 'Deals Won', value: String(n(stats.sales.wonDeals)) },
-            { label: 'Pipeline Value', value: formatINR(n(stats.sales.pipelineValue)) },
-            { label: 'New Leads', value: String(n(stats.sales.totalLeads)) },
-          ] },
-          { title: 'Projects', rows: [
-            { label: 'On Track', value: String(n(stats.projects.onTrack)) },
-            { label: 'At Risk', value: String(n(stats.projects.atRisk)) },
-            { label: 'Delayed', value: String(n(stats.projects.delayed)) },
-            { label: 'On Hold', value: String(n(stats.projects.onHold)) },
-          ] },
-          { title: 'Tickets', rows: [
-            { label: 'Open Tickets', value: String(n(stats.tickets.open)) },
-            { label: 'Critical', value: String(n(stats.tickets.critical)) },
-            { label: 'Escalated', value: String(n(stats.tickets.escalated)) },
-            { label: 'Resolved', value: String(n(stats.tickets.resolved)) },
-          ] },
-          { title: 'Meetings', rows: [
-            { label: 'Total Meetings', value: String(n(stats.meetings.total)) },
-            { label: 'Upcoming', value: String(n(stats.meetings.upcoming)) },
-            { label: 'Completed', value: String(n(stats.meetings.completed)) },
-            { label: 'Cancelled', value: String(n(stats.meetings.cancelled)) },
-          ] },
+          {
+            title: 'Sales', rows: [
+              { label: 'Revenue This Month', value: formatINR(n(stats.sales.revenue)) },
+              { label: 'Deals Won', value: String(n(stats.sales.wonDeals)) },
+              { label: 'Pipeline Value', value: formatINR(n(stats.sales.pipelineValue)) },
+              { label: 'New Leads', value: String(n(stats.sales.totalLeads)) },
+            ]
+          },
+          {
+            title: 'Projects', rows: [
+              { label: 'On Track', value: String(n(stats.projects.onTrack)) },
+              { label: 'At Risk', value: String(n(stats.projects.atRisk)) },
+              { label: 'Delayed', value: String(n(stats.projects.delayed)) },
+              { label: 'On Hold', value: String(n(stats.projects.onHold)) },
+            ]
+          },
+          {
+            title: 'Tickets', rows: [
+              { label: 'Open Tickets', value: String(n(stats.tickets.open)) },
+              { label: 'Critical', value: String(n(stats.tickets.critical)) },
+              { label: 'Escalated', value: String(n(stats.tickets.escalated)) },
+              { label: 'Resolved', value: String(n(stats.tickets.resolved)) },
+            ]
+          },
+          {
+            title: 'Meetings', rows: [
+              { label: 'Total Meetings', value: String(n(stats.meetings.total)) },
+              { label: 'Upcoming', value: String(n(stats.meetings.upcoming)) },
+              { label: 'Completed', value: String(n(stats.meetings.completed)) },
+              { label: 'Cancelled', value: String(n(stats.meetings.cancelled)) },
+            ]
+          },
         ],
         // Mirror exactly the charts currently visible on the dashboard.
         analytics: [
@@ -281,6 +289,7 @@ export default function MasterDashboardPage() {
           />
           <DeptSummaryCard
             name="HR"
+            href="/master-dashboard/hr"
             icon={<Users className="w-4 h-4 text-purple-600" />}
             iconBg="bg-purple-100 dark:bg-purple-900/30"
             metrics={[

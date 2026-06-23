@@ -10,14 +10,12 @@ export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // If user is already authenticated, redirect based on role
+  // Every authenticated user — SuperAdmin included — lands on the Modules
+  // selection page (the central entry point). SuperAdmin opens the Master
+  // Dashboard from there via the SuperAdmin card.
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
-      if (user.roleName === 'SuperAdmin' || user.role === 'SuperAdmin') {
-        router.replace('/master-dashboard');
-      } else {
-        router.replace('/modules');
-      }
+      router.replace('/modules');
     }
   }, [isAuthenticated, isLoading, router, user]);
 

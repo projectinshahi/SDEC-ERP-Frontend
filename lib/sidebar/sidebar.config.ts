@@ -78,6 +78,12 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: 'blockers',
   },
   {
+    label: 'Developer Performance',
+    href: '/dashboard/developer-performance',
+    icon: 'BarChart3',
+    module: 'project',
+  },
+  {
     label: 'Sales Division',
     isPartition: true,
     module: 'sales',
@@ -101,12 +107,8 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'Target',
     module: 'sales',
   },
-  {
-    label: 'Lead Pipeline',
-    href: '/dashboard/sales/leads/pipeline',
-    icon: 'TrendingUp',
-    module: 'sales',
-  },
+  // Lead Pipeline merged into the Leads page as an in-page "Pipeline View"
+  // (toggle / ?view=pipeline) — no separate route/menu item.
   {
     label: 'Follow-up Center',
     href: '/dashboard/sales/follow-ups',
@@ -131,12 +133,9 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'TrendingUp',
     module: 'sales',
   },
-  {
-    label: 'Deal Pipeline',
-    href: '/dashboard/sales/deals/pipeline',
-    icon: 'LayoutGrid',
-    module: 'sales',
-  },
+  // Deal Pipeline merged into the Deals page as an in-page "Pipeline View"
+  // (toggle / ?view=pipeline) — no separate route/menu item. ("Pipeline Views"
+  // below is a DIFFERENT feature: saved-view pipeline analytics.)
   {
     label: 'Pipeline Views',
     href: '/dashboard/sales/pipeline',
@@ -161,12 +160,8 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'ShieldCheck',
     module: 'sales',
   },
-  {
-    label: 'Teams',
-    href: '/dashboard/sales/teams',
-    icon: 'Users',
-    module: 'sales',
-  },
+  // Team management consolidated into the single "Team" item (above) — its
+  // "Teams" tab. The former "Teams" entry (/dashboard/sales/teams) was removed.
   {
     label: 'Target History',
     href: '/dashboard/sales/targets/history',
@@ -192,7 +187,8 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: 'sales',
   },
   {
-    label: 'Customers',
+    // UI label is "Contacts"; route + API (/sales/customers) unchanged.
+    label: 'Contacts',
     href: '/dashboard/sales/customers',
     icon: 'Users',
     module: 'sales',

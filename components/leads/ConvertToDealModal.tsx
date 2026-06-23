@@ -36,11 +36,11 @@ export function ConvertToDealModal({ isOpen, onClose, lead, onConverted }: Conve
     e.preventDefault();
     try {
       setIsSaving(true);
-      const deal = await convertLeadToDeal(lead.id, Number(amount) || 0);
+      await convertLeadToDeal(lead.id, Number(amount) || 0);
       toast('Lead converted to deal', 'success');
       onConverted();
       onClose();
-      router.push(`/dashboard/sales/deals/pipeline?highlight=${deal.id}`);
+      router.push('/dashboard/sales/deals?view=pipeline');
     } catch (error: any) {
       toast(error?.message || 'Failed to convert lead', 'error');
     } finally {

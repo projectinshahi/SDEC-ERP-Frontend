@@ -60,6 +60,7 @@ export interface FollowUp {
   leadId?: number | null;
   ownerId: number;
   lead?: FollowUpLeadRef | null;
+  owner?: { id: number; name: string } | null;
 }
 
 export interface MyFollowUps {

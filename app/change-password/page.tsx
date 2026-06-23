@@ -63,11 +63,9 @@ export default function ChangePasswordPage() {
   // If they don't need to change password, redirect to appropriate dashboard
   React.useEffect(() => {
     if (!isAuthLoading && isAuthenticated && user && !user.mustChangePassword) {
-      if (user.roleName === 'SuperAdmin' || user.role === 'SuperAdmin') {
-        router.replace('/master-dashboard');
-      } else {
-        router.replace('/modules');
-      }
+      // Everyone lands on the Modules page (central entry point), consistent
+      // with the login flow — SuperAdmin opens Master Dashboard from there.
+      router.replace('/modules');
     }
   }, [isAuthLoading, isAuthenticated, user, router]);
 
@@ -113,13 +111,9 @@ export default function ChangePasswordPage() {
 
       toast.success('Password updated successfully!');
 
-      // Redirect to correct dashboard now that password is changed. The password
-      // change does not alter the role, so the current `user` drives the target.
-      if (user?.roleName === 'SuperAdmin' || user?.role === 'SuperAdmin') {
-        router.push('/master-dashboard');
-      } else {
-        router.push('/modules');
-      }
+      // Password changed — continue to the Modules page (central entry point),
+      // consistent with the login flow (SuperAdmin opens Master Dashboard there).
+      router.push('/modules');
     } catch (err: any) {
       console.error('[ChangePassword] Error:', err);
       setError(err.response?.data?.error || err.message || 'An error occurred while changing password.');

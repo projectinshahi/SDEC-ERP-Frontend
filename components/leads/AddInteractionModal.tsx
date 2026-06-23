@@ -5,7 +5,7 @@ import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { SelectField } from '@/components/ui/SelectField';
 import { TextareaField } from '@/components/ui/TextareaField';
-import { InputField } from '@/components/ui/InputField';
+import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { useToast } from '@/lib/hooks/useToast';
 import { createLeadInteraction } from '@/lib/api/leadQualification';
 import type { InteractionType } from '@/lib/types/leadQualification';
@@ -63,18 +63,18 @@ export function AddInteractionModal({ isOpen, onClose, leadId, onSaved }: AddInt
         notes: notes.trim(),
         date: date ? new Date(date).toISOString() : undefined,
       });
-      toast('Interaction logged', 'success');
+      toast('Action added', 'success');
       onSaved();
       onClose();
     } catch (error: any) {
-      toast(error?.message || 'Failed to log interaction', 'error');
+      toast(error?.message || 'Failed to add action', 'error');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Log Interaction" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add Action" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <SelectField
           label="Type" id="interaction-type" value={type}
@@ -86,14 +86,14 @@ export function AddInteractionModal({ isOpen, onClose, leadId, onSaved }: AddInt
           value={notes} onChange={setNotes} error={errors.notes}
           placeholder="e.g. Discussed pricing / Sent proposal / Demo completed"
         />
-        <InputField
-          label="Date" id="interaction-date" type="datetime-local"
+        <DateTimePicker
+          label="Date" id="interaction-date"
           value={date} onChange={setDate} error={errors.date}
           max={nowLocalDatetime()}
         />
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={isSaving}>Log Interaction</Button>
+          <Button type="submit" isLoading={isSaving}>Add Action</Button>
         </div>
       </form>
     </Modal>

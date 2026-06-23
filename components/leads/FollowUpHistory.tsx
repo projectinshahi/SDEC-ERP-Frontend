@@ -41,7 +41,7 @@ export function FollowUpHistory({ leadId, refreshKey = 0 }: FollowUpHistoryProps
       setIsLoading(true);
       setEntries(await fetchLeadHistory(leadId));
     } catch {
-      toast('Failed to load follow-up history', 'error');
+      toast('Failed to load next action history', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -55,14 +55,14 @@ export function FollowUpHistory({ leadId, refreshKey = 0 }: FollowUpHistoryProps
     <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
         <History className="w-5 h-5 text-gray-400" />
-        Follow-up History
+        Next Action History
         {entries.length > 0 && <span className="text-xs font-medium text-gray-400">({entries.length})</span>}
       </h2>
 
       {isLoading ? (
         <p className="text-sm text-gray-500">Loading history…</p>
       ) : entries.length === 0 ? (
-        <p className="text-sm text-gray-500">No follow-up history available.</p>
+        <p className="text-sm text-gray-500">No next action history available.</p>
       ) : (
         <ul className="space-y-4">
           {entries.map((e, i) => {

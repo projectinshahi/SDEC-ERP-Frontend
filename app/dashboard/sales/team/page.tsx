@@ -1,13 +1,38 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+/**
+ * Sales → Team (consolidated). A single Team Management destination with two
+ * tabs:
+ *   • Teams       — CRUD management (create / edit / archive teams + membership),
+ *                   gated by `sales.team.manage`. (Formerly /dashboard/sales/teams.)
+ *   • Performance — read-only manager workspace (leaderboards + team KPIs).
+ * The old /dashboard/sales/teams route now redirects here.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Users, Plus, Archive, Pencil, ChevronRight, UserRound,
+  Trophy, Medal, TrendingUp, LayoutGrid, BarChart3,
+} from 'lucide-react';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Trophy, Medal, Users, TrendingUp } from 'lucide-react';
+import { Badge } from '@/components/Badge';
+import { EmptyState } from '@/components/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
+import { TeamFormModal } from '@/components/sales-execution/teams/TeamFormModal';
+import { TeamDetailModal } from '@/components/sales-execution/teams/TeamDetailModal';
 import { useToast } from '@/lib/hooks/useToast';
+import { useConfirm } from '@/lib/hooks/useConfirm';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { fetchTeams, archiveTeam } from '@/lib/api/salesTeams';
 import { fetchManagerWorkspace } from '@/lib/api/salesDashboard';
+import { classNames } from '@/lib/utils';
+import type { SalesTeam } from '@/lib/types/salesExecution';
 import type { ManagerWorkspace, TeamMember } from '@/lib/types/salesDashboard';
+
+type Tab = 'teams' | 'performance';
 
 const inr = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
@@ -22,7 +47,316 @@ function avatar(name: string) {
 
 const MEDAL = ['text-amber-500', 'text-gray-400', 'text-orange-600'];
 
-export default function ManagerWorkspacePage() {
+const TABS: { key: Tab; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
+  { key: 'teams', label: 'Teams', icon: LayoutGrid },
+  { key: 'performance', label: 'Performance', icon: BarChart3 },
+];
+
+export default function TeamPage() {
+  const [tab, setTab] = useState<Tab>('teams');
+
+  return (
+    <PermissionPageGuard module="sales">
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <Breadcrumb
+            items={[
+              { label: 'Dashboard', href: '/dashboard' },
+              { label: 'Sales', href: '/dashboard/sales' },
+              { label: 'Team', href: '/dashboard/sales/team' },
+            ]}
+          />
+          <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">Team Management</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Organise your sales teams and track their performance — all in one place.
+          </p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
+          {TABS.map(({ key, label, icon: Icon }) => {
+            const active = tab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className={classNames(
+                  'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors',
+                  active
+                    ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+                )}
+              >
+                <Icon size={16} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {tab === 'teams' ? <TeamsManagement /> : <PerformanceSection />}
+      </div>
+    </PermissionPageGuard>
+  );
+}
+
+/* ═══════════════════════════ Teams management ═════════════════════════════ */
+
+function StatTile({
+  label, value, icon: Icon, tone,
+}: {
+  label: string; value: number; icon: React.ComponentType<{ size?: number; className?: string }>; tone: string;
+}) {
+  return (
+    <Card variant="outlined" className="p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
+        <Icon size={16} className={tone} />
+      </div>
+      <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white tabular-nums">{value}</p>
+    </Card>
+  );
+}
+
+function TeamsManagement() {
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
+  const { hasPermission } = usePermissions();
+  const canManage = hasPermission('sales.team.manage');
+
+  // Hold ALL teams (including archived) so the stats are accurate; the
+  // "Show archived" toggle filters the displayed grid client-side.
+  const [teams, setTeams] = useState<SalesTeam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<SalesTeam | null>(null);
+  const [detailTeamId, setDetailTeamId] = useState<number | null>(null);
+  const [archivingId, setArchivingId] = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setTeams(await fetchTeams(true));
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Failed to load teams', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+
+  const openCreate = () => {
+    setEditingTeam(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (team: SalesTeam) => {
+    setEditingTeam(team);
+    setFormOpen(true);
+  };
+
+  const handleArchive = async (team: SalesTeam) => {
+    const ok = await confirm({
+      title: 'Archive team',
+      message: `Archive "${team.name}"? It will be hidden from the active list but its members and history are kept.`,
+      confirmLabel: 'Archive',
+      intent: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      setArchivingId(team.id);
+      await archiveTeam(team.id);
+      toast('Team archived', 'success');
+      await load();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Failed to archive team', 'error');
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
+  const activeTeams = useMemo(() => teams.filter((t) => !t.archived), [teams]);
+  const archivedTeams = useMemo(() => teams.filter((t) => t.archived), [teams]);
+  // Count members across ALL teams (same scope as "Total Teams"). Each user
+  // belongs to exactly one team, so there is no double-counting.
+  const totalMembers = useMemo(
+    () => teams.reduce((sum, t) => sum + (t.members?.length ?? 0), 0),
+    [teams],
+  );
+  const visibleTeams = showArchived ? teams : activeTeams;
+
+  return (
+    <div className="space-y-6">
+      {/* Top stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatTile label="Total Teams" value={teams.length} icon={Users} tone="text-blue-500" />
+        <StatTile label="Total Members" value={totalMembers} icon={UserRound} tone="text-indigo-500" />
+        <StatTile label="Active Teams" value={activeTeams.length} icon={TrendingUp} tone="text-emerald-500" />
+        <StatTile label="Inactive Teams" value={archivedTeams.length} icon={Archive} tone="text-amber-500" />
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+          {loading ? 'Loading…' : `${activeTeams.length} active team${activeTeams.length === 1 ? '' : 's'}`}
+        </span>
+        <div className="flex items-center gap-4">
+          <label className="inline-flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
+            />
+            Show archived
+          </label>
+          {canManage && (
+            <Button variant="primary" onClick={openCreate}>
+              <Plus size={18} /> New Team
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Body */}
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} variant="outlined" className="p-5">
+              <Skeleton className="mb-3 h-5 w-2/3" />
+              <Skeleton className="mb-2 h-4 w-full" />
+              <Skeleton className="mb-4 h-4 w-1/2" />
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-6 w-20" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : visibleTeams.length === 0 ? (
+        <EmptyState
+          icon={<Users size={32} />}
+          title={teams.length === 0 ? 'No teams yet' : 'No active teams'}
+          description={
+            teams.length === 0
+              ? canManage
+                ? 'Create your first sales team to start organising managers and members.'
+                : 'No sales teams have been set up yet.'
+              : 'All teams are archived. Toggle “Show archived” to see them.'
+          }
+          actionLabel={canManage && teams.length === 0 ? 'New Team' : undefined}
+          onAction={canManage && teams.length === 0 ? openCreate : undefined}
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visibleTeams.map((team) => {
+            const memberCount = team.members?.length ?? 0;
+            return (
+              <Card
+                key={team.id}
+                variant="outlined"
+                className={classNames(
+                  'group flex flex-col p-5 transition-all hover:shadow-lg',
+                  team.archived && 'opacity-75',
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDetailTeamId(team.id)}
+                    className="min-w-0 text-left"
+                  >
+                    <h2 className="flex items-center gap-1 truncate text-base font-bold text-gray-900 hover:text-blue-600 dark:text-gray-100 dark:hover:text-blue-400">
+                      {team.name}
+                      <ChevronRight
+                        size={16}
+                        className="flex-shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 dark:text-gray-600"
+                      />
+                    </h2>
+                  </button>
+                  {team.archived && <Badge variant="warning">Archived</Badge>}
+                </div>
+
+                <p className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-sm text-gray-500 dark:text-gray-400">
+                  {team.description || 'No description provided.'}
+                </p>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Badge variant="info">
+                    <UserRound size={12} className="mr-1" />
+                    {team.manager?.name ?? 'No manager'}
+                  </Badge>
+                  <Badge variant="default">
+                    {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                  </Badge>
+                </div>
+
+                <div className="mt-auto flex items-center justify-between gap-2 pt-4">
+                  <Button variant="secondary" size="sm" onClick={() => setDetailTeamId(team.id)}>
+                    View Members
+                  </Button>
+                  {canManage && !team.archived && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(team)}
+                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                        aria-label={`Edit ${team.name}`}
+                        title="Edit team"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleArchive(team)}
+                        disabled={archivingId === team.id}
+                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/30"
+                        aria-label={`Archive ${team.name}`}
+                        title="Archive team"
+                      >
+                        <Archive size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create / edit modal */}
+      <TeamFormModal
+        isOpen={formOpen}
+        onClose={() => setFormOpen(false)}
+        team={editingTeam}
+        onSaved={() => void load()}
+      />
+
+      {/* Detail / membership modal */}
+      <TeamDetailModal
+        isOpen={detailTeamId != null}
+        onClose={() => setDetailTeamId(null)}
+        teamId={detailTeamId}
+        canManage={canManage}
+        onChanged={() => void load()}
+      />
+    </div>
+  );
+}
+
+/* ═══════════════════════════ Performance ══════════════════════════════════ */
+
+function PerformanceSection() {
   const { toast } = useToast();
   const [data, setData] = useState<ManagerWorkspace | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,89 +372,78 @@ export default function ManagerWorkspacePage() {
     }
   }, [toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
 
   return (
-    <PermissionPageGuard module="sales">
-      <div className="space-y-6">
-        <div>
-          <Breadcrumb
-            items={[
-              { label: 'Dashboard', href: '/dashboard' },
-              { label: 'Sales', href: '/dashboard/sales' },
-              { label: 'Team', href: '/dashboard/sales/team' },
-            ]}
-          />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-2">Manager Workspace</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Team performance, conversions and revenue leaderboard.</p>
-        </div>
-
-        {/* Leaderboards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Leaderboard
-            title="Top by Revenue" icon={Trophy} loading={isLoading}
-            members={data?.leaderboard.topRevenue ?? []}
-            metric={(m) => inr(m.revenueGenerated)}
-          />
-          <Leaderboard
-            title="Top by Conversion" icon={TrendingUp} loading={isLoading}
-            members={data?.leaderboard.topConversion ?? []}
-            metric={(m) => `${m.conversionRate}%`}
-          />
-        </div>
-
-        {/* Team table */}
-        <Card className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-            <Users className="w-4 h-4 text-indigo-500" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Team Performance</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
-                <tr>
-                  <th className="px-6 py-3 font-medium text-gray-500">BDE</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Leads</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Conversions</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Conv. Rate</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Meetings</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 text-right">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {isLoading ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading…</td></tr>
-                ) : !data || data.team.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No team activity yet.</td></tr>
-                ) : (
-                  data.team.map((m) => {
-                    const { initials, color } = avatar(m.name);
-                    return (
-                      <tr key={m.ownerId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                        <td className="px-6 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color}`}>{initials}</div>
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-white">{m.name}</p>
-                              <p className="text-xs text-gray-400">{m.role}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{m.leadsAssigned}</td>
-                        <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{m.conversions}</td>
-                        <td className="px-6 py-3 font-semibold text-gray-900 dark:text-white">{m.conversionRate}%</td>
-                        <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{m.meetingsCompleted}</td>
-                        <td className="px-6 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{inr(m.revenueGenerated)}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+    <div className="space-y-6">
+      {/* Leaderboards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Leaderboard
+          title="Top by Revenue" icon={Trophy} loading={isLoading}
+          members={data?.leaderboard.topRevenue ?? []}
+          metric={(m) => inr(m.revenueGenerated)}
+        />
+        <Leaderboard
+          title="Top by Conversion" icon={TrendingUp} loading={isLoading}
+          members={data?.leaderboard.topConversion ?? []}
+          metric={(m) => `${m.conversionRate}%`}
+        />
       </div>
-    </PermissionPageGuard>
+
+      {/* Team table */}
+      <Card className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+          <Users className="w-4 h-4 text-indigo-500" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Team Performance</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
+              <tr>
+                <th className="px-6 py-3 font-medium text-gray-500">BDE</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Leads</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Conversions</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Conv. Rate</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Meetings</th>
+                <th className="px-6 py-3 font-medium text-gray-500 text-right">Revenue</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+              {isLoading ? (
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading…</td></tr>
+              ) : !data || data.team.length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No team activity yet.</td></tr>
+              ) : (
+                data.team.map((m) => {
+                  const { initials, color } = avatar(m.name);
+                  return (
+                    <tr key={m.ownerId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color}`}>{initials}</div>
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">{m.name}</p>
+                            <p className="text-xs text-gray-400">{m.role}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{m.leadsAssigned}</td>
+                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{m.conversions}</td>
+                      <td className="px-6 py-3 font-semibold text-gray-900 dark:text-white">{m.conversionRate}%</td>
+                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{m.meetingsCompleted}</td>
+                      <td className="px-6 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{inr(m.revenueGenerated)}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
   );
 }
 
