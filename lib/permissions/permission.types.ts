@@ -44,6 +44,7 @@ export type PermissionKey =
   | 'sprints.update'
   | 'sprints.delete'
   | 'sprints.analytics'
+  | 'sprints.status.manage'
   // Blocker Tracking
   | 'blockers.create'
   | 'blockers.read'

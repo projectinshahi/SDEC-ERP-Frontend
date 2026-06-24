@@ -28,7 +28,7 @@ import { ProjectCard, Project } from '@/components/projects/ProjectCard';
 import { ProjectList } from '@/components/projects/ProjectList';
 import { CreateProjectModal, ProjectFormData } from '@/components/projects/CreateProjectModal';
 import { fetchProjects, createProjectApi, updateProjectApi, archiveProjectApi, restoreProjectApi, deleteProjectApi } from '@/lib/api/projects';
-import { projectTabBucket, type ProjectTab } from '@/lib/projects/projectStatus';
+import { projectTabBucket, PROJECT_STATUSES, type ProjectTab } from '@/lib/projects/projectStatus';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -42,6 +42,7 @@ export default function ProjectsPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState<ProjectTab>('active');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [projectToArchive, setProjectToArchive] = useState<Project | null>(null);
   const [isArchiving, setIsArchiving] = useState<boolean>(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
@@ -156,13 +157,28 @@ export default function ProjectsPage() {
     project.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
   );
 
-  // Live, status-driven tab counts (Active excludes On Hold / Archived /
-  // Cancelled; On Hold and Archived show only their own status).
-  const activeCount = projects.filter((p) => projectTabBucket(p) === 'active').length;
-  const onHoldCount = projects.filter((p) => projectTabBucket(p) === 'on-hold').length;
-  const archivedCount = projects.filter((p) => projectTabBucket(p) === 'archived').length;
+  // Live, status-driven tab counts — one bucket per project status. Every
+  // project maps to exactly one status tab, so the counts sum to the total.
+  const tabCounts = projects.reduce((acc, p) => {
+    const bucket = projectTabBucket(p);
+    acc[bucket] = (acc[bucket] || 0) + 1;
+    return acc;
+  }, {} as Record<ProjectTab, number>);
 
-  const displayedProjects = filteredProjects.filter((project) => projectTabBucket(project) === activeTab);
+  // Distinct categories present in the loaded projects (live) for the filter.
+  const categoryOptions = Array.from(
+    new Set(projects.map((p) => (p.category || '').trim()).filter(Boolean)),
+  ).sort((a, b) => a.localeCompare(b));
+
+  // Tab + category filters compose with the search (filteredProjects) above.
+  const displayedProjects = filteredProjects.filter(
+    (project) =>
+      projectTabBucket(project) === activeTab &&
+      (selectedCategory === 'all' || (project.category || '') === selectedCategory),
+  );
+
+  // Human label for the selected status tab — drives the empty-state copy.
+  const activeTabLabel = PROJECT_STATUSES.find((s) => s.value === activeTab)?.label ?? '';
 
   return (
     <PermissionPageGuard require="project.view" module="project">
@@ -225,37 +241,48 @@ export default function ProjectsPage() {
           )}
         </div>
 
-        {/* View Toggle */}
-        <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+        {/* Category filter + View Toggle */}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            aria-label="Filter by category"
+            className="flex-1 sm:flex-none px-3 py-2 border border-gray-300/80 dark:border-gray-700/60 rounded-xl text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-400 transition-all shadow-sm cursor-pointer"
+          >
+            <option value="all">All Categories</option>
+            {categoryOptions.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+        </div>
       </section>
 
-      {/* Active / On Hold / Archived Pill Tabs (status-driven, live counts) */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700/60 mb-6 bg-slate-50/20 dark:bg-gray-900/10 p-0.5 rounded-lg">
-        {([
-          { key: 'active', label: 'Active Projects', count: activeCount },
-          { key: 'on-hold', label: 'On Hold Projects', count: onHoldCount },
-          { key: 'archived', label: 'Archived Projects', count: archivedCount },
-        ] as { key: ProjectTab; label: string; count: number }[]).map((tab) => {
-          const selected = activeTab === tab.key;
+      {/* Status tabs — one per project status (status-driven, live counts).
+          Driven by PROJECT_STATUSES, so editing that list adds/removes tabs. */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700/60 mb-6 bg-slate-50/20 dark:bg-gray-900/10 p-0.5 rounded-lg overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {PROJECT_STATUSES.map((status) => {
+          const selected = activeTab === status.value;
+          const count = tabCounts[status.value] || 0;
           return (
             <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              key={status.value}
+              onClick={() => setActiveTab(status.value)}
               className={classNames(
-                'px-5 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 select-none focus:outline-none',
+                'shrink-0 px-5 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 select-none focus:outline-none whitespace-nowrap',
                 selected
                   ? 'border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-400 font-bold bg-white dark:bg-gray-800/40 rounded-t-lg'
                   : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
               )}
             >
-              <span>{tab.label}</span>
+              <span>{status.label}</span>
               <span className={classNames(
                 'text-[10px] px-1.5 py-0.5 rounded-full font-bold',
                 selected
                   ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
                   : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
               )}>
-                {tab.count}
+                {count}
               </span>
             </button>
           );
@@ -319,22 +346,18 @@ export default function ProjectsPage() {
             <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">
               {searchQuery
                 ? 'No matching projects'
-                : activeTab === 'active'
-                  ? 'No projects found'
-                  : activeTab === 'on-hold'
-                    ? 'No projects on hold'
-                    : 'No archived projects'}
+                : projects.length === 0
+                  ? 'No projects yet'
+                  : `No ${activeTabLabel} projects`}
             </h3>
             <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5 max-w-sm mb-6 leading-relaxed">
               {searchQuery
                 ? `We couldn't find any projects matching "${searchQuery}". Try editing your keywords.`
-                : activeTab === 'active'
-                  ? 'There are no active projects assigned to your profile in this team.'
-                  : activeTab === 'on-hold'
-                    ? 'No projects are currently on hold.'
-                    : 'You have not archived any projects in this workspace slot yet.'}
+                : projects.length === 0
+                  ? 'Get started by creating your first project.'
+                  : `There are no ${activeTabLabel.toLowerCase()} projects right now. Try another status tab.`}
             </p>
-            {!searchQuery && activeTab === 'active' && (
+            {!searchQuery && projects.length === 0 && (
               <Button variant="primary" size="md" onClick={handleOpenCreateModal}>
                 <Plus size={16} className="mr-1.5 stroke-[2.5]" />
                 Create your first project

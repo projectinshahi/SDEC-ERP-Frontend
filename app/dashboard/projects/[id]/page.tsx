@@ -36,9 +36,11 @@ import { ImportBacklogModal } from '@/components/projects/ImportBacklogModal';
 import { Modal } from '@/components/Modal';
 import { ProjectSprintsTable } from '@/components/projects/ProjectSprintsTable';
 import { SprintStatsSidebar } from '@/components/projects/SprintStatsSidebar';
+import { DeveloperPointDistribution } from '@/components/projects/DeveloperPointDistribution';
 import { ProjectDocsLibrary } from '@/components/projects/docs/ProjectDocsLibrary';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { classNames } from '@/lib/utils';
+import { projectCategoryBadgeClass } from '@/lib/projects/projectStatus';
 import { io, Socket } from 'socket.io-client';
 
 export default function ProjectDetailsPage() {
@@ -428,6 +430,11 @@ export default function ProjectDetailsPage() {
               >
                 {project.status} status
               </Badge>
+              {project.category && (
+                <span className={classNames('inline-flex items-center font-bold text-[11px] px-3 py-1 rounded-md border tracking-wide whitespace-nowrap shadow-sm shrink-0', projectCategoryBadgeClass(project.category))}>
+                  {project.category}
+                </span>
+              )}
               {canImportBacklog && (
                 <Button
                   variant="secondary"
@@ -577,11 +584,26 @@ export default function ProjectDetailsPage() {
                       <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium whitespace-pre-wrap">
                         {project.description}
                       </p>
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-50 dark:border-gray-700/40">
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Category:</span>
+                        {project.category ? (
+                          <span className={classNames('inline-flex items-center font-semibold text-[10px] px-2.5 py-0.5 rounded-md border tracking-wide whitespace-nowrap', projectCategoryBadgeClass(project.category))}>
+                            {project.category}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 italic">Uncategorized</span>
+                        )}
+                      </div>
                     </CardBody>
                   </Card>
 
                   {/* Sprint Tracking Table */}
                   <ProjectSprintsTable projectId={projectId} userRole={currentUserRole} />
+
+                  {/* Developer Point Distribution — assigned vs completed points per member */}
+                  {canViewAnalytics && (
+                    <DeveloperPointDistribution projectId={projectId} />
+                  )}
                 </div>
 
                 {/* Sidebar metadata card */}

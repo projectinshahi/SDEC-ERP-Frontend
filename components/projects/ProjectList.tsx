@@ -6,7 +6,7 @@ import { Calendar, User, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-
 import { Project } from './ProjectCard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { classNames } from '@/lib/utils';
-import { projectStatusLabel, projectStatusBadgeClass } from '@/lib/projects/projectStatus';
+import { projectStatusLabel, projectStatusBadgeClass, projectCategoryBadgeClass } from '@/lib/projects/projectStatus';
 
 interface ProjectListProps {
   projects: Project[];
@@ -76,6 +76,9 @@ export function ProjectList({ projects, onEdit, onArchive, onRestore, onDelete }
             </th>
             <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/12 text-center">
               Status
+            </th>
+            <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/12 text-center">
+              Category
             </th>
             <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/12 text-right">
               Last Updated
@@ -160,6 +163,17 @@ export function ProjectList({ projects, onEdit, onArchive, onRestore, onDelete }
                 <span className={classNames('inline-flex items-center font-semibold text-[10px] px-2.5 py-0.5 tracking-wide rounded-md border whitespace-nowrap', projectStatusBadgeClass(project.status))}>
                   {projectStatusLabel(project.status)}
                 </span>
+              </td>
+
+              {/* Category Badge */}
+              <td className="px-6 py-4.5 whitespace-nowrap text-center">
+                {project.category ? (
+                  <span className={classNames('inline-flex items-center font-semibold text-[10px] px-2.5 py-0.5 tracking-wide rounded-md border whitespace-nowrap', projectCategoryBadgeClass(project.category))}>
+                    {project.category}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-gray-300 dark:text-gray-600">—</span>
+                )}
               </td>
 
               {/* Last Updated */}
