@@ -8,7 +8,6 @@ export interface SidebarMenuItem {
   icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module?: ModuleName | null;
-  /** Permission(s) that gate this item/route. ANY grants. Omit = no specific gate (module-home). */
   permission?: PermissionKey | PermissionKey[];
   isPartition?: boolean;
 }
