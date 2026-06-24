@@ -429,6 +429,10 @@ export default function MasterDashboardPage() {
             <DonutChart data={charts.projectStatus} />
           </ChartCard>
 
+          <ChartCard title="Projects by Category" subtitle="Distribution across project types">
+            <CategoryBars data={charts.projectCategory} />
+          </ChartCard>
+
           <ChartCard title="Ticket Severity" subtitle="Incidents by severity">
             <DonutChart data={charts.ticketSeverity} />
           </ChartCard>

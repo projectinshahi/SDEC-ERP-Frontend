@@ -217,6 +217,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: 'Access detailed sprint performance analytics and charts',
         module: 'sprints',
       },
+      {
+        key: 'sprints.status.manage',
+        label: 'Sprint Status Management',
+        description: 'Create, edit and change sprint status/workflow (Project → Sprint Management). Without it, sprints are view-only.',
+        module: 'sprints',
+      },
     ],
   },
   {
@@ -323,6 +329,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: 'project.analytics',
         label: 'View Analytics',
         description: 'Access project analytics and reports',
+        module: 'project',
+      },
+      {
+        key: 'project.developer_performance',
+        label: 'View Developer Performance',
+        description: 'View the developer performance analytics dashboard',
         module: 'project',
       },
     ],

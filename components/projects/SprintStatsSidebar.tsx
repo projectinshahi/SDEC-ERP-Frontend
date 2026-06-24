@@ -30,7 +30,7 @@ export function SprintStatsSidebar({ projectId }: SprintStatsSidebarProps) {
           const active = sprints.filter((s: any) => s.status === 'Active' || s.status === 'In Progress').length;
           const completed = sprints.filter((s: any) => s.status === 'Completed' || s.status === 'Closed').length;
           const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
-          
+
           setStats({ total, active, completed, rate });
         }
       } catch (err) {
@@ -39,7 +39,7 @@ export function SprintStatsSidebar({ projectId }: SprintStatsSidebarProps) {
         setLoading(false);
       }
     };
-    
+
     if (projectId) fetchStats();
   }, [projectId]);
 
@@ -85,7 +85,7 @@ export function SprintStatsSidebar({ projectId }: SprintStatsSidebarProps) {
             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{stats.rate}%</span>
           </div>
           <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-            <div 
+            <div
               className="bg-emerald-500 h-full rounded-full transition-all duration-1000 ease-out"
               style={{ width: `${stats.rate}%` }}
             />

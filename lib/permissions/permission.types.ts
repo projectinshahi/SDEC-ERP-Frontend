@@ -44,6 +44,7 @@ export type PermissionKey =
   | 'sprints.update'
   | 'sprints.delete'
   | 'sprints.analytics'
+  | 'sprints.status.manage'
   // Blocker Tracking
   | 'blockers.create'
   | 'blockers.read'
@@ -62,6 +63,7 @@ export type PermissionKey =
   | 'project.delete'
   | 'project.manage_members'
   | 'project.analytics'
+  | 'project.developer_performance'
   // Sales Module — coarse access & configuration (enforced by existing routes)
   | 'sales.view'
   | 'sales.create'

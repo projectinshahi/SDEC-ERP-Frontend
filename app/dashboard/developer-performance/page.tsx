@@ -10,7 +10,7 @@ import { DeveloperPerformanceView } from '@/components/developer-performance/Dev
  */
 export default function DeveloperPerformancePage() {
   return (
-    <PermissionPageGuard require="project.view">
+    <PermissionPageGuard require="project.developer_performance">
       <DeveloperPerformanceView />
     </PermissionPageGuard>
   );

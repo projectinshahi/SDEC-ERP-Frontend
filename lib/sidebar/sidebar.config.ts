@@ -1,22 +1,3 @@
-/**
- * Sidebar Configuration
- *
- * Permission-aware sidebar menu items. Each item declares:
- *   • `module` — the top-level product it belongs to (for module isolation), and
- *   • `permission` — the specific RBAC permission(s) that gate it. The menu item
- *     (and its route) is hidden/blocked unless the user holds ANY of them.
- *
- * Items with `permission` omitted are "module-home" items (e.g. Dashboard) that
- * are shown to anyone already inside that module. SuperAdmin/Admin bypass all
- * gating (see usePermissions / getModuleAccess).
- *
- * This file is the SINGLE SOURCE OF TRUTH for both menu visibility AND route
- * access — `permissionsForPath()` derives the required permission for any URL
- * from these same entries, so the sidebar and the route guard can never drift.
- *
- * The `icon` values must match keys in the Sidebar component's `iconMap`.
- */
-
 import type { ModuleName, PermissionKey } from '@/lib/permissions/permission.types';
 import { groupForModule, type TopModule } from '@/lib/permissions/moduleAccess';
 
@@ -32,10 +13,6 @@ export interface SidebarMenuItem {
   isPartition?: boolean;
 }
 
-// Sales pages historically gated only on the coarse `sales.view` key. We keep it
-// as a broad fallback alongside the granular per-area key so legacy roles that
-// only hold coarse keys are not locked out, while granular-only roles (e.g. a
-// "Sales Executive" with just sales.leads.view) see ONLY what they were granted.
 const SALES_REPORTS: PermissionKey[] = ['sales.reports.view', 'sales.view'];
 
 export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
@@ -92,7 +69,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/developer-performance',
     icon: 'BarChart3',
     module: 'project',
-    permission: 'project.view',
+    permission: 'project.developer_performance',
   },
   {
     label: 'Sales Division',

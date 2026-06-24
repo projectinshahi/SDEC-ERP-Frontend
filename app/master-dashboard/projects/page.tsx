@@ -114,6 +114,7 @@ export default function MasterProjectsPage() {
   const { data, status, errorMsg, reload, refresh, isRefreshing } = useMasterResource(fetchMasterProjects, { pollMs: 60000 });
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   const filtered = useMemo(() => {
     const projects = data?.projects ?? [];
@@ -124,9 +125,10 @@ export default function MasterProjectsPage() {
         p.name.toLowerCase().includes(q) ||
         projectCode(p.id, p.createdAt).toLowerCase().includes(q) ||
         (p.client || '').toLowerCase().includes(q);
-      return matchesSearch && matchesStatusFilter(p, statusFilter);
+      const matchesCategory = categoryFilter === 'all' || (p.category || '') === categoryFilter;
+      return matchesSearch && matchesStatusFilter(p, statusFilter) && matchesCategory;
     });
-  }, [data, searchQuery, statusFilter]);
+  }, [data, searchQuery, statusFilter, categoryFilter]);
 
   if (status !== 'ready' || !data) {
     return <ModuleStateScreen status={status} errorMsg={errorMsg} onRetry={reload} />;
@@ -134,6 +136,12 @@ export default function MasterProjectsPage() {
 
   const { stats, charts, activities } = data;
   const listCapped = data.projects.length < stats.total;
+
+  // Category options drawn from the projects in view (live, honest — only
+  // categories you can actually filter the list to).
+  const categoryOptions = Array.from(
+    new Set((data.projects || []).map((p) => (p.category || '').trim()).filter(Boolean)),
+  ).sort((a, b) => a.localeCompare(b));
 
   // Stat-card filtering. Cards and the dropdown share `statusFilter`, so they
   // stay in sync and compose with the search box. Clicking the active card
@@ -202,6 +210,17 @@ export default function MasterProjectsPage() {
             <option value="archived">Archived</option>
             <option value="cancelled">Cancelled</option>
           </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            aria-label="Filter by category"
+            className="py-2 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">All Categories</option>
+            {categoryOptions.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
 
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-right">
@@ -245,9 +264,14 @@ export default function MasterProjectsPage() {
 
       {/* ANALYTICS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
-        <ChartCard title="Projects by Owner" subtitle="Top owners by project count">
-          <CategoryBars data={charts.pmWorkload} dense />
-        </ChartCard>
+        <div className="space-y-6">
+          <ChartCard title="Projects by Owner" subtitle="Top owners by project count">
+            <CategoryBars data={charts.pmWorkload} dense />
+          </ChartCard>
+          <ChartCard title="Projects by Category" subtitle="Distribution across project types">
+            <CategoryBars data={charts.categoryDistribution} dense />
+          </ChartCard>
+        </div>
         <div className="lg:col-span-2">
           <ActivityFeed
             activities={activities}

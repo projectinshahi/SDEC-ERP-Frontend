@@ -79,16 +79,37 @@ export function normalizeProjectStatus(raw?: string | null): ProjectStatus {
 export const projectStatusLabel = (raw?: string | null): string => BY_VALUE[normalizeProjectStatus(raw)].label;
 export const projectStatusBadgeClass = (raw?: string | null): string => BY_VALUE[normalizeProjectStatus(raw)].badgeClass;
 
-export type ProjectTab = 'active' | 'on-hold' | 'archived';
+// ── Project category badges ──────────────────────────────────────────────────
+// Categories are DB-managed and admin-extensible, so colors can't be hardcoded
+// per name. A deterministic hash maps each category to a stable tone, so the
+// same category always renders the same color everywhere in the app.
+const CATEGORY_TONES = [TONE.blue, TONE.indigo, TONE.violet, TONE.emerald, TONE.amber, TONE.rose, TONE.slate] as const;
+
+/** Stable badge classes for a category name (empty/null → neutral slate). */
+export function projectCategoryBadgeClass(category?: string | null): string {
+  const name = (category || '').trim();
+  if (!name) return TONE.slate;
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return CATEGORY_TONES[Math.abs(hash) % CATEGORY_TONES.length];
+}
 
 /**
- * Which tab a project belongs to (status-driven). 'cancelled' projects fall into
- * no tab — they're excluded from Active, On Hold and Archived per spec.
+ * Status filter tabs: an "All" tab (everything, the default) plus one tab per
+ * canonical project status. 'all' is not a status — the caller bypasses bucket
+ * filtering for it.
  */
-export function projectTabBucket(p: { status?: string | null; is_archived?: boolean | null }): ProjectTab | 'cancelled' {
-  const s = normalizeProjectStatus(p.status);
-  if (p.is_archived || s === 'archived') return 'archived';
-  if (s === 'on-hold') return 'on-hold';
-  if (s === 'cancelled') return 'cancelled';
-  return 'active'; // active, on-track, delayed, planning, at-risk, completed
+export type ProjectTab = 'all' | ProjectStatus;
+
+/**
+ * The status tab a project belongs to: its own normalized status, except
+ * is_archived always wins (an archived project shows under Archived regardless
+ * of its stored status). Every project maps to exactly one status tab; the All
+ * tab is handled by the caller.
+ */
+export function projectTabBucket(
+  p: { status?: string | null; is_archived?: boolean | null },
+): ProjectStatus {
+  if (p.is_archived) return 'archived';
+  return normalizeProjectStatus(p.status);
 }

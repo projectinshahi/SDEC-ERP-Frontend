@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/Card';
 import { apiClient } from '@/lib/api/api-client';
-import { Loader2, Rocket, Plus, Edit2 } from 'lucide-react';
+import { updateSprintStatusApi, SPRINT_STATUS_OPTIONS } from '@/lib/api/kanban';
+import { Loader2, Rocket, Plus, Edit2, ChevronDown } from 'lucide-react';
 import { SprintModal } from '@/components/sprints/SprintModal';
 import { classNames } from '@/lib/utils';
 
@@ -25,19 +26,35 @@ interface ProjectSprintsTableProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  'Not Started': '#f59e0b', // amber
+  'Not Started': '#f59e0b', // amber (legacy date-derived value)
+  'Planned': '#f59e0b', // amber
   'Active': '#3b82f6',  // blue
+  'On Hold': '#a855f7', // violet
   'Completed': '#10b981', // emerald
 };
 
-import { useToast } from '@/lib/hooks/useToast';
+/** Dropdown options — always include the sprint's current value so legacy
+ *  statuses (e.g. "Not Started") still render correctly in the <select>. */
+const statusOptionsFor = (current: string): string[] => {
+  const base = SPRINT_STATUS_OPTIONS as readonly string[];
+  return base.includes(current) ? [...base] : [current, ...base];
+};
 
-export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTableProps) {
+import { useToast } from '@/lib/hooks/useToast';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+
+export function ProjectSprintsTable({ projectId }: ProjectSprintsTableProps) {
   const [sprints, setSprints] = useState<SprintRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSprint, setEditingSprint] = useState<SprintRow | null>(null);
+  const [savingStatusId, setSavingStatusId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  // Sprint editing (Add / Edit) is gated on the "Sprint Status Management"
+  // permission (or SuperAdmin). Without it the table is fully read-only: status
+  // stays an auto-derived badge and there are no edit controls.
+  const canManageSprints = isSuperAdmin || hasPermission('sprints.status.manage');
 
   const fetchSprintsList = async () => {
     try {
@@ -58,6 +75,25 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
       fetchSprintsList();
     }
   }, [projectId]);
+
+  // Inline status change (gated by canManageSprints). Optimistic with revert on
+  // failure; the backend re-checks the permission and audit-logs the transition.
+  const handleStatusChange = async (sprintId: string, newStatus: string) => {
+    const prevStatus = sprints.find((s) => s.id === sprintId)?.status;
+    setSavingStatusId(sprintId);
+    setSprints((list) => list.map((s) => (s.id === sprintId ? { ...s, status: newStatus } : s)));
+    try {
+      await updateSprintStatusApi(Number(sprintId), newStatus);
+      toast(`Sprint status updated to ${newStatus}`, 'success');
+    } catch (err) {
+      // Revert ONLY this sprint's row (functional update) so a concurrent change
+      // to a different row isn't clobbered by a stale whole-list snapshot.
+      setSprints((list) => list.map((s) => (s.id === sprintId ? { ...s, status: prevStatus ?? s.status } : s)));
+      toast(err instanceof Error ? err.message : 'Failed to update sprint status', 'error');
+    } finally {
+      setSavingStatusId(null);
+    }
+  };
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
@@ -112,14 +148,16 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
             <Rocket size={18} className="text-indigo-500" />
             <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Sprint Tracking</h3>
           </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-sm font-semibold rounded-md transition-colors"
-            title="Create New Sprint"
-          >
-            <Plus size={16} />
-            Add Sprint
-          </button>
+          {canManageSprints && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-sm font-semibold rounded-md transition-colors"
+              title="Create New Sprint"
+            >
+              <Plus size={16} />
+              Add Sprint
+            </button>
+          )}
         </CardHeader>
         
         {sprints.length === 0 ? (
@@ -128,14 +166,20 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
               <Rocket size={24} className="text-slate-400" />
             </div>
             <h4 className="text-base font-bold text-slate-700 dark:text-slate-200">No sprints found</h4>
-            <p className="text-sm text-slate-500 mt-1 max-w-sm mb-6">Create your first sprint to start tracking iterative progress for this project.</p>
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors flex items-center gap-2"
-            >
-              <Plus size={16} />
-              Start First Sprint
-            </button>
+            <p className="text-sm text-slate-500 mt-1 max-w-sm mb-6">
+              {canManageSprints
+                ? 'Create your first sprint to start tracking iterative progress for this project.'
+                : 'No sprints have been created for this project yet.'}
+            </p>
+            {canManageSprints && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors flex items-center gap-2"
+              >
+                <Plus size={16} />
+                Start First Sprint
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -151,7 +195,7 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
                   <th className="p-4">Est. Points</th>
                   <th className="p-4">Capacity</th>
                   <th className="p-4">Progress</th>
-                  {userRole !== 'viewer' && <th className="p-4">Actions</th>}
+                  {canManageSprints && <th className="p-4">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800 text-sm">
@@ -161,16 +205,52 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
                       <p className="font-semibold text-gray-800 dark:text-gray-200">{s.name}</p>
                     </td>
                     <td className="p-4">
-                      <span
-                        className="px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap inline-block"
-                        style={{
-                          backgroundColor: (STATUS_COLORS[s.status] || '#6b7280') + '18',
-                          color: STATUS_COLORS[s.status] || '#6b7280',
-                          borderColor: (STATUS_COLORS[s.status] || '#6b7280') + '40',
-                        }}
-                      >
-                        {s.status}
-                      </span>
+                      {canManageSprints ? (
+                        <div className="relative inline-block">
+                          <select
+                            value={s.status}
+                            disabled={savingStatusId === s.id}
+                            onChange={(e) => handleStatusChange(s.id, e.target.value)}
+                            aria-label={`Change status for ${s.name}`}
+                            className="appearance-none cursor-pointer rounded-full border pl-2.5 pr-7 py-1 text-[10px] font-bold whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-wait disabled:opacity-60"
+                            style={{
+                              backgroundColor: (STATUS_COLORS[s.status] || '#6b7280') + '18',
+                              color: STATUS_COLORS[s.status] || '#6b7280',
+                              borderColor: (STATUS_COLORS[s.status] || '#6b7280') + '40',
+                            }}
+                          >
+                            {statusOptionsFor(s.status).map((opt) => (
+                              <option key={opt} value={opt} className="bg-white text-gray-900">
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                          {savingStatusId === s.id ? (
+                            <Loader2
+                              size={12}
+                              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 animate-spin"
+                              style={{ color: STATUS_COLORS[s.status] || '#6b7280' }}
+                            />
+                          ) : (
+                            <ChevronDown
+                              size={12}
+                              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
+                              style={{ color: STATUS_COLORS[s.status] || '#6b7280' }}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <span
+                          className="px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap inline-block"
+                          style={{
+                            backgroundColor: (STATUS_COLORS[s.status] || '#6b7280') + '18',
+                            color: STATUS_COLORS[s.status] || '#6b7280',
+                            borderColor: (STATUS_COLORS[s.status] || '#6b7280') + '40',
+                          }}
+                        >
+                          {s.status}
+                        </span>
+                      )}
                     </td>
                     {(s.startDate || s.endDate) ? (
                       <>
@@ -208,7 +288,7 @@ export function ProjectSprintsTable({ projectId, userRole }: ProjectSprintsTable
                         </span>
                       </div>
                     </td>
-                    {userRole !== 'viewer' && (
+                    {canManageSprints && (
                       <td className="p-4">
                         <button
                           onClick={() => {
