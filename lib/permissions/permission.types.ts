@@ -63,6 +63,7 @@ export type PermissionKey =
   | 'project.delete'
   | 'project.manage_members'
   | 'project.analytics'
+  | 'project.developer_performance'
   // Sales Module — coarse access & configuration (enforced by existing routes)
   | 'sales.view'
   | 'sales.create'

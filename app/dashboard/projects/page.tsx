@@ -41,7 +41,7 @@ export default function ProjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
-  const [activeTab, setActiveTab] = useState<ProjectTab>('active');
+  const [activeTab, setActiveTab] = useState<ProjectTab>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [projectToArchive, setProjectToArchive] = useState<Project | null>(null);
   const [isArchiving, setIsArchiving] = useState<boolean>(false);
@@ -157,13 +157,12 @@ export default function ProjectsPage() {
     project.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
   );
 
-  // Live, status-driven tab counts — one bucket per project status. Every
-  // project maps to exactly one status tab, so the counts sum to the total.
-  const tabCounts = projects.reduce((acc, p) => {
+  // Live tab counts. "All" = every project; each status tab counts its own bucket.
+  const tabCounts: Record<string, number> = { all: projects.length };
+  for (const p of projects) {
     const bucket = projectTabBucket(p);
-    acc[bucket] = (acc[bucket] || 0) + 1;
-    return acc;
-  }, {} as Record<ProjectTab, number>);
+    tabCounts[bucket] = (tabCounts[bucket] || 0) + 1;
+  }
 
   // Distinct categories present in the loaded projects (live) for the filter.
   const categoryOptions = Array.from(
@@ -171,14 +170,17 @@ export default function ProjectsPage() {
   ).sort((a, b) => a.localeCompare(b));
 
   // Tab + category filters compose with the search (filteredProjects) above.
+  // The All tab shows every status; the others narrow to their bucket.
   const displayedProjects = filteredProjects.filter(
     (project) =>
-      projectTabBucket(project) === activeTab &&
+      (activeTab === 'all' || projectTabBucket(project) === activeTab) &&
       (selectedCategory === 'all' || (project.category || '') === selectedCategory),
   );
 
-  // Human label for the selected status tab — drives the empty-state copy.
-  const activeTabLabel = PROJECT_STATUSES.find((s) => s.value === activeTab)?.label ?? '';
+  // Label for the active tab — drives the empty-state copy.
+  const activeTabLabel = activeTab === 'all'
+    ? 'All'
+    : (PROJECT_STATUSES.find((s) => s.value === activeTab)?.label ?? '');
 
   return (
     <PermissionPageGuard require="project.view" module="project">
@@ -258,16 +260,15 @@ export default function ProjectsPage() {
         </div>
       </section>
 
-      {/* Status tabs — one per project status (status-driven, live counts).
-          Driven by PROJECT_STATUSES, so editing that list adds/removes tabs. */}
+      {/* Status tabs — All (default) + one per status, with live counts. */}
       <div className="flex border-b border-gray-200 dark:border-gray-700/60 mb-6 bg-slate-50/20 dark:bg-gray-900/10 p-0.5 rounded-lg overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {PROJECT_STATUSES.map((status) => {
-          const selected = activeTab === status.value;
-          const count = tabCounts[status.value] || 0;
+        {([{ key: 'all', label: 'All' }, ...PROJECT_STATUSES.map((s) => ({ key: s.value, label: s.label }))] as { key: ProjectTab; label: string }[]).map((tab) => {
+          const selected = activeTab === tab.key;
+          const count = tabCounts[tab.key] || 0;
           return (
             <button
-              key={status.value}
-              onClick={() => setActiveTab(status.value)}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={classNames(
                 'shrink-0 px-5 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 select-none focus:outline-none whitespace-nowrap',
                 selected
@@ -275,7 +276,7 @@ export default function ProjectsPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
               )}
             >
-              <span>{status.label}</span>
+              <span>{tab.label}</span>
               <span className={classNames(
                 'text-[10px] px-1.5 py-0.5 rounded-full font-bold',
                 selected
@@ -348,14 +349,18 @@ export default function ProjectsPage() {
                 ? 'No matching projects'
                 : projects.length === 0
                   ? 'No projects yet'
-                  : `No ${activeTabLabel} projects`}
+                  : activeTab === 'all'
+                    ? 'No projects found'
+                    : `No ${activeTabLabel} projects`}
             </h3>
             <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5 max-w-sm mb-6 leading-relaxed">
               {searchQuery
                 ? `We couldn't find any projects matching "${searchQuery}". Try editing your keywords.`
                 : projects.length === 0
                   ? 'Get started by creating your first project.'
-                  : `There are no ${activeTabLabel.toLowerCase()} projects right now. Try another status tab.`}
+                  : activeTab === 'all'
+                    ? 'No projects match the current filters.'
+                    : `There are no ${activeTabLabel.toLowerCase()} projects right now. Try another tab or filter.`}
             </p>
             {!searchQuery && projects.length === 0 && (
               <Button variant="primary" size="md" onClick={handleOpenCreateModal}>

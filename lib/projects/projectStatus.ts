@@ -95,17 +95,21 @@ export function projectCategoryBadgeClass(category?: string | null): string {
 }
 
 /**
- * Each project status has its own tab, so a tab key IS a canonical status.
- * Every project maps to exactly one tab (see projectTabBucket).
+ * Status filter tabs: an "All" tab (everything, the default) plus one tab per
+ * canonical project status. 'all' is not a status — the caller bypasses bucket
+ * filtering for it.
  */
-export type ProjectTab = ProjectStatus;
+export type ProjectTab = 'all' | ProjectStatus;
 
 /**
- * Which status tab a project belongs to. The is_archived flag always wins (an
- * archived project shows under Archived regardless of its stored status);
- * otherwise the project sits under the tab matching its own normalized status.
+ * The status tab a project belongs to: its own normalized status, except
+ * is_archived always wins (an archived project shows under Archived regardless
+ * of its stored status). Every project maps to exactly one status tab; the All
+ * tab is handled by the caller.
  */
-export function projectTabBucket(p: { status?: string | null; is_archived?: boolean | null }): ProjectTab {
+export function projectTabBucket(
+  p: { status?: string | null; is_archived?: boolean | null },
+): ProjectStatus {
   if (p.is_archived) return 'archived';
   return normalizeProjectStatus(p.status);
 }

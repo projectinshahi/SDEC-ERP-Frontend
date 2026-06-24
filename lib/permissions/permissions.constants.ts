@@ -331,6 +331,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: 'Access project analytics and reports',
         module: 'project',
       },
+      {
+        key: 'project.developer_performance',
+        label: 'View Developer Performance',
+        description: 'View the developer performance analytics dashboard',
+        module: 'project',
+      },
     ],
   },
   // ── Sales — grouped by area (mirrors the Development module's multi-group

@@ -210,7 +210,7 @@ export default function ProjectDetailsPage() {
   // hiding it from editors/admins who previously had it. Restore it
   // to the project-level capability — matching the original intent and
   // the backend authorization checkProjectRole(['admin','editor']) on POST /projects/:id/import.
-  const canImportBacklog = currentUserRole === 'admin' || currentUserRole === 'editor';
+  const canImportBacklog = isSuperAdmin || currentUserRole === 'admin' || currentUserRole === 'editor';
   const canViewAnalytics = hasPermission('project.analytics');
 
   useEffect(() => {
@@ -591,7 +591,7 @@ export default function ProjectDetailsPage() {
                             {project.category}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400 dark:text-gray-500 italic">Uncategorized</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500 italic">Not Set</span>
                         )}
                       </div>
                     </CardBody>

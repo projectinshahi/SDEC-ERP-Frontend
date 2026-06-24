@@ -164,11 +164,7 @@ export function CreateProjectModal({
       tempErrors.startDate = 'Start date is required';
     }
 
-    // Required when creating. In edit mode we don't force a category onto a
-    // legacy/uncategorized project just because the user is changing other fields.
-    if (!isEditMode && (!data.category || !data.category.trim())) {
-      tempErrors.category = 'Project category is required';
-    }
+    // Project category is OPTIONAL — no validation. Empty is stored as null.
 
     // End date validation: must be on or after start date
     // if (data.startDate && data.endDate) {
@@ -307,23 +303,22 @@ export function CreateProjectModal({
 />
           </div>
 
-          {/* Project Category — required classification (live, DB-managed list) */}
+          {/* Project Category — optional classification (live, DB-managed list) */}
           <div className="w-full">
             <label
               htmlFor="project-category"
               className="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5"
             >
-              Project Category <span className="text-rose-500" aria-hidden="true">*</span>
+              Project Category <span className="text-gray-400 font-normal">(Optional)</span>
             </label>
             <select
               id="project-category"
-              required
               disabled={isSubmitting || isResolvingMembers}
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               className="w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 leading-normal border-gray-300/80 dark:border-gray-700/60 focus:border-blue-500 dark:focus:border-blue-400"
             >
-              <option value="" disabled>Select a category</option>
+              <option value="">No category</option>
               {(formData.category && !categories.includes(formData.category)
                 ? [formData.category, ...categories]
                 : categories
@@ -331,7 +326,6 @@ export function CreateProjectModal({
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
-            {errors.category && <p className="text-[11px] text-rose-500 mt-1.5">{errors.category}</p>}
           </div>
 
           {/* Project Status — manual lifecycle management (Edit mode only) */}

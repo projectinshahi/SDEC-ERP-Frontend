@@ -71,7 +71,21 @@ export interface DeveloperPerformance {
   velocityTrend: { week: string; assigned: number; completed: number }[];
 }
 
-export async function fetchDeveloperPerformance(): Promise<DeveloperPerformance> {
-  const response = await apiClient.get<DeveloperPerformance>('/projects/global/developer-performance');
+/**
+ * Fetch developer performance, optionally scoped to a date window. When
+ * startDate/endDate (YYYY-MM-DD) are provided, the server recalculates every
+ * period metric from activity within that range; omit both for all-time.
+ */
+export async function fetchDeveloperPerformance(
+  startDate?: string,
+  endDate?: string,
+): Promise<DeveloperPerformance> {
+  const params = new URLSearchParams();
+  if (startDate) params.set('startDate', startDate);
+  if (endDate) params.set('endDate', endDate);
+  const qs = params.toString();
+  const response = await apiClient.get<DeveloperPerformance>(
+    `/projects/global/developer-performance${qs ? `?${qs}` : ''}`,
+  );
   return response.data;
 }

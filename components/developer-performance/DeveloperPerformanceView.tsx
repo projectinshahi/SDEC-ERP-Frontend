@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Users, Rocket, ShieldCheck, Clock, Zap, Search, Download, Filter,
+  Users, Rocket, ShieldCheck, Clock, Zap, Search, Download,
   Calendar, Loader2, AlertCircle, Trophy, Award, Medal, ChevronDown, MoreVertical,
 } from 'lucide-react';
 import {
@@ -40,17 +40,46 @@ function relativeTime(iso: string | null): string {
   return new Date(iso).toLocaleDateString();
 }
 
-function currentWeekLabel(): string {
+/** Local YYYY-MM-DD (date filtering is day-granular). */
+function fmtDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const da = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${da}`;
+}
+
+const DATE_PRESETS: { value: string; label: string }[] = [
+  { value: 'all', label: 'All Time' },
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'last7', label: 'Last 7 Days' },
+  { value: 'last30', label: 'Last 30 Days' },
+  { value: 'thisMonth', label: 'This Month' },
+  { value: 'lastMonth', label: 'Last Month' },
+  { value: 'thisQuarter', label: 'This Quarter' },
+  { value: 'thisYear', label: 'This Year' },
+  { value: 'custom', label: 'Custom Range' },
+];
+
+/**
+ * Resolve a preset to a [start,end] YYYY-MM-DD window (null = all time).
+ * Called from event handlers only (keeps new Date() out of render).
+ */
+function presetRange(preset: string): { start: string; end: string } | null {
   const now = new Date();
-  const day = now.getDay(); // 0 = Sun
-  const monOffset = day === 0 ? -6 : 1 - day;
-  const start = new Date(now);
-  start.setDate(now.getDate() + monOffset);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  return `${fmt(start)} - ${fmt(end)}`;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const shift = (days: number) => { const d = new Date(today); d.setDate(today.getDate() + days); return d; };
+  switch (preset) {
+    case 'today': return { start: fmtDate(today), end: fmtDate(today) };
+    case 'yesterday': return { start: fmtDate(shift(-1)), end: fmtDate(shift(-1)) };
+    case 'last7': return { start: fmtDate(shift(-6)), end: fmtDate(today) };
+    case 'last30': return { start: fmtDate(shift(-29)), end: fmtDate(today) };
+    case 'thisMonth': return { start: fmtDate(new Date(now.getFullYear(), now.getMonth(), 1)), end: fmtDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
+    case 'lastMonth': return { start: fmtDate(new Date(now.getFullYear(), now.getMonth() - 1, 1)), end: fmtDate(new Date(now.getFullYear(), now.getMonth(), 0)) };
+    case 'thisQuarter': { const q = Math.floor(now.getMonth() / 3); return { start: fmtDate(new Date(now.getFullYear(), q * 3, 1)), end: fmtDate(new Date(now.getFullYear(), q * 3 + 3, 0)) }; }
+    case 'thisYear': return { start: fmtDate(new Date(now.getFullYear(), 0, 1)), end: fmtDate(new Date(now.getFullYear(), 11, 31)) };
+    default: return null; // 'all'
+  }
 }
 
 function initials(name: string): string {
@@ -135,13 +164,30 @@ export function DeveloperPerformanceView() {
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'all' | 'active' | 'busy'>('all');
 
+  // Date filter — preset + resolved [start,end] window (null = all time).
+  const [preset, setPreset] = useState('all');
+  const [range, setRange] = useState<{ start: string; end: string } | null>(null);
+  const [showCustom, setShowCustom] = useState(false);
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+
+  const onPresetChange = (value: string) => {
+    setPreset(value);
+    if (value === 'custom') { setShowCustom(true); return; }
+    setShowCustom(false);
+    setRange(presetRange(value));
+  };
+  const applyCustom = () => {
+    if (customStart && customEnd && customStart <= customEnd) setRange({ start: customStart, end: customEnd });
+  };
+
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         setLoading(true);
         setError(false);
-        const res = await fetchDeveloperPerformance();
+        const res = await fetchDeveloperPerformance(range?.start, range?.end);
         if (alive) setData(res);
       } catch {
         if (alive) setError(true);
@@ -150,7 +196,7 @@ export function DeveloperPerformanceView() {
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [range]);
 
   const filteredDevs = useMemo<DeveloperRow[]>(() => {
     if (!data) return [];
@@ -209,6 +255,20 @@ export function DeveloperPerformanceView() {
   }
 
   const { capacity, delivery, quality, timeline, daily, taskStatus, topPerformers, capacityForecast, velocityTrend } = data;
+
+  // When a date range is active but the period has no activity, show an explicit
+  // empty state instead of a wall of zeros.
+  const noPeriodData = !!range &&
+    delivery.totalAssigned === 0 && delivery.totalCompleted === 0 &&
+    taskStatus.total === 0 && quality.bugsRaised === 0 && daily.pointsToday === 0;
+
+  // Leaderboard ranks by today's points for All Time, else by points completed in
+  // the selected window — so the card label must reflect the active period.
+  const periodLabel = !range
+    ? 'Today'
+    : preset === 'custom'
+      ? `${range.start} → ${range.end}`
+      : (DATE_PRESETS.find((p) => p.value === preset)?.label ?? 'Selected Range');
 
   // Full-scale for the velocity mini-bar = the busiest week in the trend, so the
   // bar reflects the headline relative to recent peak (not an arbitrary /3 = 300pts).
@@ -297,18 +357,60 @@ export function DeveloperPerformanceView() {
             Track developer productivity, points, quality, and delivery performance.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            {currentWeekLabel()}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Calendar className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <select
+              value={preset}
+              onChange={(e) => onPresetChange(e.target.value)}
+              aria-label="Date range"
+              className="appearance-none rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-8 text-sm font-medium text-gray-600 focus:border-indigo-400 focus:outline-none"
+            >
+              {DATE_PRESETS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
           </div>
-          <button className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
-            <Filter className="h-4 w-4" />
-            Filters
-          </button>
+          {showCustom && (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={customStart}
+                max={customEnd || undefined}
+                onChange={(e) => setCustomStart(e.target.value)}
+                aria-label="Start date"
+                className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm text-gray-600 focus:border-indigo-400 focus:outline-none"
+              />
+              <span className="text-sm text-gray-400">to</span>
+              <input
+                type="date"
+                value={customEnd}
+                min={customStart || undefined}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                aria-label="End date"
+                className="rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm text-gray-600 focus:border-indigo-400 focus:outline-none"
+              />
+              <button
+                onClick={applyCustom}
+                disabled={!customStart || !customEnd || customStart > customEnd}
+                className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                Apply
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
+      {noPeriodData ? (
+        <div className="flex h-[50vh] flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white text-gray-400">
+          <Calendar size={36} />
+          <p className="text-sm font-semibold text-gray-500">No performance data available for the selected date range.</p>
+          <p className="text-xs">Try a different range or preset.</p>
+        </div>
+      ) : (
+      <>
       {/* Metric cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {cards.map((c) => (
@@ -465,9 +567,13 @@ export function DeveloperPerformanceView() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Top performers today */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-gray-800">Top Performers Today</h3>
+          <h3 className="mb-4 text-base font-semibold text-gray-800">
+            {range ? `Top Performers · ${periodLabel}` : 'Top Performers Today'}
+          </h3>
           {topPerformers.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-400">No points completed yet today.</p>
+            <p className="py-8 text-center text-sm text-gray-400">
+              {range ? 'No points completed in this period.' : 'No points completed yet today.'}
+            </p>
           ) : (
             <ul className="space-y-3">
               {topPerformers.map((p, i) => (
@@ -573,6 +679,8 @@ export function DeveloperPerformanceView() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
