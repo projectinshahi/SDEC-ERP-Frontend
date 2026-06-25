@@ -106,14 +106,17 @@ export type PermissionKey =
   | 'sales.teams.edit'
   | 'sales.teams.delete'
   | 'sales.reports.export'
-  // HR Module (future implementation — permissions are grantable now so the
-  // HR module card appears on the Modules page for roles that hold them)
+  // HR Module
   | 'hr.view'
+  | 'hr.dashboard.view'
   | 'hr.employees.view'
+  | 'hr.attendance.view'
   | 'hr.leave.view'
-  // Finance Module (future implementation — see note above)
-  | 'finance.view'
-  | 'finance.invoices.view';
+  | 'hr.recruitment.view'
+  | 'hr.payroll.view'
+  | 'hr.performance.view'
+  | 'hr.documents.view'
+  | 'hr.settings.view';
 
 /**
  * Module names used for sidebar filtering and route protection.

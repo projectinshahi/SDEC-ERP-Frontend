@@ -114,6 +114,60 @@ export default function ModulesPage() {
       if (!href) return [];
       return [{ ...base, href: href as string | null }];
     });
+    const access = getModuleAccess(user);
+    // Land on the first page the user can actually see in each module (e.g. a
+    // leads-only sales user opens directly on Leads, not the gated Overview).
+    const hrefFor = (m: TopModule, fallback: string) => firstAccessibleHref(m, hasAnyPermission) ?? fallback;
+    return [
+      {
+        key: 'master',
+        show: access.master,
+        href: '/master-dashboard',
+        icon: ShieldCheck,
+        accent: 'indigo',
+        title: 'Master Dashboard',
+        desc: 'Enterprise-wide analytics, oversight, reporting & admin controls.',
+      },
+      {
+        key: 'sales',
+        show: access.sales,
+        href: '/dashboard/sales',
+        icon: Briefcase,
+        accent: 'emerald',
+        title: 'Sales',
+        desc: 'Leads, pipeline, deals & CRM.',
+      },
+      {
+        key: 'development',
+        show: access.development,
+        href: '/dashboard',
+        icon: Code2,
+        accent: 'blue',
+        title: 'Development',
+        desc: 'Projects, boards, tasks & sprints.',
+      },
+
+      // NEW HR CARD
+      {
+        key: 'hr',
+        show: access.hr,
+        href: '/dashboard/hr',
+        icon: UserRound,
+        accent: 'rose',
+        title: 'HR Management',
+        desc: 'Employees, attendance, payroll & recruitment.',
+      },
+
+      {
+        key: 'users',
+        show: access.user,
+        href: '/dashboard/user-management',
+        icon: Users,
+        accent: 'violet',
+        title: 'User Management',
+        desc: 'Users, roles & permissions.',
+      },
+    ].filter((m) => m.show);
   }, [user, hasAnyPermission]);
 
   const openModule = (key: string, href: string | null) => {

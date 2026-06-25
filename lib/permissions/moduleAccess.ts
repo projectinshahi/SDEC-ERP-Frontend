@@ -13,7 +13,7 @@
 
 import type { ModuleName } from './permission.types';
 
-export type TopModule = 'development' | 'sales' | 'user' | 'master';
+export type TopModule = 'development' | 'sales' | 'user' | 'master' | 'hr';
 
 export interface ModuleAccessUser {
   roleName?: string;
@@ -26,6 +26,7 @@ export const MODULE_LABELS: Record<TopModule, string> = {
   sales: 'Sales',
   user: 'User Management',
   master: 'Master Dashboard',
+  hr: 'HR',
 };
 
 /** Lower-cases and strips spaces/underscores/hyphens so "Super Admin" === "superadmin". */
@@ -130,16 +131,17 @@ export function visibleModules(user: ModuleAccessUser | null | undefined): AppMo
 export function getModuleAccess(user: ModuleAccessUser | null | undefined): Record<TopModule, boolean> {
   const byKey = (key: TopModule) => APP_MODULES.find((m) => m.key === key)!;
   return {
-    master: isModuleVisible(user, byKey('master')),
-    development: isModuleVisible(user, byKey('development')),
-    sales: isModuleVisible(user, byKey('sales')),
-    user: isModuleVisible(user, byKey('user')),
+    master: isSuper,
+    development: isAdmin || hasAny('project.', 'task.', 'sprints.', 'bugs.', 'blockers.', 'meetings.', 'tickets.'),
+    sales: isAdmin || hasAny('sales.'),
+    user: isAdmin || hasAny('user.', 'role.'),
+    hr: isAdmin || hasAny('hr.'),
   };
 }
 
 /** The first module (in priority order) the user can access — used as a landing fallback. */
 export function primaryModule(access: Record<TopModule, boolean>): TopModule | null {
-  return (['master', 'development', 'sales', 'user'] as TopModule[]).find((m) => access[m]) ?? null;
+  return (['master', 'development', 'sales', 'user', 'hr'] as TopModule[]).find((m) => access[m]) ?? null;
 }
 
 /** Routes that are shared across modules and must NOT be module-gated. */
@@ -153,6 +155,7 @@ export function moduleForPath(pathname: string): TopModule {
   if (pathname.startsWith('/master-dashboard')) return 'master';
   if (pathname.startsWith('/dashboard/user-management')) return 'user';
   if (pathname.startsWith('/dashboard/sales')) return 'sales';
+  if (pathname.startsWith('/dashboard/hr')) return 'hr';
   return 'development';
 }
 
@@ -160,5 +163,6 @@ export function moduleForPath(pathname: string): TopModule {
 export function groupForModule(module?: ModuleName | null): TopModule {
   if (module === 'sales') return 'sales';
   if (module === 'user' || module === 'role') return 'user';
+  if (module === 'hr') return 'hr';
   return 'development';
 }

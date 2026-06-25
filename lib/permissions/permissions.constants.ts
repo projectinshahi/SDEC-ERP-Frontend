@@ -21,7 +21,6 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   project: 'project.',
   sales: 'sales.',
   hr: 'hr.',
-  finance: 'finance.',
 } as const;
 
 /**
@@ -450,25 +449,20 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'sales.incentive.manage', label: 'Manage Incentives', description: 'Configure per-BDE incentive slab structures', module: 'sales' },
     ],
   },
-  // ── Future modules ─────────────────────────────────────────────────────────
-  //   HR & Finance are not built yet, but their permissions are grantable now so
-  //   the Modules page shows the module card to any role that holds at least one
-  //   (matches the dynamic, permission-driven module-visibility contract).
   {
     module: 'hr',
-    label: 'HR (Human Resources)',
+    label: 'HR Management',
     permissions: [
-      { key: 'hr.view', label: 'Access HR', description: 'Open the HR module (coming soon)', module: 'hr' },
-      { key: 'hr.employees.view', label: 'View Employees', description: 'View the employee directory', module: 'hr' },
-      { key: 'hr.leave.view', label: 'View Leave Requests', description: 'View employee leave / time-off requests', module: 'hr' },
-    ],
-  },
-  {
-    module: 'finance',
-    label: 'Finance',
-    permissions: [
-      { key: 'finance.view', label: 'Access Finance', description: 'Open the Finance module (coming soon)', module: 'finance' },
-      { key: 'finance.invoices.view', label: 'View Invoices', description: 'View invoices and billing records', module: 'finance' },
+      { key: 'hr.view', label: 'View HR Module', description: 'General access to the HR module', module: 'hr' },
+      { key: 'hr.dashboard.view', label: 'View HR Dashboard', description: 'Access the HR dashboard overview', module: 'hr' },
+      { key: 'hr.employees.view', label: 'View Employees', description: 'View workforce employees directory', module: 'hr' },
+      { key: 'hr.attendance.view', label: 'View Attendance', description: 'View workforce attendance logs', module: 'hr' },
+      { key: 'hr.leave.view', label: 'View Leave', description: 'View and manage employee leave requests', module: 'hr' },
+      { key: 'hr.recruitment.view', label: 'View Recruitment', description: 'Access hiring and recruitment pipelines', module: 'hr' },
+      { key: 'hr.payroll.view', label: 'View Payroll', description: 'View payroll and financial details', module: 'hr' },
+      { key: 'hr.performance.view', label: 'View Performance', description: 'View employee performance analytics', module: 'hr' },
+      { key: 'hr.documents.view', label: 'View Documents', description: 'Access HR documents and files', module: 'hr' },
+      { key: 'hr.settings.view', label: 'View Settings', description: 'Access HR module settings', module: 'hr' },
     ],
   },
 ];
