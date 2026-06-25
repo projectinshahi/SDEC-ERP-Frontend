@@ -85,6 +85,7 @@ export interface MasterDashboardStats {
 
 export interface MasterDashboardCharts {
   projectStatus: DistributionPoint[];
+  projectCategory: DistributionPoint[];
   ticketStatus: DistributionPoint[];
   ticketSeverity: DistributionPoint[];
   bugPriority: DistributionPoint[];

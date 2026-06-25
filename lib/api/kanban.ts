@@ -87,6 +87,36 @@ export async function updateBoardStatusApi(id: number, status: string): Promise<
 }
 
 /**
+ * Sprint create/update — permission-gated on `sprints.status.manage` (Project →
+ * Sprint Management). Separate from the board endpoints so the Boards page keeps
+ * its own task.board.* gating. POST/PUT /api/kanban/sprints[/:id]
+ */
+export interface SprintMutationResult {
+  id: number;
+  name: string;
+  status: string;
+  projectId?: string | null;
+}
+
+export async function createSprintApi(data: Partial<Board>): Promise<SprintMutationResult> {
+  const response = await apiClient.post<SprintMutationResult>('/kanban/sprints', data);
+  return response.data;
+}
+
+export async function updateSprintApi(id: number, data: Partial<Board>): Promise<SprintMutationResult> {
+  const response = await apiClient.put<SprintMutationResult>(`/kanban/sprints/${id}`, data);
+  return response.data;
+}
+
+/** Manually set a sprint's status (the inline dropdown). PATCH /api/kanban/sprints/:id/status */
+export const SPRINT_STATUS_OPTIONS = ['Planned', 'Active', 'On Hold', 'Completed'] as const;
+
+export async function updateSprintStatusApi(id: number, status: string): Promise<SprintMutationResult> {
+  const response = await apiClient.patch<SprintMutationResult>(`/kanban/sprints/${id}/status`, { status });
+  return response.data;
+}
+
+/**
  * Delete a board and all its columns + tasks
  * DELETE /api/kanban/boards/:id
  */

@@ -10,7 +10,12 @@ import { ProjectMemberTable, MemberDetail } from './ProjectMemberTable';
 import { SingleSelectMember } from './SingleSelectMember';
 import { Project } from './ProjectCard';
 import { fetchUsers } from '@/lib/api/users';
+import { fetchProjectCategories } from '@/lib/api/projects';
 import { PROJECT_STATUSES, ProjectStatus, normalizeProjectStatus } from '@/lib/projects/projectStatus';
+
+// Fallback list shown if the live category endpoint is unreachable (mirrors the
+// DB seed). The live list is the source of truth whenever it loads.
+const DEFAULT_CATEGORIES = ['ERP', 'E-Commerce', 'Website', 'Internal', 'CRM', 'Mobile App', 'Web App'];
 
 export interface ProjectFormData {
   name: string;
@@ -19,6 +24,8 @@ export interface ProjectFormData {
   endDate?: string;
   memberDetails: MemberDetail[];
   owner_id: number | null;
+  /** Business classification (category NAME) — required, DB-managed list. */
+  category: string;
   /** Manual lifecycle status — managed from the Edit Project modal. */
   status?: ProjectStatus;
 }
@@ -56,12 +63,28 @@ export function CreateProjectModal({
     endDate: '',
     memberDetails: [],
     owner_id: null,
+    category: '',
   });
 
   const [formData, setFormData] = useState<ProjectFormData>(initialFormState());
   const [errors, setErrors] = useState<Partial<Record<keyof ProjectFormData, string>>>({});
   const [isResolvingMembers, setIsResolvingMembers] = useState<boolean>(false);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Load the live, DB-managed category list whenever the modal opens. Falls back
+  // to the seeded defaults if the endpoint is unreachable.
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    fetchProjectCategories()
+      .then((cats) => { if (active && cats.length) setCategories(cats.map((c) => c.name)); })
+      .catch((err) => {
+        console.warn('Failed to load project categories; using seeded defaults:', err);
+        if (active) setCategories(DEFAULT_CATEGORIES);
+      });
+    return () => { active = false; };
+  }, [isOpen]);
 
   // Focus and pre-fill form when modal state changes
   useEffect(() => {
@@ -107,6 +130,7 @@ export function CreateProjectModal({
           endDate: projectToEdit.endDate || '',
           memberDetails: prefilledMemberDetails,
           owner_id: projectToEdit.owner_id || null,
+          category: projectToEdit.category || '',
           status: normalizeProjectStatus(projectToEdit.status),
         });
       } else {
@@ -139,6 +163,8 @@ export function CreateProjectModal({
     if (!data.startDate) {
       tempErrors.startDate = 'Start date is required';
     }
+
+    // Project category is OPTIONAL — no validation. Empty is stored as null.
 
     // End date validation: must be on or after start date
     // if (data.startDate && data.endDate) {
@@ -275,6 +301,31 @@ export function CreateProjectModal({
   }
   error={errors.endDate}
 />
+          </div>
+
+          {/* Project Category — optional classification (live, DB-managed list) */}
+          <div className="w-full">
+            <label
+              htmlFor="project-category"
+              className="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5"
+            >
+              Project Category <span className="text-gray-400 font-normal">(Optional)</span>
+            </label>
+            <select
+              id="project-category"
+              disabled={isSubmitting || isResolvingMembers}
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 leading-normal border-gray-300/80 dark:border-gray-700/60 focus:border-blue-500 dark:focus:border-blue-400"
+            >
+              <option value="">No category</option>
+              {(formData.category && !categories.includes(formData.category)
+                ? [formData.category, ...categories]
+                : categories
+              ).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
 
           {/* Project Status — manual lifecycle management (Edit mode only) */}

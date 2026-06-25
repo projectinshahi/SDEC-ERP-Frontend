@@ -137,3 +137,39 @@ export async function importProjectBacklogApi(projectId: string, tasks: any[]): 
   return response.data;
 }
 
+// --- Project Categories (live, DB-backed; managed by admins) ---
+
+export interface ProjectCategory {
+  id: number;
+  name: string;
+  orderIndex?: number;
+  isActive?: boolean;
+}
+
+/** List all project categories (any authenticated user) — drives dropdowns/filters. */
+export async function fetchProjectCategories(): Promise<ProjectCategory[]> {
+  const response = await apiClient.get<ProjectCategory[]>('/project-categories');
+  return response.data;
+}
+
+/** Create a new category (Admin/SuperAdmin only). */
+export async function createProjectCategoryApi(name: string): Promise<ProjectCategory> {
+  const response = await apiClient.post<ProjectCategory>('/project-categories', { name });
+  return response.data;
+}
+
+/** Rename / toggle a category (Admin/SuperAdmin only). Renames cascade to projects. */
+export async function updateProjectCategoryApi(
+  id: number,
+  data: { name?: string; isActive?: boolean },
+): Promise<ProjectCategory> {
+  const response = await apiClient.put<ProjectCategory>(`/project-categories/${id}`, data);
+  return response.data;
+}
+
+/** Delete a category (Admin/SuperAdmin only). Projects in it become uncategorized. */
+export async function deleteProjectCategoryApi(id: number): Promise<{ success: boolean }> {
+  const response = await apiClient.delete<{ success: boolean }>(`/project-categories/${id}`);
+  return response.data;
+}
+

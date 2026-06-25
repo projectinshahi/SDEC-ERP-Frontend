@@ -72,6 +72,7 @@ export interface MasterProjectsData {
   charts: {
     statusDistribution: DistributionPoint[];
     pmWorkload: DistributionPoint[];
+    categoryDistribution: DistributionPoint[];
   };
   projects: MasterProject[];
   /** Max rows the backend returns in `projects` (the detail list is bounded). */

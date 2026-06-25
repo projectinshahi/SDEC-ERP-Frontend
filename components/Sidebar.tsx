@@ -317,6 +317,32 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
             )}
           </button>
 
+          {/* Modules switcher — return to the module picker in the same session */}
+          <div className="relative group">
+            <Link
+              href="/modules"
+              onClick={() => { if (typeof window !== 'undefined' && window.innerWidth < 768) onToggle(); }}
+              className={classNames(
+                'flex items-center rounded-xl py-3 cursor-pointer',
+                mounted ? 'transition-all duration-200 ease-out' : '',
+                isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'gap-3 px-4 mx-2',
+                isActive('/modules')
+                  ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-md shadow-indigo-500/10 font-semibold'
+                  : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-100'
+              )}
+              title="Modules"
+              aria-label="Modules"
+            >
+              <LayoutGrid size={20} className="flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm tracking-wide font-medium">Modules</span>}
+            </Link>
+            {isCollapsed && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-zinc-100 text-xs font-semibold rounded-lg shadow-xl opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 pointer-events-none transition-all duration-200 whitespace-nowrap z-50">
+                Modules
+              </div>
+            )}
+          </div>
+
           {/* User Profile Card */}
           {user && (
             <div className={classNames(

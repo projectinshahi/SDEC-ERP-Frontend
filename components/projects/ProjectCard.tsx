@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Calendar, User, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { classNames } from '@/lib/utils';
-import { ProjectStatus, projectStatusLabel, projectStatusBadgeClass } from '@/lib/projects/projectStatus';
+import { ProjectStatus, projectStatusLabel, projectStatusBadgeClass, projectCategoryBadgeClass } from '@/lib/projects/projectStatus';
 
 export interface Project {
   id: string;
@@ -19,6 +19,8 @@ export interface Project {
   is_archived?: boolean;
   owner_id?: number | null;
   owner?: { id: number; name: string } | null;
+  /** Business classification (e.g. "ERP", "CRM"). DB-managed; null = uncategorized. */
+  category?: string | null;
   memberDetails?: { userId: number; role: string; capacityPoints: number; name: string; email: string }[];
 }
 
@@ -93,6 +95,11 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
               {project.name}
             </h3>
             <div className="flex items-center gap-1.5 shrink-0">
+              {project.category && (
+                <span className={classNames('inline-flex items-center font-semibold tracking-wide text-[10px] px-2 py-0.5 rounded-md border whitespace-nowrap', projectCategoryBadgeClass(project.category))}>
+                  {project.category}
+                </span>
+              )}
               {project.is_archived ? (
                 <>
                   {onRestore && canDelete && (

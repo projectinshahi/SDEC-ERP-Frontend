@@ -1,4 +1,3 @@
-
 import type { ModuleName, PermissionKey } from '@/lib/permissions/permission.types';
 import { groupForModule, type TopModule } from '@/lib/permissions/moduleAccess';
 
@@ -14,10 +13,6 @@ export interface SidebarMenuItem {
   isPartition?: boolean;
 }
 
-// Sales pages historically gated only on the coarse `sales.view` key. We keep it
-// as a broad fallback alongside the granular per-area key so legacy roles that
-// only hold coarse keys are not locked out, while granular-only roles (e.g. a
-// "Sales Executive" with just sales.leads.view) see ONLY what they were granted.
 const SALES_REPORTS: PermissionKey[] = ['sales.reports.view', 'sales.view'];
 
 export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
@@ -74,7 +69,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/developer-performance',
     icon: 'BarChart3',
     module: 'project',
-    permission: 'project.view',
+    permission: 'project.developer_performance',
   },
   {
     label: 'Sales Division',

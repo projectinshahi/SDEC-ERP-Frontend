@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/Button';
 import { X } from 'lucide-react';
-import { createBoardApi, updateBoardApi, type Board as Sprint } from '@/lib/api/kanban';
+import { createSprintApi, updateSprintApi, type Board as Sprint } from '@/lib/api/kanban';
 import { apiClient } from '@/lib/api/api-client';
 
 interface SprintModalProps {
@@ -90,14 +90,16 @@ export function SprintModal({ isOpen, onClose, onSuccess, editSprint, projectId 
     try {
       const { id: _id, estimatedHours, capacity, ...dataToSave } = formData;
       if (editSprint) {
-        await updateBoardApi(Number(editSprint.id), { ...dataToSave });
+        await updateSprintApi(Number(editSprint.id), { ...dataToSave });
       } else {
-        await createBoardApi({ ...dataToSave });
+        await createSprintApi({ ...dataToSave });
       }
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'An error occurred while saving the sprint');
+      // apiClient throws an ApiError whose `message` is the backend error (e.g.
+      // "You do not have permission to update sprint status.").
+      setError(err?.message || err.response?.data?.message || 'An error occurred while saving the sprint');
     } finally {
       setIsSubmitting(false);
     }
