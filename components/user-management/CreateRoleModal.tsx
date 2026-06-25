@@ -28,13 +28,15 @@ const MODULE_FILTERS: { value: ModuleFilter; label: string }[] = [
   { value: 'finance', label: 'Finance' },
 ];
 // Permission groups that belong to the Development product area.
-const DEV_MODULES: string[] = ['task', 'bugs', 'tickets', 'sprints', 'blockers', 'meetings', 'project'];
+const DEV_MODULES: string[] = ['dashboard', 'task', 'bugs', 'tickets', 'sprints', 'blockers', 'meetings', 'project'];
 
 function filterPermissionGroups(filter: ModuleFilter) {
   if (filter === 'all') return PERMISSION_GROUPS;
   if (filter === 'sales') return PERMISSION_GROUPS.filter((g) => g.module === 'sales');
   if (filter === 'development') return PERMISSION_GROUPS.filter((g) => DEV_MODULES.includes(g.module));
-  return []; // 'hr' / 'finance' — reserved for future modules (no permissions yet).
+  // 'hr' / 'finance' — future modules; their (grantable) permission groups drive
+  // the module-card visibility on the Modules page.
+  return PERMISSION_GROUPS.filter((g) => g.module === filter);
 }
 
 interface CreateRoleModalProps {

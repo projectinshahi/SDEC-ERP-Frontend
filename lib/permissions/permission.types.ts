@@ -8,6 +8,9 @@
  * Format: `module.action`
  */
 export type PermissionKey =
+  // Dashboard (Development home) — its own View permission so the Dashboard tab
+  // is hidden/blocked unless explicitly granted (strict RBAC).
+  | 'dashboard.view'
   // User Management
   | 'user.create'
   | 'user.read'
@@ -119,7 +122,7 @@ export type PermissionKey =
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr';
+export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr' | 'finance';
 
 /**
  * A single permission definition with metadata for UI rendering.

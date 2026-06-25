@@ -23,9 +23,22 @@ export async function fetchUserCount(): Promise<UserCountResponse> {
 }
 
 /**
- * Fetch all users from Neon database via backend API raw SQL query
+ * Slim user list for assignee / member pickers across the app (tasks, blockers,
+ * meetings, bugs, project members). Hits the authenticate-only `/users/picklist`
+ * so it works for ANY logged-in user without the `user.read` directory
+ * permission. Returns the same shape as the directory minus `createdAt`.
  */
 export async function fetchUsers(): Promise<UserDbResponse[]> {
+  const response = await apiClient.get<UserDbResponse[]>('/users/picklist');
+  return response.data;
+}
+
+/**
+ * Full User-Management directory (includes real `createdAt`). Backed by the
+ * `user.read`-gated `/users` endpoint — use ONLY on User-Management screens, not
+ * in pickers (those would 403 for non-admins). Use {@link fetchUsers} for pickers.
+ */
+export async function fetchUsersDirectory(): Promise<UserDbResponse[]> {
   const response = await apiClient.get<UserDbResponse[]>('/users');
   return response.data;
 }

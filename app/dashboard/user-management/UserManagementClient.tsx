@@ -16,8 +16,9 @@ import {
 import type { User, Role, UserFormData } from '@/lib/types/user-management';
 import { classNames } from '@/lib/utils';
 import { useToast } from '@/lib/hooks/useToast';
-import { fetchUsers, createUserApi, updateUserApi, deleteUserApi } from '@/lib/api/users';
-import { fetchRolesApi, deleteRoleApi } from '@/lib/api/roles';
+import { fetchUsersDirectory, createUserApi, updateUserApi, deleteUserApi } from '@/lib/api/users';
+import { fetchRolesApi, fetchRolesPicklist, deleteRoleApi } from '@/lib/api/roles';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 type TabType = 'users' | 'roles';
 
@@ -92,9 +93,26 @@ function StatCard({ label, value, icon: Icon, tone }: { label: string; value: nu
  */
 export function UserManagementClient() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<TabType>('users');
+  const { hasPermission } = usePermissions();
+  // STRICT per-tab visibility: the Users directory needs `user.read`, the Roles
+  // matrix needs `role.read` (SuperAdmin bypasses both via usePermissions).
+  const canViewUsers = hasPermission('user.read');
+  const canViewRoles = hasPermission('role.read');
+  const availableTabs = useMemo<TabType[]>(() => {
+    const t: TabType[] = [];
+    if (canViewUsers) t.push('users');
+    if (canViewRoles) t.push('roles');
+    return t;
+  }, [canViewUsers, canViewRoles]);
+
+  // Initialise on a tab the user can actually see (avoids a first-render flash of
+  // the Users tab for a roles-only user before the correction effect runs).
+  const [activeTab, setActiveTab] = useState<TabType>(canViewUsers ? 'users' : 'roles');
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  // Slim role list (id+name) for the create/edit-user role dropdown — loads for
+  // anyone (no role.read needed) so user creation isn't blocked.
+  const [rolePicklist, setRolePicklist] = useState<{ id: number; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,7 +136,7 @@ export function UserManagementClient() {
   const loadUsers = async () => {
     setLoadError(null);
     try {
-      const data = await fetchUsers();
+      const data = await fetchUsersDirectory();
       setUsers(data.map((u) => ({
         id: String(u.id),
         name: u.name,
@@ -144,14 +162,33 @@ export function UserManagementClient() {
     }
   };
 
+  const loadRolePicklist = async () => {
+    try {
+      setRolePicklist(await fetchRolesPicklist());
+    } catch {
+      /* dropdown falls back to roles already present on users */
+    }
+  };
+
   useEffect(() => {
     (async () => {
       setIsLoading(true);
-      await Promise.all([loadUsers(), loadRoles()]);
+      await Promise.all([
+        canViewUsers ? loadUsers() : Promise.resolve(),
+        canViewRoles ? loadRoles() : Promise.resolve(),
+        loadRolePicklist(),
+      ]);
       setIsLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canViewUsers, canViewRoles]);
+
+  // Keep the active tab on something the user is allowed to see.
+  useEffect(() => {
+    if (availableTabs.length && !availableTabs.includes(activeTab)) {
+      setActiveTab(availableTabs[0]);
+    }
+  }, [availableTabs, activeTab]);
 
   // ── Live analytics ──────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -173,8 +210,9 @@ export function UserManagementClient() {
     const set = new Set<string>();
     users.forEach((u) => u.roles.forEach((r) => set.add(r)));
     roles.forEach((r) => set.add(r.name));
+    rolePicklist.forEach((r) => set.add(r.name));
     return Array.from(set).sort();
-  }, [users, roles]);
+  }, [users, roles, rolePicklist]);
 
   // ── Filter + sort ─────────────────────────────────────────────────────────
   const visibleUsers = useMemo(() => {
@@ -312,21 +350,25 @@ export function UserManagementClient() {
         </div>
       </div>
 
-      {/* Live analytics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-7">
-        <StatCard label="Total Users" value={stats.total} icon={Users} tone="violet" />
-        <StatCard label="Active" value={stats.active} icon={UserCheck} tone="emerald" />
-        <StatCard label="Inactive" value={stats.inactive} icon={UserX} tone="slate" />
-        <StatCard label="Administrators" value={stats.admins} icon={ShieldCheck} tone="indigo" />
-        <StatCard label="Sales Users" value={stats.sales} icon={TrendingUp} tone="blue" />
-        <StatCard label="Developers" value={stats.devs} icon={Code2} tone="amber" />
-        <StatCard label="Recently Added" value={stats.recent} icon={UserPlus} tone="rose" />
-      </div>
+      {/* Live analytics — directory stats only shown to users who can read it */}
+      {canViewUsers && (
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-7">
+          <StatCard label="Total Users" value={stats.total} icon={Users} tone="violet" />
+          <StatCard label="Active" value={stats.active} icon={UserCheck} tone="emerald" />
+          <StatCard label="Inactive" value={stats.inactive} icon={UserX} tone="slate" />
+          <StatCard label="Administrators" value={stats.admins} icon={ShieldCheck} tone="indigo" />
+          <StatCard label="Sales Users" value={stats.sales} icon={TrendingUp} tone="blue" />
+          <StatCard label="Developers" value={stats.devs} icon={Code2} tone="amber" />
+          <StatCard label="Recently Added" value={stats.recent} icon={UserPlus} tone="rose" />
+        </div>
+      )}
 
-      {/* Tabs */}
+      {/* Tabs — only the tabs the user is permitted to see */}
       <div className="mb-5 border-b border-slate-200">
         <nav className="flex gap-7">
-          {([['users', 'Users', Users, users.length], ['roles', 'Roles', Shield, roles.length]] as const).map(([id, label, Icon, count]) => (
+          {([['users', 'Users', Users, users.length], ['roles', 'Roles', Shield, roles.length]] as const)
+            .filter(([id]) => availableTabs.includes(id))
+            .map(([id, label, Icon, count]) => (
             <button key={id} onClick={() => setActiveTab(id)}
               className={classNames('flex items-center gap-2 py-3.5 px-1 border-b-2 font-bold text-sm transition-colors',
                 activeTab === id ? 'border-violet-600 text-violet-600' : 'border-transparent text-slate-400 hover:text-slate-700')}>
@@ -338,7 +380,17 @@ export function UserManagementClient() {
         </nav>
       </div>
 
-      {activeTab === 'users' && (
+      {/* No readable section: reached the page via a non-read user.* permission
+          (e.g. user.create) but holds neither user.read nor role.read. */}
+      {availableTabs.length === 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm py-16 flex flex-col items-center gap-3 text-center px-6">
+          <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 border border-slate-100"><Shield size={24} /></div>
+          <p className="text-sm font-bold text-slate-700">No accessible sections</p>
+          <p className="text-xs text-slate-400">You don’t have permission to view users or roles. Contact an administrator if you need access.</p>
+        </div>
+      )}
+
+      {activeTab === 'users' && canViewUsers && (
         <>
           {/* Filters */}
           <div className="flex flex-col lg:flex-row gap-3 mb-5">
@@ -451,7 +503,7 @@ export function UserManagementClient() {
         </>
       )}
 
-      {activeTab === 'roles' && (
+      {activeTab === 'roles' && canViewRoles && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
           {isLoading ? (
             <div className="py-16 text-center"><div className="inline-block animate-spin rounded-full h-7 w-7 border-b-2 border-violet-600" /></div>

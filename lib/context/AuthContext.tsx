@@ -20,6 +20,7 @@ import {
   type ReactNode,
 } from 'react';
 import { apiClient } from '@/lib/api/api-client';
+import { ApiError } from '@/lib/api-errors';
 import { SUPER_ADMIN_ROLE_NAME } from '@/lib/permissions/permissions.constants';
 
 export interface AuthUser {
@@ -114,8 +115,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       localStorage.setItem('user', JSON.stringify(merged));
       setState({ user: merged, isAuthenticated: true, isLoading: false });
-    } catch {
-      // Keep cached permissions (network/403/etc.) — never wipe access on refresh.
+    } catch (err) {
+      // Fail CLOSED on a revoked/forbidden session: a 401/403 from /auth/me means
+      // the token is no longer valid for the current user, so clear the cached
+      // session instead of keeping stale (possibly elevated) tabs. (401 is also
+      // force-redirected by the api-client interceptor.) For transient network
+      // errors we fail OPEN — keep cached permissions; the backend still enforces
+      // every request independently.
+      //
+      // EXCEPTION: a forced-password-change user gets a 403 {mustChangePassword:true}
+      // from EVERY authenticated route (incl. /auth/me) until they reset. That is a
+      // valid session mid-reset — failing closed here would wipe it and trap them in
+      // a /change-password ⇄ /login loop. So keep that session (fail open).
+      const body = (err instanceof ApiError ? err.details : undefined) as { mustChangePassword?: boolean } | undefined;
+      const mustChange = body?.mustChangePassword === true;
+      if (err instanceof ApiError && (err.statusCode === 401 || (err.statusCode === 403 && !mustChange))) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        setState({ user: null, isAuthenticated: false, isLoading: false });
+      }
     }
   }, []);
 
