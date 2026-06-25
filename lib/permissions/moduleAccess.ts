@@ -129,14 +129,16 @@ export function visibleModules(user: ModuleAccessUser | null | undefined): AppMo
  * core; otherwise permission-prefix driven).
  */
 export function getModuleAccess(user: ModuleAccessUser | null | undefined): Record<TopModule, boolean> {
-  const byKey = (key: TopModule) => APP_MODULES.find((m) => m.key === key)!;
-  return {
-    master: isSuper,
-    development: isAdmin || hasAny('project.', 'task.', 'sprints.', 'bugs.', 'blockers.', 'meetings.', 'tickets.'),
-    sales: isAdmin || hasAny('sales.'),
-    user: isAdmin || hasAny('user.', 'role.'),
-    hr: isAdmin || hasAny('hr.'),
-  };
+  const result = {} as Record<TopModule, boolean>;
+  for (const m of APP_MODULES) {
+    if (m.key in result) continue; // skip duplicate keys (e.g. 'hr' appears in TopModule union)
+    result[m.key as TopModule] = isModuleVisible(user, m);
+  }
+  // Ensure every TopModule key exists even if no registry entry matched
+  for (const k of ['master', 'development', 'sales', 'user', 'hr'] as TopModule[]) {
+    if (!(k in result)) result[k] = false;
+  }
+  return result;
 }
 
 /** The first module (in priority order) the user can access — used as a landing fallback. */
