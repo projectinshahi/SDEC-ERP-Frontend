@@ -8,6 +8,9 @@
  * Format: `module.action`
  */
 export type PermissionKey =
+  // Dashboard (Development home) — its own View permission so the Dashboard tab
+  // is hidden/blocked unless explicitly granted (strict RBAC).
+  | 'dashboard.view'
   // User Management
   | 'user.create'
   | 'user.read'
@@ -102,13 +105,21 @@ export type PermissionKey =
   | 'sales.teams.create'
   | 'sales.teams.edit'
   | 'sales.teams.delete'
-  | 'sales.reports.export';
+  | 'sales.reports.export'
+  // HR Module (future implementation — permissions are grantable now so the
+  // HR module card appears on the Modules page for roles that hold them)
+  | 'hr.view'
+  | 'hr.employees.view'
+  | 'hr.leave.view'
+  // Finance Module (future implementation — see note above)
+  | 'finance.view'
+  | 'finance.invoices.view';
 
 /**
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets';
+export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr' | 'finance';
 
 /**
  * A single permission definition with metadata for UI rendering.

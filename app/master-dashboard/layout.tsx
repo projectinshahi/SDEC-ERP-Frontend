@@ -16,6 +16,13 @@ interface LayoutProps {
 // Hardcoded sidebar items for the Master Dashboard.
 // Order is intentional and follows the business workflow:
 // Dashboard → Projects → Sales → HR → Tickets → Meetings → Developer Performance → Settings.
+//
+// These items are deliberately NOT per-item permission-gated: the entire Master
+// Dashboard is SuperAdmin-EXCLUSIVE (the `denied` route guard below redirects any
+// non-SuperAdmin away, and getModuleAccess().master === isSuperAdmin — `master`
+// can never be granted to a non-super). A SuperAdmin must see every tab (product
+// requirement), so item-level filtering would be a no-op here. If `master` is
+// ever opened to non-super roles, gate each item like the main sidebar does.
 const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
   {
     label: 'Dashboard',

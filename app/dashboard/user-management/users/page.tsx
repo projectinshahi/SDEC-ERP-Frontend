@@ -19,11 +19,11 @@ import {
 import type { User, UserFormData } from '@/lib/types/user-management';
 import { AddUserModal } from '@/components/user-management/AddUserModal';
 import { Modal } from '@/components/Modal';
-import { 
-  fetchUsers, 
-  createUserApi, 
-  updateUserApi, 
-  deleteUserApi 
+import {
+  fetchUsersDirectory,
+  createUserApi,
+  updateUserApi,
+  deleteUserApi
 } from '@/lib/api/users';
 import { classNames } from '@/lib/utils';
 
@@ -49,7 +49,7 @@ export default function UsersPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchUsers();
+      const data = await fetchUsersDirectory();
       const formatted = data.map((u: any) => ({
         id: String(u.id),
         name: u.name,

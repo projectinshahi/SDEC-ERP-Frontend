@@ -6,7 +6,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { UserTable } from '@/components/user-management/UserTable';
-import { fetchUsers, UserDbResponse } from '@/lib/api/users';
+import { fetchUsersDirectory, UserDbResponse } from '@/lib/api/users';
 import { useToast } from '@/lib/hooks/useToast';
 import type { User } from '@/lib/types/user-management';
 import { AlertCircle, RotateCw, Users, ShieldAlert } from 'lucide-react';
@@ -21,7 +21,7 @@ export default function UserManagementPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchUsers();
+      const data = await fetchUsersDirectory();
       // Maps backend SQL schema (role, capitalized Active/Inactive status) to local User state structure
       const formatted = data.map((u: UserDbResponse) => ({
         id: String(u.id),

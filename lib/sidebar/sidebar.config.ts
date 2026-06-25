@@ -10,6 +10,13 @@ export interface SidebarMenuItem {
   module?: ModuleName | null;
   permission?: PermissionKey | PermissionKey[];
   isPartition?: boolean;
+  /**
+   * When true, `permissionsForPath` matches this item ONLY on an exact pathname
+   * (not as a prefix). Needed for "/dashboard": its href is a prefix of every
+   * other dashboard route, so without this it would impose its permission on all
+   * of them. With it, only the exact "/dashboard" home requires dashboard.view.
+   */
+  exact?: boolean;
 }
 
 const SALES_REPORTS: PermissionKey[] = ['sales.reports.view', 'sales.view'];
@@ -19,7 +26,9 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: 'LayoutDashboard',
-    module: null, // Always visible within the Development module
+    module: 'dashboard',
+    permission: 'dashboard.view', // STRICT: hidden/blocked unless explicitly granted
+    exact: true, // '/dashboard' is a prefix of every dashboard route — match exactly
   },
   {
     label: 'Projects',
@@ -297,9 +306,13 @@ export function permissionsForPath(pathname: string): PermissionKey[] {
   let bestLen = -1;
   for (const item of SIDEBAR_ITEMS) {
     if (!item.href || item.isPartition) continue;
-    if (pathname === item.href || pathname.startsWith(item.href + '/')) {
-      if (item.href.length > bestLen) { best = item; bestLen = item.href.length; }
-    }
+    // `exact` items match only their precise pathname (so "/dashboard" doesn't
+    // impose its permission on every "/dashboard/*" route); others match as a
+    // path prefix so detail pages inherit their list's permission.
+    const matches = item.exact
+      ? pathname === item.href
+      : (pathname === item.href || pathname.startsWith(item.href + '/'));
+    if (matches && item.href.length > bestLen) { best = item; bestLen = item.href.length; }
   }
   return best ? itemPermissions(best) : [];
 }
