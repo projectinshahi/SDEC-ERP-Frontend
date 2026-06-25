@@ -44,12 +44,12 @@ export default function DashboardPage() {
       setIsStatsError(false);
       const data = await fetchGlobalAnalytics();
       setStats({
-        totalProjects: data.totalProjects || 0,
-        totalTasks: data.totalTasks || 0,
-        activeTasks: data.activeTasks || 0,
-        completedTasks: data.completedTasks || 0,
-        openBugs: data.openBugs || 0,
-        teamMembers: data.teamMembers || 0
+        totalProjects: data?.totalProjects || 0,
+        totalTasks: data?.totalTasks || 0,
+        activeTasks: data?.activeTasks || 0,
+        completedTasks: data?.completedTasks || 0,
+        openBugs: data?.openBugs || 0,
+        teamMembers: data?.teamMembers || 0
       });
     } catch (error) {
       setIsStatsError(true);
@@ -64,7 +64,7 @@ export default function DashboardPage() {
       setIsActivitiesLoading(true);
       setIsActivitiesError(false);
       const realActivities = await fetchActivityFeed();
-      setActivities(realActivities);
+      setActivities(Array.isArray(realActivities) ? realActivities : []);
     } catch (error) {
       console.error('Failed to fetch activity feed:', error);
       setIsActivitiesError(true);

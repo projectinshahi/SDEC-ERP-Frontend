@@ -137,9 +137,11 @@ export function getErrorMessage(error: unknown): string {
 }
 
 /**
- * Truncate string to specified length
+ * Truncate a string to the specified length. Null-safe: a nullish/undefined
+ * value (e.g. a task with no description) yields '' instead of throwing.
  */
-export function truncate(str: string, length: number): string {
+export function truncate(str: string | null | undefined, length: number): string {
+  if (!str) return '';
   if (str.length <= length) return str;
   return str.slice(0, length) + '...';
 }

@@ -37,7 +37,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     const loadProjects = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchProjects();
+        const rawData = await fetchProjects();
+        const data = Array.isArray(rawData) ? rawData : [];
         if (isMounted) {
           setProjects(data);
           
