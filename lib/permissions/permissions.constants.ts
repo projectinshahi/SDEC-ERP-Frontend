@@ -21,6 +21,7 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   project: 'project.',
   sales: 'sales.',
   hr: 'hr.',
+  finance: 'finance.',
 } as const;
 
 /**
