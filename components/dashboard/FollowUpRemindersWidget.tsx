@@ -63,7 +63,7 @@ export function FollowUpRemindersWidget() {
     }
   };
 
-  const totalCount = data ? data.counts.overdue + data.counts.today + data.counts.upcoming : 0;
+  const totalCount = data?.counts ? data.counts.overdue + data.counts.today + data.counts.upcoming : 0;
 
   const renderItem = (fu: FollowUp) => (
     <div key={fu.id} className="flex items-start justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">

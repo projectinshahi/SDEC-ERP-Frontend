@@ -85,7 +85,7 @@ export default function SalesCommandCenterPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           {isLoading
             ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)
-            : data?.insights.map((ins, i) => {
+            : (data?.insights || []).map((ins, i) => {
                 const Icon = INSIGHT_ICON[ins.severity];
                 return (
                   <div key={i} className={`flex items-start gap-2.5 p-3.5 rounded-xl border ${INSIGHT_TONE[ins.severity]}`}>
