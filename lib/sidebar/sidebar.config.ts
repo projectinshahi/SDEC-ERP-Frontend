@@ -5,7 +5,7 @@ export interface SidebarMenuItem {
   label: string;
   href?: string;
   /** Must match a key in Sidebar's iconMap */
-  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid';
+  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid' | 'Settings' | 'DollarSign' | 'FileText';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module?: ModuleName | null;
   /** Permission(s) that gate this item/route. ANY grants. Omit = no specific gate (module-home). */
@@ -278,6 +278,106 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'LayoutDashboard',
     module: 'sales',
     permission: SALES_REPORTS,
+  },
+  
+  // HR Module
+  {
+    label: 'OVERVIEW',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'HR Dashboard',
+    href: '/dashboard/hr',
+    icon: 'LayoutDashboard',
+    module: 'hr',
+    permission: ['hr.dashboard.view', 'hr.view'],
+  },
+  {
+    label: 'WORKFORCE',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Employees',
+    href: '/dashboard/hr/employees',
+    icon: 'Users',
+    module: 'hr',
+    permission: ['hr.employees.view', 'hr.view'],
+  },
+  {
+    label: 'Attendance',
+    href: '/dashboard/hr/attendance',
+    icon: 'CalendarDays',
+    module: 'hr',
+    permission: ['hr.attendance.view', 'hr.view'],
+  },
+  {
+    label: 'Leave',
+    href: '/dashboard/hr/leave',
+    icon: 'CalendarDays',
+    module: 'hr',
+    permission: ['hr.leave.view', 'hr.view'],
+  },
+  {
+    label: 'HIRING',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Recruitment',
+    href: '/dashboard/hr/recruitment',
+    icon: 'Briefcase',
+    module: 'hr',
+    permission: ['hr.recruitment.view', 'hr.view'],
+  },
+  {
+    label: 'FINANCE',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Payroll',
+    href: '/dashboard/hr/payroll',
+    icon: 'DollarSign',
+    module: 'hr',
+    permission: ['hr.payroll.view', 'hr.view'],
+  },
+  {
+    label: 'ANALYTICS',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Performance',
+    href: '/dashboard/hr/performance',
+    icon: 'BarChart3',
+    module: 'hr',
+    permission: ['hr.performance.view', 'hr.view'],
+  },
+  {
+    label: 'FILES',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Documents',
+    href: '/dashboard/hr/documents',
+    icon: 'FileText',
+    module: 'hr',
+    permission: ['hr.documents.view', 'hr.view'],
+  },
+  {
+    label: 'SYSTEM',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Settings',
+    href: '/dashboard/hr/settings',
+    icon: 'Settings',
+    module: 'hr',
+    permission: ['hr.settings.view', 'hr.view'],
   },
 ];
 

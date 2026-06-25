@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Code2, ShieldCheck, Briefcase, Users, ArrowRight, LogOut, Building2, Loader2,
+  Code2, ShieldCheck, Briefcase, Users, ArrowRight, LogOut, Building2, Loader2, UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -50,6 +50,12 @@ const ACCENTS: Record<string, { ring: string; iconBg: string; iconText: string; 
     iconBg: 'bg-violet-100 dark:bg-violet-900/50', iconText: 'text-violet-600 dark:text-violet-400',
     btn: 'bg-violet-600 hover:bg-violet-700 focus-visible:ring-violet-500',
   },
+  rose: {
+    ring: 'hover:border-rose-400 dark:hover:border-rose-500',
+    iconBg: 'bg-rose-100 dark:bg-rose-900/50',
+    iconText: 'text-rose-600 dark:text-rose-400',
+    btn: 'bg-rose-600 hover:bg-rose-700 focus-visible:ring-rose-500',
+  },
 };
 
 export default function ModulesPage() {
@@ -70,14 +76,54 @@ export default function ModulesPage() {
     // leads-only sales user opens directly on Leads, not the gated Overview).
     const hrefFor = (m: TopModule, fallback: string) => firstAccessibleHref(m, hasAnyPermission) ?? fallback;
     return [
-      { key: 'master', show: access.master, href: '/master-dashboard', icon: ShieldCheck, accent: 'indigo',
-        title: 'Master Dashboard', desc: 'Enterprise-wide analytics, oversight, reporting & admin controls.' },
-      { key: 'sales', show: access.sales, href: hrefFor('sales', '/dashboard/sales'), icon: Briefcase, accent: 'emerald',
-        title: 'Sales', desc: 'Leads, pipeline, deals & CRM.' },
-      { key: 'development', show: access.development, href: hrefFor('development', '/dashboard'), icon: Code2, accent: 'blue',
-        title: 'Development', desc: 'Projects, boards, tasks & sprints.' },
-      { key: 'users', show: access.user, href: hrefFor('user', '/dashboard/user-management'), icon: Users, accent: 'violet',
-        title: 'User Management', desc: 'Users, roles & permissions.' },
+      {
+        key: 'master',
+        show: access.master,
+        href: '/master-dashboard',
+        icon: ShieldCheck,
+        accent: 'indigo',
+        title: 'Master Dashboard',
+        desc: 'Enterprise-wide analytics, oversight, reporting & admin controls.',
+      },
+      {
+        key: 'sales',
+        show: access.sales,
+        href: '/dashboard/sales',
+        icon: Briefcase,
+        accent: 'emerald',
+        title: 'Sales',
+        desc: 'Leads, pipeline, deals & CRM.',
+      },
+      {
+        key: 'development',
+        show: access.development,
+        href: '/dashboard',
+        icon: Code2,
+        accent: 'blue',
+        title: 'Development',
+        desc: 'Projects, boards, tasks & sprints.',
+      },
+
+      // NEW HR CARD
+      {
+        key: 'hr',
+        show: access.hr,
+        href: '/dashboard/hr',
+        icon: UserRound,
+        accent: 'rose',
+        title: 'HR Management',
+        desc: 'Employees, attendance, payroll & recruitment.',
+      },
+
+      {
+        key: 'users',
+        show: access.user,
+        href: '/dashboard/user-management',
+        icon: Users,
+        accent: 'violet',
+        title: 'User Management',
+        desc: 'Users, roles & permissions.',
+      },
     ].filter((m) => m.show);
   }, [user, hasAnyPermission]);
 

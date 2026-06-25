@@ -27,6 +27,8 @@ import {
   BarChart3,
   LayoutGrid,
   Settings,
+  DollarSign,
+  FileText,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
 import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
@@ -48,6 +50,8 @@ const iconMap = {
   BarChart3,
   LayoutGrid,
   Settings,
+  DollarSign,
+  FileText,
 } as const;
 
 export interface SidebarItem {
@@ -214,9 +218,9 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
           {items.map((item) => {
             if (item.isPartition) {
               return (
-                <div key={item.label} className={classNames("pt-4 pb-1 mt-2 mb-1", isCollapsed ? "px-0 text-center" : "px-4")}>
+                <div key={item.label} className={classNames("pt-5 pb-1.5 mt-3 mb-1.5", isCollapsed ? "px-0 text-center" : "px-4")}>
                   {!isCollapsed ? (
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{item.label}</span>
+                    <span className="text-[10px] font-bold text-zinc-500/80 uppercase tracking-widest">{item.label}</span>
                   ) : (
                     <div className="w-6 border-b-2 border-zinc-800 mx-auto"></div>
                   )}
@@ -233,23 +237,6 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
                 pathname.startsWith('/dashboard/tasks');
 
               return (
-                // <SidebarBoardsItem
-                //   key={item.label}
-                //   active={boardActive}
-                //   isCollapsed={isCollapsed}
-                //   mounted={mounted}
-                //   onMobileToggle={onToggle}
-                // />
-                //     <SidebarBoardsItem
-                //   key={item.label}
-                //   active={
-                //     pathname === '/dashboard/tasks' ||
-                //     pathname.startsWith('/dashboard/tasks')
-                //   }
-                //   isCollapsed={isCollapsed}
-                //   mounted={mounted}
-                //   onMobileToggle={onToggle}
-                // />
                 <SidebarBoardsItem
                   key={item.label}
                   active={
@@ -269,12 +256,11 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
                 <Link
                   href={item.href!}
                   className={classNames(
-                    'flex items-center rounded-xl py-3 relative',
-                    mounted ? 'transition-all duration-200 ease-out' : '',
+                    'flex items-center rounded-xl py-3 relative transition-all duration-200',
                     isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'gap-3 px-4 mx-2',
                     active
-                      ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-md shadow-indigo-500/10 font-semibold'
-                      : 'text-zinc-400 hover:bg-zinc-900/60 hover:text-zinc-100'
+                      ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-lg shadow-indigo-500/25 font-semibold'
+                      : 'text-zinc-400 hover:bg-zinc-900/30 hover:text-zinc-200'
                   )}
                   onClick={() => {
                     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -285,8 +271,8 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
                   {/* Glowing neon active indicator */}
                   {active && (
                     <span className={classNames(
-                      'absolute rounded-r bg-blue-400 shadow-[0_0_8px_#60a5fa]',
-                      isCollapsed ? 'left-[-4px] top-1/4 h-1/2 w-1' : 'left-0 top-1/4 h-1/2 w-1.5'
+                      'absolute rounded-r bg-blue-500 shadow-[0_0_12px_#3b82f6]',
+                      isCollapsed ? 'left-[-4px] top-1/4 h-1/2 w-1' : 'left-[2px] top-1/4 h-1/2 w-1'
                     )} />
                   )}
 

@@ -20,6 +20,7 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   meetings: 'meetings.',
   project: 'project.',
   sales: 'sales.',
+  hr: 'hr.',
 } as const;
 
 /**
@@ -431,6 +432,22 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'sales.config', label: 'Configure Pipeline', description: 'Configure stalled-deal thresholds and pipeline settings', module: 'sales' },
       { key: 'sales.targets.manage', label: 'Manage Targets', description: "Set and edit other team members' performance targets", module: 'sales' },
       { key: 'sales.incentive.manage', label: 'Manage Incentives', description: 'Configure per-BDE incentive slab structures', module: 'sales' },
+    ],
+  },
+  {
+    module: 'hr',
+    label: 'HR Management',
+    permissions: [
+      { key: 'hr.view', label: 'View HR Module', description: 'General access to the HR module', module: 'hr' },
+      { key: 'hr.dashboard.view', label: 'View HR Dashboard', description: 'Access the HR dashboard overview', module: 'hr' },
+      { key: 'hr.employees.view', label: 'View Employees', description: 'View workforce employees directory', module: 'hr' },
+      { key: 'hr.attendance.view', label: 'View Attendance', description: 'View workforce attendance logs', module: 'hr' },
+      { key: 'hr.leave.view', label: 'View Leave', description: 'View and manage employee leave requests', module: 'hr' },
+      { key: 'hr.recruitment.view', label: 'View Recruitment', description: 'Access hiring and recruitment pipelines', module: 'hr' },
+      { key: 'hr.payroll.view', label: 'View Payroll', description: 'View payroll and financial details', module: 'hr' },
+      { key: 'hr.performance.view', label: 'View Performance', description: 'View employee performance analytics', module: 'hr' },
+      { key: 'hr.documents.view', label: 'View Documents', description: 'Access HR documents and files', module: 'hr' },
+      { key: 'hr.settings.view', label: 'View Settings', description: 'Access HR module settings', module: 'hr' },
     ],
   },
 ];
