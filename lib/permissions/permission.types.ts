@@ -100,13 +100,24 @@ export type PermissionKey =
   | 'sales.teams.create'
   | 'sales.teams.edit'
   | 'sales.teams.delete'
-  | 'sales.reports.export';
+  | 'sales.reports.export'
+  // HR Module
+  | 'hr.view'
+  | 'hr.dashboard.view'
+  | 'hr.employees.view'
+  | 'hr.attendance.view'
+  | 'hr.leave.view'
+  | 'hr.recruitment.view'
+  | 'hr.payroll.view'
+  | 'hr.performance.view'
+  | 'hr.documents.view'
+  | 'hr.settings.view';
 
 /**
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets';
+export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr';
 
 /**
  * A single permission definition with metadata for UI rendering.

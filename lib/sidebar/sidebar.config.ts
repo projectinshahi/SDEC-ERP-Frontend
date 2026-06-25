@@ -1,21 +1,3 @@
-/**
- * Sidebar Configuration
- *
- * Permission-aware sidebar menu items. Each item declares:
- *   • `module` — the top-level product it belongs to (for module isolation), and
- *   • `permission` — the specific RBAC permission(s) that gate it. The menu item
- *     (and its route) is hidden/blocked unless the user holds ANY of them.
- *
- * Items with `permission` omitted are "module-home" items (e.g. Dashboard) that
- * are shown to anyone already inside that module. SuperAdmin/Admin bypass all
- * gating (see usePermissions / getModuleAccess).
- *
- * This file is the SINGLE SOURCE OF TRUTH for both menu visibility AND route
- * access — `permissionsForPath()` derives the required permission for any URL
- * from these same entries, so the sidebar and the route guard can never drift.
- *
- * The `icon` values must match keys in the Sidebar component's `iconMap`.
- */
 
 import type { ModuleName, PermissionKey } from '@/lib/permissions/permission.types';
 import { groupForModule, type TopModule } from '@/lib/permissions/moduleAccess';
@@ -24,7 +6,7 @@ export interface SidebarMenuItem {
   label: string;
   href?: string;
   /** Must match a key in Sidebar's iconMap */
-  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid';
+  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid' | 'Settings' | 'DollarSign' | 'FileText';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module?: ModuleName | null;
   /** Permission(s) that gate this item/route. ANY grants. Omit = no specific gate (module-home). */
@@ -301,6 +283,106 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'LayoutDashboard',
     module: 'sales',
     permission: SALES_REPORTS,
+  },
+  
+  // HR Module
+  {
+    label: 'OVERVIEW',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'HR Dashboard',
+    href: '/dashboard/hr',
+    icon: 'LayoutDashboard',
+    module: 'hr',
+    permission: ['hr.dashboard.view', 'hr.view'],
+  },
+  {
+    label: 'WORKFORCE',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Employees',
+    href: '/dashboard/hr/employees',
+    icon: 'Users',
+    module: 'hr',
+    permission: ['hr.employees.view', 'hr.view'],
+  },
+  {
+    label: 'Attendance',
+    href: '/dashboard/hr/attendance',
+    icon: 'CalendarDays',
+    module: 'hr',
+    permission: ['hr.attendance.view', 'hr.view'],
+  },
+  {
+    label: 'Leave',
+    href: '/dashboard/hr/leave',
+    icon: 'CalendarDays',
+    module: 'hr',
+    permission: ['hr.leave.view', 'hr.view'],
+  },
+  {
+    label: 'HIRING',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Recruitment',
+    href: '/dashboard/hr/recruitment',
+    icon: 'Briefcase',
+    module: 'hr',
+    permission: ['hr.recruitment.view', 'hr.view'],
+  },
+  {
+    label: 'FINANCE',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Payroll',
+    href: '/dashboard/hr/payroll',
+    icon: 'DollarSign',
+    module: 'hr',
+    permission: ['hr.payroll.view', 'hr.view'],
+  },
+  {
+    label: 'ANALYTICS',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Performance',
+    href: '/dashboard/hr/performance',
+    icon: 'BarChart3',
+    module: 'hr',
+    permission: ['hr.performance.view', 'hr.view'],
+  },
+  {
+    label: 'FILES',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Documents',
+    href: '/dashboard/hr/documents',
+    icon: 'FileText',
+    module: 'hr',
+    permission: ['hr.documents.view', 'hr.view'],
+  },
+  {
+    label: 'SYSTEM',
+    isPartition: true,
+    module: 'hr',
+  },
+  {
+    label: 'Settings',
+    href: '/dashboard/hr/settings',
+    icon: 'Settings',
+    module: 'hr',
+    permission: ['hr.settings.view', 'hr.view'],
   },
 ];
 
