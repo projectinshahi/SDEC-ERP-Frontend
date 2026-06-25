@@ -30,9 +30,11 @@ const ICON_MAP: Record<string, LucideIcon> = {
  * "Master Dashboard" is the UI label for the SuperAdmin-only card (→ /master-dashboard).
  * The SuperAdmin role/permissions are unchanged — only the displayed card name.
  *
- * Access is decided by BOTH the role name (normalised) and the live RBAC
- * permission set, so custom roles are handled correctly too. SuperAdmin bypasses
- * every check (see usePermissions / getModuleAccess / backend isGlobalAdmin).
+ * The card list is DATA-DRIVEN: `visibleModules(user)` filters the shared
+ * `APP_MODULES` registry by the live RBAC permission set (a module shows when the
+ * user holds ≥1 permission under its prefixes). SuperAdmin bypasses every check
+ * (see usePermissions / isModuleVisible / backend isGlobalAdmin). Core cards are
+ * additionally hidden when the user has no reachable page in them.
  * ────────────────────────────────────────────────────────────────────────── */
 
 const ACCENTS: Record<string, { ring: string; iconBg: string; iconText: string; btn: string }> = {
