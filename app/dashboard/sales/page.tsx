@@ -9,15 +9,44 @@ import {
 import {
   Users, UserPlus, Target, TrendingUp, Briefcase, Trophy, XCircle, Wallet,
   ArrowUpRight, ArrowDownRight, AlertTriangle, Flame, CheckCircle2,
-  LayoutGrid, Clock, BarChart3, Bell,
+  LayoutGrid, Clock, BarChart3, Bell, CheckSquare, ClipboardList, Crosshair, ShieldCheck,
 } from 'lucide-react';
 import { Card } from '@/components/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { permissionsForPath } from '@/lib/sidebar/sidebar.config';
 import { useToast } from '@/lib/hooks/useToast';
 import { fetchSalesDashboard } from '@/lib/api/salesDashboard';
 import type { SalesDashboard, SalesInsight } from '@/lib/types/salesDashboard';
+
+/**
+ * Navigation shortcuts on the Sales Overview. Each maps to a canonical sales
+ * route; its visibility is resolved from `permissionsForPath(href)` — the SAME
+ * permission array the sidebar item and the layout route-guard use — so a
+ * shortcut renders ONLY when the user holds the matching "View …" permission
+ * (no hardcoded permission keys, no drift from the sidebar / backend gates).
+ *   View Leads → Leads · View Pipeline → Pipeline · View Deals → Deals
+ *   View Follow-ups → Follow-ups · View Analytics → Analytics · View Team → Team
+ *   View Sales Tasks → Sales Tasks · View Team Tasks → Team Tasks
+ *   View Targets → Targets · Approve Documents → Approvals
+ */
+const OVERVIEW_SHORTCUTS: {
+  href: string; label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+}[] = [
+  { href: '/dashboard/sales/leads', label: 'Leads', icon: Target },
+  { href: '/dashboard/sales/pipeline', label: 'Pipeline', icon: LayoutGrid },
+  { href: '/dashboard/sales/deals', label: 'Deals', icon: TrendingUp },
+  { href: '/dashboard/sales/follow-ups', label: 'Follow-ups', icon: Clock },
+  { href: '/dashboard/sales/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/dashboard/sales/team', label: 'Team', icon: Users },
+  { href: '/dashboard/sales/tasks', label: 'Sales Tasks', icon: CheckSquare },
+  { href: '/dashboard/sales/tasks/team', label: 'Team Tasks', icon: ClipboardList },
+  { href: '/dashboard/sales/targets', label: 'Targets', icon: Crosshair },
+  { href: '/dashboard/sales/approvals', label: 'Approvals', icon: ShieldCheck },
+];
 
 const inr = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
@@ -36,8 +65,17 @@ const INSIGHT_TONE: Record<SalesInsight['severity'], string> = {
 
 export default function SalesCommandCenterPage() {
   const { toast } = useToast();
+  const { hasAnyPermission } = usePermissions();
   const [data, setData] = useState<SalesDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Permission-driven nav: keep only shortcuts the user can actually open.
+  // The gate for each comes from `permissionsForPath` (the sidebar's source of
+  // truth), so it can never diverge from the menu or the backend route guards.
+  const shortcuts = OVERVIEW_SHORTCUTS.filter((s) => {
+    const perms = permissionsForPath(s.href.split('?')[0]);
+    return perms.length === 0 || hasAnyPermission(perms);
+  });
 
   const load = useCallback(async () => {
     try {
@@ -63,7 +101,7 @@ export default function SalesCommandCenterPage() {
     : [];
 
   return (
-    <PermissionPageGuard module="sales">
+    <PermissionPageGuard require="sales.dashboard.view">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -73,12 +111,13 @@ export default function SalesCommandCenterPage() {
               Your pipeline at a glance — leads, conversions, revenue forecast and what needs attention today.
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <QuickLink href="/dashboard/sales/leads?view=pipeline" icon={LayoutGrid} label="Pipeline" />
-            <QuickLink href="/dashboard/sales/follow-ups" icon={Clock} label="Follow-ups" />
-            <QuickLink href="/dashboard/sales/team" icon={Trophy} label="Team" />
-            <QuickLink href="/dashboard/sales/analytics" icon={BarChart3} label="Analytics" />
-          </div>
+          {shortcuts.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {shortcuts.map((s) => (
+                <QuickLink key={s.href} href={s.href} icon={s.icon} label={s.label} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Smart insights */}

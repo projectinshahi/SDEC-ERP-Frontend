@@ -24,6 +24,7 @@ import { Button } from '@/components/Button';
 import { Skeleton } from '@/components/Skeleton';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { useToast } from '@/lib/hooks/useToast';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { fetchBdeDashboard } from '@/lib/api/bdeDashboard';
 import type { BdeDashboard } from '@/lib/types/salesExecution';
@@ -57,6 +58,16 @@ function todayLabel(): string {
 export default function BdeDashboardPage() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
+
+  // Each dashboard widget is gated by its entity's View permission (OR the
+  // sales.view master key) — a user who can see the dashboard but lacks an
+  // entity's view permission does not see that widget at all.
+  const canViewTargets = hasPermission('sales.targets.view') || hasPermission('sales.view');
+  const canViewFollowups = hasPermission('sales.followups.view') || hasPermission('sales.view');
+  const canViewLeads = hasPermission('sales.leads.view') || hasPermission('sales.view');
+  const canViewDeals = hasPermission('sales.deals.view') || hasPermission('sales.view');
+  const canViewTasks = hasPermission('sales.tasks.view') || hasPermission('sales.view');
 
   const [data, setData] = useState<BdeDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,68 +118,80 @@ export default function BdeDashboardPage() {
             {/* Smart alerts */}
             <SmartAlertsBanner alerts={data.smartAlerts} />
 
-            {/* Summary stat cards */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatTile label="Today's Tasks" value={data.tasks.counts.dueToday} icon={ListTodo} tone="indigo" />
-              <StatTile label="Overdue" value={data.tasks.counts.overdue} icon={AlertTriangle} tone="rose" />
-              <StatTile label="Follow-ups Due" value={data.followUps.dueToday} icon={CalendarClock} tone="blue" />
-              <StatTile label="Stalled Deals" value={data.deals.stalled} icon={PauseCircle} tone="amber" />
-            </div>
+            {/* Summary stat cards — each gated by its entity view permission. */}
+            {(canViewTasks || canViewFollowups || canViewDeals) && (
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {canViewTasks && <StatTile label="Today's Tasks" value={data.tasks.counts.dueToday} icon={ListTodo} tone="indigo" />}
+                {canViewTasks && <StatTile label="Overdue" value={data.tasks.counts.overdue} icon={AlertTriangle} tone="rose" />}
+                {canViewFollowups && <StatTile label="Follow-ups Due" value={data.followUps.dueToday} icon={CalendarClock} tone="blue" />}
+                {canViewDeals && <StatTile label="Stalled Deals" value={data.deals.stalled} icon={PauseCircle} tone="amber" />}
+              </div>
+            )}
 
             {/* Two-column: tasks + target/follow-ups */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               {/* Left: Today's Tasks */}
-              <Card className="lg:col-span-2 p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Today&apos;s Tasks</h3>
-                <div className="space-y-5">
-                  <TaskTodayList title="Overdue" tasks={data.tasks.overdue} accent="red" />
-                  <div className="border-t border-gray-100 dark:border-gray-800" />
-                  <TaskTodayList title="Due Today" tasks={data.tasks.dueToday} accent="blue" />
-                  <div className="border-t border-gray-100 dark:border-gray-800" />
-                  <TaskTodayList title="Upcoming" tasks={data.tasks.upcoming} accent="green" />
-                </div>
-              </Card>
+              {canViewTasks && (
+                <Card className="lg:col-span-2 p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                  <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Today&apos;s Tasks</h3>
+                  <div className="space-y-5">
+                    <TaskTodayList title="Overdue" tasks={data.tasks.overdue} accent="red" />
+                    <div className="border-t border-gray-100 dark:border-gray-800" />
+                    <TaskTodayList title="Due Today" tasks={data.tasks.dueToday} accent="blue" />
+                    <div className="border-t border-gray-100 dark:border-gray-800" />
+                    <TaskTodayList title="Upcoming" tasks={data.tasks.upcoming} accent="green" />
+                  </div>
+                </Card>
+              )}
 
               {/* Right: Target + follow-ups summary */}
               <div className="space-y-6">
-                <TargetProgressCard target={data.target} />
+                {canViewTargets && <TargetProgressCard target={data.target} />}
 
-                <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                  <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Follow-ups</h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    <MiniTile label="Scheduled" value={data.followUps.scheduled} icon={CalendarCheck2} tone="blue" />
-                    <MiniTile label="Missed" value={data.followUps.missed} icon={CalendarX2} tone="rose" />
-                    <MiniTile label="Completed" value={data.followUps.completed} icon={CheckCircle2} tone="emerald" />
-                  </div>
-                </Card>
+                {canViewFollowups && (
+                  <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                    <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Follow-ups</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      <MiniTile label="Scheduled" value={data.followUps.scheduled} icon={CalendarCheck2} tone="blue" />
+                      <MiniTile label="Missed" value={data.followUps.missed} icon={CalendarX2} tone="rose" />
+                      <MiniTile label="Completed" value={data.followUps.completed} icon={CheckCircle2} tone="emerald" />
+                    </div>
+                  </Card>
+                )}
               </div>
             </div>
 
             {/* Lead + Deal summaries */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Lead Summary</h3>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <MiniTile label="Assigned" value={data.leads.assigned} icon={Users} tone="indigo" />
-                  <MiniTile label="New" value={data.leads.new} icon={UserPlus} tone="blue" />
-                  <MiniTile label="Qualified" value={data.leads.qualified} icon={TargetIcon} tone="violet" />
-                  <MiniTile label="Converted" value={data.leads.converted} icon={TrendingUp} tone="emerald" />
-                </div>
-              </Card>
+            {(canViewLeads || canViewDeals) && (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {canViewLeads && (
+                  <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                    <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Lead Summary</h3>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <MiniTile label="Assigned" value={data.leads.assigned} icon={Users} tone="indigo" />
+                      <MiniTile label="New" value={data.leads.new} icon={UserPlus} tone="blue" />
+                      <MiniTile label="Qualified" value={data.leads.qualified} icon={TargetIcon} tone="violet" />
+                      <MiniTile label="Converted" value={data.leads.converted} icon={TrendingUp} tone="emerald" />
+                    </div>
+                  </Card>
+                )}
 
-              <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Deal Summary</h3>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <MiniTile label="Active" value={data.deals.active} icon={Briefcase} tone="blue" />
-                  <MiniTile label="Stalled" value={data.deals.stalled} icon={Pause} tone="amber" />
-                  <MiniTile label="Won" value={data.deals.won} icon={Trophy} tone="emerald" />
-                  <MiniTile label="Lost" value={data.deals.lost} icon={XCircle} tone="rose" />
-                </div>
-              </Card>
-            </div>
+                {canViewDeals && (
+                  <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                    <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Deal Summary</h3>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <MiniTile label="Active" value={data.deals.active} icon={Briefcase} tone="blue" />
+                      <MiniTile label="Stalled" value={data.deals.stalled} icon={Pause} tone="amber" />
+                      <MiniTile label="Won" value={data.deals.won} icon={Trophy} tone="emerald" />
+                      <MiniTile label="Lost" value={data.deals.lost} icon={XCircle} tone="rose" />
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
 
             {/* Productivity */}
-            <ProductivityCard productivity={data.productivity} />
+            {canViewTasks && <ProductivityCard productivity={data.productivity} />}
           </>
         ) : null}
       </div>

@@ -16,10 +16,11 @@
  */
 
 import { useEffect, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Loader2, ShieldOff } from 'lucide-react';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { permissionsForPath } from '@/lib/sidebar/sidebar.config';
 import type { PermissionKey, ModuleName } from '@/lib/permissions/permission.types';
 
 interface PermissionPageGuardProps {
@@ -30,6 +31,13 @@ interface PermissionPageGuardProps {
   requireAny?: PermissionKey[];
   /** Require any permission belonging to this module */
   module?: ModuleName;
+  /**
+   * Resolve the required permission(s) from the current route via
+   * permissionsForPath() — the SAME source the sidebar uses, so a page can never
+   * drift from its sidebar item. Used by the Sales layout to gate every route.
+   * An unmapped route (empty array) is allowed (module-home / no specific gate).
+   */
+  fromPath?: boolean;
   /** Where to redirect on failure. Defaults to '/dashboard'. */
   redirectTo?: string;
 }
@@ -39,9 +47,11 @@ export function PermissionPageGuard({
   require: requireKey,
   requireAny,
   module,
+  fromPath,
   redirectTo = '/dashboard',
 }: PermissionPageGuardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isLoading, isAuthenticated } = useAuth();
   const { hasPermission, hasAnyPermission, canAccessModule } = usePermissions();
 
@@ -54,6 +64,10 @@ export function PermissionPageGuard({
       allowed = hasAnyPermission(requireAny);
     } else if (module !== undefined) {
       allowed = canAccessModule(module);
+    } else if (fromPath) {
+      // Route-driven: gate on the sidebar permission(s) for this exact path.
+      const perms = permissionsForPath(pathname ?? '');
+      allowed = perms.length === 0 ? true : hasAnyPermission(perms);
     }
   }
 

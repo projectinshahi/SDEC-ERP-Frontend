@@ -7,24 +7,49 @@ import type { PermissionKey, ModuleName } from './permission.types';
 import { MODULE_PREFIX_MAP, SUPER_ADMIN_ROLE_NAME } from './permissions.constants';
 
 /**
- * Check if the given permissions array contains a specific permission key.
+ * Sales coarse→granular bridge. Sales has legacy COARSE keys that IMPLY the
+ * granular per-feature keys, so gating can be purely granular (1:1 with the
+ * Development module) while roles still holding the coarse/master keys keep
+ * working — and a role with ONLY granular keys is scoped exactly to them.
+ * This is the SINGLE compatibility function (not a second permission system):
+ *   • `sales.view`   ⇒ every `sales.*.view` key (the "Full Sales Access" VISIBILITY
+ *                     master — it unlocks tabs, NOT create/edit/delete actions)
+ *   • `sales.create` ⇒ every `sales.*.create`
+ *   • `sales.edit`   ⇒ every `sales.*.edit`
+ *   • `sales.delete` ⇒ every `sales.*.delete`
+ * Non-sales keys and the coarse capability keys (assign/approve/*.manage/…) are
+ * exact-match only, so Development is unaffected and a view-only master role can
+ * never escalate to an action it was never granted.
+ */
+function salesGrants(permissions: string[], key: string): boolean {
+  if (!key.startsWith('sales.')) return false;
+  if (key.endsWith('.view') && permissions.includes('sales.view')) return true;
+  if (key.endsWith('.create') && permissions.includes('sales.create')) return true;
+  if (key.endsWith('.edit') && permissions.includes('sales.edit')) return true;
+  if (key.endsWith('.delete') && permissions.includes('sales.delete')) return true;
+  return false;
+}
+
+/**
+ * Check if the given permissions array grants a specific permission key
+ * (exact match, or via the Sales coarse→granular bridge).
  */
 export function hasPermission(permissions: string[], key: PermissionKey): boolean {
-  return permissions.includes(key);
+  return permissions.includes(key) || salesGrants(permissions, key);
 }
 
 /**
- * Check if the given permissions array contains ANY of the specified keys.
+ * Check if the given permissions array grants ANY of the specified keys.
  */
 export function hasAnyPermission(permissions: string[], keys: PermissionKey[]): boolean {
-  return keys.some((key) => permissions.includes(key));
+  return keys.some((key) => hasPermission(permissions, key));
 }
 
 /**
- * Check if the given permissions array contains ALL of the specified keys.
+ * Check if the given permissions array grants ALL of the specified keys.
  */
 export function hasAllPermissions(permissions: string[], keys: PermissionKey[]): boolean {
-  return keys.every((key) => permissions.includes(key));
+  return keys.every((key) => hasPermission(permissions, key));
 }
 
 /**

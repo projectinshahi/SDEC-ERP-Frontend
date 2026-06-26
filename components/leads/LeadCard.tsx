@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, User, Star } from 'lucide-react';
+import { Building2, User, Star, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { formatLeadSource, leadSourceVariant } from '@/lib/data/leadSources';
 import { LeadHealthBadge } from './LeadHealthBadge';
@@ -14,6 +14,10 @@ interface LeadCardProps {
   isDragging: boolean;
   onDragStart: (id: number) => void;
   onDragEnd: () => void;
+  /** Show the delete control (gated on sales.leads.delete by the parent). */
+  canDelete?: boolean;
+  /** Fired when the card's delete control is clicked. */
+  onDelete?: () => void;
 }
 
 /** Stable avatar initials + colour from a name. */
@@ -31,7 +35,7 @@ function avatar(name: string) {
  * Uses native HTML5 drag-and-drop (matching the Task board) and navigates to
  * the lead detail page on click.
  */
-export function LeadCard({ lead, draggable, isDragging, onDragStart, onDragEnd }: LeadCardProps) {
+export function LeadCard({ lead, draggable, isDragging, onDragStart, onDragEnd, canDelete, onDelete }: LeadCardProps) {
   const router = useRouter();
   const ownerName = lead.owner?.name || 'Unassigned';
   const { initials, color } = avatar(ownerName);
@@ -54,12 +58,27 @@ export function LeadCard({ lead, draggable, isDragging, onDragStart, onDragEnd }
         <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-snug group-hover:text-blue-600 transition-colors break-words">
           {lead.title}
         </h3>
-        {lead.score > 0 && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded shrink-0">
-            <Star size={10} className="fill-amber-400 text-amber-400" />
-            {lead.score}
-          </span>
-        )}
+        <div className="flex items-center gap-1 shrink-0">
+          {lead.score > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded">
+              <Star size={10} className="fill-amber-400 text-amber-400" />
+              {lead.score}
+            </span>
+          )}
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              draggable={false}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1 rounded-md text-gray-300 hover:text-rose-600 hover:bg-rose-50 dark:text-gray-600 dark:hover:text-rose-400 dark:hover:bg-rose-950/30 transition-colors"
+              aria-label={`Delete lead ${lead.title}`}
+              title="Delete lead"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {lead.customer?.company && (

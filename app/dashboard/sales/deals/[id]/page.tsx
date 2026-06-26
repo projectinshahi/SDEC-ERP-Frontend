@@ -71,8 +71,8 @@ export default function DealDetailPage() {
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
 
-  const canEdit = hasPermission('sales.edit');
-  const canDelete = hasPermission('sales.delete');
+  const canEdit = hasPermission('sales.deals.edit');
+  const canDelete = hasPermission('sales.deals.delete');
   const canAssignOwner = hasPermission('sales.assign');
 
   const [deal, setDeal] = useState<DealDetail | null>(null);

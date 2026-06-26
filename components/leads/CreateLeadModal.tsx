@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Phone, Mail, AlertTriangle, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Phone, Mail, Globe, MessageCircle, Megaphone, Users, MoreHorizontal, AlertTriangle, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/ui/InputField';
@@ -26,10 +26,16 @@ interface CreateLeadModalProps {
   onCreated: () => void;
 }
 
-// Manual capture records leads that arrived by phone or email enquiry.
+// Channels a lead may be captured through (must match the backend
+// MANUAL_LEAD_SOURCES whitelist / SELECTABLE_LEAD_SOURCES).
 const SOURCE_OPTIONS = [
   { value: 'phone', label: 'Phone', icon: Phone },
   { value: 'email', label: 'Email', icon: Mail },
+  { value: 'website', label: 'Website', icon: Globe },
+  { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { value: 'meta_ads', label: 'Meta Ads', icon: Megaphone },
+  { value: 'referral', label: 'Referrals', icon: Users },
+  { value: 'other', label: 'Others', icon: MoreHorizontal },
 ] as const;
 
 const PRIORITY_OPTIONS = [
@@ -228,7 +234,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
               Lead Source <span className="text-red-500 font-bold">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {SOURCE_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const active = form.source === opt.value;

@@ -6,12 +6,13 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Clock, List, Columns3 } from 'lucide-react';
+import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Clock, List, Columns3, Trash2 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
+import { useConfirm } from '@/components/ConfirmDialogProvider';
 import { apiClient } from '@/lib/api/api-client';
-import { fetchLeadStages, fetchAssignableUsers, moveLeadStage, reorderLeadStages } from '@/lib/api/leads';
+import { fetchLeadStages, fetchAssignableUsers, moveLeadStage, reorderLeadStages, deleteLead } from '@/lib/api/leads';
 import { ImportLeadsModal } from '@/components/leads/ImportLeadsModal';
 import { CreateLeadModal } from '@/components/leads/CreateLeadModal';
 import { LeadPipelineBoard } from '@/components/leads/LeadPipelineBoard';
@@ -84,14 +85,18 @@ export default function SalesLeadsPage() {
   const [deleteTarget, setDeleteTarget] = useState<LeadStage | null>(null);
 
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const { hasPermission } = usePermissions();
   const canConfigureScoring = hasPermission('sales.scoring');
-  // Stage structure edits (add/rename/reorder) + lead moves gate on edit;
-  // stage removal on delete; new-lead on create.
-  const canMove = hasPermission('sales.edit');
-  const canManageStages = hasPermission('sales.edit');
-  const canDeleteStages = hasPermission('sales.delete');
-  const canCreate = hasPermission('sales.create');
+  // Granular Leads keys (the coarse→granular bridge in permission.utils means a
+  // role holding the coarse sales.edit/delete/create still satisfies these).
+  const canMove = hasPermission('sales.leads.edit');
+  const canManageStages = hasPermission('sales.leads.edit');
+  const canDeleteStages = hasPermission('sales.leads.delete');
+  // Lead deletion is its own permission, independent of view/create/edit. Drives
+  // BOTH the table row action and the Kanban card delete control.
+  const canDeleteLead = hasPermission('sales.leads.delete');
+  const canCreate = hasPermission('sales.leads.create');
 
   // Initialise the view from the URL (?view=pipeline) — read on the client to
   // avoid a useSearchParams Suspense boundary / hydration mismatch. This also
@@ -227,6 +232,31 @@ export default function SalesLeadsPage() {
     } catch (error) {
       setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: previousStage } : l)));
       toast(error instanceof Error ? error.message : 'Failed to move lead', 'error');
+    }
+  };
+
+  // Delete a lead (shared by the table row action AND the Kanban card). Confirms
+  // first, then optimistically drops it from the shared `leads` state — so the
+  // table, the pipeline board and the lead counts all update with no refetch —
+  // and refreshes the source analytics. Reverts the list on failure.
+  const handleDeleteLead = async (lead: Lead) => {
+    const ok = await confirm({
+      title: 'Delete Lead',
+      message: `Are you sure you want to delete "${lead.title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      intent: 'danger',
+    });
+    if (!ok) return;
+
+    const previous = leads;
+    setLeads((prev) => prev.filter((l) => l.id !== lead.id));
+    try {
+      await deleteLead(lead.id);
+      toast(`Deleted "${lead.title}"`, 'success');
+      fetchAnalytics();
+    } catch (error) {
+      setLeads(previous);
+      toast(error instanceof Error ? error.message : 'Failed to delete lead', 'error');
     }
   };
 
@@ -461,16 +491,19 @@ export default function SalesLeadsPage() {
                       </button>
                     </th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Owner</th>
+                    {canDeleteLead && (
+                      <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400 text-right">Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading leads...</td>
+                      <td colSpan={canDeleteLead ? 7 : 6} className="px-6 py-8 text-center text-gray-500">Loading leads...</td>
                     </tr>
                   ) : visibleLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">No leads found</td>
+                      <td colSpan={canDeleteLead ? 7 : 6} className="px-6 py-8 text-center text-gray-500">No leads found</td>
                     </tr>
                   ) : (
                     visibleLeads.map((lead) => (
@@ -505,6 +538,19 @@ export default function SalesLeadsPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.owner?.name}</td>
+                        {canDeleteLead && (
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLead(lead)}
+                              className="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-950/30 transition-colors"
+                              aria-label={`Delete lead ${lead.title}`}
+                              title="Delete lead"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -531,6 +577,8 @@ export default function SalesLeadsPage() {
               canMove={canMove}
               canManageStages={canManageStages}
               canDeleteStages={canDeleteStages}
+              canDeleteLead={canDeleteLead}
+              onDeleteLead={handleDeleteLead}
               onMove={handleMove}
               onAddStage={() => setStageModal({ mode: 'add', stage: null })}
               onRenameStage={(stage) => setStageModal({ mode: 'rename', stage })}
