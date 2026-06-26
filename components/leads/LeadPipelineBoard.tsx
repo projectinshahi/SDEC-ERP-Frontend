@@ -17,6 +17,10 @@ interface LeadPipelineBoardProps {
   canManageStages: boolean;
   /** Can delete stages (sales.delete). */
   canDeleteStages: boolean;
+  /** Can delete individual lead cards (sales.leads.delete). */
+  canDeleteLead?: boolean;
+  /** Called when a lead card's delete control is used. */
+  onDeleteLead?: (lead: Lead) => void;
   /** Called when a lead is dropped on a different stage column. */
   onMove: (leadId: number, targetStage: string) => void;
   onAddStage: () => void;
@@ -37,6 +41,7 @@ interface LeadPipelineBoardProps {
  */
 export function LeadPipelineBoard({
   stages, leadsByStage, canMove, canManageStages, canDeleteStages,
+  canDeleteLead, onDeleteLead,
   onMove, onAddStage, onRenameStage, onDeleteStage, onMoveStage,
 }: LeadPipelineBoardProps) {
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
@@ -184,6 +189,8 @@ export function LeadPipelineBoard({
                       setDraggedLeadId(null);
                       setDragOverStage(null);
                     }}
+                    canDelete={canDeleteLead}
+                    onDelete={onDeleteLead ? () => onDeleteLead(lead) : undefined}
                   />
                 ))
               ) : (

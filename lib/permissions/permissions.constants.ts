@@ -428,6 +428,26 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   },
   {
     module: 'sales',
+    label: 'Sales · Tasks',
+    permissions: [
+      { key: 'sales.tasks.view', label: 'View Sales Tasks', description: 'View the Sales Tasks workspace and own/assigned tasks', module: 'sales' },
+      { key: 'sales.tasks.create', label: 'Create Sales Tasks', description: 'Create new sales tasks', module: 'sales' },
+      { key: 'sales.tasks.edit', label: 'Edit Sales Tasks', description: 'Update sales tasks (status, details, blockers)', module: 'sales' },
+      { key: 'sales.tasks.delete', label: 'Delete Sales Tasks', description: 'Remove sales tasks', module: 'sales' },
+      { key: 'sales.tasks.complete', label: 'Complete Sales Tasks', description: 'Complete sales tasks with an outcome', module: 'sales' },
+      { key: 'sales.tasks.team.view', label: 'View Team Tasks', description: 'View the team-wide task breakdown', module: 'sales' },
+      { key: 'sales.tasks.team.update', label: 'Update Team Task Status', description: 'Update task status from the Team Tasks view', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Targets',
+    permissions: [
+      { key: 'sales.targets.view', label: 'View Targets', description: 'View revenue targets and achievement', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
     label: 'Sales · Reports',
     permissions: [
       { key: 'sales.reports.view', label: 'View Reports', description: 'Organization-wide reporting and executive analytics visibility', module: 'sales' },

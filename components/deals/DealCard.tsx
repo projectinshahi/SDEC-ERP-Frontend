@@ -40,7 +40,7 @@ export function DealCard({ deal, draggable, isDragging, onDragStart, onDragEnd }
       draggable={draggable}
       onDragStart={() => onDragStart(deal.id)}
       onDragEnd={onDragEnd}
-      onClick={() => router.push('/dashboard/sales/deals')}
+      onClick={() => router.push(`/dashboard/sales/deals/${deal.id}`)}
       className={`group rounded-lg shadow-sm p-4 transition-all duration-200 cursor-pointer hover:shadow-md border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-200 dark:hover:border-gray-600 ${
         isDragging ? 'opacity-40 scale-[0.97] border-dashed border-2 border-blue-400' : ''
       }`}

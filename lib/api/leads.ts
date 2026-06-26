@@ -98,6 +98,14 @@ export async function updateLead(id: number | string, payload: UpdateLeadPayload
   return res.data;
 }
 
+/**
+ * Permanently delete a lead and its dependent records. Requires the
+ * `sales.leads.delete` permission — the backend returns 403 otherwise.
+ */
+export async function deleteLead(id: number | string): Promise<void> {
+  await apiClient.delete(`/sales/leads/${id}`);
+}
+
 export async function fetchLeadStages(): Promise<LeadStage[]> {
   const res = await apiClient.get<LeadStage[]>('/sales/lead-stages');
   return res.data;

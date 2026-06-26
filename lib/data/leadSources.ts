@@ -8,8 +8,11 @@
 
 import type { BadgeVariant } from '@/components/Badge';
 
-// Channels a lead can explicitly originate from.
-export const PRIMARY_LEAD_SOURCES = ['website', 'phone', 'email', 'import'] as const;
+// Channels a lead can explicitly originate from. `import` is reserved for the
+// CSV import workflow; the rest are pickable when capturing a lead by hand.
+export const PRIMARY_LEAD_SOURCES = [
+  'website', 'phone', 'email', 'whatsapp', 'meta_ads', 'referral', 'other', 'import',
+] as const;
 
 // Fallback used when no source can be determined.
 export const FALLBACK_LEAD_SOURCE = 'manual';
@@ -24,6 +27,10 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   website: 'Website',
   phone: 'Phone',
   email: 'Email',
+  whatsapp: 'WhatsApp',
+  meta_ads: 'Meta Ads',
+  referral: 'Referral',
+  other: 'Other',
   import: 'Import',
   manual: 'Manual',
 };
@@ -33,13 +40,20 @@ export const LEAD_SOURCE_BADGE_VARIANTS: Record<LeadSource, BadgeVariant> = {
   website: 'info',
   phone: 'success',
   email: 'warning',
+  whatsapp: 'success',
+  meta_ads: 'info',
+  referral: 'warning',
+  other: 'default',
   import: 'default',
   manual: 'danger',
 };
 
-// Sources a user may pick when creating/editing a lead by hand.
-// `import` is reserved for the CSV import workflow.
-export const SELECTABLE_LEAD_SOURCES: LeadSource[] = ['website', 'phone', 'email', 'manual'];
+// Sources a user may pick when creating/editing a lead by hand (the New/Edit
+// Lead modals). `import` is reserved for the CSV import workflow and `manual`
+// is the system fallback, so neither is offered here.
+export const SELECTABLE_LEAD_SOURCES: LeadSource[] = [
+  'phone', 'email', 'website', 'whatsapp', 'meta_ads', 'referral', 'other',
+];
 
 export const formatLeadSource = (source: string | null | undefined): string => {
   if (!source) return LEAD_SOURCE_LABELS.manual;
