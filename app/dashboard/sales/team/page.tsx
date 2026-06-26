@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Users, Plus, Archive, Pencil, ChevronRight, UserRound,
-  Trophy, Medal, TrendingUp, LayoutGrid, BarChart3,
+  Trophy, Medal, TrendingUp, LayoutGrid, BarChart3, Trash2,
 } from 'lucide-react';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
@@ -26,7 +26,7 @@ import { TeamDetailModal } from '@/components/sales-execution/teams/TeamDetailMo
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
 import { usePermissions } from '@/lib/hooks/usePermissions';
-import { fetchTeams, archiveTeam } from '@/lib/api/salesTeams';
+import { fetchTeams, archiveTeam, deleteTeam } from '@/lib/api/salesTeams';
 import { fetchTeamPerformance } from '@/lib/api/salesDashboard';
 import { TeamPerformanceModal } from './TeamPerformanceModal';
 import { classNames } from '@/lib/utils';
@@ -126,6 +126,9 @@ function TeamsManagement() {
   const { confirm } = useConfirm();
   const { hasPermission } = usePermissions();
   const canManage = hasPermission('sales.team.manage');
+  // Team deletion is its own independent permission (full team managers qualify
+  // too). Hard delete is dependency-validated server-side.
+  const canDeleteTeam = hasPermission('sales.teams.delete') || canManage;
 
   // Hold ALL teams (including archived) so the stats are accurate; the
   // "Show archived" toggle filters the displayed grid client-side.
@@ -137,6 +140,7 @@ function TeamsManagement() {
   const [editingTeam, setEditingTeam] = useState<SalesTeam | null>(null);
   const [detailTeamId, setDetailTeamId] = useState<number | null>(null);
   const [archivingId, setArchivingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -182,6 +186,39 @@ function TeamsManagement() {
       toast(err instanceof Error ? err.message : 'Failed to archive team', 'error');
     } finally {
       setArchivingId(null);
+    }
+  };
+
+  // Permanently delete a team. Dependency validation: a team with members still
+  // assigned can't be deleted — give immediate feedback for that common case
+  // (the backend is authoritative and ALSO blocks on linked targets). On success
+  // reload so the list, stats and dropdowns reflect the removal with no refresh.
+  const handleDelete = async (team: SalesTeam) => {
+    if ((team.members?.length ?? 0) > 0) {
+      toast(
+        'This team cannot be deleted because it still has assigned members. Remove or reassign them first, or archive the team instead.',
+        'error',
+      );
+      return;
+    }
+
+    const ok = await confirm({
+      title: 'Delete Team',
+      message: `Are you sure you want to delete "${team.name}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      intent: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      setDeletingId(team.id);
+      await deleteTeam(team.id);
+      toast('Team deleted', 'success');
+      await load();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Failed to delete team', 'error');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -305,27 +342,43 @@ function TeamsManagement() {
                   <Button variant="secondary" size="sm" onClick={() => setDetailTeamId(team.id)}>
                     View Members
                   </Button>
-                  {canManage && !team.archived && (
+                  {(canManage || canDeleteTeam) && (
                     <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(team)}
-                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
-                        aria-label={`Edit ${team.name}`}
-                        title="Edit team"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleArchive(team)}
-                        disabled={archivingId === team.id}
-                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/30"
-                        aria-label={`Archive ${team.name}`}
-                        title="Archive team"
-                      >
-                        <Archive size={16} />
-                      </button>
+                      {canManage && !team.archived && (
+                        <button
+                          type="button"
+                          onClick={() => openEdit(team)}
+                          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                          aria-label={`Edit ${team.name}`}
+                          title="Edit team"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                      )}
+                      {canManage && !team.archived && (
+                        <button
+                          type="button"
+                          onClick={() => handleArchive(team)}
+                          disabled={archivingId === team.id}
+                          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-amber-50 hover:text-amber-600 disabled:opacity-50 dark:hover:bg-amber-950/30"
+                          aria-label={`Archive ${team.name}`}
+                          title="Archive team"
+                        >
+                          <Archive size={16} />
+                        </button>
+                      )}
+                      {canDeleteTeam && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(team)}
+                          disabled={deletingId === team.id}
+                          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/30"
+                          aria-label={`Delete ${team.name}`}
+                          title="Delete team"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

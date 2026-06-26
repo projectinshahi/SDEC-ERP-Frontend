@@ -34,9 +34,19 @@ export async function updateTeam(
   return res.data;
 }
 
+/** Archive (soft delete) — keeps members & history. Requires sales.team.manage. */
 export async function archiveTeam(id: number): Promise<SalesTeam> {
-  const res = await apiClient.delete<SalesTeam>(`/sales/teams/${id}`);
+  const res = await apiClient.post<SalesTeam>(`/sales/teams/${id}/archive`);
   return res.data;
+}
+
+/**
+ * Permanently delete a team. Requires the independent `sales.teams.delete`
+ * permission (or sales.team.manage). The backend returns 409 if the team still
+ * has assigned members or linked targets.
+ */
+export async function deleteTeam(id: number): Promise<void> {
+  await apiClient.delete(`/sales/teams/${id}`);
 }
 
 export async function addTeamMember(teamId: number, userId: number, role: TeamMemberRole = 'bde'): Promise<SalesTeamMember> {
