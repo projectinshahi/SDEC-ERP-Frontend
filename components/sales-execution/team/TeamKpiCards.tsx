@@ -14,6 +14,9 @@ import {
   Clock,
   AlertTriangle,
   Ban,
+  Loader2,
+  Flame,
+  Timer,
 } from 'lucide-react';
 import { Card } from '@/components/Card';
 import { classNames } from '@/lib/utils';
@@ -43,6 +46,14 @@ export function TeamKpiCards({ kpis }: TeamKpiCardsProps) {
       bgClass: 'bg-blue-50 dark:bg-blue-950/30',
     },
     {
+      key: 'inProgress',
+      label: 'In Progress',
+      value: kpis.inProgress,
+      icon: Loader2,
+      iconClass: 'text-violet-600 dark:text-violet-400',
+      bgClass: 'bg-violet-50 dark:bg-violet-950/30',
+    },
+    {
       key: 'completed',
       label: 'Completed',
       value: kpis.completed,
@@ -65,6 +76,14 @@ export function TeamKpiCards({ kpis }: TeamKpiCardsProps) {
       icon: AlertTriangle,
       iconClass: 'text-rose-600 dark:text-rose-400',
       bgClass: 'bg-rose-50 dark:bg-rose-950/30',
+    },
+    {
+      key: 'highPriority',
+      label: 'High Priority',
+      value: kpis.highPriority,
+      icon: Flame,
+      iconClass: 'text-orange-600 dark:text-orange-400',
+      bgClass: 'bg-orange-50 dark:bg-orange-950/30',
     },
     {
       key: 'blocked',
@@ -121,6 +140,21 @@ export function TeamKpiCards({ kpis }: TeamKpiCardsProps) {
           </p>
           <p className="mt-1 truncate text-xs font-medium text-gray-500 dark:text-gray-400">
             Completion Rate
+          </p>
+        </div>
+      </Card>
+
+      {/* Average completion time (days) over completed tasks */}
+      <Card variant="outlined" className="flex items-center gap-3 px-4 py-3.5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/30 dark:text-teal-400">
+          <Timer size={18} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-2xl font-bold leading-none text-gray-900 dark:text-gray-100">
+            {kpis.avgCompletionDays > 0 ? `${kpis.avgCompletionDays}d` : '—'}
+          </p>
+          <p className="mt-1 truncate text-xs font-medium text-gray-500 dark:text-gray-400">
+            Avg. Completion
           </p>
         </div>
       </Card>

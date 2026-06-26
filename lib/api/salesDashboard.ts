@@ -12,3 +12,17 @@ export async function fetchManagerWorkspace(): Promise<ManagerWorkspace> {
   const res = await apiClient.get<ManagerWorkspace>('/sales/analytics/manager');
   return res.data;
 }
+
+import type { TeamPerformance, TeamPerformanceDetail } from '@/lib/types/salesDashboard';
+
+/** Live per-team aggregated performance (auto-includes every current team). */
+export async function fetchTeamPerformance(): Promise<TeamPerformance[]> {
+  const res = await apiClient.get<TeamPerformance[]>('/sales/teams/performance');
+  return res.data;
+}
+
+/** Drill-down: one team's metrics + per-member breakdown + recent activity. */
+export async function fetchTeamPerformanceDetail(teamId: number): Promise<TeamPerformanceDetail> {
+  const res = await apiClient.get<TeamPerformanceDetail>(`/sales/teams/${teamId}/performance`);
+  return res.data;
+}

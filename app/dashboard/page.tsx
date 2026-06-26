@@ -75,12 +75,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let active = true;
-    
+
     if (active) {
       getStatsData();
       getActivitiesData();
     }
-    
+
     return () => {
       active = false;
     };

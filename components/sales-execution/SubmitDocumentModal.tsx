@@ -23,6 +23,13 @@ interface SubmitDocumentModalProps {
 
 const DOC_TYPES: DocType[] = ['BRD', 'Proposal', 'Quotation', 'Scope', 'Agreement', 'Other'];
 
+// Allowed document/image types and the (backend-matching) 50MB cap. Validated on
+// the client for a fast, clear error; the backend multer limit is the hard gate.
+const ACCEPTED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png'];
+const ACCEPT_ATTR = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png';
+const ACCEPTED_LABEL = 'PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, JPEG, PNG';
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
+
 type ParentKind = 'deal' | 'lead';
 
 interface Option {
@@ -115,6 +122,26 @@ export function SubmitDocumentModal({
     return '';
   }, [presetLeadId, presetDealId]);
 
+  const handleFilePick = (picked: File | null) => {
+    if (!picked) {
+      setFile(null);
+      return;
+    }
+    const ext = picked.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+      setFile(null);
+      setErrors((prev) => ({ ...prev, file: `Unsupported file type. Allowed: ${ACCEPTED_LABEL}.` }));
+      return;
+    }
+    if (picked.size > MAX_FILE_BYTES) {
+      setFile(null);
+      setErrors((prev) => ({ ...prev, file: 'File is too large. Maximum size is 50 MB.' }));
+      return;
+    }
+    setFile(picked);
+    setErrors((prev) => ({ ...prev, file: undefined }));
+  };
+
   const validate = (): boolean => {
     const next: typeof errors = {};
     if (!file) next.file = 'A document file is required.';
@@ -195,14 +222,12 @@ export function SubmitDocumentModal({
               <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 Click to choose a file
               </span>
-              <span className="text-xs text-gray-400">PDF, DOCX, XLSX or any document</span>
+              <span className="text-xs text-gray-400">{ACCEPTED_LABEL} · up to 50 MB</span>
               <input
                 type="file"
                 className="hidden"
-                onChange={(e) => {
-                  setFile(e.target.files?.[0] ?? null);
-                  setErrors((prev) => ({ ...prev, file: undefined }));
-                }}
+                accept={ACCEPT_ATTR}
+                onChange={(e) => handleFilePick(e.target.files?.[0] ?? null)}
               />
             </label>
           )}

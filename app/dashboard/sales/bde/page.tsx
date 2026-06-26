@@ -24,13 +24,11 @@ import { Button } from '@/components/Button';
 import { Skeleton } from '@/components/Skeleton';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { useToast } from '@/lib/hooks/useToast';
-import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { fetchBdeDashboard } from '@/lib/api/bdeDashboard';
 import type { BdeDashboard } from '@/lib/types/salesExecution';
 import { SmartAlertsBanner } from '@/components/sales-execution/bde/SmartAlertsBanner';
 import { TargetProgressCard } from '@/components/sales-execution/bde/TargetProgressCard';
-import { SetTargetModal } from '@/components/sales-execution/bde/SetTargetModal';
 import { TaskTodayList } from '@/components/sales-execution/bde/TaskTodayList';
 import { ProductivityCard } from '@/components/sales-execution/bde/ProductivityCard';
 
@@ -58,15 +56,11 @@ function todayLabel(): string {
 
 export default function BdeDashboardPage() {
   const { toast } = useToast();
-  const { hasPermission } = usePermissions();
   const { user } = useAuth();
 
   const [data, setData] = useState<BdeDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showTargetModal, setShowTargetModal] = useState(false);
-
-  const canEdit = hasPermission('sales.edit');
 
   const load = useCallback(
     async (refresh = false) => {
@@ -137,7 +131,7 @@ export default function BdeDashboardPage() {
 
               {/* Right: Target + follow-ups summary */}
               <div className="space-y-6">
-                <TargetProgressCard target={data.target} canEdit={canEdit} onEdit={() => setShowTargetModal(true)} />
+                <TargetProgressCard target={data.target} />
 
                 <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
                   <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Follow-ups</h3>
@@ -175,15 +169,6 @@ export default function BdeDashboardPage() {
 
             {/* Productivity */}
             <ProductivityCard productivity={data.productivity} />
-
-            {/* Set target modal */}
-            <SetTargetModal
-              isOpen={showTargetModal}
-              onClose={() => setShowTargetModal(false)}
-              currentAmount={data.target.target}
-              period={data.target.period}
-              onSaved={() => load(true)}
-            />
           </>
         ) : null}
       </div>

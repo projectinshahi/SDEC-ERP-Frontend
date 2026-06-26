@@ -9,6 +9,9 @@ import type {
   AgingReport,
   Deal,
   DealStage,
+  DealDetail,
+  DealActivityLog,
+  DealNote,
   ImportPreview,
   ImportResult,
   ImportMapping,
@@ -68,6 +71,83 @@ export async function fetchDealStages(): Promise<DealStage[]> {
 export async function moveDealStage(id: number | string, stage: string, orderIndex?: number): Promise<Deal> {
   const res = await apiClient.put<Deal>(`/sales/deals/${id}/stage`, { stage, orderIndex });
   return res.data;
+}
+
+/** Payload for creating / editing a deal (all optional except the create-required title/customerId/amount). */
+export interface DealFormPayload {
+  title: string;
+  customerId: number;
+  amount: number;
+  stage?: string;
+  ownerId?: number;
+  probability?: number;
+  expectedCloseDate?: string | null;
+  notes?: string | null;
+  description?: string | null;
+  currency?: string;
+}
+
+/** POST /sales/deals — create a new deal (requires sales.create). */
+export async function createDeal(payload: DealFormPayload): Promise<Deal> {
+  const res = await apiClient.post<Deal>('/sales/deals', payload);
+  return res.data;
+}
+
+/** PUT /sales/deals/:id — update an existing deal (requires sales.edit). */
+export async function updateDeal(id: number | string, payload: Partial<DealFormPayload>): Promise<Deal> {
+  const res = await apiClient.put<Deal>(`/sales/deals/${id}`, payload);
+  return res.data;
+}
+
+/** Account/Contact options for the deal "Linked Account" picker (GET /sales/customers). */
+export interface CustomerOption {
+  id: number;
+  name: string;
+  company?: string | null;
+}
+export async function fetchSalesCustomers(): Promise<CustomerOption[]> {
+  const res = await apiClient.get<CustomerOption[]>('/sales/customers');
+  return res.data;
+}
+
+// ── Deal Details (360° view) ────────────────────────────────────────────────
+
+/** GET /sales/deals/:id — full deal (customer, owner, lead, activity, forecast). */
+export async function fetchDeal(id: number | string): Promise<DealDetail> {
+  const res = await apiClient.get<DealDetail>(`/sales/deals/${id}`);
+  return res.data;
+}
+
+/** POST /sales/deals/:id/activity — append a Note/Call/Meeting/Proposal entry. */
+export async function logDealActivity(
+  id: number | string,
+  payload: { type: 'note' | 'call' | 'meeting' | 'proposal'; description: string },
+): Promise<DealActivityLog> {
+  const res = await apiClient.post<DealActivityLog>(`/sales/deals/${id}/activity`, payload);
+  return res.data;
+}
+
+/** DELETE /sales/deals/:id — permanently delete a deal (requires sales.delete). */
+export async function deleteDeal(id: number | string): Promise<void> {
+  await apiClient.delete(`/sales/deals/${id}`);
+}
+
+// ── Deal Notes (editable add/edit/delete) ────────────────────────────────────
+
+export async function fetchDealNotes(dealId: number | string): Promise<DealNote[]> {
+  const res = await apiClient.get<DealNote[]>(`/sales/deals/${dealId}/notes`);
+  return res.data;
+}
+export async function createDealNote(dealId: number | string, content: string): Promise<DealNote> {
+  const res = await apiClient.post<DealNote>(`/sales/deals/${dealId}/notes`, { content });
+  return res.data;
+}
+export async function updateDealNote(dealId: number | string, noteId: number, content: string): Promise<DealNote> {
+  const res = await apiClient.put<DealNote>(`/sales/deals/${dealId}/notes/${noteId}`, { content });
+  return res.data;
+}
+export async function deleteDealNote(dealId: number | string, noteId: number): Promise<void> {
+  await apiClient.delete(`/sales/deals/${dealId}/notes/${noteId}`);
 }
 
 // ── Bulk import (preview + mapped import) ────────────────────────────────────
