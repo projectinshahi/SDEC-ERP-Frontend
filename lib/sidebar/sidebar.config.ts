@@ -170,6 +170,13 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
   // Team management consolidated into the single "Team" item (above) — its
   // "Teams" tab. The former "Teams" entry (/dashboard/sales/teams) was removed.
   {
+    label: 'Targets',
+    href: '/dashboard/sales/targets',
+    icon: 'Target',
+    module: 'sales',
+    permission: ['sales.view'],
+  },
+  {
     label: 'Target History',
     href: '/dashboard/sales/targets/history',
     icon: 'Target',

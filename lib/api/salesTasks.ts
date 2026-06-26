@@ -9,6 +9,7 @@ import type {
   UpdateSalesTaskPayload,
   SalesTaskOutcome,
   TeamTasksResponse,
+  TeamTaskFilters,
 } from '@/lib/types/salesExecution';
 
 export async function fetchSalesTasks(filters: SalesTaskFilters = {}): Promise<SalesTask[]> {
@@ -61,12 +62,15 @@ export async function completeSalesTask(
 
 /** SE-028.1 — manager team task view (KPIs + per-member rollup + task list). */
 export async function fetchTeamTasks(
-  filters: { userId?: number; status?: string; priority?: string } = {},
+  filters: TeamTaskFilters = {},
 ): Promise<TeamTasksResponse> {
   const params = new URLSearchParams();
   if (filters.userId != null) params.set('userId', String(filters.userId));
   if (filters.status) params.set('status', filters.status);
   if (filters.priority) params.set('priority', filters.priority);
+  if (filters.teamId != null) params.set('teamId', String(filters.teamId));
+  if (filters.due) params.set('due', filters.due);
+  if (filters.search && filters.search.trim()) params.set('search', filters.search.trim());
   const qs = params.toString();
   const res = await apiClient.get<TeamTasksResponse>(`/sales/tasks/team${qs ? `?${qs}` : ''}`);
   return res.data;

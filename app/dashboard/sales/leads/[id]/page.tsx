@@ -18,6 +18,7 @@ import { formatLeadSource, leadSourceVariant } from '@/lib/data/leadSources';
 import { leadStageTheme } from '@/lib/data/leadStages';
 import { formatScore } from '@/lib/data/leadRating';
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel';
+import { LeadDocApprovalPanel } from '@/components/leads/LeadDocApprovalPanel';
 import { EditLeadModal } from '@/components/leads/EditLeadModal';
 import { ScoreCard } from '@/components/leads/ScoreCard';
 import { InteractionTimeline } from '@/components/leads/InteractionTimeline';
@@ -161,145 +162,113 @@ export default function LeadDetailPage() {
               </div>
             )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main column */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Overview */}
-              <Card className={`p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl border-t-4 ${stageTheme.border}`}>
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white break-words">{lead.title}</h1>
-                    {lead.customer?.company && (
-                      <p className="text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 break-words">
-                        <Building2 className="w-4 h-4 shrink-0" />
-                        {lead.customer.company}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Main column */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Overview */}
+                <Card className={`p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl border-t-4 ${stageTheme.border}`}>
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="min-w-0">
+                      <h1 className="text-2xl font-bold text-gray-900 dark:text-white break-words">{lead.title}</h1>
+                      {lead.customer?.company && (
+                        <p className="text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 break-words">
+                          <Building2 className="w-4 h-4 shrink-0" />
+                          {lead.customer.company}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200`}>
+                        <span className={`w-2 h-2 rounded-full ${stageTheme.dot}`} />
+                        {lead.stage}
+                      </span>
+                      {lead.flaggedForReview && (
+                        <Badge variant="warning">
+                          <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+                          Flagged
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">
+                    <Detail label="Source" value={formatLeadSource(lead.source)} />
+                    <Detail label="Owner" value={lead.owner?.name || NOT_PROVIDED} />
+                    <Detail label="Stage" value={lead.stage} />
+                    <Detail label="Score" value={formatScore(lead.score)} />
+                    <Detail label="Status" value={lead.status} />
+                    <Detail label="Priority" value={lead.priority} />
+                    <Detail label="Created" value={new Date(lead.createdAt).toLocaleString()} />
+                    <Detail label="Last Updated" value={new Date(lead.updatedAt).toLocaleString()} />
+                  </div>
+
+                  {lead.description && (
+                    <div className="mt-6">
+                      <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Description</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
+                        {lead.description}
                       </p>
-                    )}
+                    </div>
+                  )}
+                </Card>
+
+                {/* Interactions */}
+                <InteractionTimeline leadId={lead.id} refreshKey={refreshKey} onChange={refreshAll} />
+
+                {/* Unified follow-up history timeline */}
+                <FollowUpHistory leadId={lead.id} refreshKey={refreshKey} />
+
+                {/* Notes */}
+                <LeadNotesPanel leadId={lead.id} onChange={loadLead} />
+
+                {/* Doc Approval — uploads here feed the Sales → Approvals queue
+                    (same documentApproval record; status stays synchronised). */}
+                <LeadDocApprovalPanel leadId={lead.id} />
+
+                {/* Activity */}
+                <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+                    <Activity className="w-5 h-5 text-gray-400" />
+                    Activity
+                  </h2>
+                  {lead.activityLogs && lead.activityLogs.length > 0 ? (
+                    <ul className="space-y-4">
+                      {lead.activityLogs.map((log) => (
+                        <li key={log.id} className="flex gap-3">
+                          <div className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm text-gray-800 dark:text-gray-200 break-words">{log.description}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {new Date(log.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500">No activity recorded yet.</p>
+                  )}
+                </Card>
+              </div>
+
+              {/* Side column */}
+              <div className="space-y-6">
+                {/* Lead score + rating + breakdown */}
+                <ScoreCard leadId={lead.id} refreshKey={refreshKey} />
+
+                {/* Contact information */}
+                <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Contact Information</h2>
+                  <div className="space-y-4">
+                    <ContactRow icon={Mail} label="Primary Email" value={lead.customer?.email} />
+                    <ContactRow icon={Phone} label="Phone Number" value={lead.customer?.phone} />
+                    <ContactRow icon={Globe} label="Website" value={lead.customer?.website} />
+                    <ContactRow icon={MapPin} label="Address" value={lead.customer?.address} />
+                    <ContactRow icon={User} label="Contact Name" value={lead.customer?.name} />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200`}>
-                      <span className={`w-2 h-2 rounded-full ${stageTheme.dot}`} />
-                      {lead.stage}
-                    </span>
-                    {lead.flaggedForReview && (
-                      <Badge variant="warning">
-                        <AlertTriangle className="w-3.5 h-3.5 mr-1" />
-                        Flagged
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">
-                  <Detail label="Source" value={formatLeadSource(lead.source)} />
-                  <Detail label="Owner" value={lead.owner?.name || NOT_PROVIDED} />
-                  <Detail label="Stage" value={lead.stage} />
-                  <Detail label="Score" value={formatScore(lead.score)} />
-                  <Detail label="Status" value={lead.status} />
-                  <Detail label="Priority" value={lead.priority} />
-                  <Detail label="Created" value={new Date(lead.createdAt).toLocaleString()} />
-                  <Detail label="Last Updated" value={new Date(lead.updatedAt).toLocaleString()} />
-                </div>
-
-                {lead.description && (
-                  <div className="mt-6">
-                    <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Description</p>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
-                      {lead.description}
-                    </p>
-                  </div>
-                )}
-              </Card>
-
-              {/* Interactions */}
-              <InteractionTimeline leadId={lead.id} refreshKey={refreshKey} onChange={refreshAll} />
-
-              {/* Unified follow-up history timeline */}
-              <FollowUpHistory leadId={lead.id} refreshKey={refreshKey} />
-
-              {/* Notes */}
-              <LeadNotesPanel leadId={lead.id} onChange={loadLead} />
-
-              {/* Activity */}
-              <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
-                  <Activity className="w-5 h-5 text-gray-400" />
-                  Activity
-                </h2>
-                {lead.activityLogs && lead.activityLogs.length > 0 ? (
-                  <ul className="space-y-4">
-                    {lead.activityLogs.map((log) => (
-                      <li key={log.id} className="flex gap-3">
-                        <div className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm text-gray-800 dark:text-gray-200 break-words">{log.description}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {new Date(log.created_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500">No activity recorded yet.</p>
-                )}
-              </Card>
+                </Card>
+              </div>
             </div>
-
-            {/* Side column */}
-            <div className="space-y-6">
-              {/* Lead score + rating + breakdown */}
-              <ScoreCard leadId={lead.id} refreshKey={refreshKey} />
-
-              {/* Contact information */}
-              <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Contact Information</h2>
-                <div className="space-y-4">
-                  <ContactRow icon={Mail} label="Primary Email" value={lead.customer?.email} />
-                  <ContactRow icon={Phone} label="Phone Number" value={lead.customer?.phone} />
-                  <ContactRow icon={Globe} label="Website" value={lead.customer?.website} />
-                  <ContactRow icon={MapPin} label="Address" value={lead.customer?.address} />
-                  <ContactRow icon={User} label="Contact Name" value={lead.customer?.name} />
-                </div>
-              </Card>
-
-              {/* Metadata */}
-              <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Lead Metadata</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-gray-400 flex items-center gap-1.5"><Target className="w-3.5 h-3.5" /> Source</span>
-                    <Badge variant={leadSourceVariant(lead.source)}>{formatLeadSource(lead.source)}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-gray-400 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Owner</span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{lead.owner?.name || NOT_PROVIDED}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-gray-400 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> Stage</span>
-                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-white">
-                      <span className={`w-2 h-2 rounded-full ${stageTheme.dot}`} />
-                      {lead.stage}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-400 flex items-center gap-1.5 mb-2"><Tag className="w-3.5 h-3.5" /> Tags</span>
-                    {tags.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {tags.map((t) => (
-                          <span key={t} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">{NOT_PROVIDED}</span>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
           </div>
         )}
       </div>

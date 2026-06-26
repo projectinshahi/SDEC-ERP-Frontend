@@ -1,15 +1,17 @@
 'use client';
 
-import { Target, TrendingUp, Wallet, PencilLine, Gift } from 'lucide-react';
+import { Target, TrendingUp, Wallet, Gift } from 'lucide-react';
 import { Card } from '@/components/Card';
-import { Button } from '@/components/Button';
+import { TargetStatusBadge } from '@/components/sales-execution/targetShared';
 import { TARGET_TYPE_LABELS } from '@/lib/types/salesExecution';
 import type { TargetProgress } from '@/lib/types/salesExecution';
 
 interface TargetProgressCardProps {
+  /**
+   * Read-only widget. Targets are created/edited ONLY in the Targets module
+   * (/dashboard/sales/targets) — the BDE dashboard just displays the assigned one.
+   */
   target: TargetProgress;
-  canEdit: boolean;
-  onEdit: () => void;
 }
 
 const inr = (n: number) =>
@@ -24,7 +26,7 @@ const count = (n: number) => new Intl.NumberFormat('en-IN').format(Math.round(n 
  * surfaces incentive earned, supports 100%+ achievement, and renders an explicit
  * empty state when no target is set.
  */
-export function TargetProgressCard({ target, canEdit, onEdit }: TargetProgressCardProps) {
+export function TargetProgressCard({ target }: TargetProgressCardProps) {
   const isRevenue = (target.type ?? 'revenue') === 'revenue';
   const fmt = isRevenue ? inr : count;
   const typeLabel = TARGET_TYPE_LABELS[target.type ?? 'revenue'];
@@ -47,25 +49,13 @@ export function TargetProgressCard({ target, canEdit, onEdit }: TargetProgressCa
             <p className="text-xs text-gray-400">{target.period}</p>
           </div>
         </div>
-        {canEdit && (
-          <Button variant="secondary" size="sm" onClick={onEdit} className="shrink-0">
-            <PencilLine size={15} /> Set Target
-          </Button>
-        )}
+        {hasTarget && target.status && <TargetStatusBadge status={target.status} />}
       </div>
 
       {!hasTarget ? (
         <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/30 px-4 py-8 text-center">
           <Target size={28} className="text-gray-300 dark:text-gray-600" />
-          <p className="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-200">No target set</p>
-          <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
-            Set a {typeLabel.toLowerCase()} target for {target.period} to start tracking progress.
-          </p>
-          {canEdit && (
-            <Button variant="primary" size="sm" onClick={onEdit} className="mt-4">
-              <PencilLine size={15} /> Set Target
-            </Button>
-          )}
+          <p className="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-200">No revenue target has been assigned.</p>
         </div>
       ) : (
         <>

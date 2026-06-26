@@ -27,10 +27,11 @@ import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { fetchTeams, archiveTeam } from '@/lib/api/salesTeams';
-import { fetchManagerWorkspace } from '@/lib/api/salesDashboard';
+import { fetchTeamPerformance } from '@/lib/api/salesDashboard';
+import { TeamPerformanceModal } from './TeamPerformanceModal';
 import { classNames } from '@/lib/utils';
 import type { SalesTeam } from '@/lib/types/salesExecution';
-import type { ManagerWorkspace, TeamMember } from '@/lib/types/salesDashboard';
+import type { TeamPerformance } from '@/lib/types/salesDashboard';
 
 type Tab = 'teams' | 'performance';
 
@@ -358,13 +359,15 @@ function TeamsManagement() {
 
 function PerformanceSection() {
   const { toast } = useToast();
-  const [data, setData] = useState<ManagerWorkspace | null>(null);
+  const [teams, setTeams] = useState<TeamPerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [openTeamId, setOpenTeamId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
       setIsLoading(true);
-      setData(await fetchManagerWorkspace());
+      const data = await fetchTeamPerformance();
+      setTeams(Array.isArray(data) ? data : []);
     } catch {
       toast('Failed to load team performance', 'error');
     } finally {
@@ -377,23 +380,33 @@ function PerformanceSection() {
     load();
   }, [load]);
 
+  const topByScore = useMemo(
+    () => [...teams].sort((a, b) => b.performanceScore - a.performanceScore).slice(0, 5),
+    [teams],
+  );
+  const topByRevenue = useMemo(
+    () => [...teams].sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5),
+    [teams],
+  );
+
   return (
     <div className="space-y-6">
-      {/* Leaderboards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Leaderboard
-          title="Top by Revenue" icon={Trophy} loading={isLoading}
-          members={data?.leaderboard.topRevenue ?? []}
-          metric={(m) => inr(m.revenueGenerated)}
-        />
-        <Leaderboard
-          title="Top by Conversion" icon={TrendingUp} loading={isLoading}
-          members={data?.leaderboard.topConversion ?? []}
-          metric={(m) => `${m.conversionRate}%`}
-        />
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Live metrics aggregated from every member of each team.
+        </p>
+        <Button variant="secondary" size="sm" onClick={() => void load()} disabled={isLoading}>
+          Refresh
+        </Button>
       </div>
 
-      {/* Team table */}
+      {/* Leaderboards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TeamLeaderboard title="Top Teams by Score" icon={Trophy} loading={isLoading} teams={topByScore} metric={(t) => String(t.performanceScore)} />
+        <TeamLeaderboard title="Top Teams by Revenue" icon={TrendingUp} loading={isLoading} teams={topByRevenue} metric={(t) => inr(t.totalRevenue)} />
+      </div>
+
+      {/* Team table — one row per team; click to open the detailed breakdown. */}
       <Card className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
         <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
           <Users className="w-4 h-4 text-indigo-500" />
@@ -403,38 +416,41 @@ function PerformanceSection() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
               <tr>
-                <th className="px-6 py-3 font-medium text-gray-500">BDE</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Team</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Lead</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Members</th>
                 <th className="px-6 py-3 font-medium text-gray-500">Leads</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Conversions</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Conv. Rate</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Meetings</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Deals</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Conv.</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Score</th>
                 <th className="px-6 py-3 font-medium text-gray-500 text-right">Revenue</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
               {isLoading ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading…</td></tr>
-              ) : !data || data.team.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No team activity yet.</td></tr>
+                <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-500">Loading…</td></tr>
+              ) : teams.length === 0 ? (
+                <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-500">No teams yet. Create a team in the Teams tab.</td></tr>
               ) : (
-                data.team.map((m) => {
-                  const { initials, color } = avatar(m.name);
+                teams.map((t) => {
+                  const { initials, color } = avatar(t.teamName);
                   return (
-                    <tr key={m.ownerId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                    <tr key={t.teamId} onClick={() => setOpenTeamId(t.teamId)} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color}`}>{initials}</div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">{m.name}</p>
-                            <p className="text-xs text-gray-400">{m.role}</p>
-                          </div>
+                          <span className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">{t.teamName}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{m.leadsAssigned}</td>
-                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{m.conversions}</td>
-                      <td className="px-6 py-3 font-semibold text-gray-900 dark:text-white">{m.conversionRate}%</td>
-                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{m.meetingsCompleted}</td>
-                      <td className="px-6 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{inr(m.revenueGenerated)}</td>
+                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{t.teamLead || '—'}</td>
+                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{t.activeMembers}/{t.totalMembers}</td>
+                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{t.totalLeads}</td>
+                      <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{t.wonDeals}/{t.totalDeals}</td>
+                      <td className="px-6 py-3 font-semibold text-gray-900 dark:text-white">{t.conversionRate}%</td>
+                      <td className="px-6 py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">{t.performanceScore}</span>
+                      </td>
+                      <td className="px-6 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{inr(t.totalRevenue)}</td>
                     </tr>
                   );
                 })
@@ -443,13 +459,15 @@ function PerformanceSection() {
           </table>
         </div>
       </Card>
+
+      <TeamPerformanceModal teamId={openTeamId} onClose={() => setOpenTeamId(null)} />
     </div>
   );
 }
 
-function Leaderboard({ title, icon: Icon, members, metric, loading }: {
+function TeamLeaderboard({ title, icon: Icon, teams, metric, loading }: {
   title: string; icon: React.ComponentType<{ size?: number; className?: string }>;
-  members: TeamMember[]; metric: (m: TeamMember) => string; loading?: boolean;
+  teams: TeamPerformance[]; metric: (t: TeamPerformance) => string; loading?: boolean;
 }) {
   return (
     <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
@@ -459,20 +477,20 @@ function Leaderboard({ title, icon: Icon, members, metric, loading }: {
       </h3>
       {loading ? (
         <p className="text-sm text-gray-500">Loading…</p>
-      ) : members.length === 0 ? (
+      ) : teams.length === 0 ? (
         <p className="text-sm text-gray-500">No data yet.</p>
       ) : (
         <ul className="space-y-3">
-          {members.map((m, i) => {
-            const { initials, color } = avatar(m.name);
+          {teams.map((t, i) => {
+            const { initials, color } = avatar(t.teamName);
             return (
-              <li key={m.ownerId} className="flex items-center gap-3">
+              <li key={t.teamId} className="flex items-center gap-3">
                 <span className={`w-6 text-center font-bold ${i < 3 ? MEDAL[i] : 'text-gray-400'}`}>
                   {i < 3 ? <Medal size={16} className="inline" /> : i + 1}
                 </span>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color}`}>{initials}</div>
-                <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{m.name}</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">{metric(m)}</span>
+                <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{t.teamName}</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">{metric(t)}</span>
               </li>
             );
           })}
