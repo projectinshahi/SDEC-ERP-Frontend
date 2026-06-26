@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Search, Plus, List, Columns3 } from 'lucide-react';
+import { Search, Plus, List, Columns3, Trash2 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
-import { fetchDeals, fetchDealStages, moveDealStage } from '@/lib/api/leadLifecycle';
+import { useConfirm } from '@/lib/hooks/useConfirm';
+import { fetchDeals, fetchDealStages, moveDealStage, deleteDeal } from '@/lib/api/leadLifecycle';
 import { fetchAssignableUsers } from '@/lib/api/leads';
 import { DealFormModal } from '@/components/deals/DealFormModal';
 import { DealPipelineBoard } from '@/components/deals/DealPipelineBoard';
@@ -26,11 +27,15 @@ export default function SalesDealsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const { hasPermission } = usePermissions();
 
   // Granular Deals keys (coarse roles satisfied via the permission.utils bridge).
   const canCreate = hasPermission('sales.deals.create');
   const canEdit = hasPermission('sales.deals.edit');
+  // Deal deletion is its own independent permission (drives the table row action
+  // AND the Kanban card delete control).
+  const canDelete = hasPermission('sales.deals.delete');
   const canAssignOwner = hasPermission('sales.assign');
   // Dragging a deal between stages = editing it (view-only users can't move).
   const canMove = canEdit;
@@ -134,6 +139,30 @@ export default function SalesDealsPage() {
     } catch (error) {
       setDeals(prev);
       toast(error instanceof Error ? error.message : 'Failed to move deal', 'error');
+    }
+  };
+
+  // Delete a deal (shared by the table row action AND the Kanban card). Confirms
+  // first, then optimistically drops it from the shared `deals` state — so the
+  // list, the pipeline columns and the stage totals all update with no refetch.
+  // The backend removes it from analytics / revenue. Reverts on failure.
+  const handleDeleteDeal = async (deal: Deal) => {
+    const ok = await confirm({
+      title: 'Delete Deal',
+      message: `Are you sure you want to delete "${deal.title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      intent: 'danger',
+    });
+    if (!ok) return;
+
+    const prev = deals;
+    setDeals((ds) => ds.filter((d) => d.id !== deal.id));
+    try {
+      await deleteDeal(deal.id);
+      toast(`Deleted "${deal.title}"`, 'success');
+    } catch (error) {
+      setDeals(prev);
+      toast(error instanceof Error ? error.message : 'Failed to delete deal', 'error');
     }
   };
 
@@ -244,9 +273,22 @@ export default function SalesDealsPage() {
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{deal.customer?.name}</td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{deal.owner?.name}</td>
                         <td className="px-6 py-4 text-right">
-                          <Button variant="secondary" size="sm" onClick={() => openDeal(deal)}>
-                            {canEdit ? 'Edit' : 'View'}
-                          </Button>
+                          <div className="inline-flex items-center gap-1">
+                            <Button variant="secondary" size="sm" onClick={() => openDeal(deal)}>
+                              {canEdit ? 'Edit' : 'View'}
+                            </Button>
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDeal(deal)}
+                                className="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-950/30 transition-colors"
+                                aria-label={`Delete deal ${deal.title}`}
+                                title="Delete deal"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -268,7 +310,14 @@ export default function SalesDealsPage() {
               No deal stages configured.
             </Card>
           ) : (
-            <DealPipelineBoard stages={stages} dealsByStage={dealsByStage} canMove={canMove} onMove={handleMove} />
+            <DealPipelineBoard
+              stages={stages}
+              dealsByStage={dealsByStage}
+              canMove={canMove}
+              canDeleteDeal={canDelete}
+              onDeleteDeal={handleDeleteDeal}
+              onMove={handleMove}
+            />
           )
         )}
       </div>

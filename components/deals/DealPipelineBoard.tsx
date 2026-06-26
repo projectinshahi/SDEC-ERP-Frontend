@@ -9,6 +9,10 @@ interface DealPipelineBoardProps {
   stages: DealStage[];
   dealsByStage: Record<string, Deal[]>;
   canMove: boolean;
+  /** Can delete individual deal cards (sales.deals.delete). */
+  canDeleteDeal?: boolean;
+  /** Called when a deal card's delete control is used. */
+  onDeleteDeal?: (deal: Deal) => void;
   /** Called when a deal is dropped on a different stage column. */
   onMove: (dealId: number, targetStage: string) => void;
 }
@@ -20,7 +24,7 @@ const money = (n: number) =>
  * Deal pipeline Kanban board (native HTML5 drag-and-drop). Mirrors the lead
  * pipeline board. Columns render in fixed stage order, including empty stages.
  */
-export function DealPipelineBoard({ stages, dealsByStage, canMove, onMove }: DealPipelineBoardProps) {
+export function DealPipelineBoard({ stages, dealsByStage, canMove, canDeleteDeal, onDeleteDeal, onMove }: DealPipelineBoardProps) {
   const [draggedDealId, setDraggedDealId] = useState<number | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
@@ -75,6 +79,8 @@ export function DealPipelineBoard({ stages, dealsByStage, canMove, onMove }: Dea
                     isDragging={draggedDealId === deal.id}
                     onDragStart={setDraggedDealId}
                     onDragEnd={() => { setDraggedDealId(null); setDragOverStage(null); }}
+                    canDelete={canDeleteDeal}
+                    onDelete={onDeleteDeal ? () => onDeleteDeal(deal) : undefined}
                   />
                 ))
               ) : (

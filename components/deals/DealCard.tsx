@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Building2, Link2, FolderKanban } from 'lucide-react';
+import { Building2, Link2, FolderKanban, Trash2 } from 'lucide-react';
 import type { Deal } from '@/lib/types/leadLifecycle';
 
 interface DealCardProps {
@@ -10,6 +10,10 @@ interface DealCardProps {
   isDragging: boolean;
   onDragStart: (id: number) => void;
   onDragEnd: () => void;
+  /** Show the delete control (gated on sales.deals.delete by the parent). */
+  canDelete?: boolean;
+  /** Fired when the card's delete control is clicked. */
+  onDelete?: () => void;
 }
 
 /** Avatar initials + a stable colour from the owner's name. */
@@ -30,7 +34,7 @@ const humanizeStatus = (s: string) =>
   s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 /** A draggable deal card for the deal pipeline board. */
-export function DealCard({ deal, draggable, isDragging, onDragStart, onDragEnd }: DealCardProps) {
+export function DealCard({ deal, draggable, isDragging, onDragStart, onDragEnd, canDelete, onDelete }: DealCardProps) {
   const router = useRouter();
   const ownerName = deal.owner?.name || 'Unassigned';
   const { initials, color } = avatar(ownerName);
@@ -49,7 +53,22 @@ export function DealCard({ deal, draggable, isDragging, onDragStart, onDragEnd }
         <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-snug group-hover:text-blue-600 transition-colors break-words">
           {deal.title}
         </h3>
-        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 shrink-0">{money(deal.amount)}</span>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{money(deal.amount)}</span>
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              draggable={false}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1 rounded-md text-gray-300 hover:text-rose-600 hover:bg-rose-50 dark:text-gray-600 dark:hover:text-rose-400 dark:hover:bg-rose-950/30 transition-colors"
+              aria-label={`Delete deal ${deal.title}`}
+              title="Delete deal"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {deal.customer?.company && (
