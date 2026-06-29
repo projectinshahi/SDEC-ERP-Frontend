@@ -87,11 +87,16 @@ export const APP_MODULES: AppModuleDef[] = [
     prefixes: ['user.', 'role.'], topModule: 'user', fallbackHref: '/dashboard/user-management',
   },
   // Future modules — visible once a role is granted any of their permissions.
-  {
-    key: 'hr', title: 'HR', icon: 'UserCog', accent: 'amber',
-    description: 'Employees, leave & attendance.',
-    prefixes: ['hr.'], future: true,
-  },
+{
+  key: 'hr',
+  title: 'HR',
+  icon: 'UserCog',
+  accent: 'amber',
+  description: 'Employees, leave & attendance.',
+  prefixes: ['hr.'],
+  topModule: 'hr',
+  fallbackHref: '/dashboard/hr',
+},
   {
     key: 'finance', title: 'Finance', icon: 'Wallet', accent: 'rose',
     description: 'Invoices, billing & expenses.',
