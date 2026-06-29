@@ -126,8 +126,37 @@ export function useAttendance() {
     return () => clearTimeout(t);
   }, [successMsg]);
 
-  /* ── Adapted records ─────────────────────────────────────────────────────── */
-  const records = useMemo(() => rawRecords.map(adaptRecord), [rawRecords]);
+  /* ── Adapted records & Option B Merging ──────────────────────────────────── */
+  const adaptedRecords = useMemo(() => rawRecords.map(adaptRecord), [rawRecords]);
+
+  const records = useMemo(() => {
+    return employees.map((emp) => {
+      // Find if a real attendance record exists for this employee on the selected date
+      const realRecord = adaptedRecords.find(
+        (r) => r.employeeId === emp.employee_code && r.date === selectedDate
+      );
+      if (realRecord) return realRecord;
+
+      // Otherwise, generate a virtual "Absent" row for this employee
+      return {
+        id: `virtual-${emp.id}`,
+        employeeId: emp.employee_code ?? '',
+        name: emp.name ?? '',
+        department: emp.department ?? '',
+        role: emp.designation ?? '',
+        date: selectedDate,
+        morningIn: null,
+        lunchOut: null,
+        lunchIn: null,
+        checkOut: null,
+        totalHours: null,
+        status: 'Absent' as const,
+        overtime: null,
+        note: undefined,
+        leaveType: null,
+      };
+    });
+  }, [employees, adaptedRecords, selectedDate]);
 
   /* ── Modal helpers ────────────────────────────────────────────────────────── */
   const openEntryModal = () => {
@@ -220,6 +249,7 @@ export function useAttendance() {
 
   /* ── Remove (API integration) ────────────────────────────────────────────── */
   const handleRemove = async (id: string) => {
+    if (id.startsWith('virtual-')) return; // Virtual records don't exist in DB
     console.log(`[useAttendance] Clicked record ID: ${id}`);
     try {
       setError(null);
@@ -232,10 +262,16 @@ export function useAttendance() {
   };
 
   const handleBulkRemove = async () => {
-    console.log(`[useAttendance] Bulk removing record IDs:`, selectedIds);
+    // Only delete real database records
+    const realIds = selectedIds.filter(id => !id.startsWith('virtual-'));
+    if (realIds.length === 0) {
+      setSelectedIds([]);
+      return;
+    }
+    console.log(`[useAttendance] Bulk removing record IDs:`, realIds);
     try {
       setError(null);
-      await Promise.all(selectedIds.map(id => deleteAttendance(Number(id))));
+      await Promise.all(realIds.map(id => deleteAttendance(Number(id))));
       setSelectedIds([]);
       await loadAttendance();
     } catch (err: any) {

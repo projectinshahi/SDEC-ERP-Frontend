@@ -15,27 +15,32 @@ export function AttendanceActionMenu({
   onEdit,
   onRemove,
 }: AttendanceInlineActionsProps) {
+  const isVirtual = record.id.startsWith('virtual-');
+
   return (
     <div className="flex items-center justify-end gap-1">
-      {/* Edit */}
+      {/* Edit or Add */}
       <button
         onClick={() => onEdit(record)}
-        title="Edit record"
+        title={isVirtual ? "Add attendance record" : "Edit record"}
         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/20 hover:bg-violet-100 dark:hover:bg-violet-900/30 border border-violet-100 dark:border-violet-900/30 transition-colors"
       >
         <Pencil size={12} />
-        Edit
+        {isVirtual ? 'Add Attendance' : 'Edit'}
       </button>
 
-      {/* Delete */}
-      <button
-        onClick={() => onRemove(record.id)}
-        title="Delete record"
-        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/30 border border-rose-100 dark:border-rose-900/30 transition-colors"
-      >
-        <Trash2 size={12} />
-        Delete
-      </button>
+      {/* Delete (only for non-virtual records) */}
+      {!isVirtual && (
+        <button
+          onClick={() => onRemove(record.id)}
+          title="Delete record"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/30 border border-rose-100 dark:border-rose-900/30 transition-colors"
+        >
+          <Trash2 size={12} />
+          Delete
+        </button>
+      )}
     </div>
   );
 }
+

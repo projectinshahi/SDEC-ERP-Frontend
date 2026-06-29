@@ -11,11 +11,17 @@ export interface Candidate {
   name: string;
   role: string;
   experience: string;
-  matchScore: number;
-  skills: string[];
+  matchScore?: number;
+  skills?: string[];
   stage: CandidateStage;
   email: string;
   phone: string;
+  source?: string;
+  notes?: string;
+  expectedCtc?: number;
+  resumeUrl?: string;
+  interviewDate?: string;
+  department?: string;
 }
 
 export interface JobOpening {
