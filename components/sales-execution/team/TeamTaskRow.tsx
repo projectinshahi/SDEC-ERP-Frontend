@@ -16,6 +16,9 @@ import {
   Ban,
   TrendingUp,
   Target,
+  Users,
+  UserCircle,
+  History,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge, type BadgeVariant } from '@/components/Badge';
@@ -28,6 +31,17 @@ import type {
 
 interface TeamTaskRowProps {
   task: SalesTask;
+  /**
+   * SE-028 — when the viewer may edit (sales.edit), the status badge becomes an
+   * inline control so a Team Lead can move a task Open → In Progress → Completed
+   * straight from Team Tasks. Because Team Tasks and Sales Tasks read the SAME
+   * record, the change reflects in both views on the next refresh.
+   */
+  canEdit?: boolean;
+  /** Set status to open/in_progress directly (completed routes through onComplete). */
+  onSetStatus?: (task: SalesTask, status: SalesTaskStatus) => void;
+  /** Begin the outcome-capture completion workflow (CompleteTaskModal). */
+  onComplete?: (task: SalesTask) => void;
 }
 
 const PRIORITY_VARIANTS: Record<SalesTaskPriority, BadgeVariant> = {
@@ -72,11 +86,51 @@ function formatDue(dueDate: string): string {
   }
 }
 
-export function TeamTaskRow({ task }: TeamTaskRowProps) {
+/** Inline status editor — a native select styled to read like the status badge. */
+function StatusControl({
+  task,
+  onSetStatus,
+  onComplete,
+}: {
+  task: SalesTask;
+  onSetStatus: (task: SalesTask, status: SalesTaskStatus) => void;
+  onComplete: (task: SalesTask) => void;
+}) {
+  const tone: Record<SalesTaskStatus, string> = {
+    open: 'border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-600 dark:bg-gray-700/40 dark:text-gray-200',
+    in_progress: 'border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-800/60 dark:bg-sky-950/30 dark:text-sky-300',
+    completed: 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300',
+  };
+  return (
+    <select
+      value={task.status}
+      aria-label={`Status for ${task.title}`}
+      onChange={(e) => {
+        const next = e.target.value as SalesTaskStatus;
+        if (next === task.status) return;
+        // Completing requires an outcome → route through the completion modal.
+        if (next === 'completed') onComplete(task);
+        else onSetStatus(task, next);
+      }}
+      onClick={(e) => e.stopPropagation()}
+      className={classNames(
+        'cursor-pointer rounded-full border px-2.5 py-0.5 text-[11px] font-semibold outline-none transition-colors focus:ring-2 focus:ring-blue-500/30',
+        tone[task.status],
+      )}
+    >
+      <option value="open">Open</option>
+      <option value="in_progress">In Progress</option>
+      <option value="completed">Completed</option>
+    </select>
+  );
+}
+
+export function TeamTaskRow({ task, canEdit, onSetStatus, onComplete }: TeamTaskRowProps) {
   const completed = task.status === 'completed';
   const overdue = !!task.dueDate && !completed && isOverdue(task.dueDate);
   const parentTitle = task.deal?.title ?? task.lead?.title ?? null;
   const ParentIcon = task.dealId ? TrendingUp : Target;
+  const editable = !!canEdit && !!onSetStatus && !!onComplete;
 
   return (
     <div
@@ -106,9 +160,13 @@ export function TeamTaskRow({ task }: TeamTaskRowProps) {
           <Badge variant={PRIORITY_VARIANTS[task.priority]}>
             {PRIORITY_LABELS[task.priority]}
           </Badge>
-          <Badge variant={STATUS_VARIANTS[task.status]}>
-            {STATUS_LABELS[task.status]}
-          </Badge>
+          {editable ? (
+            <StatusControl task={task} onSetStatus={onSetStatus!} onComplete={onComplete!} />
+          ) : (
+            <Badge variant={STATUS_VARIANTS[task.status]}>
+              {STATUS_LABELS[task.status]}
+            </Badge>
+          )}
           {task.blocked && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
               <Ban size={11} /> Blocked
@@ -122,6 +180,20 @@ export function TeamTaskRow({ task }: TeamTaskRowProps) {
             <User size={12} className="text-gray-400" />
             {task.assignee?.name ?? 'Unassigned'}
           </span>
+
+          {task.team?.name && (
+            <span className="inline-flex items-center gap-1 font-medium text-indigo-600 dark:text-indigo-400">
+              <Users size={12} />
+              {task.team.name}
+            </span>
+          )}
+
+          {task.createdBy?.name && (
+            <span className="inline-flex items-center gap-1">
+              <UserCircle size={12} className="text-gray-400" />
+              By {task.createdBy.name}
+            </span>
+          )}
 
           {task.dueDate && (
             <span
@@ -147,6 +219,19 @@ export function TeamTaskRow({ task }: TeamTaskRowProps) {
                 className={task.dealId ? 'text-violet-500' : 'text-amber-500'}
               />
               <span className="max-w-[200px] truncate">{parentTitle}</span>
+            </span>
+          )}
+
+          {task.createdAt && (
+            <span className="inline-flex items-center gap-1 text-gray-400">
+              Created {formatDue(task.createdAt)}
+            </span>
+          )}
+
+          {task.updatedAt && (
+            <span className="inline-flex items-center gap-1 text-gray-400">
+              <History size={12} className="text-gray-400" />
+              Updated {formatDue(task.updatedAt)}
             </span>
           )}
         </div>

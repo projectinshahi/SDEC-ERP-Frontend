@@ -141,6 +141,8 @@ export interface SalesTask {
   createdBy?: UserLite | null;
   lead?: EntityLite | null;
   deal?: EntityLite | null;
+  /** The assignee's sales team (Team Tasks view) — null if the member has no team. */
+  team?: { id: number; name: string } | null;
 }
 
 export interface CreateSalesTaskPayload {
@@ -255,6 +257,8 @@ export interface TargetProgress {
   achievementPct: number;
   reached?: boolean;
   incentiveEarned?: number;
+  /** Computed lifecycle status (BDE dashboard read-only widget). */
+  status?: TargetStatus;
 }
 
 export interface BdeDashboard {
@@ -373,6 +377,129 @@ export interface TargetHistoryResponse {
   note: string;
 }
 
+// ── Target Management module ─────────────────────────────────────────────────
+
+export type TargetStatus =
+  | 'not_started' | 'in_progress' | 'achieved' | 'exceeded' | 'missed' | 'expired';
+
+export const TARGET_STATUS_LABELS: Record<TargetStatus, string> = {
+  not_started: 'Not Started',
+  in_progress: 'In Progress',
+  achieved: 'Achieved',
+  exceeded: 'Exceeded',
+  missed: 'Missed',
+  expired: 'Expired',
+};
+
+/** A target row enriched with live achievement / status / incentive. */
+export interface TargetListEntry {
+  id: number;
+  ownerId: number;
+  ownerName: string;
+  teamId: number | null;
+  teamName: string | null;
+  name: string | null;
+  description: string | null;
+  type: TargetType;
+  periodType: PeriodType;
+  period: string;
+  startDate: string;
+  endDate: string;
+  targetAmount: number;
+  achieved: number;
+  remaining: number;
+  achievementPct: number;
+  status: TargetStatus;
+  incentiveEarned: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TargetSummary {
+  totalTargets: number;
+  activeTargets: number;
+  achievedTargets: number;
+  missedTargets: number;
+  totalTargetValue: number;
+  totalAchievedRevenue: number;
+  overallAchievementPct: number;
+}
+
+export interface TargetTeamRollup {
+  teamId: number;
+  teamName: string;
+  memberCount: number;
+  targetValue: number;
+  achievedValue: number;
+  achievementPct: number;
+}
+
+export interface TargetTopPerformer {
+  ownerId: number;
+  ownerName: string;
+  achievementPct: number;
+  achieved: number;
+  targetAmount: number;
+}
+
+export interface TargetListResponse {
+  canManage: boolean;
+  summary: TargetSummary;
+  teams: TargetTeamRollup[];
+  topPerformers: TargetTopPerformer[];
+  targets: TargetListEntry[];
+}
+
+export interface TargetFilters {
+  ownerId?: number;
+  period?: string;
+  periodType?: PeriodType;
+  type?: TargetType;
+  status?: TargetStatus;
+  search?: string;
+}
+
+export interface ContributingDeal {
+  id: number;
+  title: string;
+  amount: number;
+  closedAt: string | null;
+  stage: string;
+  customer: string | null;
+}
+
+export interface TargetTimelineEvent {
+  type: string;
+  label: string;
+  date: string;
+  amount?: number;
+}
+
+export interface TargetTrendPoint {
+  date: string;
+  cumulative: number;
+}
+
+export interface TargetOwnerHistoryRow {
+  id: number;
+  type: TargetType;
+  periodType: PeriodType;
+  period: string;
+  targetAmount: number;
+  achieved: number;
+  achievementPct: number;
+  status: TargetStatus;
+}
+
+export interface TargetDetail extends TargetListEntry {
+  ownerEmail: string | null;
+  contributingDeals: ContributingDeal[];
+  timeline: TargetTimelineEvent[];
+  trend: TargetTrendPoint[];
+  ownerHistory: TargetOwnerHistoryRow[];
+  note: string;
+}
+
 // ── SE-044 Teams ─────────────────────────────────────────────────────────────
 
 export type TeamMemberRole = 'bde' | 'team_lead';
@@ -405,6 +532,20 @@ export interface TeamMemberTaskRow {
   userId: number;
   name: string;
   email?: string | null;
+  team?: string | null;
+  total: number;
+  completed: number;
+  pending: number;
+  overdue: number;
+  blocked: number;
+  completionRate: number;
+}
+
+/** One row per team for the "All Teams" team-wise breakdown. */
+export interface TeamBreakdownRow {
+  teamId: number;
+  teamName: string;
+  memberCount: number;
   total: number;
   completed: number;
   pending: number;
@@ -414,9 +555,30 @@ export interface TeamMemberTaskRow {
 }
 
 export interface TeamTasksResponse {
-  kpis: { total: number; completed: number; pending: number; overdue: number; blocked: number; completionRate: number };
+  kpis: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    pending: number;
+    overdue: number;
+    blocked: number;
+    highPriority: number;
+    avgCompletionDays: number;
+    completionRate: number;
+  };
   members: TeamMemberTaskRow[];
+  teamBreakdown: TeamBreakdownRow[];
+  teams: { id: number; name: string }[];
   tasks: SalesTask[];
+}
+
+export interface TeamTaskFilters {
+  userId?: number;
+  status?: string;
+  priority?: string;
+  teamId?: number;
+  due?: string;
+  search?: string;
 }
 
 // ── Manager + Executive dashboards ───────────────────────────────────────────

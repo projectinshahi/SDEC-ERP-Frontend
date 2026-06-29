@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Search, Plus, List, Columns3 } from 'lucide-react';
+import { Search, Plus, List, Columns3, Trash2 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
-import { fetchDeals, fetchDealStages, moveDealStage } from '@/lib/api/leadLifecycle';
+import { useConfirm } from '@/lib/hooks/useConfirm';
+import { fetchDeals, fetchDealStages, moveDealStage, deleteDeal } from '@/lib/api/leadLifecycle';
 import { fetchAssignableUsers } from '@/lib/api/leads';
+import { DealFormModal } from '@/components/deals/DealFormModal';
 import { DealPipelineBoard } from '@/components/deals/DealPipelineBoard';
 import { classNames } from '@/lib/utils';
 import type { Deal, DealStage } from '@/lib/types/leadLifecycle';
@@ -23,22 +26,33 @@ export default function SalesDealsPage() {
   const [owners, setOwners] = useState<AssignableUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [ownerFilter, setOwnerFilter] = useState('all');
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
+  const { hasPermission } = usePermissions();
 
-  // Table ↔ Pipeline view (both render the SAME live `deals` dataset).
+  // Granular Deals keys (coarse roles satisfied via the permission.utils bridge).
+  const canCreate = hasPermission('sales.deals.create');
+  const canEdit = hasPermission('sales.deals.edit');
+  // Deal deletion is its own independent permission (drives the table row action
+  // AND the Kanban card delete control).
+  const canDelete = hasPermission('sales.deals.delete');
+  const canAssignOwner = hasPermission('sales.assign');
+  // Dragging a deal between stages = editing it (view-only users can't move).
+  const canMove = canEdit;
+
+  // Table ⇄ Pipeline view (both render the SAME live `deals` dataset).
   const [viewMode, setViewMode] = useState<ViewMode>('table');
 
-  const { toast } = useToast();
-  const { hasPermission } = usePermissions();
-  const canMove = hasPermission('sales.edit');
-  const canCreate = hasPermission('sales.create');
+  // New Deal / Edit / View modal (single shared modal — no duplicate flow).
+  const [dealModalOpen, setDealModalOpen] = useState(false);
+  const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
+  const [dealModalReadOnly, setDealModalReadOnly] = useState(false);
 
   // Initialise the view from the URL (?view=pipeline) — read on the client to
-  // avoid a useSearchParams Suspense boundary / hydration mismatch. The old
+  // avoid a useSearchParams Suspense boundary / hydration mismatch. The former
   // /deals/pipeline route redirects here in pipeline mode.
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (new URLSearchParams(window.location.search).get('view') === 'pipeline') setViewMode('pipeline');
     }
   }, []);
@@ -57,16 +71,16 @@ export default function SalesDealsPage() {
   const loadDeals = useCallback(async () => {
     try {
       setIsLoading(true);
-      setDeals(await fetchDeals({ ownerId: ownerFilter }));
+      const data = await fetchDeals();
+      setDeals(Array.isArray(data) ? data : []);
     } catch {
       toast('Failed to fetch deals', 'error');
     } finally {
       setIsLoading(false);
     }
-  }, [ownerFilter, toast]);
+  }, [toast]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDeals();
   }, [loadDeals]);
 
@@ -75,18 +89,31 @@ export default function SalesDealsPage() {
     fetchAssignableUsers().then(setOwners).catch(() => setOwners([]));
   }, []);
 
-  // Client-side search (title + company) — applies to BOTH views so they stay
-  // in sync, and the filtered set feeds both the table and the board grouping.
+  const openNewDeal = () => {
+    setActiveDeal(null);
+    setDealModalReadOnly(false);
+    setDealModalOpen(true);
+  };
+  const openDeal = (deal: Deal) => {
+    setActiveDeal(deal);
+    setDealModalReadOnly(!canEdit); // view-only for users without Edit Deal
+    setDealModalOpen(true);
+  };
+
+  // Client-side search (title + company + client) — applies to BOTH views so the
+  // Table and Pipeline always show the SAME deals (single source of truth).
   const visibleDeals = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return deals;
     return deals.filter((d) =>
-      d.title.toLowerCase().includes(q) ||
+      (d.title || '').toLowerCase().includes(q) ||
       (d.customer?.company || '').toLowerCase().includes(q) ||
       (d.customer?.name || '').toLowerCase().includes(q),
     );
   }, [deals, searchQuery]);
 
+  // Group the (filtered) deals by stage for the Kanban columns — same dataset
+  // the table renders, so the two views never diverge.
   const dealsByStage = useMemo(() => {
     const map: Record<string, Deal[]> = {};
     for (const s of stages) map[s.name] = [];
@@ -98,8 +125,9 @@ export default function SalesDealsPage() {
     return map;
   }, [visibleDeals, stages]);
 
-  // Optimistic move with revert on failure. Updates the shared `deals` state, so
-  // the table reflects the move too (and vice-versa).
+  // Optimistic stage move with revert on failure. Updates the shared `deals`
+  // state, so the table reflects the move too (and vice-versa) and the backend
+  // is the source of truth (PUT /sales/deals/:id/stage).
   const handleMove = async (dealId: number, targetStage: string) => {
     const deal = deals.find((d) => d.id === dealId);
     if (!deal || deal.stage === targetStage) return;
@@ -114,6 +142,30 @@ export default function SalesDealsPage() {
     }
   };
 
+  // Delete a deal (shared by the table row action AND the Kanban card). Confirms
+  // first, then optimistically drops it from the shared `deals` state — so the
+  // list, the pipeline columns and the stage totals all update with no refetch.
+  // The backend removes it from analytics / revenue. Reverts on failure.
+  const handleDeleteDeal = async (deal: Deal) => {
+    const ok = await confirm({
+      title: 'Delete Deal',
+      message: `Are you sure you want to delete "${deal.title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      intent: 'danger',
+    });
+    if (!ok) return;
+
+    const prev = deals;
+    setDeals((ds) => ds.filter((d) => d.id !== deal.id));
+    try {
+      await deleteDeal(deal.id);
+      toast(`Deleted "${deal.title}"`, 'success');
+    } catch (error) {
+      setDeals(prev);
+      toast(error instanceof Error ? error.message : 'Failed to delete deal', 'error');
+    }
+  };
+
   return (
     <PermissionPageGuard module="sales">
       <div className="space-y-6">
@@ -125,20 +177,18 @@ export default function SalesDealsPage() {
               { label: 'Deals', href: '/dashboard/sales/deals' },
             ]}
           />
-          <div className="flex gap-2">
-            {canCreate && (
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                New Deal
-              </Button>
-            )}
-          </div>
+          {canCreate && (
+            <Button onClick={openNewDeal}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Deal
+            </Button>
+          )}
         </div>
 
-        {/* View switch — Table ⇄ Pipeline (same Deals dataset, no navigation) */}
+        {/* View switch — Table ⇄ Pipeline (same Deals dataset, no navigation). */}
         <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 w-fit">
           {([
-            { key: 'table', label: 'Table View', icon: List },
+            { key: 'table', label: 'List View', icon: List },
             { key: 'pipeline', label: 'Pipeline View', icon: Columns3 },
           ] as { key: ViewMode; label: string; icon: typeof List }[]).map(({ key, label, icon: Icon }) => (
             <button
@@ -159,7 +209,7 @@ export default function SalesDealsPage() {
           ))}
         </div>
 
-        {/* Filters (apply to BOTH views — they drive the shared dataset) */}
+        {/* Search — drives the shared dataset for BOTH views. */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -171,30 +221,20 @@ export default function SalesDealsPage() {
               className="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             />
           </div>
-          <select
-            value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value)}
-            className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-          >
-            <option value="all">All Owners</option>
-            {owners.map((o) => (
-              <option key={o.id} value={String(o.id)}>{o.name}</option>
-            ))}
-          </select>
         </div>
 
-        {/* TABLE VIEW */}
+        {/* LIST (TABLE) VIEW */}
         {viewMode === 'table' && (
           <Card className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
                   <tr>
-                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Deal Name</th>
-                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Value</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Title</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Amount</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Stage</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Status</th>
-                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Client</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Customer</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Owner</th>
                     <th className="px-6 py-4 text-right font-medium text-gray-500 dark:text-gray-400">Actions</th>
                   </tr>
@@ -211,7 +251,14 @@ export default function SalesDealsPage() {
                   ) : (
                     visibleDeals.map((deal) => (
                       <tr key={deal.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{deal.title}</td>
+                        <td className="px-6 py-4 font-medium">
+                          <Link
+                            href={`/dashboard/sales/deals/${deal.id}`}
+                            className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+                          >
+                            {deal.title}
+                          </Link>
+                        </td>
                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">${deal.amount?.toLocaleString()}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400">
@@ -226,7 +273,22 @@ export default function SalesDealsPage() {
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{deal.customer?.name}</td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{deal.owner?.name}</td>
                         <td className="px-6 py-4 text-right">
-                          <Button variant="secondary" size="sm">View</Button>
+                          <div className="inline-flex items-center gap-1">
+                            <Button variant="secondary" size="sm" onClick={() => openDeal(deal)}>
+                              {canEdit ? 'Edit' : 'View'}
+                            </Button>
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDeal(deal)}
+                                className="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-950/30 transition-colors"
+                                aria-label={`Delete deal ${deal.title}`}
+                                title="Delete deal"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -237,7 +299,7 @@ export default function SalesDealsPage() {
           </Card>
         )}
 
-        {/* PIPELINE VIEW — same data, Kanban presentation (no separate route) */}
+        {/* PIPELINE (KANBAN) VIEW — same data, Kanban presentation (no separate route). */}
         {viewMode === 'pipeline' && (
           isLoading ? (
             <Card className="p-8 text-center text-gray-500 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
@@ -248,10 +310,29 @@ export default function SalesDealsPage() {
               No deal stages configured.
             </Card>
           ) : (
-            <DealPipelineBoard stages={stages} dealsByStage={dealsByStage} canMove={canMove} onMove={handleMove} />
+            <DealPipelineBoard
+              stages={stages}
+              dealsByStage={dealsByStage}
+              canMove={canMove}
+              canDeleteDeal={canDelete}
+              onDeleteDeal={handleDeleteDeal}
+              onMove={handleMove}
+            />
           )
         )}
       </div>
+
+      {/* Shared New Deal / Edit / View modal. On save, reload the deals list. */}
+      <DealFormModal
+        isOpen={dealModalOpen}
+        onClose={() => setDealModalOpen(false)}
+        onSaved={loadDeals}
+        deal={activeDeal}
+        stages={stages}
+        owners={owners}
+        readOnly={dealModalReadOnly}
+        canAssignOwner={canAssignOwner}
+      />
     </PermissionPageGuard>
   );
 }

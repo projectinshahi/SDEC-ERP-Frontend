@@ -8,19 +8,27 @@ export interface SidebarMenuItem {
   icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid' | 'Settings' | 'DollarSign' | 'FileText';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module?: ModuleName | null;
-  /** Permission(s) that gate this item/route. ANY grants. Omit = no specific gate (module-home). */
   permission?: PermissionKey | PermissionKey[];
   isPartition?: boolean;
+  /**
+   * When true, `permissionsForPath` matches this item ONLY on an exact pathname
+   * (not as a prefix). Needed for "/dashboard": its href is a prefix of every
+   * other dashboard route, so without this it would impose its permission on all
+   * of them. With it, only the exact "/dashboard" home requires dashboard.view.
+   */
+  exact?: boolean;
 }
 
-const SALES_REPORTS: PermissionKey[] = ['sales.reports.view', 'sales.view'];
+const SALES_REPORTS: PermissionKey[] = ['sales.reports.view'];
 
 export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
   {
     label: 'Dashboard',
     href: '/dashboard',
     icon: 'LayoutDashboard',
-    module: null, // Always visible within the Development module
+    module: 'dashboard',
+    permission: 'dashboard.view', // STRICT: hidden/blocked unless explicitly granted
+    exact: true, // '/dashboard' is a prefix of every dashboard route — match exactly
   },
   {
     label: 'Projects',
@@ -82,21 +90,21 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales',
     icon: 'LayoutDashboard',
     module: 'sales',
-    permission: ['sales.dashboard.view', 'sales.view'],
+    permission: ['sales.dashboard.view'],
   },
   {
     label: 'My Day (BDE)',
     href: '/dashboard/sales/bde',
     icon: 'LayoutDashboard',
     module: 'sales',
-    permission: ['sales.dashboard.view', 'sales.view'],
+    permission: ['sales.dashboard.view'],
   },
   {
     label: 'Leads',
     href: '/dashboard/sales/leads',
     icon: 'Target',
     module: 'sales',
-    permission: ['sales.leads.view', 'sales.view'],
+    permission: ['sales.leads.view'],
   },
   // Lead Pipeline merged into the Leads page as an in-page "Pipeline View"
   // (toggle / ?view=pipeline) — no separate route/menu item.
@@ -105,28 +113,28 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/follow-ups',
     icon: 'CalendarDays',
     module: 'sales',
-    permission: ['sales.followups.view', 'sales.view'],
+    permission: ['sales.followups.view'],
   },
   {
     label: 'Lead Analytics',
     href: '/dashboard/sales/analytics',
     icon: 'BarChart3',
     module: 'sales',
-    permission: ['sales.dashboard.analytics', 'sales.reports.view', 'sales.view'],
+    permission: ['sales.dashboard.analytics', 'sales.reports.view'],
   },
   {
     label: 'Team',
     href: '/dashboard/sales/team',
     icon: 'Users',
     module: 'sales',
-    permission: ['sales.teams.view', 'sales.team.manage', 'sales.view'],
+    permission: ['sales.teams.view', 'sales.team.manage'],
   },
   {
     label: 'Deals',
     href: '/dashboard/sales/deals',
     icon: 'TrendingUp',
     module: 'sales',
-    permission: ['sales.deals.view', 'sales.view'],
+    permission: ['sales.deals.view'],
   },
   // Deal Pipeline merged into the Deals page as an in-page "Pipeline View"
   // (toggle / ?view=pipeline) — no separate route/menu item. ("Pipeline Views"
@@ -136,44 +144,51 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/pipeline',
     icon: 'BarChart3',
     module: 'sales',
-    permission: ['sales.pipeline.view', 'sales.view'],
+    permission: ['sales.pipeline.view'],
   },
   {
     label: 'Sales Tasks',
     href: '/dashboard/sales/tasks',
     icon: 'CheckSquare',
     module: 'sales',
-    permission: ['sales.view'],
+    permission: ['sales.tasks.view'],
   },
   {
     label: 'Team Tasks',
     href: '/dashboard/sales/tasks/team',
     icon: 'CheckSquare',
     module: 'sales',
-    permission: ['sales.team.manage', 'sales.view'],
+    permission: ['sales.tasks.team.view', 'sales.team.manage'],
   },
   {
     label: 'Approvals',
     href: '/dashboard/sales/approvals',
     icon: 'ShieldCheck',
     module: 'sales',
-    permission: ['sales.approve', 'sales.view'],
+    permission: ['sales.approve'],
   },
   // Team management consolidated into the single "Team" item (above) — its
   // "Teams" tab. The former "Teams" entry (/dashboard/sales/teams) was removed.
+  {
+    label: 'Targets',
+    href: '/dashboard/sales/targets',
+    icon: 'Target',
+    module: 'sales',
+    permission: ['sales.targets.view', 'sales.targets.manage'],
+  },
   {
     label: 'Target History',
     href: '/dashboard/sales/targets/history',
     icon: 'Target',
     module: 'sales',
-    permission: ['sales.targets.manage', 'sales.view'],
+    permission: ['sales.targets.manage'],
   },
   {
     label: 'Incentives',
     href: '/dashboard/sales/incentives',
     icon: 'TrendingUp',
     module: 'sales',
-    permission: ['sales.incentive.manage', 'sales.view'],
+    permission: ['sales.incentive.manage'],
   },
   {
     label: 'Manager Performance',
@@ -195,7 +210,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/customers',
     icon: 'Users',
     module: 'sales',
-    permission: ['sales.contacts.view', 'sales.view'],
+    permission: ['sales.contacts.view'],
   },
   {
     label: 'Sales Reports',
@@ -270,7 +285,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/reports/export-center',
     icon: 'LayoutGrid',
     module: 'sales',
-    permission: ['sales.reports.export', 'sales.reports.view', 'sales.view'],
+    permission: ['sales.reports.export', 'sales.reports.view'],
   },
   {
     label: 'Executive Analytics',
@@ -392,9 +407,13 @@ export function permissionsForPath(pathname: string): PermissionKey[] {
   let bestLen = -1;
   for (const item of SIDEBAR_ITEMS) {
     if (!item.href || item.isPartition) continue;
-    if (pathname === item.href || pathname.startsWith(item.href + '/')) {
-      if (item.href.length > bestLen) { best = item; bestLen = item.href.length; }
-    }
+    // `exact` items match only their precise pathname (so "/dashboard" doesn't
+    // impose its permission on every "/dashboard/*" route); others match as a
+    // path prefix so detail pages inherit their list's permission.
+    const matches = item.exact
+      ? pathname === item.href
+      : (pathname === item.href || pathname.startsWith(item.href + '/'));
+    if (matches && item.href.length > bestLen) { best = item; bestLen = item.href.length; }
   }
   return best ? itemPermissions(best) : [];
 }

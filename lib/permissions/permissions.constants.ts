@@ -21,6 +21,7 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   project: 'project.',
   sales: 'sales.',
   hr: 'hr.',
+  finance: 'finance.',
 } as const;
 
 /**
@@ -28,6 +29,18 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
  * Used in the Create/Edit Role modal for rendering categorized permission sections.
  */
 export const PERMISSION_GROUPS: PermissionGroup[] = [
+  {
+    module: 'dashboard',
+    label: 'Dashboard',
+    permissions: [
+      {
+        key: 'dashboard.view',
+        label: 'View Dashboard',
+        description: 'View the Development dashboard home — controls the Dashboard sidebar tab',
+        module: 'dashboard',
+      },
+    ],
+  },
   {
     module: 'user',
     label: 'User Management',
@@ -70,8 +83,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       },
       {
         key: 'task.read',
-        label: 'Read Task',
-        description: 'View task boards, details, and status updates',
+        label: 'View Boards',
+        description: 'View Kanban boards, tasks and status updates — controls the Boards sidebar tab',
         module: 'task',
       },
       {
@@ -227,37 +240,40 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     ],
   },
   {
+    // Labelled "Tickets" to match the sidebar tab (the "Tickets" item routes to
+    // /dashboard/blockers and is gated on blockers.read). Keys stay blockers.*
+    // (unchanged backend contract); descriptions keep the underlying term.
     module: 'blockers',
-    label: 'Blocker Tracking',
+    label: 'Tickets',
     permissions: [
       {
         key: 'blockers.create',
-        label: 'Create Blocker',
-        description: 'Log new blockers and escalation requests',
+        label: 'Create Ticket',
+        description: 'Log new tickets / blockers and escalation requests',
         module: 'blockers',
       },
       {
         key: 'blockers.read',
-        label: 'Read Blocker',
-        description: 'View blockers dashboard and details',
+        label: 'View Tickets',
+        description: 'View the Tickets (Blockers) dashboard and details — controls the Tickets sidebar tab',
         module: 'blockers',
       },
       {
         key: 'blockers.update',
-        label: 'Edit Blocker',
-        description: 'Update blocker status, severity, and details',
+        label: 'Edit Ticket',
+        description: 'Update ticket / blocker status, severity, and details',
         module: 'blockers',
       },
       {
         key: 'blockers.delete',
-        label: 'Delete Blocker',
-        description: 'Permanently remove blockers from the system',
+        label: 'Delete Ticket',
+        description: 'Permanently remove tickets / blockers from the system',
         module: 'blockers',
       },
       {
         key: 'blockers.resolve',
-        label: 'Resolve Blocker',
-        description: 'Mark blockers as resolved or closed',
+        label: 'Resolve Ticket',
+        description: 'Mark tickets / blockers as resolved or closed',
         module: 'blockers',
       },
     ],
@@ -412,6 +428,26 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   },
   {
     module: 'sales',
+    label: 'Sales · Tasks',
+    permissions: [
+      { key: 'sales.tasks.view', label: 'View Sales Tasks', description: 'View the Sales Tasks workspace and own/assigned tasks', module: 'sales' },
+      { key: 'sales.tasks.create', label: 'Create Sales Tasks', description: 'Create new sales tasks', module: 'sales' },
+      { key: 'sales.tasks.edit', label: 'Edit Sales Tasks', description: 'Update sales tasks (status, details, blockers)', module: 'sales' },
+      { key: 'sales.tasks.delete', label: 'Delete Sales Tasks', description: 'Remove sales tasks', module: 'sales' },
+      { key: 'sales.tasks.complete', label: 'Complete Sales Tasks', description: 'Complete sales tasks with an outcome', module: 'sales' },
+      { key: 'sales.tasks.team.view', label: 'View Team Tasks', description: 'View the team-wide task breakdown', module: 'sales' },
+      { key: 'sales.tasks.team.update', label: 'Update Team Task Status', description: 'Update task status from the Team Tasks view', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Targets',
+    permissions: [
+      { key: 'sales.targets.view', label: 'View Targets', description: 'View revenue targets and achievement', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
     label: 'Sales · Reports',
     permissions: [
       { key: 'sales.reports.view', label: 'View Reports', description: 'Organization-wide reporting and executive analytics visibility', module: 'sales' },
@@ -422,7 +458,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     module: 'sales',
     label: 'Sales · Access & Configuration',
     permissions: [
-      { key: 'sales.view', label: 'View Sales', description: 'Access the sales dashboard and view leads', module: 'sales' },
+      { key: 'sales.view', label: 'Full Sales Access (all tabs)', description: 'Master key that unlocks EVERY Sales tab at once. For per-tab control, leave this OFF and grant the individual "View …" permissions in the Sales groups above instead.', module: 'sales' },
       { key: 'sales.create', label: 'Create Sales Entities', description: 'Create new leads, opportunities, and deals', module: 'sales' },
       { key: 'sales.edit', label: 'Edit Sales Entities', description: 'Modify existing sales data and advance pipelines', module: 'sales' },
       { key: 'sales.delete', label: 'Delete Sales Entities', description: 'Permanently remove sales records', module: 'sales' },

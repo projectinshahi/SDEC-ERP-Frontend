@@ -95,11 +95,6 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
               {project.name}
             </h3>
             <div className="flex items-center gap-1.5 shrink-0">
-              {project.category && (
-                <span className={classNames('inline-flex items-center font-semibold tracking-wide text-[10px] px-2 py-0.5 rounded-md border whitespace-nowrap', projectCategoryBadgeClass(project.category))}>
-                  {project.category}
-                </span>
-              )}
               {project.is_archived ? (
                 <>
                   {onRestore && canDelete && (
@@ -230,10 +225,17 @@ export function ProjectCard({ project, onEdit, onArchive, onRestore, onDelete }:
             </div>
           </div>
 
-          {/* Last Updated Timestamp */}
-          <div className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-            <Calendar size={12} className="opacity-75" />
-            <span>{formatDate(project.updatedAt)}</span>
+          {/* Category badge stacked directly above the Last Updated timestamp */}
+          <div className="flex flex-col items-end gap-1.5">
+            {project.category && (
+              <span className={classNames('inline-flex items-center font-semibold tracking-wide text-[10px] px-2 py-0.5 rounded-md border whitespace-nowrap', projectCategoryBadgeClass(project.category))}>
+                {project.category}
+              </span>
+            )}
+            <div className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+              <Calendar size={12} className="opacity-75" />
+              <span>{formatDate(project.updatedAt)}</span>
+            </div>
           </div>
         </div>
       </div>
