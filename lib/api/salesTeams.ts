@@ -40,6 +40,12 @@ export async function archiveTeam(id: number): Promise<SalesTeam> {
   return res.data;
 }
 
+/** Restore an archived team to active (no recreate). Requires sales.team.manage. */
+export async function unarchiveTeam(id: number): Promise<SalesTeam> {
+  const res = await apiClient.post<SalesTeam>(`/sales/teams/${id}/unarchive`);
+  return res.data;
+}
+
 /**
  * Permanently delete a team. Requires the independent `sales.teams.delete`
  * permission (or sales.team.manage). The backend returns 409 if the team still

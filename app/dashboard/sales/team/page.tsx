@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Users, Plus, Archive, Pencil, ChevronRight, UserRound,
+  Users, Plus, Archive, ArchiveRestore, Pencil, ChevronRight, UserRound,
   Trophy, Medal, TrendingUp, LayoutGrid, BarChart3, Trash2,
 } from 'lucide-react';
 import { Breadcrumb } from '@/components/Breadcrumb';
@@ -26,7 +26,7 @@ import { TeamDetailModal } from '@/components/sales-execution/teams/TeamDetailMo
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
 import { usePermissions } from '@/lib/hooks/usePermissions';
-import { fetchTeams, archiveTeam, deleteTeam } from '@/lib/api/salesTeams';
+import { fetchTeams, archiveTeam, unarchiveTeam, deleteTeam } from '@/lib/api/salesTeams';
 import { fetchTeamPerformance } from '@/lib/api/salesDashboard';
 import { TeamPerformanceModal } from './TeamPerformanceModal';
 import { classNames } from '@/lib/utils';
@@ -140,6 +140,7 @@ function TeamsManagement() {
   const [editingTeam, setEditingTeam] = useState<SalesTeam | null>(null);
   const [detailTeamId, setDetailTeamId] = useState<number | null>(null);
   const [archivingId, setArchivingId] = useState<number | null>(null);
+  const [restoringId, setRestoringId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
@@ -186,6 +187,30 @@ function TeamsManagement() {
       toast(err instanceof Error ? err.message : 'Failed to archive team', 'error');
     } finally {
       setArchivingId(null);
+    }
+  };
+
+  // Restore an archived team to active. Flips the flag on the existing team —
+  // members, targets, tasks and history are preserved (no recreate). Reload so
+  // it moves from the archived set into the active list with no page refresh.
+  const handleUnarchive = async (team: SalesTeam) => {
+    const ok = await confirm({
+      title: 'Restore Team',
+      message: `Are you sure you want to restore "${team.name}"? The team and its members will become active again.`,
+      confirmLabel: 'Restore',
+      intent: 'primary',
+    });
+    if (!ok) return;
+
+    try {
+      setRestoringId(team.id);
+      await unarchiveTeam(team.id);
+      toast('Team restored', 'success');
+      await load();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Failed to restore team', 'error');
+    } finally {
+      setRestoringId(null);
     }
   };
 
@@ -365,6 +390,18 @@ function TeamsManagement() {
                           title="Archive team"
                         >
                           <Archive size={16} />
+                        </button>
+                      )}
+                      {canManage && team.archived && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnarchive(team)}
+                          disabled={restoringId === team.id}
+                          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-50 dark:hover:bg-emerald-950/30"
+                          aria-label={`Restore ${team.name}`}
+                          title="Restore team"
+                        >
+                          <ArchiveRestore size={16} />
                         </button>
                       )}
                       {canDeleteTeam && (
