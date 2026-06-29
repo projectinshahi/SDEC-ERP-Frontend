@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Clock, Download, Plus, Calendar } from 'lucide-react';
+import { Clock, Download, ClipboardEdit, Calendar } from 'lucide-react';
 
 interface AttendanceHeaderProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
+  onOpenEntry: () => void;
 }
 
-export function AttendanceHeader({ selectedDate, onDateChange }: AttendanceHeaderProps) {
+export function AttendanceHeader({ selectedDate, onDateChange, onOpenEntry }: AttendanceHeaderProps) {
   const formatted = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -54,10 +55,14 @@ export function AttendanceHeader({ selectedDate, onDateChange }: AttendanceHeade
           <span>Export</span>
         </button>
 
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition shadow-sm shadow-violet-500/20">
-          <Plus size={15} />
-          <span>Add Record</span>
+        <button
+          onClick={onOpenEntry}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-semibold transition shadow-sm shadow-violet-500/20"
+        >
+          <ClipboardEdit size={15} />
+          <span>Attendance Entry</span>
         </button>
+
       </div>
     </div>
   );

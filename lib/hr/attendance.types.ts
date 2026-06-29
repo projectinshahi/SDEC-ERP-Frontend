@@ -16,7 +16,15 @@ export interface AttendanceStage {
 
 // ─── Primary record ───────────────────────────────────────────────────────────
 
-export type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Half Day' | 'On Leave';
+export type AttendanceStatus =
+  | 'Present'
+  | 'Late'
+  | 'Late After Lunch'
+  | 'Full Day Leave'
+  | 'Half Day Leave'
+  | 'Absent'
+  | 'Half Day'
+  | 'On Leave';
 
 export interface AttendanceRecord {
   id: string;
@@ -33,6 +41,7 @@ export interface AttendanceRecord {
   status: AttendanceStatus;
   overtime: string | null;    // "0h 30m" | null
   note?: string;              // optional HR note
+  leaveType?: 'full_day' | 'half_day' | null;
 }
 
 // ─── Summary / stats ─────────────────────────────────────────────────────────

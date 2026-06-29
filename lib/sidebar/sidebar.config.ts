@@ -312,13 +312,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: 'hr',
     permission: ['hr.attendance.view', 'hr.view'],
   },
-  {
-    label: 'Leave',
-    href: '/dashboard/hr/leave',
-    icon: 'CalendarDays',
-    module: 'hr',
-    permission: ['hr.leave.view', 'hr.view'],
-  },
+
   {
     label: 'HIRING',
     isPartition: true,

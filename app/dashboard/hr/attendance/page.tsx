@@ -1,69 +1,122 @@
 'use client';
 
 import React from 'react';
-import { AttendanceHeader }     from '@/components/hr/attendance/AttendanceHeader';
-import { AttendanceStatsRow }   from '@/components/hr/attendance/AttendanceStats';
+import { Loader2, X } from 'lucide-react';
+import { AttendanceHeader } from '@/components/hr/attendance/AttendanceHeader';
+import { AttendanceStatsRow } from '@/components/hr/attendance/AttendanceStats';
 import { AttendanceFiltersBar } from '@/components/hr/attendance/AttendanceFilters';
-import { AttendanceTable }      from '@/components/hr/attendance/AttendanceTable';
-import { BreakTimeCard }        from '@/components/hr/attendance/BreakTimeCard';
-import { useAttendance }        from '@/lib/hr/useAttendance';
+import { AttendanceTable } from '@/components/hr/attendance/AttendanceTable';
+import { BreakTimeCard } from '@/components/hr/attendance/BreakTimeCard';
+import { AttendanceEntryModal } from '@/components/hr/attendance/AttendanceEntryModal';
+import { AttendanceRecord } from '@/lib/hr/attendance.types';
+import { useAttendance } from '@/lib/hr/useAttendance';
 
 export default function AttendancePage() {
   const {
-    records, stats, selectedDate, setSelectedDate,
-    selectedIds, activeDropdown, setActiveDropdown,
+    records, rawRecords, stats, employees,
+    isLoading, error,
+    isSaving, saveError, successMsg, handleFormSave,
+    selectedDate, setSelectedDate,
+    selectedIds,
     sortKey, sortDir, currentPage, setCurrentPage,
     filters, handleFilterChange, handleSort,
     filtered, paginated, ITEMS_PER_PAGE,
     toggleSelectRow, toggleSelectAll, handleRemove, handleBulkRemove,
+    /* modal */
+    isEntryModalOpen, editRecord, openEntryModal, openEditModal, closeEntryModal,
+    refresh,
   } = useAttendance();
+
+  /* ── Edit handler — finds the raw record by ID so we can pre-fill the form ─ */
+  const handleEdit = (record: AttendanceRecord) => {
+    const raw = rawRecords.find(r => String(r.id) === record.id) ?? null;
+    if (raw) {
+      openEditModal(raw);
+    } else {
+      openEntryModal();
+    }
+  };
+
+  /* ── Loading screen ──────────────────────────────────────────────────────── */
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
+      </div>
+    );
+  }
+
+  /* ── Error screen ────────────────────────────────────────────────────────── */
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500 mb-4">
+          <X size={22} />
+        </div>
+        <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200">Failed to load attendance</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs">{error}</p>
+        <button
+          onClick={refresh}
+          className="mt-4 px-4 py-2 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-7">
+      {/* Header — full width, contains "Attendance Entry" button */}
       <AttendanceHeader
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
+        onOpenEntry={openEntryModal}
       />
 
       <AttendanceStatsRow stats={stats} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6">
-        {/* Main content column */}
-        <div className="space-y-5 min-w-0">
-          <AttendanceFiltersBar
-            filters={filters}
-            onChange={handleFilterChange}
-            totalResults={records.length}
-            filteredResults={filtered.length}
-          />
-          <AttendanceTable
-            records={paginated}
-            selectedIds={selectedIds}
-            activeDropdownId={activeDropdown}
-            sortKey={sortKey}
-            sortDir={sortDir}
-            currentPage={currentPage}
-            itemsPerPage={ITEMS_PER_PAGE}
-            filteredTotal={filtered.length}
-            onSelectAll={() => toggleSelectAll(paginated.map(r => r.id))}
-            onSelectRow={toggleSelectRow}
-            onDropdownToggle={id => setActiveDropdown(prev => prev === id ? null : id)}
-            onDropdownClose={() => setActiveDropdown(null)}
-            onView={() => {}}
-            onEdit={() => {}}
-            onNote={() => {}}
-            onRemove={handleRemove}
-            onSort={handleSort}
-            onPageChange={setCurrentPage}
-            onBulkRemove={handleBulkRemove}
-          />
-        </div>
+      {/* Full-width content — no sidebar grid */}
+      <div className="space-y-5">
+        <AttendanceFiltersBar
+          filters={filters}
+          onChange={handleFilterChange}
+          totalResults={records.length}
+          filteredResults={filtered.length}
+        />
 
-        {/* Sidebar column */}
-        <div className="space-y-5">
-          <BreakTimeCard records={records} />
-        </div>
+        <AttendanceTable
+          records={paginated}
+          selectedIds={selectedIds}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          currentPage={currentPage}
+          itemsPerPage={ITEMS_PER_PAGE}
+          filteredTotal={filtered.length}
+          onSelectAll={() => toggleSelectAll(paginated.map(r => r.id))}
+          onSelectRow={toggleSelectRow}
+          onEdit={handleEdit}
+          onRemove={handleRemove}
+          onSort={handleSort}
+          onPageChange={setCurrentPage}
+          onBulkRemove={handleBulkRemove}
+        />
+
+        <BreakTimeCard records={records} />
       </div>
+
+      {/* Modal — rendered at page root level, outside the table */}
+      <AttendanceEntryModal
+        isOpen={isEntryModalOpen}
+        onClose={closeEntryModal}
+        employees={employees}
+        allRecords={rawRecords}
+        editRecord={editRecord}
+        isSaving={isSaving}
+        saveError={saveError}
+        successMsg={successMsg}
+        onSave={handleFormSave}
+      />
     </div>
   );
 }

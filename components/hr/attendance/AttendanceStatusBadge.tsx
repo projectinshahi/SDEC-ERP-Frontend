@@ -29,6 +29,24 @@ const BADGE_MAP: Record<
     text: 'text-amber-700 dark:text-amber-300',
     border: 'border-amber-100 dark:border-amber-900/30',
   },
+  'Late After Lunch': {
+    dot: 'bg-orange-500',
+    bg: 'bg-orange-50 dark:bg-orange-950/20',
+    text: 'text-orange-700 dark:text-orange-300',
+    border: 'border-orange-100 dark:border-orange-900/30',
+  },
+  'Full Day Leave': {
+    dot: 'bg-violet-500',
+    bg: 'bg-violet-50 dark:bg-violet-950/20',
+    text: 'text-violet-700 dark:text-violet-300',
+    border: 'border-violet-100 dark:border-violet-900/30',
+  },
+  'Half Day Leave': {
+    dot: 'bg-sky-500',
+    bg: 'bg-sky-50 dark:bg-sky-950/20',
+    text: 'text-sky-700 dark:text-sky-300',
+    border: 'border-sky-100 dark:border-sky-900/30',
+  },
   'Half Day': {
     dot: 'bg-blue-500',
     bg: 'bg-blue-50 dark:bg-blue-950/20',

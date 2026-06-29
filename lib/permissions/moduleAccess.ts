@@ -58,7 +58,7 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
     development: isAdmin || hasAny('project.', 'task.', 'sprints.', 'bugs.', 'blockers.', 'meetings.', 'tickets.'),
     sales: isAdmin || hasAny('sales.'),
     user: isAdmin || hasAny('user.', 'role.'),
-    hr: isAdmin || hasAny('hr.'),
+    hr: isAdmin || r === 'hradmin',
   };
 }
 
