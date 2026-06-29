@@ -446,6 +446,28 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   },
   {
     module: 'sales',
+    label: 'Sales · Tickets',
+    permissions: [
+      { key: 'sales.tickets.view', label: 'View Tickets', description: 'View the Sales Tickets workspace (own + assigned tickets) — controls the Tickets sidebar tab', module: 'sales' },
+      { key: 'sales.tickets.create', label: 'Create Tickets', description: 'Create new sales tickets', module: 'sales' },
+      { key: 'sales.tickets.edit', label: 'Edit Tickets', description: 'Update sales ticket status, priority and details', module: 'sales' },
+      { key: 'sales.tickets.delete', label: 'Delete Tickets', description: 'Permanently remove sales tickets', module: 'sales' },
+      { key: 'sales.tickets.assign', label: 'Assign Tickets', description: 'Assign or reassign a sales ticket to another user. Independent of editing.', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
+    label: 'Sales · Meetings',
+    permissions: [
+      { key: 'sales.meetings.view', label: 'View Meetings', description: 'View the Sales Meetings workspace (own + participating meetings) — controls the Meetings sidebar tab', module: 'sales' },
+      { key: 'sales.meetings.create', label: 'Create Meetings', description: 'Create new sales meetings', module: 'sales' },
+      { key: 'sales.meetings.edit', label: 'Edit Meetings', description: 'Update meeting details, participants and notes', module: 'sales' },
+      { key: 'sales.meetings.delete', label: 'Delete Meetings', description: 'Cancel / delete sales meetings', module: 'sales' },
+      { key: 'sales.meetings.schedule', label: 'Schedule Meetings', description: 'Schedule sales meetings (with Google Meet links). Independent grant for scheduling.', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
     label: 'Sales · Targets',
     permissions: [
       { key: 'sales.targets.view', label: 'View Targets', description: 'View revenue targets and achievement', module: 'sales' },

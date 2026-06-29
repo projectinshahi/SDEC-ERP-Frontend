@@ -163,6 +163,20 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     permission: ['sales.tasks.team.view', 'sales.team.manage'],
   },
   {
+    label: 'Tickets',
+    href: '/dashboard/sales/tickets',
+    icon: 'AlertTriangle',
+    module: 'sales',
+    permission: ['sales.tickets.view'],
+  },
+  {
+    label: 'Meetings',
+    href: '/dashboard/sales/meetings',
+    icon: 'CalendarDays',
+    module: 'sales',
+    permission: ['sales.meetings.view'],
+  },
+  {
     label: 'Approvals',
     href: '/dashboard/sales/approvals',
     icon: 'ShieldCheck',

@@ -119,6 +119,18 @@ export type PermissionKey =
   | 'sales.tasks.team.update'
   | 'sales.targets.view'
   | 'sales.reports.export'
+  // Sales Tickets (independent per-action keys; mirror the Development tickets module)
+  | 'sales.tickets.view'
+  | 'sales.tickets.create'
+  | 'sales.tickets.edit'
+  | 'sales.tickets.delete'
+  | 'sales.tickets.assign'
+  // Sales Meetings (independent per-action keys)
+  | 'sales.meetings.view'
+  | 'sales.meetings.create'
+  | 'sales.meetings.edit'
+  | 'sales.meetings.delete'
+  | 'sales.meetings.schedule'
   // HR Module
   | 'hr.view'
   | 'hr.dashboard.view'
