@@ -10,10 +10,12 @@ import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuar
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
-import { fetchDeals, fetchDealStages, moveDealStage, deleteDeal } from '@/lib/api/leadLifecycle';
+import { fetchDeals, fetchDealStages, moveDealStage, deleteDeal, createDealStage, updateDealStage, deleteDealStage, reorderDealStages } from '@/lib/api/leadLifecycle';
 import { fetchAssignableUsers } from '@/lib/api/leads';
 import { DealFormModal } from '@/components/deals/DealFormModal';
 import { DealPipelineBoard } from '@/components/deals/DealPipelineBoard';
+import { StageFormModal } from '@/components/sales-execution/pipeline/StageFormModal';
+import { DeleteStageModal } from '@/components/sales-execution/pipeline/DeleteStageModal';
 import { classNames } from '@/lib/utils';
 import type { Deal, DealStage } from '@/lib/types/leadLifecycle';
 import type { AssignableUser } from '@/lib/types/lead';
@@ -39,6 +41,10 @@ export default function SalesDealsPage() {
   const canAssignOwner = hasPermission('sales.assign');
   // Dragging a deal between stages = editing it (view-only users can't move).
   const canMove = canEdit;
+  // Pipeline COLUMN management — dedicated, independent permissions (mirrors the
+  // Lead pipeline): manage = add/rename/reorder, delete = remove a column.
+  const canManageStages = hasPermission('sales.deals.pipeline.manage');
+  const canDeleteStages = hasPermission('sales.deals.pipeline.delete');
 
   // Table ⇄ Pipeline view (both render the SAME live `deals` dataset).
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -47,6 +53,10 @@ export default function SalesDealsPage() {
   const [dealModalOpen, setDealModalOpen] = useState(false);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [dealModalReadOnly, setDealModalReadOnly] = useState(false);
+
+  // Stage-management modal state (Pipeline view).
+  const [stageModal, setStageModal] = useState<{ mode: 'add' | 'rename'; stage: DealStage | null } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DealStage | null>(null);
 
   // Initialise the view from the URL (?view=pipeline) — read on the client to
   // avoid a useSearchParams Suspense boundary / hydration mismatch. The former
@@ -80,14 +90,22 @@ export default function SalesDealsPage() {
     }
   }, [toast]);
 
+  const loadStages = useCallback(async () => {
+    try {
+      setStages(await fetchDealStages());
+    } catch {
+      setStages([]);
+    }
+  }, []);
+
   useEffect(() => {
     loadDeals();
   }, [loadDeals]);
 
   useEffect(() => {
-    fetchDealStages().then(setStages).catch(() => setStages([]));
+    loadStages();
     fetchAssignableUsers().then(setOwners).catch(() => setOwners([]));
-  }, []);
+  }, [loadStages]);
 
   const openNewDeal = () => {
     setActiveDeal(null);
@@ -166,6 +184,26 @@ export default function SalesDealsPage() {
     }
   };
 
+  // Reorder a stage one position left/right. Optimistic; reverts on failure.
+  const handleMoveStage = async (stage: DealStage, dir: -1 | 1) => {
+    const ordered = [...stages].sort((a, b) => a.orderIndex - b.orderIndex);
+    const idx = ordered.findIndex((s) => s.id === stage.id);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= ordered.length) return;
+    [ordered[idx], ordered[swap]] = [ordered[swap], ordered[idx]];
+
+    const previous = stages;
+    setStages(ordered.map((s, i) => ({ ...s, orderIndex: i + 1 })));
+    try {
+      setStages(await reorderDealStages(ordered.map((s) => s.id)));
+    } catch (error) {
+      setStages(previous);
+      toast(error instanceof Error ? error.message : 'Failed to reorder stages', 'error');
+    }
+  };
+
+  const existingStageNames = stages.map((s) => s.name);
+
   return (
     <PermissionPageGuard module="sales">
       <div className="space-y-6">
@@ -177,12 +215,20 @@ export default function SalesDealsPage() {
               { label: 'Deals', href: '/dashboard/sales/deals' },
             ]}
           />
-          {canCreate && (
-            <Button onClick={openNewDeal}>
-              <Plus className="w-4 h-4 mr-2" />
-              New Deal
-            </Button>
-          )}
+          <div className="flex gap-2 flex-wrap">
+            {viewMode === 'pipeline' && canManageStages && (
+              <Button variant="secondary" onClick={() => setStageModal({ mode: 'add', stage: null })}>
+                <Columns3 className="w-4 h-4 mr-2" />
+                Add Stage
+              </Button>
+            )}
+            {canCreate && (
+              <Button onClick={openNewDeal}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Deal
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* View switch — Table ⇄ Pipeline (same Deals dataset, no navigation). */}
@@ -316,6 +362,12 @@ export default function SalesDealsPage() {
               canMove={canMove}
               canDeleteDeal={canDelete}
               onDeleteDeal={handleDeleteDeal}
+              canManageStages={canManageStages}
+              canDeleteStages={canDeleteStages}
+              onAddStage={() => setStageModal({ mode: 'add', stage: null })}
+              onRenameStage={(stage) => setStageModal({ mode: 'rename', stage })}
+              onDeleteStage={(stage) => setDeleteTarget(stage)}
+              onMoveStage={handleMoveStage}
               onMove={handleMove}
             />
           )
@@ -332,6 +384,31 @@ export default function SalesDealsPage() {
         owners={owners}
         readOnly={dealModalReadOnly}
         canAssignOwner={canAssignOwner}
+      />
+
+      {/* Stage management modals (Pipeline view) — shared with the Lead pipeline. */}
+      {stageModal && (
+        <StageFormModal
+          isOpen
+          mode={stageModal.mode}
+          stage={stageModal.stage}
+          existingNames={existingStageNames}
+          noun="deal"
+          createStage={createDealStage}
+          renameStage={updateDealStage}
+          onClose={() => setStageModal(null)}
+          onSaved={loadStages}
+        />
+      )}
+      <DeleteStageModal
+        isOpen={!!deleteTarget}
+        stage={deleteTarget}
+        recordCount={deleteTarget ? deals.filter((d) => d.stage === deleteTarget.name).length : 0}
+        otherStages={stages.filter((s) => s.id !== deleteTarget?.id)}
+        noun="deal"
+        deleteStage={deleteDealStage}
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={() => { loadStages(); loadDeals(); }}
       />
     </PermissionPageGuard>
   );

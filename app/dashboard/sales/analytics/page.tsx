@@ -13,7 +13,7 @@ export default function LeadAnalyticsPage() {
   const canConfigureScoring = hasPermission('sales.scoring');
 
   return (
-    <PermissionPageGuard module="sales">
+    <PermissionPageGuard require="sales.leads.analytics">
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <Breadcrumb

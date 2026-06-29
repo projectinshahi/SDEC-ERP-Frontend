@@ -73,6 +73,41 @@ export async function moveDealStage(id: number | string, stage: string, orderInd
   return res.data;
 }
 
+// ── Deal pipeline stage (board column) management — mirrors the lead-stage API ──
+
+/** Create a custom deal pipeline stage (appended as the last column). */
+export async function createDealStage(name: string): Promise<DealStage> {
+  const res = await apiClient.post<DealStage>('/sales/deal-stages', { name });
+  return res.data;
+}
+
+/** Rename a deal stage — the backend cascades the new name to every deal in it. */
+export async function updateDealStage(id: number, name: string): Promise<DealStage> {
+  const res = await apiClient.put<DealStage>(`/sales/deal-stages/${id}`, { name });
+  return res.data;
+}
+
+/**
+ * Delete a deal stage. Deals in it are relocated to `reassignTo` (or the first
+ * remaining stage when omitted) so the pipeline never loses deals.
+ */
+export async function deleteDealStage(
+  id: number,
+  reassignTo?: string,
+): Promise<{ success: boolean; reassignedTo: string }> {
+  const res = await apiClient.delete<{ success: boolean; reassignedTo: string }>(
+    `/sales/deal-stages/${id}`,
+    reassignTo ? { data: { reassignTo } } : undefined,
+  );
+  return res.data;
+}
+
+/** Persist a new deal column order. Pass every stage id, in the desired order. */
+export async function reorderDealStages(orderedIds: number[]): Promise<DealStage[]> {
+  const res = await apiClient.put<DealStage[]>('/sales/deal-stages/reorder', { orderedIds });
+  return res.data;
+}
+
 /** Payload for creating / editing a deal (all optional except the create-required title/customerId/amount). */
 export interface DealFormPayload {
   title: string;

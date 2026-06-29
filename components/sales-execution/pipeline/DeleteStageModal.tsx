@@ -6,28 +6,38 @@ import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { SelectField } from '@/components/ui/SelectField';
 import { useToast } from '@/lib/hooks/useToast';
-import { deleteLeadStage } from '@/lib/api/leads';
-import type { LeadStage } from '@/lib/types/lead';
+
+/** Minimal stage shape shared by LeadStage and DealStage. */
+interface StageRef {
+  id: number;
+  name: string;
+}
 
 interface DeleteStageModalProps {
   isOpen: boolean;
-  stage: LeadStage | null;
-  /** Number of leads currently in this stage. */
-  leadCount: number;
-  /** Stages the leads can be relocated to (excludes the one being deleted). */
-  otherStages: LeadStage[];
+  stage: StageRef | null;
+  /** Number of records (leads/deals) currently in this stage. */
+  recordCount: number;
+  /** Stages the records can be relocated to (excludes the one being deleted). */
+  otherStages: StageRef[];
+  /** Noun for copy, e.g. 'lead' or 'deal'. */
+  noun?: string;
+  /** Injected delete so this one component serves both pipelines. */
+  deleteStage: (id: number, reassignTo?: string) => Promise<{ reassignedTo: string }>;
   onClose: () => void;
   /** Called after a successful delete so the board can reload. */
   onDeleted: () => void;
 }
 
 /**
- * Delete a pipeline stage. When the stage still holds leads, the user must pick
- * a destination stage so no lead is left orphaned — mirroring the backend, which
- * relocates leads inside the same transaction as the delete.
+ * Delete a pipeline stage — shared by the Lead AND Deal pipeline boards (single
+ * implementation; only the injected delete API + record noun differ). When the
+ * stage still holds records, the user MUST pick a destination stage so no record
+ * is orphaned — mirroring the backend, which relocates records inside the same
+ * transaction as the delete. No data is ever lost.
  */
 export function DeleteStageModal({
-  isOpen, stage, leadCount, otherStages, onClose, onDeleted,
+  isOpen, stage, recordCount, otherStages, noun = 'record', deleteStage, onClose, onDeleted,
 }: DeleteStageModalProps) {
   const { toast } = useToast();
   const [reassignTo, setReassignTo] = useState('');
@@ -48,11 +58,10 @@ export function DeleteStageModal({
     try {
       setIsDeleting(true);
       setError(null);
-      // Only send a destination when leads need relocating.
-      const res = await deleteLeadStage(stage.id, leadCount > 0 ? reassignTo : undefined);
+      const res = await deleteStage(stage.id, recordCount > 0 ? reassignTo : undefined);
       toast(
-        leadCount > 0
-          ? `Stage "${stage.name}" deleted · ${leadCount} lead${leadCount === 1 ? '' : 's'} moved to ${res.reassignedTo}`
+        recordCount > 0
+          ? `Stage "${stage.name}" deleted · ${recordCount} ${noun}${recordCount === 1 ? '' : 's'} moved to ${res.reassignedTo}`
           : `Stage "${stage.name}" deleted`,
         'success',
       );
@@ -66,24 +75,24 @@ export function DeleteStageModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Delete Stage" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Delete Pipeline Column" size="sm">
       <div className="space-y-4">
         <div className="flex items-start gap-3 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 text-sm">
           <AlertTriangle size={18} className="mt-0.5 shrink-0" />
           <span>
-            You are about to delete the <strong>{stage.name}</strong> stage. This cannot be undone.
+            You are about to delete the <strong>{stage.name}</strong> column. This cannot be undone.
           </span>
         </div>
 
-        {leadCount > 0 ? (
+        {recordCount > 0 ? (
           <>
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              This stage contains{' '}
-              <strong>{leadCount} lead{leadCount === 1 ? '' : 's'}</strong>. Choose where to move
-              {leadCount === 1 ? ' it' : ' them'} before deleting.
+              This column contains{' '}
+              <strong>{recordCount} {noun}{recordCount === 1 ? '' : 's'}</strong>. Please select another
+              column to move {recordCount === 1 ? 'it' : 'them'} before deleting.
             </p>
             <SelectField
-              label="Move leads to"
+              label="Move to"
               id="reassign-stage"
               icon={ArrowRight}
               value={reassignTo}
@@ -94,7 +103,7 @@ export function DeleteStageModal({
           </>
         ) : (
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            This stage has no leads, so it can be removed safely.
+            This column has no {noun}s, so it can be removed safely.
           </p>
         )}
 
@@ -111,10 +120,10 @@ export function DeleteStageModal({
             type="button"
             variant="danger"
             isLoading={isDeleting}
-            disabled={leadCount > 0 && !reassignTo}
+            disabled={recordCount > 0 && !reassignTo}
             onClick={handleDelete}
           >
-            Delete Stage
+            Delete
           </Button>
         </div>
       </div>

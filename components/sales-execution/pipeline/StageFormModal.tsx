@@ -6,27 +6,38 @@ import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/ui/InputField';
 import { useToast } from '@/lib/hooks/useToast';
-import { createLeadStage, updateLeadStage } from '@/lib/api/leads';
-import type { LeadStage } from '@/lib/types/lead';
+
+/** Minimal stage shape shared by LeadStage and DealStage. */
+interface StageRef {
+  id: number;
+  name: string;
+}
 
 interface StageFormModalProps {
   isOpen: boolean;
   mode: 'add' | 'rename';
   /** The stage being renamed (ignored in 'add' mode). */
-  stage?: LeadStage | null;
+  stage?: StageRef | null;
   /** Existing stage names, for instant client-side duplicate validation. */
   existingNames: string[];
+  /** Noun for copy, e.g. 'lead' or 'deal'. */
+  noun?: string;
+  /** Injected create/rename so this one component serves both pipelines. */
+  createStage: (name: string) => Promise<unknown>;
+  renameStage: (id: number, name: string) => Promise<unknown>;
   onClose: () => void;
   /** Called after a successful create/rename so the board can reload. */
   onSaved: () => void;
 }
 
 /**
- * Add or rename a pipeline stage. Validation (empty / spaces-only / duplicate)
- * runs client-side for instant feedback and is re-enforced by the backend.
+ * Add or rename a pipeline stage — shared by the Lead AND Deal pipeline boards
+ * (single implementation; the only difference is the injected create/rename API).
+ * Validation (empty / spaces-only / duplicate) runs client-side for instant
+ * feedback and is re-enforced by the backend.
  */
 export function StageFormModal({
-  isOpen, mode, stage, existingNames, onClose, onSaved,
+  isOpen, mode, stage, existingNames, noun = 'record', createStage, renameStage, onClose, onSaved,
 }: StageFormModalProps) {
   const { toast } = useToast();
   const [name, setName] = useState('');
@@ -42,7 +53,6 @@ export function StageFormModal({
   }, [isOpen, mode, stage]);
 
   const validate = (raw: string): string | null => {
-    // Collapse whitespace so a spaces-only name is treated as empty.
     const clean = raw.replace(/\s+/g, ' ').trim();
     if (!clean) return 'Stage name cannot be empty.';
     if (clean.length > 100) return 'Stage name must be 100 characters or fewer.';
@@ -67,23 +77,21 @@ export function StageFormModal({
       setIsSaving(true);
       setError(null);
       if (mode === 'add') {
-        await createLeadStage(clean);
+        await createStage(clean);
         toast(`Stage "${clean}" added`, 'success');
       } else if (stage) {
-        await updateLeadStage(stage.id, clean);
+        await renameStage(stage.id, clean);
         toast(`Stage renamed to "${clean}"`, 'success');
       }
       onSaved();
       onClose();
     } catch (err: any) {
-      // Surface the backend message inline (e.g. duplicate detected server-side).
       setError(err?.message || 'Failed to save stage. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Live validation message as the user types (after the first attempt).
   const liveError = error ?? (name.trim() ? validate(name) : null);
 
   return (
@@ -96,8 +104,8 @@ export function StageFormModal({
       <form onSubmit={handleSubmit} className="space-y-4">
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {mode === 'add'
-            ? 'Create a new column in the lead pipeline. The stage is saved to the database and appears as the last column.'
-            : 'Rename this pipeline stage. Every lead currently in it moves with the new name.'}
+            ? `Create a new column in the ${noun} pipeline. The stage is saved to the database and appears as the last column.`
+            : `Rename this pipeline stage. Every ${noun} currently in it moves with the new name.`}
         </p>
 
         <InputField

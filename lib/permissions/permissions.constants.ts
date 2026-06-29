@@ -375,6 +375,9 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'sales.leads.create', label: 'Create Leads', description: 'Add new leads', module: 'sales' },
       { key: 'sales.leads.edit', label: 'Edit Leads', description: 'Update lead details and status', module: 'sales' },
       { key: 'sales.leads.delete', label: 'Delete Leads', description: 'Remove leads', module: 'sales' },
+      { key: 'sales.leads.analytics', label: 'View Lead Analytics', description: 'Open the Lead Analytics dashboard (scores, conversion, interactions). Independent of View Leads.', module: 'sales' },
+      { key: 'sales.leads.pipeline.manage', label: 'Manage Lead Pipeline Columns', description: 'Add, rename, reorder the lead pipeline (Kanban) stage columns. Independent of editing leads.', module: 'sales' },
+      { key: 'sales.leads.pipeline.delete', label: 'Delete Lead Pipeline Columns', description: 'Delete lead pipeline stage columns (leads are safely moved to another stage first).', module: 'sales' },
     ],
   },
   {
@@ -385,6 +388,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'sales.deals.create', label: 'Create Deals', description: 'Add new deals', module: 'sales' },
       { key: 'sales.deals.edit', label: 'Edit Deals', description: 'Update deals and advance stages', module: 'sales' },
       { key: 'sales.deals.delete', label: 'Delete Deals', description: 'Remove deals', module: 'sales' },
+      { key: 'sales.deals.pipeline.manage', label: 'Manage Deal Pipeline Columns', description: 'Add, rename, reorder the deal pipeline (Kanban) stage columns. Independent of editing deals.', module: 'sales' },
+      { key: 'sales.deals.pipeline.delete', label: 'Delete Deal Pipeline Columns', description: 'Delete deal pipeline stage columns (deals are safely moved to another stage first).', module: 'sales' },
     ],
   },
   {

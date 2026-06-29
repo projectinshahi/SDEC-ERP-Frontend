@@ -12,12 +12,12 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/components/ConfirmDialogProvider';
 import { apiClient } from '@/lib/api/api-client';
-import { fetchLeadStages, fetchAssignableUsers, moveLeadStage, reorderLeadStages, deleteLead } from '@/lib/api/leads';
+import { fetchLeadStages, fetchAssignableUsers, moveLeadStage, reorderLeadStages, deleteLead, createLeadStage, updateLeadStage, deleteLeadStage } from '@/lib/api/leads';
 import { ImportLeadsModal } from '@/components/leads/ImportLeadsModal';
 import { CreateLeadModal } from '@/components/leads/CreateLeadModal';
 import { LeadPipelineBoard } from '@/components/leads/LeadPipelineBoard';
-import { StageFormModal } from '@/components/leads/StageFormModal';
-import { DeleteStageModal } from '@/components/leads/DeleteStageModal';
+import { StageFormModal } from '@/components/sales-execution/pipeline/StageFormModal';
+import { DeleteStageModal } from '@/components/sales-execution/pipeline/DeleteStageModal';
 import {
   LEAD_SOURCES,
   formatLeadSource,
@@ -91,12 +91,17 @@ export default function SalesLeadsPage() {
   // Granular Leads keys (the coarse→granular bridge in permission.utils means a
   // role holding the coarse sales.edit/delete/create still satisfies these).
   const canMove = hasPermission('sales.leads.edit');
-  const canManageStages = hasPermission('sales.leads.edit');
-  const canDeleteStages = hasPermission('sales.leads.delete');
+  // Pipeline COLUMN management uses its own dedicated, independent permissions
+  // (not lead edit/delete) — mirrors the Deals pipeline.
+  const canManageStages = hasPermission('sales.leads.pipeline.manage');
+  const canDeleteStages = hasPermission('sales.leads.pipeline.delete');
   // Lead deletion is its own permission, independent of view/create/edit. Drives
   // BOTH the table row action and the Kanban card delete control.
   const canDeleteLead = hasPermission('sales.leads.delete');
   const canCreate = hasPermission('sales.leads.create');
+  // Lead Analytics is gated by its own independent permission (the Analytics
+  // nav button must respect it just like the sidebar item + page guard).
+  const canViewAnalytics = hasPermission('sales.leads.analytics');
 
   // Initialise the view from the URL (?view=pipeline) — read on the client to
   // avoid a useSearchParams Suspense boundary / hydration mismatch. This also
@@ -293,12 +298,14 @@ export default function SalesLeadsPage() {
             ]}
           />
           <div className="flex gap-2 flex-wrap">
-            <Link href="/dashboard/sales/analytics">
-              <Button variant="secondary">
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Analytics
-              </Button>
-            </Link>
+            {canViewAnalytics && (
+              <Link href="/dashboard/sales/analytics">
+                <Button variant="secondary">
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Analytics
+                </Button>
+              </Link>
+            )}
             {canConfigureScoring && (
               <Link href="/dashboard/leads/scoring-settings">
                 <Button variant="secondary">
@@ -613,6 +620,9 @@ export default function SalesLeadsPage() {
           mode={stageModal.mode}
           stage={stageModal.stage}
           existingNames={existingStageNames}
+          noun="lead"
+          createStage={createLeadStage}
+          renameStage={updateLeadStage}
           onClose={() => setStageModal(null)}
           onSaved={loadStages}
         />
@@ -620,8 +630,10 @@ export default function SalesLeadsPage() {
       <DeleteStageModal
         isOpen={!!deleteTarget}
         stage={deleteTarget}
-        leadCount={deleteTarget ? leads.filter((l) => l.stage === deleteTarget.name).length : 0}
+        recordCount={deleteTarget ? leads.filter((l) => l.stage === deleteTarget.name).length : 0}
         otherStages={stages.filter((s) => s.id !== deleteTarget?.id)}
+        noun="lead"
+        deleteStage={deleteLeadStage}
         onClose={() => setDeleteTarget(null)}
         onDeleted={() => { loadStages(); fetchLeads(); }}
       />
