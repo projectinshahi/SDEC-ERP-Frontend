@@ -27,14 +27,89 @@ export default function AttendancePage() {
     refresh,
   } = useAttendance();
 
-  /* ── Edit handler — finds the raw record by ID so we can pre-fill the form ─ */
+  /* ── Edit handler — finds the raw record by ID or constructs a dummy one for virtual rows ─ */
   const handleEdit = (record: AttendanceRecord) => {
+    if (record.id.startsWith('virtual-')) {
+      const empId = Number(record.id.replace('virtual-', ''));
+      const emp = employees.find(e => e.id === empId);
+      if (emp) {
+        const dummy = {
+          id: 0,
+          employee_id: emp.id,
+          employee_code: emp.employee_code,
+          name: emp.name,
+          department: emp.department,
+          designation: emp.designation,
+          date: selectedDate,
+          check_in: null,
+          lunch_out: null,
+          lunch_in: null,
+          check_out: null,
+          work_hours: null,
+          status: 'absent',
+        };
+        openEditModal(dummy);
+      }
+      return;
+    }
+
     const raw = rawRecords.find(r => String(r.id) === record.id) ?? null;
     if (raw) {
       openEditModal(raw);
     } else {
       openEntryModal();
     }
+  };
+
+  /* ── CSV Export handler for selectedDate ────────────────────────────────── */
+  const handleExport = () => {
+    if (records.length === 0) {
+      alert('No records available to export.');
+      return;
+    }
+
+    const headers = [
+      'Employee Code',
+      'Name',
+      'Department',
+      'Designation',
+      'Date',
+      'Morning In',
+      'Lunch Out',
+      'Lunch In',
+      'Check Out',
+      'Total Hours',
+      'Status',
+      'HR Note'
+    ];
+
+    const csvRows = [
+      headers.join(','),
+      ...records.map(r => [
+        `"${r.employeeId.replace(/"/g, '""')}"`,
+        `"${r.name.replace(/"/g, '""')}"`,
+        `"${r.department.replace(/"/g, '""')}"`,
+        `"${r.role.replace(/"/g, '""')}"`,
+        `"${r.date}"`,
+        `"${(r.morningIn || '').replace(/"/g, '""')}"`,
+        `"${(r.lunchOut || '').replace(/"/g, '""')}"`,
+        `"${(r.lunchIn || '').replace(/"/g, '""')}"`,
+        `"${(r.checkOut || '').replace(/"/g, '""')}"`,
+        `"${(r.totalHours || '').replace(/"/g, '""')}"`,
+        `"${r.status}"`,
+        `"${(r.note || '').replace(/"/g, '""')}"`
+      ].join(','))
+    ];
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `attendance_export_${selectedDate}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   /* ── Loading screen ──────────────────────────────────────────────────────── */
@@ -72,6 +147,7 @@ export default function AttendancePage() {
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
         onOpenEntry={openEntryModal}
+        onExport={handleExport}
       />
 
       <AttendanceStatsRow stats={stats} />
