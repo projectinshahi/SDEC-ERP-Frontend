@@ -15,7 +15,7 @@ export const NotificationBell = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState('all');
-  
+
   const { fetchNotifications, markAsRead, markAllAsRead } = useNotificationsApi();
   const { user } = useAuth();
   const router = useRouter();
@@ -24,7 +24,7 @@ export const NotificationBell = () => {
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-    
+
     if (user && token) {
       loadNotifications();
 
@@ -85,7 +85,7 @@ export const NotificationBell = () => {
   const handleNotificationClick = async (notif: Notification) => {
     if (!notif.is_read) {
       await markAsRead(notif.id);
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
@@ -160,11 +160,10 @@ export const NotificationBell = () => {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`text-xs px-2.5 py-1.5 rounded-full whitespace-nowrap transition-colors ${
-                  filter === f
-                    ? 'bg-blue-100 text-blue-700 font-medium dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
-                }`}
+                className={`text-xs px-2.5 py-1.5 rounded-full whitespace-nowrap transition-colors ${filter === f
+                  ? 'bg-blue-100 text-blue-700 font-medium dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
+                  }`}
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
@@ -184,9 +183,8 @@ export const NotificationBell = () => {
                   <button
                     key={notif.id}
                     onClick={() => handleNotificationClick(notif)}
-                    className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex gap-3 relative ${
-                      !notif.is_read ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''
-                    }`}
+                    className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex gap-3 relative ${!notif.is_read ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''
+                      }`}
                   >
                     {!notif.is_read && (
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-blue-500 rounded-full" />

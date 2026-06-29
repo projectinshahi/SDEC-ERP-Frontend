@@ -122,6 +122,13 @@ export function visibleModules(user: ModuleAccessUser | null | undefined): AppMo
   return APP_MODULES.filter((m) => isModuleVisible(user, m));
 }
 
+  return {
+    master: isSuper,
+    development: isAdmin || hasAny('project.', 'task.', 'sprints.', 'bugs.', 'blockers.', 'meetings.', 'tickets.'),
+    sales: isAdmin || hasAny('sales.'),
+    user: isAdmin || hasAny('user.', 'role.'),
+    hr: isAdmin || r === 'hradmin',
+  };
 /**
  * The four top-level route-guard booleans, DERIVED from the registry so the
  * route guards and the Modules page can never drift. Behaviour is identical to

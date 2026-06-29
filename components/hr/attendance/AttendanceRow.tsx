@@ -43,9 +43,8 @@ export function AttendanceRow({ record, isSelected, onSelect, actionMenu }: Atte
 
   return (
     <tr
-      className={`hover:bg-gray-50/60 dark:hover:bg-gray-800/20 transition-colors ${
-        isSelected ? 'bg-violet-50/30 dark:bg-violet-950/10' : ''
-      }`}
+      className={`hover:bg-gray-50/60 dark:hover:bg-gray-800/20 transition-colors ${isSelected ? 'bg-violet-50/30 dark:bg-violet-950/10' : ''
+        }`}
     >
       {/* Checkbox */}
       <td className="py-4 px-5 text-center">

@@ -32,7 +32,7 @@ export function LeaveRequestsCard() {
           </div>
 
           <Link
-            href="/dashboard/hr/leave"
+            href="/dashboard/hr/attendance"
             className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:border-blue-300 hover:text-blue-600 transition"
           >
             View All
@@ -142,7 +142,7 @@ export function LeaveRequestsCard() {
       {/* Footer */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
         <Link
-          href="/dashboard/hr/leave"
+          href="/dashboard/hr/attendance"
           className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300 hover:text-blue-600 font-semibold text-sm transition"
         >
           <span>View All Leave Requests</span>

@@ -11,18 +11,13 @@ import { AttendanceEmptyState } from './AttendanceEmptyState';
 interface AttendanceTableProps {
   records: AttendanceRecord[];
   selectedIds: string[];
-  activeDropdownId: string | null;
   sortKey: AttendanceSortKey;
   sortDir: SortDirection;
   currentPage: number;
   itemsPerPage: number;
   onSelectAll: () => void;
   onSelectRow: (id: string) => void;
-  onDropdownToggle: (id: string) => void;
-  onDropdownClose: () => void;
-  onView: (record: AttendanceRecord) => void;
   onEdit: (record: AttendanceRecord) => void;
-  onNote: (record: AttendanceRecord) => void;
   onRemove: (id: string) => void;
   onSort: (key: AttendanceSortKey) => void;
   onPageChange: (page: number) => void;
@@ -63,18 +58,13 @@ function SortableHeader({
 export function AttendanceTable({
   records,
   selectedIds,
-  activeDropdownId,
   sortKey,
   sortDir,
   currentPage,
   itemsPerPage,
   onSelectAll,
   onSelectRow,
-  onDropdownToggle,
-  onDropdownClose,
-  onView,
   onEdit,
-  onNote,
   onRemove,
   onSort,
   onPageChange,
@@ -153,12 +143,7 @@ export function AttendanceTable({
                   actionMenu={
                     <AttendanceActionMenu
                       record={record}
-                      isOpen={activeDropdownId === record.id}
-                      onToggle={() => onDropdownToggle(record.id)}
-                      onClose={onDropdownClose}
-                      onView={onView}
                       onEdit={onEdit}
-                      onNote={onNote}
                       onRemove={onRemove}
                     />
                   }
@@ -198,12 +183,7 @@ export function AttendanceTable({
                   </div>
                   <AttendanceActionMenu
                     record={record}
-                    isOpen={activeDropdownId === record.id}
-                    onToggle={() => onDropdownToggle(record.id)}
-                    onClose={onDropdownClose}
-                    onView={onView}
                     onEdit={onEdit}
-                    onNote={onNote}
                     onRemove={onRemove}
                   />
                 </div>
@@ -258,11 +238,10 @@ export function AttendanceTable({
               <button
                 key={i}
                 onClick={() => onPageChange(i + 1)}
-                className={`w-8 h-8 rounded-xl text-xs font-bold transition ${
-                  currentPage === i + 1
-                    ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/20'
-                    : 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
+                className={`w-8 h-8 rounded-xl text-xs font-bold transition ${currentPage === i + 1
+                  ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/20'
+                  : 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
               >
                 {i + 1}
               </button>

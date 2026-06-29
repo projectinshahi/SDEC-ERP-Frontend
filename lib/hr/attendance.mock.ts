@@ -289,15 +289,31 @@ export const MOCK_ATTENDANCE_RECORDS: AttendanceRecord[] = [
 
 // ─── Derived Stats ────────────────────────────────────────────────────────────
 
-export function computeAttendanceStats(records: AttendanceRecord[]): AttendanceStats {
-  const total = records.length;
-  const present = records.filter(r => r.status === 'Present' || r.status === 'Half Day').length;
-  const absent = records.filter(r => r.status === 'Absent').length;
-  const late = records.filter(r => r.status === 'Late').length;
-  const onLeave = records.filter(r => r.status === 'On Leave').length;
+export function computeAttendanceStats(
+  records: AttendanceRecord[],
+  totalEmployees: number,
+  selectedDate: string
+): AttendanceStats {
+  const todayRecords = records.filter(r => r.date === selectedDate);
 
-  // Compute average hours from records that have totalHours
-  const hours = records
+  const present = todayRecords.filter(r =>
+    r.status === 'Present' ||
+    r.status === 'Late' ||
+    r.status === 'Late After Lunch'
+  ).length;
+
+  const onLeave = todayRecords.filter(r =>
+    r.status === 'Full Day Leave' ||
+    r.status === 'Half Day Leave' ||
+    r.status === 'On Leave' ||
+    r.status === 'Half Day'
+  ).length;
+
+  const absent = Math.max(0, totalEmployees - present - onLeave);
+  const late = todayRecords.filter(r => r.status === 'Late' || r.status === 'Late After Lunch').length;
+
+  // Compute average hours from records that have totalHours on selectedDate
+  const hours = todayRecords
     .filter(r => r.totalHours)
     .map(r => {
       const match = r.totalHours!.match(/(\d+)h\s*(\d+)m/);
@@ -308,7 +324,7 @@ export function computeAttendanceStats(records: AttendanceRecord[]): AttendanceS
   const avgHours = `${Math.floor(avgMinutes / 60)}h ${avgMinutes % 60}m`;
 
   return {
-    totalEmployees: total,
+    totalEmployees,
     presentToday: present,
     absentToday: absent,
     lateArrivals: late,
@@ -333,6 +349,7 @@ export const ATTENDANCE_STATUSES = [
   'Present',
   'Absent',
   'Late',
-  'Half Day',
-  'On Leave',
+  'Late After Lunch',
+  'Full Day Leave',
+  'Half Day Leave',
 ];

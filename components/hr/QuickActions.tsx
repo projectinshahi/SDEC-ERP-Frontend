@@ -33,7 +33,7 @@ const actions = [
   },
   {
     label: 'Apply Leave',
-    href: '/dashboard/hr/leave',
+    href: '/dashboard/hr/attendance',
     icon: Plane,
     variant:
       'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300',

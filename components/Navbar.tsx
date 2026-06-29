@@ -36,11 +36,6 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
           >
             <Menu size={20} className="text-gray-900 dark:text-gray-100" />
           </button>
-
-          {/* Center: App Title — links to the role-based module switcher (module-neutral) */}
-          <Link href="/modules" className="text-lg font-bold text-gray-900 dark:text-white hidden md:block whitespace-nowrap hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-            SHAHI SOLUTIONS
-          </Link>
         </div>
 
         {/* Center: Centered Search Bar */}
