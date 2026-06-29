@@ -283,6 +283,25 @@ export interface MasterSalesData {
   };
   topDeals: MasterTopDeal[];
   activities: ModuleActivity[];
+  /** Org-wide per-owner revenue target vs live closed revenue (active targets). */
+  leaderboard: MasterSalesLeaderboardRow[];
+  /** Per-source lead count + conversion% + won-deal revenue (source-agnostic). */
+  leadSourceAnalytics: MasterLeadSourceRow[];
+}
+
+export interface MasterSalesLeaderboardRow {
+  ownerId: number;
+  name: string;
+  target: number;
+  closedRevenue: number;
+  achievementPct: number;
+}
+
+export interface MasterLeadSourceRow {
+  source: string;
+  count: number;
+  conversionRate: number;
+  revenue: number;
 }
 
 export const fetchMasterSales = async (): Promise<MasterSalesData> => {

@@ -5,19 +5,14 @@ import {
   Target, TrendingUp, Wallet, Trophy, Users, UserPlus, Briefcase, Award,
   ArrowUpRight, DollarSign, Layers,
 } from 'lucide-react';
-import { fetchMasterSales } from '@/lib/api/masterModules';
+import { fetchMasterSales, type MasterSalesLeaderboardRow, type MasterLeadSourceRow } from '@/lib/api/masterModules';
 import {
   useMasterResource, ModuleStateScreen, ModuleHeader, StatCard, MiniStat,
-  ChartCard, DonutChart, CategoryBars, AreaTrend, ActivityFeed, EmptyState,
+  ChartCard, DonutChart, AreaTrend, ActivityFeed, EmptyState,
 } from '@/components/master/MasterKit';
 import { Card } from '@/components/Card';
 import { formatINR } from '@/lib/utils/currency';
-
-// Feature flag — temporarily hides selected infographic cards (Revenue Trend,
-// Pipeline by Stage / "Deal Pipeline", Lead Sources) while preserving their
-// full implementation (components, data wiring and chart configs stay intact).
-// Flip to `true` to reactivate these cards in a future release.
-const SHOW_FUTURE_ANALYTICS: boolean = false;
+import { formatLeadSource } from '@/lib/data/leadSources';
 
 export default function MasterSalesPage() {
   const { data, status, errorMsg, reload } = useMasterResource(fetchMasterSales);
@@ -26,7 +21,17 @@ export default function MasterSalesPage() {
     return <ModuleStateScreen status={status} errorMsg={errorMsg} onRetry={reload} />;
   }
 
-  const { stats, charts, topDeals, activities } = data;
+  const { stats, charts, topDeals, activities, leaderboard, leadSourceAnalytics } = data;
+
+  // Conversion funnel from live org-wide counts (each stage a subset of the prior).
+  const funnel = [
+    { label: 'Total Leads', value: stats.totalLeads },
+    { label: 'Opportunities', value: stats.totalOpportunities },
+    { label: 'Total Deals', value: stats.totalDeals },
+    { label: 'Won Deals', value: stats.wonDeals },
+  ];
+  const funnelMax = Math.max(...funnel.map((f) => f.value), 1);
+  const pipelineByValue = [...charts.dealStage].sort((a, b) => b.amount - a.amount);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -96,35 +101,27 @@ export default function MasterSalesPage() {
         <MiniStat label="Lost Deals" value={stats.lostDeals} icon={Target} tone="rose" />
       </div>
 
-      {/* Analytics */}
-      {/*
-        ── Future Release · temporarily hidden infographic cards ───────────────
-        Revenue Trend, Pipeline by Stage ("Deal Pipeline") and Lead Sources are
-        hidden for now but fully preserved — components, data wiring and chart
-        configs are untouched. To restore them, flip SHOW_FUTURE_ANALYTICS
-        (declared at the top of this file) to `true`; the original 3-column
-        layout returns automatically.
-      */}
-      {SHOW_FUTURE_ANALYTICS && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Future Release · Revenue Trend Card — spans 2 cols on large screens */}
-          <ChartCard title="Revenue Trend" subtitle="Won-deal value · last 6 months" className="lg:col-span-2">
-            <AreaTrend data={charts.revenueTrend} dataKey="revenue" color="#10b981" valueFormatter={formatINR} />
-          </ChartCard>
-          {/* Future Release · Deal Pipeline Card */}
-          <ChartCard title="Pipeline by Stage" subtitle="Deal count per stage">
-            <CategoryBars data={charts.dealStage} />
-          </ChartCard>
-          {/* Future Release · Lead Sources Card */}
-          <ChartCard title="Lead Sources" subtitle="Where leads originate">
-            <CategoryBars data={charts.leadSource} />
-          </ChartCard>
-        </div>
-      )}
+      {/* Revenue Tracker + Sales Funnel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ChartCard title="Revenue Tracker" subtitle="Won-deal value · last 6 months" className="lg:col-span-2">
+          <AreaTrend data={charts.revenueTrend} dataKey="revenue" color="#10b981" valueFormatter={formatINR} />
+        </ChartCard>
+        <ChartCard title="Sales Funnel" subtitle="Leads → Opportunities → Deals → Won">
+          <SalesFunnel rows={funnel} max={funnelMax} />
+        </ChartCard>
+      </div>
 
-      {/* Active analytics — reflowed into a balanced 2-column grid so no gaps
-          remain where the hidden cards used to sit. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Team Leaderboard + Lead Source Analytics — live, org-wide */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <TeamLeaderboard rows={leaderboard} className="lg:col-span-2" />
+        <LeadSourceAnalytics rows={leadSourceAnalytics} />
+      </div>
+
+      {/* Deal Pipeline by Value + Deal Status + Lead Stages */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ChartCard title="Deal Pipeline by Value" subtitle="Open + closed value per stage">
+          <PipelineByValue rows={pipelineByValue} />
+        </ChartCard>
         <ChartCard title="Deal Status" subtitle="Open · won · lost">
           <DonutChart data={charts.dealStatus} />
         </ChartCard>
@@ -184,5 +181,152 @@ export default function MasterSalesPage() {
         />
       </div>
     </div>
+  );
+}
+
+/* ──────────────────────────── Subcomponents ──────────────────────────────── */
+
+const FUNNEL_COLORS = ['#6366f1', '#3b82f6', '#0ea5e9', '#22c55e'];
+const PIPELINE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
+
+/** Centered tapering funnel — Leads → Opportunities → Deals → Won (live counts). */
+function SalesFunnel({ rows, max }: { rows: { label: string; value: number }[]; max: number }) {
+  return (
+    <div className="flex flex-col items-center gap-2 py-2">
+      {rows.map((row, i) => {
+        const widthPct = Math.max((row.value / max) * 100, 16);
+        return (
+          <div
+            key={row.label}
+            className="flex items-center justify-between rounded-md px-3 py-2.5 text-sm font-semibold text-white shadow-sm"
+            style={{ width: `${widthPct}%`, backgroundColor: FUNNEL_COLORS[i % FUNNEL_COLORS.length] }}
+            title={`${row.label}: ${row.value}`}
+          >
+            <span className="truncate">{row.label}</span>
+            <span className="ml-2 shrink-0 tabular-nums">{row.value}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Deal pipeline value per stage (amount), with the deal count as a chip. */
+function PipelineByValue({ rows }: { rows: { label: string; value: number; amount: number }[] }) {
+  if (rows.length === 0) return <EmptyState icon={Layers} title="No pipeline data" message="No deals in the pipeline yet." />;
+  return (
+    <div className="space-y-2.5 py-1">
+      {rows.map((s, i) => (
+        <div key={s.label} className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PIPELINE_COLORS[i % PIPELINE_COLORS.length] }} />
+            <span className="truncate text-sm text-slate-600 dark:text-slate-300 capitalize">{s.label}</span>
+            <span className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-1.5 text-[10px] font-bold text-slate-500">{s.value}</span>
+          </span>
+          <span className="shrink-0 text-sm font-bold tabular-nums text-slate-800 dark:text-slate-100">{formatINR(s.amount)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const LEAD_SOURCE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
+
+/**
+ * Team Leaderboard — per-salesperson assigned target vs live closed revenue and
+ * achievement %, with a progress indicator. Live org-wide data (active revenue
+ * targets), computed by the backend via the shared target engine.
+ */
+function TeamLeaderboard({ rows, className }: { rows: MasterSalesLeaderboardRow[]; className?: string }) {
+  return (
+    <Card className={`border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden ${className ?? ''}`}>
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-amber-500" /> Team Leaderboard
+        </h3>
+      </div>
+      {rows.length === 0 ? (
+        <EmptyState icon={Trophy} title="No active targets" message="Assign revenue targets to sales people to populate the leaderboard." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
+                <th className="py-3 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Sales Person</th>
+                <th className="py-3 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Target</th>
+                <th className="py-3 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Closed</th>
+                <th className="py-3 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider min-w-[160px]">Achievement</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {rows.map((r, i) => {
+                const pct = Math.min(Math.max(r.achievementPct, 0), 100);
+                const bar = r.achievementPct >= 100 ? 'bg-emerald-500' : r.achievementPct >= 60 ? 'bg-amber-500' : 'bg-rose-500';
+                const pctText = r.achievementPct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : r.achievementPct >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400';
+                return (
+                  <tr key={r.ownerId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="py-3 px-5">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`w-5 text-center text-xs font-bold ${i < 3 ? 'text-amber-500' : 'text-slate-400'}`}>{i + 1}</span>
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[160px]">{r.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-5 text-right text-sm text-slate-600 dark:text-slate-300 tabular-nums">{formatINR(r.target)}</td>
+                    <td className="py-3 px-5 text-right text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatINR(r.closedRevenue)}</td>
+                    <td className="py-3 px-5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                          <div className={`h-full rounded-full ${bar}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className={`text-xs font-bold tabular-nums w-10 text-right ${pctText}`}>{r.achievementPct}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * Lead Source Analytics — per-source lead count, conversion % and won-deal
+ * revenue. Source-agnostic (groups by whatever sources exist), so newly added
+ * Lead Sources appear automatically. Live org-wide data.
+ */
+function LeadSourceAnalytics({ rows }: { rows: MasterLeadSourceRow[] }) {
+  const maxCount = Math.max(...rows.map((r) => r.count), 1);
+  return (
+    <Card className="border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <Target className="w-5 h-5 text-blue-500" /> Lead Source Analytics
+        </h3>
+      </div>
+      {rows.length === 0 ? (
+        <EmptyState icon={Layers} title="No leads yet" message="Lead sources will appear here as leads are captured." />
+      ) : (
+        <div className="p-5 space-y-3.5 max-h-[360px] overflow-y-auto">
+          {rows.map((s, i) => (
+            <div key={s.source} className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">{formatLeadSource(s.source)}</span>
+                <span className="font-bold tabular-nums text-slate-900 dark:text-white">{s.count}</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div className="h-full rounded-full" style={{ width: `${(s.count / maxCount) * 100}%`, backgroundColor: LEAD_SOURCE_COLORS[i % LEAD_SOURCE_COLORS.length] }} />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>{s.conversionRate}% conv.</span>
+                {s.revenue > 0 && <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatINR(s.revenue)}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
