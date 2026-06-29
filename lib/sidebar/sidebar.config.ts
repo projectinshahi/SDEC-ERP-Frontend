@@ -120,7 +120,9 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/analytics',
     icon: 'BarChart3',
     module: 'sales',
-    permission: ['sales.dashboard.analytics', 'sales.reports.view'],
+    // Dedicated, independent permission — NOT implied by View Leads. Drives the
+    // sidebar item, the fromPath page guard and the Overview "Analytics" shortcut.
+    permission: ['sales.leads.analytics'],
   },
   {
     label: 'Team',

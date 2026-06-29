@@ -23,13 +23,19 @@ export async function fetchUserCount(): Promise<UserCountResponse> {
 }
 
 /**
- * Slim user list for assignee / member pickers across the app (tasks, blockers,
- * meetings, bugs, project members). Hits the authenticate-only `/users/picklist`
- * so it works for ANY logged-in user without the `user.read` directory
- * permission. Returns the same shape as the directory minus `createdAt`.
+ * Slim user list for assignee / member pickers across the Development module
+ * (tasks, blockers, meetings, bugs, project members). Hits the authenticate-only
+ * `/users/picklist` so it works for ANY logged-in user without the `user.read`
+ * directory permission. Returns the same shape as the directory minus `createdAt`.
+ *
+ * `module` (default 'development') asks the backend to return only users who
+ * belong to that module, so Sales/HR users never appear in dev pickers — the
+ * filtering is enforced server-side. Pass a different module key for future
+ * modules, or '' to get the unfiltered list.
  */
-export async function fetchUsers(): Promise<UserDbResponse[]> {
-  const response = await apiClient.get<UserDbResponse[]>('/users/picklist');
+export async function fetchUsers(module: string = 'development'): Promise<UserDbResponse[]> {
+  const qs = module ? `?module=${encodeURIComponent(module)}` : '';
+  const response = await apiClient.get<UserDbResponse[]>(`/users/picklist${qs}`);
   return response.data;
 }
 
