@@ -229,13 +229,19 @@ export default function SalesLeadsPage() {
     const target = leads.find((l) => l.id === leadId);
     if (!target || target.stage === targetStage) return;
 
+    // Pipeline stage drives Lead Status (single source of truth): optimistically
+    // update BOTH stage and status so the board, table and status badges reflect
+    // the move instantly, then reconcile with the authoritative server response.
     const previousStage = target.stage;
-    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: targetStage } : l)));
+    const previousStatus = target.status;
+    const nextStatus = targetStage.toLowerCase();
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: targetStage, status: nextStatus } : l)));
     try {
-      await moveLeadStage(leadId, targetStage);
+      const updated = await moveLeadStage(leadId, targetStage);
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: updated.stage, status: updated.status } : l)));
       toast(`Moved "${target.title}" to ${targetStage}`, 'success');
     } catch (error) {
-      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: previousStage } : l)));
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: previousStage, status: previousStatus } : l)));
       toast(error instanceof Error ? error.message : 'Failed to move lead', 'error');
     }
   };

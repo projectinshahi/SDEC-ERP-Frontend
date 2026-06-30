@@ -13,6 +13,9 @@ import {
   useMasterResource, ModuleStateScreen, ModuleHeader, StatCard, ChartCard,
   CategoryBars, ActivityFeed, EmptyState,
 } from '@/components/master/MasterKit';
+import { ExportPdfButton } from '@/components/master/ExportPdfButton';
+import type { DashboardReport } from '@/lib/pdf/dashboardPdf';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { Card, CardBody } from '@/components/Card';
 import { classNames } from '@/lib/utils';
 
@@ -112,6 +115,7 @@ export default function MasterProjectsPage() {
   // Poll every 60s so KPIs and project progress update live without a manual
   // refresh (silent background refresh — keeps current data on screen).
   const { data, status, errorMsg, reload, refresh, isRefreshing } = useMasterResource(fetchMasterProjects, { pollMs: 60000 });
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -149,6 +153,47 @@ export default function MasterProjectsPage() {
   const selectStatus = (value: string) =>
     setStatusFilter((cur) => (cur === value && value !== 'all' ? 'all' : value));
 
+  // PDF report — built from the live, already-loaded data and the CURRENT
+  // filters (so the export matches exactly what's on screen). Charts are
+  // auto-captured by ExportPdfButton.
+  const buildReport = (): DashboardReport => ({
+    dashboardName: 'Projects Dashboard',
+    fileBase: 'Projects_Dashboard',
+    generatedBy: user?.name || user?.email || 'Founder / Admin',
+    filters: [
+      { label: 'Search', value: searchQuery.trim() || 'None' },
+      { label: 'Status', value: statusFilter === 'all' ? 'All Statuses' : statusFilter },
+      { label: 'Category', value: categoryFilter === 'all' ? 'All Categories' : categoryFilter },
+    ],
+    kpis: [
+      { label: 'Total', value: stats.total },
+      { label: 'Active', value: stats.active },
+      { label: 'On Track', value: stats.onTrack },
+      { label: 'At Risk', value: stats.atRisk },
+      { label: 'Delayed', value: stats.delayed },
+      { label: 'On Hold', value: stats.onHold },
+      { label: 'Planning', value: stats.planning },
+      { label: 'Completed', value: stats.completed },
+      { label: 'Archived', value: stats.archived },
+      { label: 'Cancelled', value: stats.cancelled },
+    ],
+    tables: [
+      {
+        title: `Projects (${filtered.length} shown)`,
+        columns: ['#', 'Project', 'Client', 'Category', 'Progress', 'Status', 'Team', 'Due Date', 'Owner'],
+        rows: filtered.map((p, i) => [
+          i + 1, p.name, p.client || '—', p.category || '—', `${p.progress}%`,
+          derivedStatus(p).label, p.memberCount, fmtDate(p.endDate) || '—', p.owner?.name || 'Unassigned',
+        ]),
+      },
+      {
+        title: 'Recent Project Activity',
+        columns: ['Actor', 'Activity', 'When'],
+        rows: activities.map((a) => [a.actor, a.description, new Date(a.created_at).toLocaleString()]),
+      },
+    ],
+  });
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* SuperAdmin Projects is monitoring/management only — no project creation
@@ -157,6 +202,7 @@ export default function MasterProjectsPage() {
         icon={Briefcase}
         title="Project Dashboard"
         subtitle="Organization-wide view of every enterprise project, health metric, and resource allocation — live."
+        actions={<ExportPdfButton build={buildReport} />}
         onRefresh={refresh}
         refreshIconOnly
         hideLivePill

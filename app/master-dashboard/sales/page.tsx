@@ -10,12 +10,16 @@ import {
   useMasterResource, ModuleStateScreen, ModuleHeader, StatCard, MiniStat,
   ChartCard, DonutChart, AreaTrend, ActivityFeed, EmptyState,
 } from '@/components/master/MasterKit';
+import { ExportPdfButton } from '@/components/master/ExportPdfButton';
+import type { DashboardReport } from '@/lib/pdf/dashboardPdf';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { Card } from '@/components/Card';
 import { formatINR } from '@/lib/utils/currency';
 import { formatLeadSource } from '@/lib/data/leadSources';
 
 export default function MasterSalesPage() {
   const { data, status, errorMsg, reload } = useMasterResource(fetchMasterSales);
+  const { user } = useAuth();
 
   if (status !== 'ready' || !data) {
     return <ModuleStateScreen status={status} errorMsg={errorMsg} onRetry={reload} />;
@@ -33,6 +37,62 @@ export default function MasterSalesPage() {
   const funnelMax = Math.max(...funnel.map((f) => f.value), 1);
   const pipelineByValue = [...charts.dealStage].sort((a, b) => b.amount - a.amount);
 
+  // PDF report — built from the live, already-loaded org-wide sales data. Charts
+  // (Revenue Tracker, Deal Status, Lead Stages) are auto-captured; the div-based
+  // visuals (funnel, leaderboard, pipeline) are exported as tables.
+  const buildReport = (): DashboardReport => ({
+    dashboardName: 'Sales Dashboard',
+    fileBase: 'Sales_Dashboard',
+    generatedBy: user?.name || user?.email || 'Founder / Admin',
+    kpis: [
+      { label: 'Weighted Forecast', value: formatINR(stats.forecast) },
+      { label: 'Closed Won Revenue', value: formatINR(stats.revenue) },
+      { label: 'Open Pipeline Value', value: formatINR(stats.pipelineValue) },
+      { label: 'Conversion Rate', value: `${stats.conversionRate}%` },
+      { label: 'Total Leads', value: stats.totalLeads },
+      { label: 'New Leads', value: stats.newLeads },
+      { label: 'Open Deals', value: stats.openDeals },
+      { label: 'Deals Won', value: stats.wonDeals },
+      { label: 'Avg Deal Size', value: formatINR(stats.avgDealSize) },
+      { label: 'Converted Leads', value: stats.convertedLeads },
+      { label: 'Opportunities', value: stats.totalOpportunities },
+      { label: 'Total Deals', value: stats.totalDeals },
+      { label: 'Lost Deals', value: stats.lostDeals },
+    ],
+    tables: [
+      {
+        title: `Top Open Deals (${topDeals.length})`,
+        columns: ['Deal', 'Stage', 'Owner', 'Value'],
+        rows: topDeals.map((d) => [d.title, d.stage, d.owner?.name || 'Unassigned', formatINR(d.amount)]),
+      },
+      {
+        title: 'Team Leaderboard',
+        columns: ['#', 'Sales Person', 'Target', 'Closed', 'Achievement %'],
+        rows: leaderboard.map((r, i) => [i + 1, r.name, formatINR(r.target), formatINR(r.closedRevenue), `${r.achievementPct}%`]),
+      },
+      {
+        title: 'Lead Source Analytics',
+        columns: ['Source', 'Leads', 'Conversion %', 'Revenue'],
+        rows: leadSourceAnalytics.map((s) => [formatLeadSource(s.source), s.count, `${s.conversionRate}%`, s.revenue > 0 ? formatINR(s.revenue) : '—']),
+      },
+      {
+        title: 'Sales Funnel',
+        columns: ['Stage', 'Count'],
+        rows: funnel.map((f) => [f.label, f.value]),
+      },
+      {
+        title: 'Deal Pipeline by Value',
+        columns: ['Stage', 'Deals', 'Value'],
+        rows: pipelineByValue.map((s) => [s.label, s.value, formatINR(s.amount)]),
+      },
+      {
+        title: 'Recent Sales Activity',
+        columns: ['Actor', 'Activity', 'When'],
+        rows: activities.map((a) => [a.actor, a.description, new Date(a.created_at).toLocaleString()]),
+      },
+    ],
+  });
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <ModuleHeader
@@ -43,12 +103,10 @@ export default function MasterSalesPage() {
         shadow="shadow-emerald-500/20"
         onRefresh={reload}
         actions={
-          <Link
-            href="/dashboard/sales"
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2"
-          >
-            Enter Sales Module <ArrowUpRight size={16} />
-          </Link>
+          <>
+            <ExportPdfButton build={buildReport} />
+
+          </>
         }
       />
 

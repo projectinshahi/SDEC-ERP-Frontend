@@ -88,9 +88,38 @@ export default function SalesCommandCenterPage() {
     }
   }, [toast]);
 
+  // Silent background refresh (no skeleton, no toast) — keeps the Conversion
+  // Funnel + KPI cards in sync with the live Leads Pipeline. Last-good data
+  // stays on screen if a transient refresh fails.
+  const refresh = useCallback(async () => {
+    try {
+      setData(await fetchSalesDashboard());
+    } catch {
+      /* keep showing the last successful snapshot */
+    }
+  }, []);
+
   useEffect(() => {
     load();
   }, [load]);
+
+  // Live synchronization (no manual refresh): poll periodically, and refetch the
+  // moment the tab/window regains focus — so moving a lead between pipeline
+  // stages (drag-and-drop or status change) on the Leads page is reflected here
+  // automatically. Single source of truth stays the backend (the pipeline stage).
+  useEffect(() => {
+    const POLL_MS = 30000;
+    const id = setInterval(refresh, POLL_MS);
+    const onFocus = () => refresh();
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [refresh]);
 
   const dealsPie = data
     ? [
