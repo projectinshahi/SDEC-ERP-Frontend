@@ -12,6 +12,9 @@ import {
 import {
   fetchDeveloperPerformance, DeveloperPerformance, DeveloperRow,
 } from '@/lib/api/developerPerformance';
+import { ExportPdfButton } from '@/components/master/ExportPdfButton';
+import type { DashboardReport } from '@/lib/pdf/dashboardPdf';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { classNames } from '@/lib/utils';
 
 /**
@@ -155,9 +158,12 @@ function MetricCard({
 
 /* ----------------------------------------------------------------- the view */
 
-const DONUT_COLORS = ['#94a3b8', '#6366f1', '#f59e0b', '#a855f7', '#10b981'];
+// Palette cycles for an unlimited number of Kanban columns.
+const DONUT_COLORS = ['#94a3b8', '#6366f1', '#f59e0b', '#a855f7', '#10b981', '#3b82f6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9'];
+const donutColor = (i: number) => DONUT_COLORS[i % DONUT_COLORS.length];
 
 export function DeveloperPerformanceView() {
+  const { user } = useAuth();
   const [data, setData] = useState<DeveloperPerformance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -254,7 +260,7 @@ export function DeveloperPerformanceView() {
     );
   }
 
-  const { capacity, delivery, quality, timeline, daily, taskStatus, topPerformers, capacityForecast, velocityTrend } = data;
+  const { capacity, delivery, quality, timeline, daily, taskStatus, taskStatusColumns, topPerformers, capacityForecast, velocityTrend } = data;
 
   // When a date range is active but the period has no activity, show an explicit
   // empty state instead of a wall of zeros.
@@ -274,13 +280,12 @@ export function DeveloperPerformanceView() {
   // bar reflects the headline relative to recent peak (not an arbitrary /3 = 300pts).
   const maxWeekly = Math.max(1, ...velocityTrend.map((w) => Math.max(w.assigned, w.completed)));
 
-  const donutData = [
-    { name: 'To Do', value: taskStatus.todo },
-    { name: 'In Progress', value: taskStatus.inProgress },
-    { name: 'Review', value: taskStatus.review },
-    { name: 'QA', value: taskStatus.qa },
-    { name: 'Completed', value: taskStatus.completed },
-  ];
+  // Task Status Overview is fully DYNAMIC — one slice per live Kanban column
+  // (name + count aggregated across all projects), straight from the backend.
+  // No hardcoded statuses: new/renamed/deleted/reordered columns flow through
+  // automatically. Total + percentages derive from these same counts.
+  const donutData = (taskStatusColumns ?? []).map((c) => ({ name: c.label, value: c.count }));
+  const donutTotal = donutData.reduce((sum, d) => sum + d.value, 0);
 
   const cards: { title: string; icon: React.ReactNode; tone: string; metrics: Metric[] }[] = [
     {
@@ -347,6 +352,41 @@ export function DeveloperPerformanceView() {
     return <span className="text-xs font-semibold text-gray-400">{i + 1}</span>;
   };
 
+  // PDF report — built from the live, already-loaded data and the CURRENT
+  // filters (date range / view / search). Charts (Velocity Trend, Task Status)
+  // are auto-captured by ExportPdfButton.
+  const buildReport = (): DashboardReport => ({
+    dashboardName: 'Developer Performance',
+    fileBase: 'Developers_Dashboard',
+    generatedBy: user?.name || user?.email || 'Founder / Admin',
+    filters: [
+      { label: 'Period', value: periodLabel },
+      { label: 'View', value: view === 'all' ? 'All Developers' : view === 'active' ? 'Active' : 'Busy' },
+      { label: 'Search', value: search.trim() || 'None' },
+    ],
+    kpis: cards.flatMap((c) => c.metrics.map((m) => ({ label: m.label, value: m.sub ? `${m.value} ${m.sub}` : m.value }))),
+    tables: [
+      {
+        title: `Developers (${filteredDevs.length} shown)`,
+        columns: ['Developer', 'Role', 'Projects', 'Assigned', 'Completed', 'Today', 'Completion %', 'Pending', 'Bugs', 'Utilization %', 'Status'],
+        rows: filteredDevs.map((d) => [
+          d.name, d.role, d.activeProjects, d.assignedPoints, d.completedPoints,
+          d.todayPoints, `${d.completionRate}%`, d.tasksPending, d.bugs, `${d.utilization}%`, d.devStatus,
+        ]),
+      },
+      {
+        title: `Top Performers · ${periodLabel}`,
+        columns: ['#', 'Developer', 'Points'],
+        rows: topPerformers.map((p, i) => [i + 1, p.name, p.points]),
+      },
+      {
+        title: 'Capacity Forecast',
+        columns: ['Developer', 'Current Load %', 'Available %'],
+        rows: capacityForecast.map((c) => [c.name, `${c.currentLoad}%`, `${c.availableCapacity}%`]),
+      },
+    ],
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -358,6 +398,7 @@ export function DeveloperPerformanceView() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ExportPdfButton build={buildReport} />
           <div className="relative">
             <Calendar className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
             <select
@@ -636,9 +677,14 @@ export function DeveloperPerformanceView() {
           </ResponsiveContainer>
         </div>
 
-        {/* Task status overview */}
+        {/* Task status overview — dynamic Kanban columns */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h3 className="mb-4 text-base font-semibold text-gray-800">Task Status Overview</h3>
+          {donutData.length === 0 || donutTotal === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-400">
+              {donutData.length === 0 ? 'No Kanban columns found yet.' : 'No tasks in any column yet.'}
+            </p>
+          ) : (
           <div className="flex flex-col items-center gap-4 sm:flex-row">
             <div className="relative h-[200px] w-[200px] shrink-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -653,30 +699,31 @@ export function DeveloperPerformanceView() {
                     dataKey="value"
                   >
                     {donutData.map((_, i) => (
-                      <Cell key={i} fill={DONUT_COLORS[i]} />
+                      <Cell key={i} fill={donutColor(i)} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold text-gray-900">{taskStatus.total}</span>
+                <span className="text-2xl font-bold text-gray-900">{donutTotal}</span>
                 <span className="text-xs text-gray-400">Total Tasks</span>
               </div>
             </div>
-            <ul className="flex-1 space-y-2">
+            <ul className="flex-1 space-y-2 max-h-[220px] overflow-y-auto">
               {donutData.map((s, i) => (
                 <li key={s.name} className="flex items-center gap-2 text-sm">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[i] }} />
-                  <span className="flex-1 text-gray-600">{s.name}</span>
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: donutColor(i) }} />
+                  <span className="flex-1 text-gray-600 truncate" title={s.name}>{s.name}</span>
                   <span className="font-semibold text-gray-800">{s.value}</span>
                   <span className="w-10 text-right text-xs text-gray-400">
-                    {taskStatus.total > 0 ? Math.round(((s.value || 0) / taskStatus.total) * 100) : 0}%
+                    {donutTotal > 0 ? Math.round(((s.value || 0) / donutTotal) * 100) : 0}%
                   </span>
                 </li>
               ))}
             </ul>
           </div>
+          )}
         </div>
       </div>
       </>

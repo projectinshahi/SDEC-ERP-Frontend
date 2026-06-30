@@ -7,9 +7,12 @@ import {
 } from "recharts";
 import {
   Users, Clock, CalendarOff, Briefcase, UserPlus, MessageSquare,
-  DollarSign, Download, Search, SlidersHorizontal, ChevronDown,
+  DollarSign, Search, SlidersHorizontal, ChevronDown,
   Star, TrendingUp, BarChart2, Calendar, Filter, MoreHorizontal
 } from "lucide-react";
+import { ExportPdfButton } from "@/components/master/ExportPdfButton";
+import type { DashboardReport } from "@/lib/pdf/dashboardPdf";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -161,6 +164,49 @@ export default function HRPage() {
   const [activeTab, setActiveTab] = useState("Employees");
   const [deptFilter, setDeptFilter] = useState("All Departments");
   const [statusFilter, setStatusFilter] = useState("All Status");
+  const { user } = useAuth();
+
+  // PDF report — built from the dashboard's in-memory data. Charts (Recruitment
+  // Pipeline, Payroll Overview) are auto-captured; the custom attendance donut
+  // is exported as a table.
+  const buildReport = (): DashboardReport => ({
+    dashboardName: "HR Dashboard",
+    fileBase: "HR_Dashboard",
+    generatedBy: user?.name || user?.email || "Founder / Admin",
+    kpis: stats.map((s) => ({ label: s.label, value: s.value })),
+    tables: [
+      {
+        title: `Employees (${employees.length})`,
+        columns: ["No.", "Name", "Department", "Role", "Joined", "Salary", "Status", "Rating"],
+        rows: employees.map((e) => [e.id, e.name, e.dept, e.role, e.joined, e.salary, e.status, `${e.rating}/5`]),
+      },
+      {
+        title: "Today's Attendance",
+        columns: ["Status", "Count"],
+        rows: attendanceData.map((a) => [a.label, a.value]),
+      },
+      {
+        title: "Leave Requests",
+        columns: ["Employee", "Type", "Dates", "Status"],
+        rows: leaveRequests.map((l) => [l.name, l.type, l.dates, l.status]),
+      },
+      {
+        title: "Recruitment Pipeline",
+        columns: ["Stage", "Candidates"],
+        rows: recruitmentData.map((r) => [r.stage, r.count]),
+      },
+      {
+        title: "Recent Joiners",
+        columns: ["Name", "Role", "Joined"],
+        rows: recentJoiners.map((j) => [j.name, j.role, j.date]),
+      },
+      {
+        title: "Payroll Overview (₹ Lakh)",
+        columns: ["Month", "Amount (₹L)"],
+        rows: payrollData.map((p) => [p.month, p.amount]),
+      },
+    ],
+  });
 
   return (
     <div className="min-h-screen bg-[#f1f4f8] font-[Inter,sans-serif] text-[#1a1d23]">
@@ -173,9 +219,7 @@ export default function HRPage() {
             <p className="text-sm text-gray-500 mt-0.5">Manage your workforce, attendance, payroll and more — one place.</p>
           </div>
           <div className="flex gap-2">
-            <button className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium border border-gray-200 bg-white rounded-lg hover:bg-gray-50 transition-colors">
-              <Download className="w-4 h-4" /> Export
-            </button>
+            <ExportPdfButton build={buildReport} />
             <button className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium bg-[#2563eb] text-white rounded-lg hover:bg-blue-700 transition-colors">
               <UserPlus className="w-4 h-4" /> Add Employee
             </button>

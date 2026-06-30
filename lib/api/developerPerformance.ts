@@ -66,6 +66,13 @@ export interface DeveloperPerformance {
     completed: number;
     total: number;
   };
+  /**
+   * Dynamic Task Status Overview — one entry per live Kanban column NAME, with
+   * task counts aggregated across all projects (same-named columns merged),
+   * ordered by board column order. The widget renders these directly, so it
+   * adapts automatically when columns are added/renamed/deleted/reordered.
+   */
+  taskStatusColumns: { label: string; count: number }[];
   topPerformers: { id: number; name: string; points: number }[];
   capacityForecast: { id: number; name: string; currentLoad: number; availableCapacity: number }[];
   velocityTrend: { week: string; assigned: number; completed: number }[];
