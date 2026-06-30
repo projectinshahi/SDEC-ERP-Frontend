@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Phone, Mail, Globe, MessageCircle, Megaphone, Users, MoreHorizontal, AlertTriangle, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Phone, Mail, Globe, MessageCircle, Megaphone, Users, MoreHorizontal, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/ui/InputField';
@@ -13,7 +13,6 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { classNames } from '@/lib/utils';
 import {
   createManualLead,
-  checkLeadDuplicate,
   fetchAssignableUsers,
   type CreateLeadPayload,
 } from '@/lib/api/leads';
@@ -112,7 +111,6 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const [owners, setOwners] = useState<AssignableUser[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
-  const [duplicateWarning, setDuplicateWarning] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -131,24 +129,6 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
   const setAct = (key: keyof typeof action, value: string) =>
     setAction((a) => ({ ...a, [key]: value }));
-
-  // Live duplicate check once an email / phone is entered.
-  const handleContactBlur = async () => {
-    const email = form.email.trim().toLowerCase();
-    const phone = form.phone.trim();
-    if (!email && !phone) {
-      setDuplicateWarning('');
-      return;
-    }
-    try {
-      const res = await checkLeadDuplicate(email, phone);
-      setDuplicateWarning(
-        res.duplicate ? res.message ?? 'A lead already exists with this email or phone number.' : '',
-      );
-    } catch {
-      // Non-blocking: the server re-checks on submit anyway.
-    }
-  };
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
@@ -204,7 +184,6 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create lead';
       setSubmitError(message);
-      if (message.toLowerCase().includes('already exists')) setDuplicateWarning(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -218,13 +197,6 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
             {submitError}
           </div>
         )}
-        {duplicateWarning && (
-          <div className="px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            {duplicateWarning}
-          </div>
-        )}
-
         {/* Lead Information */}
         <section className="space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">Lead Information</h3>
@@ -274,12 +246,12 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
             />
             <InputField
               label="Email" id="lead-email" type="email" value={form.email}
-              onChange={(v) => set('email', v)} onBlur={handleContactBlur} error={errors.email}
+              onChange={(v) => set('email', v)} error={errors.email}
               placeholder="name@company.com"
             />
             <InputField
               label="Phone" id="lead-phone" value={form.phone}
-              onChange={(v) => set('phone', v)} onBlur={handleContactBlur} error={errors.phone}
+              onChange={(v) => set('phone', v)} error={errors.phone}
               placeholder="+1 555 123 4567"
             />
             <InputField label="Industry" id="lead-industry" value={form.industry} onChange={(v) => set('industry', v)} />
