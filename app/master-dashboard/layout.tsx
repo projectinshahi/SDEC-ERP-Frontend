@@ -67,6 +67,12 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     module: null,
   },
   {
+    label: 'Finance',
+    href: '/master-dashboard/finance',
+    icon: 'DollarSign',
+    module: null,
+  },
+  {
     label: 'Settings',
     href: '/master-dashboard/settings',
     icon: 'Settings',
