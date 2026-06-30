@@ -113,10 +113,14 @@ export type ImportValidity = 'valid' | 'invalid' | 'duplicate';
 export interface ImportPreviewRow {
   rowNumber: number;
   title: string;
+  name?: string;
   email: string;
   phone: string;
   company: string;
   source: string;
+  salesperson?: string;
+  expectedRevenue?: string;
+  stage?: string;
   validity: ImportValidity;
   error: string | null;
 }
@@ -143,6 +147,8 @@ export interface ImportResult {
 
 /** Target lead fields that import columns can be mapped to. */
 export type ImportFieldKey =
-  | 'title' | 'name' | 'company' | 'email' | 'phone' | 'website' | 'description' | 'source' | 'status' | 'priority';
+  | 'title' | 'name' | 'company' | 'email' | 'phone' | 'website' | 'description' | 'source' | 'status' | 'priority'
+  // CRM import template fields:
+  | 'salesperson' | 'expectedRevenue' | 'stage';
 
 export type ImportMapping = Partial<Record<ImportFieldKey, string>>;

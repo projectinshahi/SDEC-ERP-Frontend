@@ -316,14 +316,23 @@ export const fetchMasterSales = async (): Promise<MasterSalesData> => {
 export interface MasterMeeting {
   id: number;
   title: string;
+  /** Owning module: 'development' | 'sales' | future modules. */
+  module: string;
   meetingType: string;
   status: string;
   meetingDate: string;
   startTime: string;
   endTime: string;
   meetingLink: string | null;
+  description?: string | null;
   project: { id: string; name: string } | null;
   organizer: OwnerRef | null;
+  /** Resolved attendee names (for the Founder detail drawer). */
+  participants?: { id: number; name: string }[];
+  /** Linkage context — project name (dev) or lead/deal/customer/team (sales). */
+  context?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface MasterMeetingsData {
@@ -341,6 +350,8 @@ export interface MasterMeetingsData {
     trend: DistributionPoint[];
   };
   upcoming: MasterMeeting[];
+  /** Every meeting across every module (Founder-wide visibility). */
+  meetings: MasterMeeting[];
   activities: ModuleActivity[];
 }
 

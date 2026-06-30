@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Upload, FileText, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft } from 'lucide-react';
+import ExcelJS from 'exceljs';
+import { Upload, FileText, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, Download } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
@@ -15,18 +16,52 @@ interface ImportLeadsModalProps {
   onImported: () => void;
 }
 
-// Target fields the user can map source columns onto.
+// Target fields the user can map source columns onto. Order + labels mirror the
+// CRM import template exactly (Opportunity, Contact Name, Email, Salesperson,
+// Expected Revenue, Stage).
 const MAP_FIELDS: { key: ImportFieldKey; label: string }[] = [
-  { key: 'title', label: 'Lead Name' },
-  { key: 'company', label: 'Company' },
+  { key: 'title', label: 'Opportunity' },
+  { key: 'name', label: 'Contact Name' },
   { key: 'email', label: 'Email' },
-  { key: 'phone', label: 'Phone' },
-  { key: 'website', label: 'Website' },
-  { key: 'source', label: 'Source' },
-  { key: 'status', label: 'Status' },
-  { key: 'priority', label: 'Priority' },
-  { key: 'description', label: 'Notes / Description' },
+  { key: 'salesperson', label: 'Salesperson' },
+  { key: 'expectedRevenue', label: 'Expected Revenue' },
+  { key: 'stage', label: 'Stage' },
 ];
+
+// The downloadable sample template — exact column names and order required by
+// the CRM import format, plus one illustrative example row.
+const TEMPLATE_HEADERS = ['Opportunity', 'Contact Name', 'Email', 'Salesperson', 'Expected Revenue', 'Stage'];
+const TEMPLATE_SAMPLE = ['Acme Website Redesign', 'John Doe', 'john@acme.com', 'Priya Sharma', 250000, 'New'];
+
+/**
+ * Builds + downloads the sample import template as a real .xlsx file (matching
+ * the attached Excel format), generated client-side with ExcelJS. The header row
+ * uses the exact column names in the exact order the importer expects.
+ */
+async function downloadSampleTemplate() {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Leads');
+
+  sheet.columns = TEMPLATE_HEADERS.map((header) => ({
+    header,
+    width: header === 'Opportunity' ? 28 : header === 'Email' ? 24 : 18,
+  }));
+  sheet.getRow(1).font = { bold: true };
+  sheet.addRow(TEMPLATE_SAMPLE);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'leads-import-template.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 type Step = 'upload' | 'preview' | 'done';
 
@@ -36,7 +71,9 @@ const validityBadge: Record<string, 'success' | 'danger' | 'warning'> = {
 
 /**
  * Multi-step bulk import: upload → preview (counts + per-row validity + optional
- * column mapping) → import (detailed results). CSV/XLSX only.
+ * column mapping) → import (detailed results). CSV/XLSX only. Uses the CRM
+ * template format (Opportunity, Contact Name, Email, Salesperson, Expected
+ * Revenue, Stage); legacy column names are still auto-detected for back-compat.
  */
 export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsModalProps) {
   const { toast } = useToast();
@@ -59,6 +96,14 @@ export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsMod
   const handleClose = () => {
     reset();
     onClose();
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadSampleTemplate();
+    } catch (error: any) {
+      toast(error?.message || 'Failed to generate template', 'error');
+    }
   };
 
   const runPreview = useCallback(async (f: File, m: ImportMapping) => {
@@ -109,9 +154,39 @@ export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsMod
       {step === 'upload' && (
         <div className="space-y-4">
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Upload a CSV or XLSX file. After parsing you can map columns and preview validation
-            (valid / invalid / duplicate) before importing. Imported leads default to source <strong>Import</strong>.
+            Upload a CSV or XLSX file using the CRM import template. After parsing you can map
+            columns and preview validation before importing. Imported leads default to source{' '}
+            <strong>Import</strong>.
           </p>
+
+          {/* Expected format + template download */}
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Expected Import Format</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {TEMPLATE_HEADERS.map((h, i) => (
+                    <span
+                      key={h}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300"
+                    >
+                      <span className="text-gray-400">{i + 1}.</span> {h}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] text-gray-500">
+                  <strong>Opportunity</strong> and <strong>Contact Name</strong> are required. Email, Salesperson,
+                  Expected Revenue and Stage are optional.
+                </p>
+              </div>
+            </div>
+            <div className="mt-3">
+              <Button variant="secondary" size="sm" onClick={handleDownloadTemplate}>
+                <Download className="w-4 h-4 mr-1.5" /> Download Sample Template
+              </Button>
+            </div>
+          </div>
+
           <label className="flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl cursor-pointer hover:border-blue-400 transition-colors">
             <Upload className="w-8 h-8 text-gray-400" />
             <span className="text-sm text-gray-500">Click to choose a CSV or XLSX file</span>
@@ -135,11 +210,10 @@ export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsMod
           </div>
 
           {/* Counts */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Stat label="Total" value={preview.total} />
             <Stat label="Valid" value={preview.valid} tone="text-emerald-600" />
             <Stat label="Invalid" value={preview.invalid} tone="text-rose-600" />
-            <Stat label="Duplicates" value={preview.duplicate} tone="text-amber-600" />
           </div>
 
           {/* Field mapping */}
@@ -154,7 +228,7 @@ export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsMod
                     onChange={(e) => updateMapping(f.key, e.target.value)}
                     className="flex-1 px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
                   >
-                    <option value="">Auto ({f.key})</option>
+                    <option value="">Auto-detect</option>
                     {preview.headers.map((h) => (
                       <option key={h} value={h}>{h}</option>
                     ))}
@@ -170,8 +244,10 @@ export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsMod
               <thead className="bg-gray-50 dark:bg-gray-800/50 sticky top-0">
                 <tr>
                   <th className="px-3 py-2 font-medium text-gray-500">#</th>
-                  <th className="px-3 py-2 font-medium text-gray-500">Name</th>
-                  <th className="px-3 py-2 font-medium text-gray-500">Email</th>
+                  <th className="px-3 py-2 font-medium text-gray-500">Opportunity</th>
+                  <th className="px-3 py-2 font-medium text-gray-500">Contact</th>
+                  <th className="px-3 py-2 font-medium text-gray-500">Revenue</th>
+                  <th className="px-3 py-2 font-medium text-gray-500">Stage</th>
                   <th className="px-3 py-2 font-medium text-gray-500">Status</th>
                 </tr>
               </thead>
@@ -180,7 +256,9 @@ export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsMod
                   <tr key={r.rowNumber}>
                     <td className="px-3 py-1.5 text-gray-400">{r.rowNumber}</td>
                     <td className="px-3 py-1.5 text-gray-800 dark:text-gray-200">{r.title || '—'}</td>
-                    <td className="px-3 py-1.5 text-gray-500">{r.email || '—'}</td>
+                    <td className="px-3 py-1.5 text-gray-500">{r.name || '—'}</td>
+                    <td className="px-3 py-1.5 text-gray-500 tabular-nums">{r.expectedRevenue || '—'}</td>
+                    <td className="px-3 py-1.5 text-gray-500">{r.stage || '—'}</td>
                     <td className="px-3 py-1.5">
                       <Badge variant={validityBadge[r.validity]}>{r.validity}</Badge>
                       {r.error && <span className="ml-1 text-[10px] text-gray-400">{r.error}</span>}
@@ -210,10 +288,9 @@ export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsMod
             <CheckCircle2 className="w-10 h-10 text-emerald-500" />
             <p className="text-lg font-semibold text-gray-900 dark:text-white">Import complete</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Stat label="Imported" value={result.imported} tone="text-emerald-600" />
             <Stat label="Skipped" value={result.skipped} tone="text-rose-600" />
-            <Stat label="Duplicates" value={result.duplicates} tone="text-amber-600" />
             <Stat label="Flagged" value={result.flagged} tone="text-amber-600" />
           </div>
           {result.errors.length > 0 && (
