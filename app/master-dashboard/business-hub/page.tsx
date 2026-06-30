@@ -41,9 +41,9 @@ export default function MasterBusinessHubPage() {
       href: '/dashboard/blockers', metric: `${stats.tickets.open} open`, sub: `${stats.tickets.critical} critical`,
     },
     {
-      title: 'Meetings & Calendar', description: 'Schedule client syncs and standups.',
+      title: 'Meetings & Calendar', description: 'Unified meeting calendar across all modules.',
       icon: CalendarDays, color: 'bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800/50',
-      href: '/dashboard/meetings', metric: `${stats.meetings.upcoming} upcoming`, sub: `${stats.meetings.total} total`,
+      href: '/master-dashboard/meetings', metric: `${stats.meetings.upcoming} upcoming`, sub: `${stats.meetings.total} total`,
     },
     {
       title: 'Bug Tracking', description: 'Log and monitor software defects.',

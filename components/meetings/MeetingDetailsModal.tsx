@@ -144,7 +144,7 @@ export function MeetingDetailsModal({ isOpen, onClose, meeting, onUpdate, users 
                   </div>
                   <div className="mt-4 flex items-center gap-2">
                     <Video size={16} className="text-gray-400" />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <InlineEditableText
                         value={meeting.meetingLink || ''}
                         onSave={(val) => onUpdate?.(meeting.id, { meetingLink: val })}
@@ -152,6 +152,18 @@ export function MeetingDetailsModal({ isOpen, onClose, meeting, onUpdate, users 
                         placeholder="Add Meeting Link"
                       />
                     </div>
+                    {meeting.meetingLink ? (
+                      <a
+                        href={meeting.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm transition-colors shrink-0"
+                      >
+                        <Video size={13} /> Join Meeting
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic shrink-0">No Google Meet link</span>
+                    )}
                   </div>
                 </div>
               </Card>
