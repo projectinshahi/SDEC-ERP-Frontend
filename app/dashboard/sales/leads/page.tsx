@@ -49,11 +49,15 @@ interface SourceAnalytics {
 
 const STATUS_OPTIONS = ['new', 'contacted', 'qualified', 'won', 'lost', 'converted', 'disqualified', 'closed'];
 
-// Terminal statuses. A lead with one of these is hidden from the Kanban board
-// UNLESS it is sitting in a real column whose name matches the status (i.e. it
-// was dragged into a "Won"/"Lost" terminal column — see leadsByStage). It always
-// remains visible in the table, which shows every status.
-const INACTIVE_PIPELINE_STATUSES = ['disqualified', 'converted', 'won', 'lost', 'closed'];
+// Statuses that take a lead OFF the pipeline board: it left the pipeline via an
+// ACTION — `converted` (became a Deal) or `disqualified` (dead). These are the
+// only action-driven terminal states. `won`/`lost`/`closed` are NOT here: those
+// arise solely from dragging a card into a terminal column (moveLeadStage sets
+// status = stage.toLowerCase()), so such a lead must STAY visible in that column.
+// Keying on these two statuses (never on a stage⇄status match) keeps the board
+// correct even when a column is renamed/deleted, which cascades stage but not
+// status. Off-board leads remain visible in the table, which shows every status.
+const OFF_BOARD_STATUSES = ['converted', 'disqualified'];
 
 type ViewMode = 'table' | 'pipeline';
 
@@ -118,6 +122,10 @@ export default function SalesLeadsPage() {
   // Switch view + keep the URL in sync without a navigation/refetch.
   const changeView = (v: ViewMode) => {
     setViewMode(v);
+    // The Pipeline board must always show the WHOLE pipeline, so a status filter
+    // (a Table-view concept, applied server-side) is cleared on entering Pipeline
+    // — otherwise it would silently hide cards from the board.
+    if (v === 'pipeline') setStatusFilter('all');
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       if (v === 'pipeline') url.searchParams.set('view', 'pipeline');
@@ -217,24 +225,13 @@ export default function SalesLeadsPage() {
     const map: Record<string, Lead[]> = {};
     for (const s of stages) map[s.name] = [];
     for (const lead of leads) {
-      const status = (lead.status || '').toLowerCase();
-      // `map[lead.stage]` is an array iff the stage is a real (current) column.
-      const inRealColumn = !!map[lead.stage];
-      // A lead sits in the column named by its stage. It stays on the board while
-      // active; once its status is terminal it stays ONLY if it reached a terminal
-      // COLUMN by drag — i.e. its stage is a real column whose name equals the
-      // status ("Won"/"Lost"), which drag guarantees (moveLeadStage sets
-      // status = stage.toLowerCase()). Leads made terminal by an action
-      // (converted → deal, disqualified) keep their earlier stage, so their
-      // stage ≠ status and they correctly leave the board.
-      if (
-        INACTIVE_PIPELINE_STATUSES.includes(status) &&
-        !(inRealColumn && lead.stage.toLowerCase() === status)
-      ) {
-        continue;
-      }
-      // Active leads on an unknown/renamed stage fold into the first column.
-      const key = inRealColumn ? lead.stage : stages[0]?.name;
+      // Only converted/disqualified leads leave the board; everything else
+      // (including won/lost/closed reached by dropping into a terminal column)
+      // stays visible in the column named by its stage.
+      if (OFF_BOARD_STATUSES.includes((lead.status || '').toLowerCase())) continue;
+      // A lead on an unknown / renamed / deleted stage folds into the first
+      // column, so a card is never silently dropped from the board.
+      const key = map[lead.stage] ? lead.stage : stages[0]?.name;
       if (key) map[key].push(lead);
     }
     return map;
@@ -431,16 +428,21 @@ export default function SalesLeadsPage() {
                 <option key={s} value={s}>{formatLeadSource(s)} Leads</option>
               ))}
             </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            >
-              <option value="all">All Statuses</option>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-              ))}
-            </select>
+            {/* Status filter is a Table-view concept — the Pipeline groups by
+                stage and must show every status, so it's hidden there (and
+                cleared on entering Pipeline) to avoid silently hiding cards. */}
+            {viewMode === 'table' && (
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              >
+                <option value="all">All Statuses</option>
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                ))}
+              </select>
+            )}
             <Button variant="secondary" onClick={() => setShowAdvanced((v) => !v)}>
               <SlidersHorizontal className="w-4 h-4 mr-2" />
               {showAdvanced ? 'Hide Filters' : 'More Filters'}
