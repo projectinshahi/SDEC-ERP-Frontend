@@ -311,6 +311,173 @@ export const fetchMasterSales = async (): Promise<MasterSalesData> => {
   return res.data.data;
 };
 
+/* ──────────────────────────────── HR ───────────────────────────────────── */
+
+export interface MasterHREmployee {
+  id: number;
+  name: string;
+  department: string;
+  designation: string;
+  joinDate: string | null;
+  salary: number | null;
+  /** Raw employment_status (e.g. "active"); the page humanizes it for the badge. */
+  status: string;
+  /** Average appraisal final_rating (0–5); 0 when the employee has no rating. */
+  rating: number;
+}
+
+export interface MasterHRLeaveRequest {
+  id: number;
+  name: string;
+  leaveType: string;
+  startDate: string | null;
+  endDate: string | null;
+  status: string;
+}
+
+export interface MasterHRPipelineStage {
+  stage: string;
+  count: number;
+}
+
+export interface MasterHRRecentJoiner {
+  name: string;
+  designation: string;
+  joinDate: string | null;
+}
+
+export interface MasterHRPayrollPoint {
+  /** Short month label, e.g. "Jun". */
+  month: string;
+  /** Net-salary total for that month in ₹ lakh. */
+  amount: number;
+}
+
+export interface MasterHRData {
+  stats: {
+    totalEmployees: number;
+    lateToday: number;
+    onLeave: number;
+    openRoles: number;
+    newJoiners: number;
+    pendingInterviews: number;
+    /** Net-salary total paid this month, in rupees. */
+    payrollMonthTotal: number;
+  };
+  attendance: { present: number; late: number; leave: number; absent: number; total: number };
+  employees: MasterHREmployee[];
+  leaveRequests: MasterHRLeaveRequest[];
+  recruitmentPipeline: MasterHRPipelineStage[];
+  recentJoiners: MasterHRRecentJoiner[];
+  payroll: { trend: MasterHRPayrollPoint[]; currentMonthLabel: string; currentMonthTotal: number };
+}
+
+export const fetchMasterHR = async (): Promise<MasterHRData> => {
+  const res = await apiClient.get<{ success: boolean; data: MasterHRData }>(
+    '/master-dashboard/hr',
+  );
+  return res.data.data;
+};
+
+/* ── HR tabs (server-side filtered + searched) ───────────────────────────── */
+
+/** Drops undefined/empty/all params, then serializes to a query string. */
+function hrQuery(params: Record<string, string | undefined>): string {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    const val = (v ?? '').trim();
+    if (val && val.toLowerCase() !== 'all') sp.set(k, val);
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : '';
+}
+
+export type HRAttendanceFilters = { department?: string; status?: string; from?: string; to?: string; q?: string };
+export interface MasterHRAttendanceRow {
+  id: number; date: string | null; name: string; employeeCode: string | null;
+  department: string; designation: string; checkIn: string | null; checkOut: string | null;
+  workHours: number | null; status: string; leaveType: string | null;
+}
+export interface MasterHRAttendanceData {
+  summary: { present: number; late: number; leave: number; absent: number; total: number };
+  records: MasterHRAttendanceRow[];
+}
+export const fetchMasterHRAttendance = async (f: HRAttendanceFilters = {}): Promise<MasterHRAttendanceData> => {
+  const res = await apiClient.get<{ success: boolean; data: MasterHRAttendanceData }>(
+    `/master-dashboard/hr/attendance${hrQuery(f)}`,
+  );
+  return res.data.data;
+};
+
+export type HRLeaveFilters = { status?: string; type?: string; from?: string; to?: string; q?: string };
+export interface MasterHRLeaveRow {
+  id: number; name: string; employeeCode: string | null; department: string; leaveType: string;
+  startDate: string | null; endDate: string | null; days: number | null; status: string;
+  reason: string | null; approvedByName: string | null;
+}
+export interface MasterHRLeaveData {
+  counts: { pending: number; approved: number; rejected: number; total: number };
+  records: MasterHRLeaveRow[];
+}
+export const fetchMasterHRLeave = async (f: HRLeaveFilters = {}): Promise<MasterHRLeaveData> => {
+  const res = await apiClient.get<{ success: boolean; data: MasterHRLeaveData }>(
+    `/master-dashboard/hr/leave${hrQuery(f)}`,
+  );
+  return res.data.data;
+};
+
+export type HRRecruitmentFilters = { stage?: string; q?: string };
+export interface MasterHRCandidateRow {
+  id: number; fullName: string; email: string | null; phone: string | null; position: string;
+  stage: string; experience: string | null; expectedCtc: number | null; interviewDate: string | null;
+}
+export interface MasterHRRecruitmentData {
+  pipeline: MasterHRPipelineStage[];
+  counts: { openPositions: number; applicants: number; interview: number; selected: number; rejected: number };
+  records: MasterHRCandidateRow[];
+}
+export const fetchMasterHRRecruitment = async (f: HRRecruitmentFilters = {}): Promise<MasterHRRecruitmentData> => {
+  const res = await apiClient.get<{ success: boolean; data: MasterHRRecruitmentData }>(
+    `/master-dashboard/hr/recruitment${hrQuery(f)}`,
+  );
+  return res.data.data;
+};
+
+export type HRPayrollFilters = { status?: string; month?: string; q?: string };
+export interface MasterHRPayrollRow {
+  id: number; name: string; employeeCode: string | null; designation: string; month: string;
+  basicSalary: number; bonus: number; deduction: number; netSalary: number; status: string;
+}
+export interface MasterHRPayrollData {
+  summary: { paidCount: number; pendingCount: number; totalPaid: number; totalPending: number; total: number };
+  trend: MasterHRPayrollPoint[];
+  records: MasterHRPayrollRow[];
+}
+export const fetchMasterHRPayroll = async (f: HRPayrollFilters = {}): Promise<MasterHRPayrollData> => {
+  const res = await apiClient.get<{ success: boolean; data: MasterHRPayrollData }>(
+    `/master-dashboard/hr/payroll${hrQuery(f)}`,
+  );
+  return res.data.data;
+};
+
+export type HRPerformanceFilters = { department?: string; q?: string };
+export interface MasterHRPerformanceRow {
+  id: number; name: string; employeeCode: string | null; department: string; designation: string;
+  cycleTitle: string; status: string; rating: number;
+}
+export interface MasterHRPerformanceData {
+  stats: { avgRating: number; totalAppraisals: number; completed: number; pending: number; ratedEmployees: number };
+  topPerformers: { name: string; department: string; rating: number }[];
+  deptPerformance: { department: string; avgRating: number }[];
+  records: MasterHRPerformanceRow[];
+}
+export const fetchMasterHRPerformance = async (f: HRPerformanceFilters = {}): Promise<MasterHRPerformanceData> => {
+  const res = await apiClient.get<{ success: boolean; data: MasterHRPerformanceData }>(
+    `/master-dashboard/hr/performance${hrQuery(f)}`,
+  );
+  return res.data.data;
+};
+
 /* ──────────────────────────── Meetings ─────────────────────────────────── */
 
 export interface MasterMeeting {
