@@ -31,6 +31,7 @@ import { PerformanceSummary } from '@/components/hr/dashboard/PerformanceSummary
 import { DocumentsOverview } from '@/components/hr/dashboard/DocumentsOverview';
 import { BirthdaysAnniversaries } from '@/components/hr/dashboard/BirthdaysAnniversaries';
 import { QuickActionsCompact } from '@/components/hr/dashboard/QuickActionsCompact';
+import { PendingLeaveRequests } from '@/components/hr/dashboard/PendingLeaveRequests';
 
 // API helpers
 import {
@@ -364,9 +365,10 @@ export default function HRDashboard() {
         <PerformanceSummary stats={performanceStats ?? undefined} loading={loading} />
       </div>
 
-      {/* ── Row 4: Documents · Anniversaries · Quick Actions ─────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 print:hidden" style={{ minHeight: 280 }}>
+      {/* ── Row 4: Documents · Anniversaries · Leaves · Quick Actions ─────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 print:hidden" style={{ minHeight: 280 }}>
         <DocumentsOverview loading={loading} />
+        <PendingLeaveRequests />
         <BirthdaysAnniversaries loading={loading} />
         <QuickActionsCompact />
       </div>

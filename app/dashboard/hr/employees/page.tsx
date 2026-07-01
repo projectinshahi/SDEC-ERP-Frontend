@@ -97,10 +97,12 @@ export default function EmployeesPage() {
   const [formRole, setFormRole]                   = useState('');           // system role
 
   const [formDesignation, setFormDesignation]     = useState('');           // job title
+  const [formDepartment, setFormDepartment]       = useState('');           // explicit department
   const [formPhone, setFormPhone]                 = useState('');
   const [formSalary, setFormSalary]               = useState('');
   const [formStatus, setFormStatus]               = useState<DisplayStatus>('Active');
   const [formJoinDate, setFormJoinDate]           = useState('');
+  const [formDateOfBirth, setFormDateOfBirth]     = useState('');
 
   const itemsPerPage = 8;
 
@@ -195,10 +197,12 @@ export default function EmployeesPage() {
     setFormEmail('');
     setFormRole(roles[0]?.name ?? '');
     setFormDesignation('');
+    setFormDepartment('');
     setFormPhone('');
     setFormSalary('');
     setFormStatus('Active');
     setFormJoinDate(new Date().toISOString().split('T')[0]);
+    setFormDateOfBirth('');
     setSaveError(null);
   };
 
@@ -215,10 +219,12 @@ export default function EmployeesPage() {
     setFormEmail(emp.email ?? '');
     setFormRole(emp.role ?? roles[0]?.name ?? '');
     setFormDesignation(emp.designation ?? '');
+    setFormDepartment(emp.department ?? '');
     setFormPhone(emp.phone ?? '');
     setFormSalary(emp.salary != null ? String(emp.salary) : '');
     setFormStatus(toDisplay(emp.employment_status));
     setFormJoinDate(formatDate(emp.join_date));
+    setFormDateOfBirth(emp.date_of_birth ? formatDate(emp.date_of_birth) : '');
     setSaveError(null);
     setIsDrawerOpen(true);
   };
@@ -226,7 +232,10 @@ export default function EmployeesPage() {
   /* ── CRUD handlers ──────────────────────────────────────────────────────── */
   const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName || !formEmail || !formDesignation || !formJoinDate) return;
+    if (!formName || !formEmail || !formDesignation || !formDepartment || !formJoinDate || (!isEditMode && !formDateOfBirth)) {
+      setSaveError('Please fill in all required fields (Name, Email, Designation, Department, Onboarding Date, and Date of Birth).');
+      return;
+    }
 
     setIsSaving(true);
     setSaveError(null);
@@ -237,9 +246,11 @@ export default function EmployeesPage() {
           name:              formName,
           email:             formEmail,
           role:              formRole,
+          department:        formDepartment,
           designation:       formDesignation,
           phone:             formPhone || undefined,
           salary:            formSalary ? Number(formSalary) : undefined,
+          date_of_birth:     formDateOfBirth || undefined,
           employment_status: toDbStatus(formStatus),
         });
       } else {
@@ -247,10 +258,12 @@ export default function EmployeesPage() {
           name:              formName,
           email:             formEmail,
           role:              formRole,
+          department:        formDepartment,
           designation:       formDesignation,
           phone:             formPhone || undefined,
           salary:            formSalary ? Number(formSalary) : undefined,
           join_date:         formJoinDate,
+          date_of_birth:     formDateOfBirth,
           employment_status: toDbStatus(formStatus),
         });
       }
@@ -737,6 +750,30 @@ export default function EmployeesPage() {
                       </div>
                     </div>
 
+                    {/* Department */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Department <span className="text-rose-500">*</span></label>
+                      <div className="relative">
+                        <Briefcase size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <select
+                          required
+                          value={formDepartment}
+                          onChange={(e) => setFormDepartment(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100 appearance-none"
+                        >
+                          <option value="">Select department…</option>
+                          <option value="Sales">Sales</option>
+                          <option value="Development">Development</option>
+                          <option value="HR">HR</option>
+                          <option value="Finance">Finance</option>
+                          <option value="Marketing">Marketing</option>
+                          <option value="Operations">Operations</option>
+                          <option value="Support">Support</option>
+                          <option value="Management">Management</option>
+                        </select>
+                      </div>
+                    </div>
+
                     {/* Designation */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Designation</label>
@@ -809,6 +846,20 @@ export default function EmployeesPage() {
                             required
                             value={formJoinDate}
                             onChange={(e) => setFormJoinDate(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Date of Birth {!isEditMode && <span className="text-rose-500">*</span>}</label>
+                        <div className="relative">
+                          <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="date"
+                            required={!isEditMode}
+                            value={formDateOfBirth}
+                            onChange={(e) => setFormDateOfBirth(e.target.value)}
                             className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
                           />
                         </div>
@@ -909,6 +960,12 @@ export default function EmployeesPage() {
                     <span className="text-[10px] uppercase font-bold text-gray-450 dark:text-gray-500 tracking-wider">Onboarding Date</span>
                     <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{formatDate(selectedEmployee.join_date)}</p>
                   </div>
+                  {selectedEmployee.date_of_birth && (
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-gray-450 dark:text-gray-500 tracking-wider">Date of Birth</span>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{formatDate(selectedEmployee.date_of_birth)}</p>
+                    </div>
+                  )}
                   {selectedEmployee.phone && (
                     <div className="space-y-1">
                       <span className="text-[10px] uppercase font-bold text-gray-450 dark:text-gray-500 tracking-wider">Phone</span>

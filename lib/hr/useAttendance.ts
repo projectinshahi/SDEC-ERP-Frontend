@@ -189,7 +189,6 @@ export function useAttendance() {
         lunch_out: values.lunchOut ? to12h(values.lunchOut) : null,
         lunch_in: values.lunchIn ? to12h(values.lunchIn) : null,
         check_out: values.checkOut ? to12h(values.checkOut) : null,
-        leave_type: values.leaveType,
         notes: values.notes,
       });
       setSuccessMsg('Attendance saved successfully');

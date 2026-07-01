@@ -46,7 +46,6 @@ export interface AttendanceFormValues {
   lunchOut: string;
   lunchIn: string;
   checkOut: string;
-  leaveType?: 'full_day' | 'half_day' | null;
   notes?: string;
 }
 
@@ -112,7 +111,6 @@ export function AttendanceFormPanel({
   const [lunchOut, setLunchOut] = useState('');
   const [lunchIn, setLunchIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
-  const [leaveType, setLeaveType] = useState<'full_day' | 'half_day' | null>(null);
   const [notes, setNotes] = useState('');
 
   const setters = { checkIn: setCheckIn, lunchOut: setLunchOut, lunchIn: setLunchIn, checkOut: setCheckOut };
@@ -142,11 +140,6 @@ export function AttendanceFormPanel({
       setLunchIn(to24hLocal(editRecord.lunch_in));
       setCheckOut(to24hLocal(editRecord.check_out));
       setNotes(editRecord.notes ?? '');
-      if (editRecord.leave_type === 'full_day' || editRecord.leave_type === 'half_day') {
-        setLeaveType(editRecord.leave_type);
-      } else {
-        setLeaveType(null);
-      }
       return;
     }
     const existing = allRecords.find(
@@ -157,11 +150,6 @@ export function AttendanceFormPanel({
     setLunchIn(to24h(existing?.lunch_in));
     setCheckOut(to24h(existing?.check_out));
     setNotes(existing?.notes ?? '');
-    if (existing?.leave_type === 'full_day' || existing?.leave_type === 'half_day') {
-      setLeaveType(existing.leave_type);
-    } else {
-      setLeaveType(null);
-    }
   }, [employeeId, date, allRecords, editRecord]);
 
   /* Seed first employee once list loads */
@@ -174,11 +162,11 @@ export function AttendanceFormPanel({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!employeeId || !date) return;
-    onSave({ employeeId, date, checkIn, lunchOut, lunchIn, checkOut, leaveType, notes });
+    onSave({ employeeId, date, checkIn, lunchOut, lunchIn, checkOut, notes });
   };
 
   const labelCls = 'flex items-center gap-1.5 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider';
-  const isTimeDisabled = !!leaveType;
+  const isTimeDisabled = false;
 
   const formBody = (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -254,62 +242,6 @@ export function AttendanceFormPanel({
               rows={2}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition resize-none"
             />
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-gray-100 dark:border-gray-850" />
-
-          {/* Leave Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className={labelCls}>Leave Section</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (leaveType) {
-                    setLeaveType(null);
-                  } else {
-                    setLeaveType('full_day');
-                  }
-                }}
-                className={`text-xs font-semibold px-2.5 py-1 rounded-lg border transition ${leaveType
-                    ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30 hover:bg-rose-100/60'
-                    : 'bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30 hover:bg-blue-100/60'
-                  }`}
-              >
-                {leaveType ? 'Cancel Leave' : 'Mark Leave'}
-              </button>
-            </div>
-
-            {leaveType && (
-              <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-850 space-y-2.5">
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium leading-normal">
-                  Select leave type. Attendance time fields will be disabled.
-                </p>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="leave_type"
-                      checked={leaveType === 'full_day'}
-                      onChange={() => setLeaveType('full_day')}
-                      className="rounded-full border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                    />
-                    Full Day Leave
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="leave_type"
-                      checked={leaveType === 'half_day'}
-                      onChange={() => setLeaveType('half_day')}
-                      className="rounded-full border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                    />
-                    Half Day Leave
-                  </label>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Success */}

@@ -1,26 +1,55 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Paperclip, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Paperclip, AlertCircle, ChevronDown } from 'lucide-react';
 import { Card, CardHeader, CardBody, CardFooter } from '@/components/Card';
 import { LEAVE_TYPES } from '@/lib/hr/leave.mock';
+import { ApiEmployee } from '@/lib/api/hr';
 
 interface ApplyLeaveModalProps {
   isOpen: boolean;
   onClose: () => void;
+  employees: ApiEmployee[];
+  isSelfService?: boolean;
+  currentEmployeeId?: number;
+  isSaving?: boolean;
   onSubmit: (data: {
+    employeeId: number;
     leaveType: string;
     startDate: string;
     endDate: string;
+    halfDay: boolean;
     reason: string;
     attachmentName?: string;
   }) => void;
 }
 
-export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalProps) {
+export function ApplyLeaveModal({
+  isOpen,
+  onClose,
+  employees,
+  isSelfService = false,
+  currentEmployeeId,
+  isSaving = false,
+  onSubmit,
+}: ApplyLeaveModalProps) {
+  const [employeeId, setEmployeeId] = useState<number | null>(null);
+  
+  // Set employee ID based on role/props when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      if (isSelfService) {
+        setEmployeeId(currentEmployeeId ?? 0);
+      } else {
+        setEmployeeId(employees[0]?.id ?? null);
+      }
+    }
+  }, [isOpen, isSelfService, currentEmployeeId, employees]);
+
   const [leaveType, setLeaveType] = useState('Casual Leave');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [halfDay, setHalfDay] = useState(false);
   const [reason, setReason] = useState('');
   const [attachmentName, setAttachmentName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +59,11 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!isSelfService && !employeeId) {
+      setError('Please select an employee.');
+      return;
+    }
 
     if (!startDate || !endDate) {
       setError('Please select both Start Date and End Date.');
@@ -50,9 +84,11 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
     }
 
     onSubmit({
+      employeeId: employeeId ?? 0,
       leaveType,
       startDate,
       endDate,
+      halfDay,
       reason,
       attachmentName: attachmentName || undefined,
     });
@@ -61,6 +97,7 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
     setLeaveType('Casual Leave');
     setStartDate('');
     setEndDate('');
+    setHalfDay(false);
     setReason('');
     setAttachmentName('');
   };
@@ -105,6 +142,31 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
               </div>
             )}
 
+            {/* Employee Select */}
+            {!isSelfService && (
+              <div>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1.5 uppercase tracking-wider">
+                  Employee
+                </label>
+                <div className="relative">
+                  <select
+                    value={employeeId ?? ''}
+                    onChange={(e) => setEmployeeId(Number(e.target.value))}
+                    required
+                    className="w-full appearance-none px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-850 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
+                  >
+                    <option value="">— Select employee —</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.employee_code} — {emp.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            )}
+
             {/* Leave Type Select */}
             <div>
               <label className="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1.5 uppercase tracking-wider">
@@ -145,6 +207,35 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
                 />
+              </div>
+            </div>
+
+            {/* Duration Type */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1.5 uppercase tracking-wider">
+                Duration Type
+              </label>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="duration_type"
+                    checked={!halfDay}
+                    onChange={() => setHalfDay(false)}
+                    className="rounded-full border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                  />
+                  Full Day
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="duration_type"
+                    checked={halfDay}
+                    onChange={() => setHalfDay(true)}
+                    className="rounded-full border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                  />
+                  Half Day
+                </label>
               </div>
             </div>
 
@@ -195,9 +286,10 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-gradient-to-r from-teal-700 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+              disabled={isSaving}
+              className="px-4 py-2 bg-gradient-to-r from-teal-700 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              Submit Request
+              {isSaving ? 'Submitting...' : 'Submit Request'}
             </button>
           </CardFooter>
         </form>

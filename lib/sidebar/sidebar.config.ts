@@ -5,7 +5,7 @@ export interface SidebarMenuItem {
   label: string;
   href?: string;
   /** Must match a key in Sidebar's iconMap */
-  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid' | 'Settings' | 'DollarSign' | 'FileText';
+  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'CalendarClock' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid' | 'Settings' | 'DollarSign' | 'FileText';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module?: ModuleName | null;
   permission?: PermissionKey | PermissionKey[];
@@ -328,6 +328,13 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'CalendarDays',
     module: 'hr',
     permission: ['hr.attendance.view', 'hr.view'],
+  },
+  {
+    label: 'Leave',
+    href: '/dashboard/hr/leave',
+    icon: 'CalendarClock',
+    module: 'hr',
+    permission: ['hr.leave.view', 'hr.leave.self', 'hr.view'],
   },
 
   {

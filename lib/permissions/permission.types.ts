@@ -125,6 +125,7 @@ export type PermissionKey =
   | 'hr.employees.view'
   | 'hr.attendance.view'
   | 'hr.leave.view'
+  | 'hr.leave.self'
   | 'hr.recruitment.view'
   | 'hr.payroll.view'
   | 'hr.performance.view'
