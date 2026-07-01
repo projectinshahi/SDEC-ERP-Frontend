@@ -17,9 +17,9 @@ export default function DocumentsPage() {
       <div className="space-y-6">
         
         {/* Page Header */}
-        <div className="flex items-end justify-between gap-4 flex-wrap pb-2 border-b border-gray-150 dark:border-gray-800">
+        <div className="flex items-end justify-between gap-4 flex-wrap pb-2 border-b border-gray-150 dark:border-gray-850">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-50 text-violet-605 dark:bg-violet-950/30 dark:text-violet-300 mb-3 border border-violet-100 dark:border-violet-900/30">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300 mb-3 border border-blue-100 dark:border-blue-900/30">
               <FolderOpen size={12} />
               Documents Management
             </div>
@@ -33,7 +33,7 @@ export default function DocumentsPage() {
 
           <button
             onClick={state.handleOpenUpload}
-            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-850 text-white text-xs font-bold transition shadow-sm shadow-violet-500/20"
+            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
           >
             <Plus size={15} />
             <span>Upload Document</span>
@@ -60,7 +60,7 @@ export default function DocumentsPage() {
         {/* Loader Screen */}
         {state.isLoading ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-violet-650 mb-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-3" />
             <span className="text-xs font-semibold text-gray-500">Loading document entries…</span>
           </div>
         ) : state.error ? (
@@ -73,7 +73,7 @@ export default function DocumentsPage() {
             <p className="text-xs text-gray-500 mt-1 max-w-xs">{state.error}</p>
             <button
               onClick={state.refresh}
-              className="mt-4 px-4 py-2 text-xs font-semibold bg-violet-600 hover:bg-violet-750 text-white rounded-xl transition shadow-sm"
+              className="mt-4 px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition shadow-sm"
             >
               Retry
             </button>

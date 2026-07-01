@@ -82,11 +82,11 @@ export function AttendanceStatsRow({ stats }: AttendanceStatsProps) {
       value: stats.averageHours,
       subtitle: 'Per employee',
       icon: TrendingUp,
-      colorClass: 'violet',
-      bgClass: 'bg-violet-50 dark:bg-violet-950/20',
-      borderClass: 'border-violet-100 dark:border-violet-900/30',
-      textClass: 'text-violet-600 dark:text-violet-400',
-      iconBg: 'bg-violet-100 dark:bg-violet-900/30',
+      colorClass: 'blue',
+      bgClass: 'bg-blue-50 dark:bg-blue-950/20',
+      borderClass: 'border-blue-100 dark:border-blue-900/30',
+      textClass: 'text-blue-600 dark:text-blue-400',
+      iconBg: 'bg-blue-100 dark:bg-blue-900/30',
     },
   ];
 

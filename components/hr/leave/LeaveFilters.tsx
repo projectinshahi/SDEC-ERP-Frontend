@@ -32,7 +32,7 @@ export function LeaveFilters({ filters, onChange, userRole }: LeaveFiltersProps)
     filters.endDate !== '';
 
   return (
-    <Card className="border border-gray-100 dark:border-gray-800 shadow-sm">
+    <Card className="border border-gray-100 dark:border-gray-850 shadow-sm">
       <CardBody className="p-4 sm:p-5">
         <div className="flex flex-col gap-4">
           {/* Main Controls Row */}
@@ -50,7 +50,7 @@ export function LeaveFilters({ filters, onChange, userRole }: LeaveFiltersProps)
                   placeholder={userRole === 'admin' ? "Search employee, ID or reason..." : "Search reason..."}
                   value={filters.search}
                   onChange={(e) => onChange({ search: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50/50 hover:bg-gray-50 focus:bg-white dark:bg-gray-900/50 dark:hover:bg-gray-900 dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:ring-1 focus:ring-teal-500 transition-all shadow-2xs"
+                  className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50/50 hover:bg-gray-50 focus:bg-white dark:bg-gray-900/50 dark:hover:bg-gray-900 dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:ring-1 focus:ring-teal-500 transition-all shadow-2xs"
                 />
               </div>
             </div>
@@ -64,7 +64,7 @@ export function LeaveFilters({ filters, onChange, userRole }: LeaveFiltersProps)
                 <select
                   value={filters.department}
                   onChange={(e) => onChange({ department: e.target.value })}
-                  className="w-full px-3 py-2 text-sm bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all shadow-2xs"
+                  className="w-full px-3 py-2 text-sm bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all shadow-2xs"
                 >
                   {LEAVE_DEPARTMENTS.map(dept => (
                     <option key={dept} value={dept}>{dept}</option>
@@ -81,7 +81,7 @@ export function LeaveFilters({ filters, onChange, userRole }: LeaveFiltersProps)
               <select
                 value={filters.leaveType}
                 onChange={(e) => onChange({ leaveType: e.target.value })}
-                className="w-full px-3 py-2 text-sm bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all shadow-2xs"
+                className="w-full px-3 py-2 text-sm bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all shadow-2xs"
               >
                 {LEAVE_TYPES.map(type => (
                   <option key={type} value={type}>{type}</option>
@@ -97,7 +97,7 @@ export function LeaveFilters({ filters, onChange, userRole }: LeaveFiltersProps)
               <select
                 value={filters.status}
                 onChange={(e) => onChange({ status: e.target.value })}
-                className="w-full px-3 py-2 text-sm bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all shadow-2xs"
+                className="w-full px-3 py-2 text-sm bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all shadow-2xs"
               >
                 {LEAVE_STATUSES.map(stat => (
                   <option key={stat} value={stat}>{stat}</option>
@@ -117,7 +117,7 @@ export function LeaveFilters({ filters, onChange, userRole }: LeaveFiltersProps)
                     type="date"
                     value={filters.startDate}
                     onChange={(e) => onChange({ startDate: e.target.value })}
-                    className="w-full pl-8 pr-2 py-1.5 text-xs bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
+                    className="w-full pl-8 pr-2 py-1.5 text-xs bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
                   />
                 </div>
                 <span className="text-gray-400 text-xs">to</span>
@@ -127,7 +127,7 @@ export function LeaveFilters({ filters, onChange, userRole }: LeaveFiltersProps)
                     type="date"
                     value={filters.endDate}
                     onChange={(e) => onChange({ endDate: e.target.value })}
-                    className="w-full pl-8 pr-2 py-1.5 text-xs bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
+                    className="w-full pl-8 pr-2 py-1.5 text-xs bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
                   />
                 </div>
               </div>
@@ -136,7 +136,7 @@ export function LeaveFilters({ filters, onChange, userRole }: LeaveFiltersProps)
 
           {/* Reset Filters / Indicator Row */}
           {hasActiveFilters && (
-            <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-3">
+            <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-850 pt-3">
               <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
                 Filters are active. Results are filtered down.
               </span>

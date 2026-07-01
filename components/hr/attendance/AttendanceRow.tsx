@@ -43,7 +43,7 @@ export function AttendanceRow({ record, isSelected, onSelect, actionMenu }: Atte
 
   return (
     <tr
-      className={`hover:bg-gray-50/60 dark:hover:bg-gray-800/20 transition-colors ${isSelected ? 'bg-violet-50/30 dark:bg-violet-950/10' : ''
+      className={`hover:bg-gray-50/60 dark:hover:bg-gray-800/20 transition-colors ${isSelected ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''
         }`}
     >
       {/* Checkbox */}
@@ -52,14 +52,14 @@ export function AttendanceRow({ record, isSelected, onSelect, actionMenu }: Atte
           type="checkbox"
           checked={isSelected}
           onChange={onSelect}
-          className="rounded border-gray-300 dark:border-gray-600 text-violet-600 focus:ring-violet-500 h-4 w-4"
+          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
         />
       </td>
 
       {/* Employee */}
       <td className="py-4 px-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-600/10 border border-violet-500/10 flex items-center justify-center font-black text-sm text-violet-600 dark:text-violet-400 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/10 flex items-center justify-center font-black text-sm text-blue-600 dark:text-blue-400 shrink-0">
             {initials}
           </div>
           <div>
@@ -94,7 +94,7 @@ export function AttendanceRow({ record, isSelected, onSelect, actionMenu }: Atte
         {record.totalHours ? (
           <>
             <div className="flex items-center gap-1.5">
-              <Clock size={13} className="text-violet-500 dark:text-violet-400 shrink-0" />
+              <Clock size={13} className="text-blue-500 dark:text-blue-400 shrink-0" />
               <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-100 tabular-nums">
                 {record.totalHours}
               </span>

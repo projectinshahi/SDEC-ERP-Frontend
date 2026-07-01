@@ -115,12 +115,12 @@ export function GeneratePayrollModal({
       <div className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]">
+      <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-850 flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-850 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30 flex items-center justify-center text-violet-500">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-blue-500">
               <Wallet size={16} />
             </div>
             <div>
@@ -154,7 +154,7 @@ export function GeneratePayrollModal({
               onChange={e => handleEmployeeChange(Number(e.target.value))}
               disabled={!!activeRecord}
               required
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 font-medium outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-850 disabled:cursor-not-allowed transition cursor-pointer"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-850 disabled:cursor-not-allowed transition cursor-pointer"
             >
               <option value="" disabled>— Select Employee —</option>
               {employees.map(emp => (
@@ -173,7 +173,7 @@ export function GeneratePayrollModal({
                 value={selectedMonth}
                 onChange={e => setSelectedMonth(e.target.value)}
                 disabled={!!activeRecord}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 font-medium outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 cursor-pointer disabled:opacity-50 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 cursor-pointer disabled:opacity-50 transition"
               >
                 {MONTHS.map(m => (
                   <option key={m} value={m}>{m}</option>
@@ -187,7 +187,7 @@ export function GeneratePayrollModal({
                 value={selectedYear}
                 onChange={e => setSelectedYear(e.target.value)}
                 disabled={!!activeRecord}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 font-medium outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 cursor-pointer disabled:opacity-50 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 cursor-pointer disabled:opacity-50 transition"
               >
                 {YEARS.map(y => (
                   <option key={y} value={y}>{y}</option>
@@ -206,7 +206,7 @@ export function GeneratePayrollModal({
               value={basicSalary}
               onChange={e => setBasicSalary(e.target.value)}
               placeholder="e.g. 45000"
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
             />
           </div>
 
@@ -220,7 +220,7 @@ export function GeneratePayrollModal({
                 value={bonus}
                 onChange={e => setBonus(e.target.value)}
                 placeholder="e.g. 5000"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
               />
             </div>
 
@@ -232,16 +232,16 @@ export function GeneratePayrollModal({
                 value={deduction}
                 onChange={e => setDeduction(e.target.value)}
                 placeholder="e.g. 2000"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
               />
             </div>
           </div>
 
           {/* Net Salary Preview (Calculated) */}
-          <div className="space-y-1.5 bg-gray-50 dark:bg-gray-800/30 p-4.5 rounded-xl border border-gray-100 dark:border-gray-800/40">
+          <div className="space-y-1.5 bg-gray-50 dark:bg-gray-800/30 p-4.5 rounded-xl border border-gray-100 dark:border-gray-850/40">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Net Salary (Calculated)</span>
-              <span className="text-lg font-black text-violet-600 dark:text-violet-400 tabular-nums">
+              <span className="text-lg font-black text-blue-600 dark:text-blue-400 tabular-nums">
                 ₹{netSalary.toLocaleString('en-IN')}
               </span>
             </div>
@@ -251,7 +251,7 @@ export function GeneratePayrollModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-850 shrink-0">
             <button
               type="button"
               onClick={onClose}
@@ -262,7 +262,7 @@ export function GeneratePayrollModal({
             <button
               type="submit"
               disabled={isSaving}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-850 disabled:opacity-50 text-white text-sm font-semibold transition-all shadow-sm shadow-violet-500/20"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 disabled:opacity-50 text-white text-sm font-semibold transition-all shadow-sm shadow-blue-500/20"
             >
               {isSaving ? (
                 <><Loader2 size={15} className="animate-spin" /> Saving…</>

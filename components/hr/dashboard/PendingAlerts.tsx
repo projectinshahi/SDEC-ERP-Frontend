@@ -17,32 +17,32 @@ const TYPE_CONFIG: Record<string, {
   badge: string;
 }> = {
   critical: {
-    bg: 'bg-rose-50 dark:bg-rose-950/20',
-    border: 'border-rose-100 dark:border-rose-900/30',
+    bg: 'bg-gray-50/40 dark:bg-gray-800/10',
+    border: 'border-gray-100 dark:border-gray-850/60',
     icon: AlertTriangle,
     iconClass: 'text-rose-500',
-    badge: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400',
+    badge: 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-450 border border-rose-100/50 dark:border-rose-900/30',
   },
   warning: {
-    bg: 'bg-amber-50 dark:bg-amber-950/20',
-    border: 'border-amber-100 dark:border-amber-900/30',
+    bg: 'bg-gray-50/40 dark:bg-gray-800/10',
+    border: 'border-gray-100 dark:border-gray-850/60',
     icon: AlertTriangle,
     iconClass: 'text-amber-500',
-    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+    badge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-450 border border-amber-100/50 dark:border-amber-900/30',
   },
   info: {
-    bg: 'bg-blue-50 dark:bg-blue-950/20',
-    border: 'border-blue-100 dark:border-blue-900/30',
+    bg: 'bg-gray-50/40 dark:bg-gray-800/10',
+    border: 'border-gray-100 dark:border-gray-850/60',
     icon: Info,
     iconClass: 'text-blue-500',
-    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+    badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-450 border border-blue-100/50 dark:border-blue-900/30',
   },
   success: {
-    bg: 'bg-emerald-50 dark:bg-emerald-950/20',
-    border: 'border-emerald-100 dark:border-emerald-900/30',
+    bg: 'bg-gray-50/40 dark:bg-gray-800/10',
+    border: 'border-gray-100 dark:border-gray-850/60',
     icon: CheckCircle2,
     iconClass: 'text-emerald-500',
-    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
+    badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-450 border border-emerald-100/50 dark:border-emerald-900/30',
   },
 };
 
@@ -51,12 +51,12 @@ export function PendingAlerts({ items, loading = false }: PendingAlertsProps) {
   const criticalCount = alerts.filter((a) => a.type === 'critical').length;
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden h-full flex flex-col">
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-sm overflow-hidden h-full flex flex-col">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-850 flex items-center justify-between shrink-0">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+            <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-450">
               <Bell size={14} />
             </div>
             <h2 className="text-sm font-bold text-gray-900 dark:text-white">Alerts & Actions</h2>
@@ -105,7 +105,7 @@ export function PendingAlerts({ items, loading = false }: PendingAlertsProps) {
                       {alert.count}
                     </span>
                   </div>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">{alert.desc}</p>
+                  <p className="text-[11px] text-gray-550 dark:text-gray-400 mt-0.5 leading-snug">{alert.desc}</p>
                 </div>
                 {alert.href && (
                   <Link href={alert.href} className="shrink-0 mt-0.5 hover:opacity-70 transition-opacity">

@@ -109,7 +109,7 @@ export default function PerformancePage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsCycleModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-800 shadow-sm transition"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-850 shadow-sm transition"
             >
               <ClipboardList size={16} />
               <span>Create Cycle</span>
@@ -164,7 +164,7 @@ export default function PerformancePage() {
       )}
 
       {/* Filters workspace bar */}
-      <Card className="p-4 bg-gray-50/50 dark:bg-gray-800/10 border-gray-100 dark:border-gray-800/40 shadow-sm">
+      <Card className="p-4 bg-gray-50/50 dark:bg-gray-800/10 border-gray-100 dark:border-gray-850/40 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           
           {/* Search */}
@@ -174,7 +174,7 @@ export default function PerformancePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by employee name, code, dept, reviewer..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
             />
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
               <Search size={14} />
@@ -192,7 +192,7 @@ export default function PerformancePage() {
             <select
               value={filterCycle}
               onChange={(e) => setFilterCycle(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-xs text-gray-700 dark:text-gray-300 outline-none focus:border-amber-500 cursor-pointer"
+              className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-xs text-gray-700 dark:text-gray-300 outline-none focus:border-amber-500 cursor-pointer"
             >
               <option value="All">All Cycles</option>
               {cycles.map((c) => (
@@ -206,7 +206,7 @@ export default function PerformancePage() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-xs text-gray-700 dark:text-gray-300 outline-none focus:border-amber-500 cursor-pointer"
+              className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-xs text-gray-700 dark:text-gray-300 outline-none focus:border-amber-500 cursor-pointer"
             >
               <option value="All">All Statuses</option>
               <option value="draft">Draft</option>
@@ -220,7 +220,7 @@ export default function PerformancePage() {
       </Card>
 
       {/* Main appraisal listings table */}
-      <Card className="overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
+      <Card className="overflow-hidden border border-gray-200 dark:border-gray-850 shadow-sm bg-white dark:bg-gray-900">
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-12 flex flex-col items-center justify-center space-y-4">
@@ -339,7 +339,7 @@ export default function PerformancePage() {
                           className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                             app.status === 'manager_review'
                               ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'
-                              : 'border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                              : 'border border-gray-200 dark:border-gray-850 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                           }`}
                         >
                           <span>

@@ -30,7 +30,7 @@ export function CandidateCard({
   onStageChange,
 }: CandidateCardProps) {
   return (
-    <Card className="p-4 rounded-xl border border-gray-250 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between min-h-[175px]">
+    <Card className="p-4 rounded-xl border border-gray-250 dark:border-gray-850 bg-white dark:bg-gray-900 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between min-h-[175px]">
       
       {/* Header Info */}
       <div>
@@ -46,7 +46,7 @@ export function CandidateCard({
 
           {/* Sourcing Channel Badge */}
           {candidate.source && (
-            <span className="text-[9px] font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/20 px-2 py-0.5 rounded-md border border-violet-100 dark:border-violet-900/30 shrink-0">
+            <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/30 shrink-0">
               {candidate.source}
             </span>
           )}
@@ -96,7 +96,7 @@ export function CandidateCard({
           <select
             value={candidate.stage}
             onChange={(e) => onStageChange(candidate.id, e.target.value as CandidateStage)}
-            className="text-[10px] font-bold text-gray-600 dark:text-gray-350 bg-gray-50 dark:bg-gray-800 border border-gray-150 dark:border-gray-700/60 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-violet-500/30 transition cursor-pointer"
+            className="text-[10px] font-bold text-gray-600 dark:text-gray-350 bg-gray-50 dark:bg-gray-800 border border-gray-150 dark:border-gray-700/60 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition cursor-pointer"
           >
             {STAGES.map((s) => (
               <option key={s} value={s}>
@@ -111,14 +111,14 @@ export function CandidateCard({
           <button
             onClick={() => onView(candidate)}
             title="View candidate profile"
-            className="p-1 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition-colors"
+            className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors"
           >
             <Eye size={13.5} />
           </button>
           <button
             onClick={() => onEdit(candidate)}
             title="Edit details"
-            className="p-1 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition-colors"
+            className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors"
           >
             <Pencil size={13} />
           </button>

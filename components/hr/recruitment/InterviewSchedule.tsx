@@ -49,7 +49,7 @@ export function InterviewSchedule() {
         {interviews.map((item) => (
           <div
             key={item.id}
-            className="p-4 rounded-xl border border-gray-200 dark:border-gray-800"
+            className="p-4 rounded-xl border border-gray-200 dark:border-gray-850"
           >
             <div className="flex justify-between items-start">
               <div>

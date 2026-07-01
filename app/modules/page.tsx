@@ -82,8 +82,14 @@ export default function ModulesPage() {
   const [navigating, setNavigating] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.replace('/login');
-  }, [isAuthenticated, isLoading, router]);
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login');
+      } else if (user?.mustChangePassword) {
+        router.replace('/change-password');
+      }
+    }
+  }, [isAuthenticated, isLoading, user, router]);
 
   // ── Fully permission-driven module list, derived from the shared registry
   // (APP_MODULES). NOT hardcoded here: adding a future module is a registry edit.
@@ -115,6 +121,18 @@ export default function ModulesPage() {
       return [{ ...base, href: href as string | null }];
     });
   }, [user, hasAnyPermission]);
+
+  // Auto-redirect: if the user only has access to ONE module, skip the workspace
+  // selection screen and go directly to that module's landing page.
+  // Handles the employee self-service case (hr.leave.self only → /dashboard/hr/leave).
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !user) return;
+    if (user.mustChangePassword) return; // handled by the auth redirect above
+    const navigableModules = modules.filter((m) => m.href);
+    if (navigableModules.length === 1 && navigableModules[0].href) {
+      router.replace(navigableModules[0].href);
+    }
+  }, [isLoading, isAuthenticated, user, modules, router]);
 
   const openModule = (key: string, href: string | null) => {
     if (navigating || !href) return;

@@ -45,9 +45,9 @@ const actions = [
     href: '/dashboard/hr/recruitment',
     icon: Briefcase,
     variant:
-      'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300',
+      'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
     border:
-      'border-violet-100 dark:border-violet-900 hover:border-violet-300 dark:hover:border-violet-700',
+      'border-blue-100 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-700',
   },
   {
     label: 'Process Payroll',
@@ -71,9 +71,9 @@ const actions = [
 
 export function QuickActions() {
   return (
-    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 h-full shadow-sm">
+    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 h-full shadow-sm">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-850 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">
           Quick Actions
         </h2>

@@ -96,7 +96,7 @@ export const APP_MODULES: AppModuleDef[] = [
   description: 'Employees, leave & attendance.',
   prefixes: ['hr.'],
   topModule: 'hr',
-  fallbackHref: '/dashboard/hr',
+  fallbackHref: '/dashboard/hr/leave', // self-service employees land here; HR admins get redirected to /dashboard/hr by firstAccessibleHref
 },
   {
     // Finance is a first-class, independent ERP module (same architecture as
@@ -117,12 +117,18 @@ export const APP_MODULES: AppModuleDef[] = [
  *   • everyone else         → holds ≥1 permission under the module's prefixes.
  */
 export function isModuleVisible(user: ModuleAccessUser | null | undefined, m: AppModuleDef): boolean {
+  const perms = user?.permissions ?? [];
+  const isEmpSelfService = perms.includes('hr.leave.self') && !perms.includes('hr.view');
+  
+  if (isEmpSelfService) {
+    return m.key === 'hr';
+  }
+
   const r = normalizeRole(user?.roleName) || normalizeRole(user?.role);
   const isSuper = r === 'superadmin';
   if (isSuper) return true;
   if (m.superAdminOnly) return false;
   if ((r === 'admin') && !m.future) return true; // global admin bypass for live core modules
-  const perms = user?.permissions ?? [];
   return m.prefixes.some((pre) => perms.some((p) => p.startsWith(pre)));
 }
 
@@ -138,6 +144,19 @@ export function visibleModules(user: ModuleAccessUser | null | undefined): AppMo
  * core; otherwise permission-prefix driven).
  */
 export function getModuleAccess(user: ModuleAccessUser | null | undefined): Record<TopModule, boolean> {
+  const perms = user?.permissions ?? [];
+  const isEmpSelfService = perms.includes('hr.leave.self') && !perms.includes('hr.view');
+
+  if (isEmpSelfService) {
+    return {
+      master: false,
+      sales: false,
+      development: false,
+      user: false,
+      hr: true,
+    };
+  }
+
   const result = {} as Record<TopModule, boolean>;
   for (const m of APP_MODULES) {
     if (m.key in result) continue; // skip duplicate keys (e.g. 'hr' appears in TopModule union)

@@ -36,10 +36,10 @@ const BADGE_MAP: Record<
     border: 'border-orange-100 dark:border-orange-900/30',
   },
   'Full Day Leave': {
-    dot: 'bg-violet-500',
-    bg: 'bg-violet-50 dark:bg-violet-950/20',
-    text: 'text-violet-700 dark:text-violet-300',
-    border: 'border-violet-100 dark:border-violet-900/30',
+    dot: 'bg-blue-500',
+    bg: 'bg-blue-50 dark:bg-blue-950/20',
+    text: 'text-blue-700 dark:text-blue-300',
+    border: 'border-blue-100 dark:border-blue-900/30',
   },
   'Half Day Leave': {
     dot: 'bg-sky-500',
@@ -54,10 +54,10 @@ const BADGE_MAP: Record<
     border: 'border-blue-100 dark:border-blue-900/30',
   },
   'On Leave': {
-    dot: 'bg-violet-500',
-    bg: 'bg-violet-50 dark:bg-violet-950/20',
-    text: 'text-violet-700 dark:text-violet-300',
-    border: 'border-violet-100 dark:border-violet-900/30',
+    dot: 'bg-blue-500',
+    bg: 'bg-blue-50 dark:bg-blue-950/20',
+    text: 'text-blue-700 dark:text-blue-300',
+    border: 'border-blue-100 dark:border-blue-900/30',
   },
 };
 

@@ -153,12 +153,12 @@ export function CandidateEntryModal({
       <div className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Card */}
-      <div className="relative z-10 w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]">
+      <div className="relative z-10 w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-850 flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-850 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30 flex items-center justify-center text-violet-500">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-blue-500">
               <UserPlus size={16} />
             </div>
             <div>
@@ -193,7 +193,7 @@ export function CandidateEntryModal({
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               placeholder="e.g. Rahul Sharma"
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
             />
           </div>
 
@@ -207,7 +207,7 @@ export function CandidateEntryModal({
                 value={position}
                 onChange={e => setPosition(e.target.value)}
                 placeholder="e.g. MERN Developer"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
               />
             </div>
 
@@ -219,7 +219,7 @@ export function CandidateEntryModal({
                 value={department}
                 onChange={e => setDepartment(e.target.value)}
                 placeholder="e.g. Engineering"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
               />
             </div>
           </div>
@@ -233,7 +233,7 @@ export function CandidateEntryModal({
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="e.g. rahul@test.com"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
               />
             </div>
 
@@ -246,7 +246,7 @@ export function CandidateEntryModal({
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 placeholder="e.g. +91 9999999999"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
               />
             </div>
           </div>
@@ -260,7 +260,7 @@ export function CandidateEntryModal({
                 value={experience}
                 onChange={e => setExperience(e.target.value)}
                 placeholder="e.g. 2 Years"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
               />
             </div>
 
@@ -272,7 +272,7 @@ export function CandidateEntryModal({
                 value={expectedCtc}
                 onChange={e => setExpectedCtc(e.target.value)}
                 placeholder="e.g. 800000"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
               />
             </div>
           </div>
@@ -284,7 +284,7 @@ export function CandidateEntryModal({
               <select
                 value={source}
                 onChange={e => setSource(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 cursor-pointer transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 cursor-pointer transition"
               >
                 {SOURCES.map(s => (
                   <option key={s} value={s}>{s}</option>
@@ -299,7 +299,7 @@ export function CandidateEntryModal({
                 type="date"
                 value={interviewDate}
                 onChange={e => setInterviewDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
               />
             </div>
           </div>
@@ -322,7 +322,7 @@ export function CandidateEntryModal({
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 transition"
               >
                 {isUploading ? (
-                  <Loader2 size={15} className="animate-spin text-violet-500" />
+                  <Loader2 size={15} className="animate-spin text-blue-500" />
                 ) : (
                   <Upload size={15} />
                 )}
@@ -349,12 +349,12 @@ export function CandidateEntryModal({
               onChange={e => setNotes(e.target.value)}
               placeholder="e.g. Excellent communication skills, strong Javascript foundation..."
               rows={3}
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition resize-none"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition resize-none"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-850 shrink-0">
             <button
               type="button"
               onClick={onClose}
@@ -365,7 +365,7 @@ export function CandidateEntryModal({
             <button
               type="submit"
               disabled={isSaving || isUploading}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-850 disabled:opacity-50 text-white text-sm font-semibold transition-all shadow-sm shadow-violet-500/20"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 disabled:opacity-50 text-white text-sm font-semibold transition-all shadow-sm shadow-blue-500/20"
             >
               {isSaving ? (
                 <><Loader2 size={15} className="animate-spin" /> Saving…</>

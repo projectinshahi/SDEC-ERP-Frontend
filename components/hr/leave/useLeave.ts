@@ -13,6 +13,7 @@ export function useLeave() {
   // Active staff employee for the Staff View
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('EMP-2026-003'); // Dimah Al-Sabah
   
+  
   const [records, setRecords] = useState<LeaveRequest[]>(MOCK_LEAVE_RECORDS);
   const [filters, setFilters] = useState<LeaveFilters>({
     search: '',

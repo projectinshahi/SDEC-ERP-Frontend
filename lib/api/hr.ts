@@ -15,16 +15,19 @@ export interface ApiEmployee {
   salary: number;
   employment_status: string; 
   join_date: string;
+  date_of_birth: string | null;
 }
 
 export interface CreateEmployeePayload {
   name: string;
   email: string;
   role: string;              // system role name (from roles table)
-  designation: string;       // job title — backend derives department from this
+  department: string;        // required — selected from dropdown
+  designation: string;       // job title
   phone?: string;
   salary?: number;
   join_date: string;
+  date_of_birth: string;
   employment_status?: string;
 }
 
@@ -32,9 +35,11 @@ export interface UpdateEmployeePayload {
   name?: string;
   email?: string;
   role?: string;
+  department?: string;
   designation: string;
   phone?: string;
   salary?: number;
+  date_of_birth?: string;
   employment_status?: string;
 }
 

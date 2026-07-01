@@ -30,7 +30,7 @@ export function RecruitmentStats({ stats }: RecruitmentStatsProps) {
       label: 'Applicants',
       value: totalApplicants, // Sum of all candidates
       icon: Users,
-      color: 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300',
+      color: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
     },
     {
       label: 'Interviews',

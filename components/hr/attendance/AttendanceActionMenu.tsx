@@ -23,7 +23,7 @@ export function AttendanceActionMenu({
       <button
         onClick={() => onEdit(record)}
         title={isVirtual ? "Add attendance record" : "Edit record"}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/20 hover:bg-violet-100 dark:hover:bg-violet-900/30 border border-violet-100 dark:border-violet-900/30 transition-colors"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border border-blue-100 dark:border-blue-900/30 transition-colors"
       >
         <Pencil size={12} />
         {isVirtual ? 'Add Attendance' : 'Edit'}

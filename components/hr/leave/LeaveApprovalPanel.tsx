@@ -76,7 +76,7 @@ export function LeaveApprovalPanel({
                     </div>
                   </div>
 
-                  <div className="text-2xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded-lg border border-gray-150/40 dark:border-gray-800 italic">
+                  <div className="text-2xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded-lg border border-gray-150/40 dark:border-gray-850 italic">
                     "{req.reason}"
                   </div>
                 </div>
@@ -125,8 +125,8 @@ export function LeaveApprovalPanel({
       )}
 
       {/* 3. Employees On Leave Today (Admin and Staff) */}
-      <Card className="border border-gray-100 dark:border-gray-800 shadow-sm">
-        <CardHeader className="px-5 py-4 flex items-center gap-2 border-b border-gray-100 dark:border-gray-800/60">
+      <Card className="border border-gray-100 dark:border-gray-850 shadow-sm">
+        <CardHeader className="px-5 py-4 flex items-center gap-2 border-b border-gray-100 dark:border-gray-850/60">
           <UserCheck size={16} className="text-teal-500 shrink-0" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800 dark:text-gray-300">
             Out of Office Today ({currentlyOnLeave.length})

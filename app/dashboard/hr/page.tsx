@@ -31,6 +31,7 @@ import { PerformanceSummary } from '@/components/hr/dashboard/PerformanceSummary
 import { DocumentsOverview } from '@/components/hr/dashboard/DocumentsOverview';
 import { BirthdaysAnniversaries } from '@/components/hr/dashboard/BirthdaysAnniversaries';
 import { QuickActionsCompact } from '@/components/hr/dashboard/QuickActionsCompact';
+import { PendingLeaveRequests } from '@/components/hr/dashboard/PendingLeaveRequests';
 
 // API helpers
 import {
@@ -63,8 +64,8 @@ interface DashboardState {
 
 /* ── Color helpers for attendance chart ─────────────────────────── */
 const ATTENDANCE_COLORS: Record<string, string> = {
-  Present: '#10b981',
-  Late: '#f97316',
+  Present: '#22c55e',
+  Late: '#f59e0b',
   Leave: '#3b82f6',
   Absent: '#ef4444',
 };
@@ -213,7 +214,7 @@ export default function HRDashboard() {
       ),
       subtitle: `${performanceStats?.manager_pending ?? 0} manager · ${performanceStats?.self_pending ?? 0} self`,
       icon: Star,
-      variant: 'violet' as const,
+      variant: 'indigo' as const,
     },
   ];
 
@@ -250,18 +251,15 @@ export default function HRDashboard() {
   };
 
   return (
-    <div className="space-y-7 print:p-8 print:bg-white print:text-black">
+    <div className="space-y-6 print:p-8 print:bg-white print:text-black">
 
       {/* ── Page Header ────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap print:hidden">
+      <div className="flex items-end justify-between gap-4 flex-wrap print:hidden">
         <div>
-          <div className="inline-flex items-center px-3 py-1 rounded-full text-[10.5px] font-bold bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300 mb-3 uppercase tracking-wider border border-indigo-100 dark:border-indigo-900/40">
-            Human Resource Management
-          </div>
-          <h1 className="text-2xl md:text-[28px] font-black tracking-tight text-gray-900 dark:text-white leading-none">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             HR Dashboard
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-medium">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Welcome back, HR Admin! Here&apos;s what&apos;s happening today.
           </p>
         </div>
@@ -269,7 +267,7 @@ export default function HRDashboard() {
         <div className="flex items-center gap-3 shrink-0 relative">
           {/* Last refreshed */}
           {lastRefreshed && (
-            <span className="text-[11px] text-gray-400 dark:text-gray-600 font-medium">
+            <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
               Updated {formatLastRefreshed(lastRefreshed)}
             </span>
           )}
@@ -278,26 +276,26 @@ export default function HRDashboard() {
           <div className="relative">
             <button
               onClick={() => setShowExportDropdown(!showExportDropdown)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-205 hover:border-blue-300 hover:text-blue-600 transition-colors"
             >
-              <Download size={13} />
+              <Download size={16} />
               Export
             </button>
 
             {showExportDropdown && (
-              <div className="absolute right-0 mt-2 w-40 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-lg z-50 overflow-hidden">
+              <div className="absolute right-0 mt-2 w-44 rounded-xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-lg z-50 overflow-hidden">
                 <button
                   onClick={exportCSV}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <FileSpreadsheet size={13} className="text-emerald-500" />
+                  <FileSpreadsheet size={15} className="text-emerald-500" />
                   Export as CSV
                 </button>
                 <button
                   onClick={exportPDF}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <FileText size={13} className="text-rose-500" />
+                  <FileText size={15} className="text-rose-500" />
                   Print / Save PDF
                 </button>
               </div>
@@ -307,9 +305,9 @@ export default function HRDashboard() {
           <button
             onClick={loadDashboard}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-205 hover:border-blue-300 hover:text-blue-600 transition-colors disabled:opacity-50"
           >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             Refresh
           </button>
         </div>
@@ -367,15 +365,16 @@ export default function HRDashboard() {
         <PerformanceSummary stats={performanceStats ?? undefined} loading={loading} />
       </div>
 
-      {/* ── Row 4: Documents · Anniversaries · Quick Actions ─────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 print:hidden" style={{ minHeight: 280 }}>
+      {/* ── Row 4: Documents · Anniversaries · Leaves · Quick Actions ─────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 print:hidden" style={{ minHeight: 280 }}>
         <DocumentsOverview loading={loading} />
+        <PendingLeaveRequests />
         <BirthdaysAnniversaries loading={loading} />
         <QuickActionsCompact />
       </div>
 
       {/* ── Footer ───────────────────────────────────────────────── */}
-      <footer className="pt-4 border-t border-gray-200 dark:border-gray-800 print:mt-10 print:border-gray-300">
+      <footer className="pt-4 border-t border-gray-200 dark:border-gray-850 print:mt-10 print:border-gray-300">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400 dark:text-gray-600 print:text-black">
           <p>© 2026 SKPC Solutions Pvt Ltd. All rights reserved.</p>
           <div className="flex items-center gap-4 print:hidden">

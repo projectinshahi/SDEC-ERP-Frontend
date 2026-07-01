@@ -14,8 +14,8 @@ export function LeaveDetailsModal({ request, onClose }: LeaveDetailsModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4">
-      <Card className="w-full max-w-md shadow-2xl border border-gray-200 dark:border-gray-800">
-        <CardHeader className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-800">
+      <Card className="w-full max-w-md shadow-2xl border border-gray-200 dark:border-gray-850">
+        <CardHeader className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-850">
           <h3 className="font-bold text-gray-900 dark:text-white">Leave Application Details</h3>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-400">
             <X size={16} />

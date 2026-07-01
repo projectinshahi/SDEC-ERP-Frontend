@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus, Download, Shield, User } from 'lucide-react';
-import { MOCK_EMPLOYEES } from '@/lib/hr/leave.mock';
+import { ApiEmployee } from '@/lib/api/hr';
 
 interface LeaveHeaderProps {
   userRole: 'admin' | 'staff';
@@ -10,6 +10,8 @@ interface LeaveHeaderProps {
   onEmployeeChange: (id: string) => void;
   onApplyLeaveClick: () => void;
   onExportClick: () => void;
+  employees: ApiEmployee[];
+  isSelfService?: boolean;
 }
 
 export function LeaveHeader({
@@ -19,9 +21,11 @@ export function LeaveHeader({
   onEmployeeChange,
   onApplyLeaveClick,
   onExportClick,
+  employees,
+  isSelfService = false,
 }: LeaveHeaderProps) {
   return (
-    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b border-gray-100 dark:border-gray-800/60 pb-6">
+    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b border-gray-100 dark:border-gray-850/60 pb-6">
       {/* Title & Subtitle */}
       <div>
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-600 dark:bg-teal-950/30 dark:text-teal-300 mb-3 border border-teal-100 dark:border-teal-900/30">
@@ -32,48 +36,51 @@ export function LeaveHeader({
           Leave Management
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          {userRole === 'admin' 
-            ? 'Track employee absence, approve requests, and manage leave balances enterprise-wide.' 
-            : 'View your remaining leave balance, submit requests, and check leave application status.'}
+          {isSelfService || userRole === 'staff'
+            ? 'View your remaining leave balance, submit requests, and check leave application status.'
+            : 'Track employee absence, approve requests, and manage leave balances enterprise-wide.'}
         </p>
       </div>
 
       {/* Role Context Switcher & Action Buttons */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Role Toggle Switcher */}
-        <div className="inline-flex items-center p-1 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200/50 dark:border-gray-700/50">
-          <button
-            onClick={onRoleToggle}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              userRole === 'admin'
-                ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white'
-            }`}
-          >
-            <Shield size={13} />
-            HR Admin
-          </button>
-          <button
-            onClick={onRoleToggle}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              userRole === 'staff'
-                ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white'
-            }`}
-          >
-            <User size={13} />
-            Staff User
-          </button>
-        </div>
+        {!isSelfService && (
+          <div className="inline-flex items-center p-1 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200/50 dark:border-gray-700/50">
+            <button
+              onClick={onRoleToggle}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                userRole === 'admin'
+                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white'
+              }`}
+            >
+              <Shield size={13} />
+              HR Admin
+            </button>
+            <button
+              onClick={onRoleToggle}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                userRole === 'staff'
+                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white'
+              }`}
+            >
+              <User size={13} />
+              Staff User
+            </button>
+          </div>
+        )}
 
-        {/* Staff Switcher Dropdown (only visible when in staff mode) */}
-        {userRole === 'staff' && (
+        {/* Staff Switcher Dropdown (only visible in staff mode for admins) */}
+        {!isSelfService && userRole === 'staff' && (
           <select
             value={selectedEmployeeId}
             onChange={(e) => onEmployeeChange(e.target.value)}
-            className="text-xs font-semibold px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-sm"
+            className="text-xs font-semibold px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-sm"
           >
-            {MOCK_EMPLOYEES.map(emp => (
+            <option value="">All Employees</option>
+            {employees.map((emp) => (
               <option key={emp.id} value={emp.id}>
                 {emp.name} ({emp.department})
               </option>
@@ -82,10 +89,10 @@ export function LeaveHeader({
         )}
 
         {/* Export Button (HR only) */}
-        {userRole === 'admin' && (
+        {!isSelfService && userRole === 'admin' && (
           <button
             onClick={onExportClick}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700 shadow-sm transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-850 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700 shadow-sm transition-all"
           >
             <Download size={15} />
             <span>Export</span>

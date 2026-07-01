@@ -513,6 +513,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'hr.employees.view', label: 'View Employees', description: 'View workforce employees directory', module: 'hr' },
       { key: 'hr.attendance.view', label: 'View Attendance', description: 'View workforce attendance logs', module: 'hr' },
       { key: 'hr.leave.view', label: 'View Leave', description: 'View and manage employee leave requests', module: 'hr' },
+      { key: 'hr.leave.self', label: 'Self-Service Leave', description: 'Access to self-service employee leave requests', module: 'hr' },
       { key: 'hr.recruitment.view', label: 'View Recruitment', description: 'Access hiring and recruitment pipelines', module: 'hr' },
       { key: 'hr.payroll.view', label: 'View Payroll', description: 'View payroll and financial details', module: 'hr' },
       { key: 'hr.performance.view', label: 'View Performance', description: 'View employee performance reviews and cycles', module: 'hr' },

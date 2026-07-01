@@ -55,7 +55,7 @@ export function LeaveBalanceCard({ balances, employeeName }: LeaveBalanceCardPro
           const usagePercent = Math.min(100, Math.round((bal.used / bal.allocated) * 100));
           
           return (
-            <Card key={bal.leaveType} className="overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
+            <Card key={bal.leaveType} className="overflow-hidden border border-gray-100 dark:border-gray-850 shadow-sm">
               <CardBody className="p-5">
                 <div className="flex items-start justify-between">
                   <div>
