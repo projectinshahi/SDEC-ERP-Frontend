@@ -154,6 +154,7 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
       development: false,
       user: false,
       hr: true,
+      finance: false,
     };
   }
 
