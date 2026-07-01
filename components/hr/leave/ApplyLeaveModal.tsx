@@ -74,7 +74,7 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
       {/* Modal Container Card */}
-      <Card className="w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-200 border border-gray-200 dark:border-gray-800">
+      <Card className="w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-200 border border-gray-200 dark:border-gray-850">
         <form onSubmit={handleSubmit}>
           {/* Header */}
           <CardHeader className="flex items-center justify-between pb-4">
@@ -113,7 +113,7 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
               <select
                 value={leaveType}
                 onChange={(e) => setLeaveType(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
+                className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
               >
                 {LEAVE_TYPES.filter(type => type !== 'All').map(type => (
                   <option key={type} value={type}>{type}</option>
@@ -131,7 +131,7 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
+                  className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
                 />
               </div>
 
@@ -143,7 +143,7 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
+                  className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
                 />
               </div>
             </div>
@@ -158,7 +158,7 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
                 placeholder="Describe your reason for leave application..."
-                className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:ring-1 focus:ring-teal-500 transition-all"
+                className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:ring-1 focus:ring-teal-500 transition-all"
               />
             </div>
 
@@ -168,7 +168,7 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
                 Attachment (Optional, e.g., Medical Certificate)
               </label>
               <div className="flex items-center gap-3">
-                <label className="inline-flex items-center gap-2 px-3.5 py-2 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 hover:border-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer shadow-sm transition-all">
+                <label className="inline-flex items-center gap-2 px-3.5 py-2 border border-gray-200 dark:border-gray-850 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 hover:border-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer shadow-sm transition-all">
                   <Paperclip size={13} />
                   <span>Choose File</span>
                   <input
@@ -189,7 +189,7 @@ export function ApplyLeaveModal({ isOpen, onClose, onSubmit }: ApplyLeaveModalPr
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-305 transition-all"
+              className="px-4 py-2 border border-gray-200 dark:border-gray-850 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-305 transition-all"
             >
               Cancel
             </button>

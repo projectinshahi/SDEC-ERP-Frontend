@@ -7,9 +7,9 @@ import { MOCK_INTERVIEWS } from '@/lib/hr/mockData';
 
 export function UpcomingInterviews() {
   return (
-    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 h-full shadow-sm">
+    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 h-full shadow-sm">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-850 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -39,7 +39,7 @@ export function UpcomingInterviews() {
           MOCK_INTERVIEWS.map((item) => (
             <div
               key={item.id}
-              className="group rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/20 p-4 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300"
+              className="group rounded-2xl border border-gray-100 dark:border-gray-850 bg-gray-50/60 dark:bg-gray-800/20 p-4 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300"
             >
               <div className="flex items-start gap-4">
                 {/* Avatar */}
@@ -56,7 +56,7 @@ export function UpcomingInterviews() {
                     {item.role}
                   </p>
 
-                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-850 text-xs font-semibold text-gray-600 dark:text-gray-300">
                     <Clock size={12} />
                     {item.dateTime}
                   </div>

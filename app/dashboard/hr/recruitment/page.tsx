@@ -11,7 +11,7 @@ export default function RecruitmentPage() {
   if (state.isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-violet-600 mb-3" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-3" />
         <p className="text-xs font-semibold text-gray-500">Loading recruitment module…</p>
       </div>
     );
@@ -27,7 +27,7 @@ export default function RecruitmentPage() {
         <p className="text-xs text-gray-500 mt-1 max-w-xs">{state.error}</p>
         <button
           onClick={state.refresh}
-          className="mt-4 px-4 py-2 text-xs font-semibold bg-violet-600 hover:bg-violet-750 text-white rounded-xl transition shadow-sm"
+          className="mt-4 px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition shadow-sm"
         >
           Retry
         </button>

@@ -33,7 +33,7 @@ export function DocumentsTable({
 
   if (records.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900/10">
+      <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-gray-200 dark:border-gray-850 rounded-2xl bg-white dark:bg-gray-900/10">
         <Inbox className="w-10 h-10 text-gray-300 dark:text-gray-700 stroke-[1.5]" />
         <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mt-3">No documents registered</h3>
         <p className="text-xs text-gray-400 dark:text-gray-550 mt-1">Upload files or adjust filters to view records here.</p>
@@ -58,11 +58,11 @@ export function DocumentsTable({
   };
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+    <div className="w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900 text-[10px] font-bold text-gray-400 dark:text-gray-550 uppercase tracking-wider">
+            <tr className="border-b border-gray-150 dark:border-gray-850 bg-gray-50/50 dark:bg-gray-900 text-[10px] font-bold text-gray-400 dark:text-gray-550 uppercase tracking-wider">
               <th className="px-6 py-4">Employee</th>
               <th className="px-6 py-4">Document Type</th>
               <th className="px-6 py-4">File Name</th>
@@ -153,7 +153,7 @@ export function DocumentsTable({
                         target="_blank"
                         rel="noreferrer"
                         title="View document in tab"
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-violet-605 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition"
                       >
                         <Eye size={13.5} />
                       </a>
@@ -162,7 +162,7 @@ export function DocumentsTable({
                       <button
                         onClick={() => handleDownload(doc.fileUrl, doc.fileName)}
                         title="Download document"
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-violet-605 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition"
                       >
                         <Download size={13.5} />
                       </button>

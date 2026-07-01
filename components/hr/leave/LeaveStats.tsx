@@ -53,7 +53,7 @@ export function LeaveStats({ stats, userRole }: LeaveStatsProps) {
         value={stats.employeesOnLeaveToday}
         subtitle="Active absences today"
         icon={CalendarDays}
-        variant="violet"
+        variant="indigo"
       />
 
       <KPIStatCard

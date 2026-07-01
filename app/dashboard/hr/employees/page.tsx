@@ -353,7 +353,7 @@ export default function EmployeesPage() {
       </div>
 
       {/* 3. Filter Toolbar */}
-      <Card className="overflow-hidden border border-gray-150 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-[0_2px_12px_rgba(0,0,0,0.03)] rounded-2xl">
+      <Card className="overflow-hidden border border-gray-150 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-[0_2px_12px_rgba(0,0,0,0.03)] rounded-2xl">
         <div className="p-5 flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
@@ -404,12 +404,12 @@ export default function EmployeesPage() {
       </Card>
 
       {/* 4. Employee Table */}
-      <Card className="overflow-hidden border border-gray-150 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-[0_2px_12px_rgba(0,0,0,0.03)] rounded-2xl flex flex-col h-full">
+      <Card className="overflow-hidden border border-gray-150 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-[0_2px_12px_rgba(0,0,0,0.03)] rounded-2xl flex flex-col h-full">
         {/* Desktop table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800/80 text-[10px] font-bold text-gray-400 dark:text-gray-550 bg-gray-50/20 dark:bg-gray-900/10 uppercase tracking-widest">
+              <tr className="border-b border-gray-100 dark:border-gray-850/80 text-[10px] font-bold text-gray-400 dark:text-gray-550 bg-gray-50/20 dark:bg-gray-900/10 uppercase tracking-widest">
                 <th className="py-4 px-6 w-12 text-center">
                   <input
                     type="checkbox"
@@ -463,7 +463,7 @@ export default function EmployeesPage() {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-600/10 border border-blue-500/10 flex items-center justify-center font-bold text-sm text-blue-600 dark:text-blue-400 shadow-sm shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/10 flex items-center justify-center font-bold text-sm text-blue-600 dark:text-blue-400 shadow-sm shrink-0">
                             {(emp.name ?? '?').charAt(0).toUpperCase()}
                           </div>
                           <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">
@@ -542,7 +542,7 @@ export default function EmployeesPage() {
               const empIdStr = String(emp.id);
               const displayStatus = toDisplay(emp.employment_status);
               return (
-                <div key={emp.id} className="rounded-2xl border border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/10 p-4 space-y-3 relative">
+                <div key={emp.id} className="rounded-2xl border border-gray-150 dark:border-gray-850 bg-gray-50/50 dark:bg-gray-800/10 p-4 space-y-3 relative">
                   <div className="absolute right-3 top-3 flex items-center gap-0.5">
                     <button
                       onClick={() => setSelectedEmployee(emp)}
@@ -568,7 +568,7 @@ export default function EmployeesPage() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-600/10 border border-blue-500/10 flex items-center justify-center font-bold text-sm text-blue-600">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/10 flex items-center justify-center font-bold text-sm text-blue-600">
                       {(emp.name ?? '?').charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -577,7 +577,7 @@ export default function EmployeesPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-gray-800/80 pt-3">
+                  <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-gray-850/80 pt-3">
                     <div>
                       <span className="block text-gray-400 dark:text-gray-500 font-medium">Department</span>
                       <span className="font-semibold text-gray-800 dark:text-gray-200 mt-0.5 block">{emp.department}</span>
@@ -588,7 +588,7 @@ export default function EmployeesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800/80 pt-3 flex-wrap gap-2">
+                  <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-850/80 pt-3 flex-wrap gap-2">
                     <span className="text-xs text-gray-500 dark:text-gray-450 font-medium truncate">{emp.email}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${
                       displayStatus === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : displayStatus === 'On Leave' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-rose-50 text-rose-700 border-rose-100'
@@ -604,7 +604,7 @@ export default function EmployeesPage() {
 
         {/* 5. Pagination & bulk controls */}
         {filteredEmployees.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50/20 dark:bg-gray-900/10 flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-850/60 bg-gray-50/20 dark:bg-gray-900/10 flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                 Showing {Math.min(filteredEmployees.length, (currentPage - 1) * itemsPerPage + 1)} to{' '}
@@ -858,7 +858,7 @@ export default function EmployeesPage() {
 
           <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl z-10 transition-all duration-300">
             {/* Accent banner */}
-            <div className="h-28 bg-gradient-to-r from-blue-600 to-indigo-600 relative">
+            <div className="h-28 bg-gradient-to-r from-blue-600 to-blue-600 relative">
               <button
                 onClick={() => setSelectedEmployee(null)}
                 className="absolute right-4 top-4 p-1.5 bg-black/20 hover:bg-black/35 rounded-full text-white transition"
@@ -871,7 +871,7 @@ export default function EmployeesPage() {
             <div className="px-6 pb-6 relative">
               <div className="flex justify-between items-end -mt-10 mb-4">
                 <div className="w-20 h-20 rounded-2xl bg-white dark:bg-gray-950 p-1 border-4 border-white dark:border-gray-900 shadow-md">
-                  <div className="w-full h-full rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-600/10 flex items-center justify-center font-black text-2xl text-blue-600 dark:text-blue-400">
+                  <div className="w-full h-full rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/10 flex items-center justify-center font-black text-2xl text-blue-600 dark:text-blue-400">
                     {(selectedEmployee.name ?? '?').charAt(0).toUpperCase()}
                   </div>
                 </div>
@@ -892,7 +892,7 @@ export default function EmployeesPage() {
                   <p className="text-xs font-mono font-medium text-gray-500 dark:text-gray-400 mt-2">{selectedEmployee.employee_code}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 border-t border-b border-gray-100 dark:border-gray-800/80 py-4">
+                <div className="grid grid-cols-2 gap-4 border-t border-b border-gray-100 dark:border-gray-850/80 py-4">
                   <div className="space-y-1">
                     <span className="text-[10px] uppercase font-bold text-gray-450 dark:text-gray-500 tracking-wider">Department</span>
                     <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{selectedEmployee.department}</p>

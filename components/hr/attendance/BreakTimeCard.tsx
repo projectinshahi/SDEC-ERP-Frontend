@@ -71,7 +71,7 @@ export function BreakTimeCard({ records }: BreakTimeCardProps) {
                 return (
                   <div
                     key={r.id}
-                    className="flex items-center justify-between py-2 px-3 rounded-xl bg-gray-50/60 dark:bg-gray-800/20 border border-gray-100 dark:border-gray-800/60"
+                    className="flex items-center justify-between py-2 px-3 rounded-xl bg-gray-50/60 dark:bg-gray-800/20 border border-gray-100 dark:border-gray-850/60"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/30 flex items-center justify-center text-[11px] font-black text-amber-700 dark:text-amber-300 shrink-0">

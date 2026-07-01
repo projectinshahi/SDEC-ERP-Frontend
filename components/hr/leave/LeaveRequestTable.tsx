@@ -79,12 +79,12 @@ export function LeaveRequestTable({
   const endItem = Math.min(currentPage * itemsPerPage, allFilteredRequestsCount);
 
   return (
-    <Card className="border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    <Card className="border border-gray-100 dark:border-gray-850 shadow-sm overflow-hidden">
       {/* Desktop Responsive Table */}
       <div className="overflow-x-auto hidden md:block">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/70 dark:bg-gray-900/50 border-b border-gray-150 dark:border-gray-800">
+            <tr className="bg-gray-50/70 dark:bg-gray-900/50 border-b border-gray-150 dark:border-gray-850">
               {renderHeader('Employee', 'employeeName')}
               {renderHeader('Department', 'department')}
               {renderHeader('Leave Type', 'leaveType')}
@@ -138,7 +138,7 @@ export function LeaveRequestTable({
                 </span>
               </div>
 
-              <div className="flex items-center justify-between text-2xs font-medium text-gray-500 dark:text-gray-400 border-t border-b border-gray-50 dark:border-gray-800 py-2">
+              <div className="flex items-center justify-between text-2xs font-medium text-gray-500 dark:text-gray-400 border-t border-b border-gray-50 dark:border-gray-850 py-2">
                 <div>
                   <span className="text-gray-400">Type:</span> {req.leaveType}
                 </div>
@@ -152,7 +152,7 @@ export function LeaveRequestTable({
               </div>
 
               <div className="flex items-center justify-between pt-1">
-                <div className="inline-flex items-center gap-2 text-2xs font-semibold px-2.5 py-0.5 rounded-full border bg-gray-50 dark:bg-gray-800 border-gray-150 dark:border-gray-800 text-gray-600 dark:text-gray-300">
+                <div className="inline-flex items-center gap-2 text-2xs font-semibold px-2.5 py-0.5 rounded-full border bg-gray-50 dark:bg-gray-800 border-gray-150 dark:border-gray-850 text-gray-600 dark:text-gray-300">
                   <span className={`w-1.5 h-1.5 rounded-full ${
                     req.status === 'Approved' ? 'bg-emerald-500' :
                     req.status === 'Pending' ? 'bg-amber-500' :
@@ -202,7 +202,7 @@ export function LeaveRequestTable({
       </div>
 
       {/* Pagination Footer */}
-      <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between flex-wrap gap-3">
+      <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-850/80 flex items-center justify-between flex-wrap gap-3">
         <div className="text-xs font-semibold text-gray-500 dark:text-gray-400">
           Showing <span className="text-gray-800 dark:text-gray-200 font-bold">{startItem}</span> to{' '}
           <span className="text-gray-800 dark:text-gray-200 font-bold">{endItem}</span> of{' '}
@@ -213,7 +213,7 @@ export function LeaveRequestTable({
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="p-1.5 border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-450 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-transparent rounded-lg transition-all"
+            className="p-1.5 border border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-450 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-transparent rounded-lg transition-all"
           >
             <ChevronLeft size={16} />
           </button>
@@ -241,7 +241,7 @@ export function LeaveRequestTable({
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="p-1.5 border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-450 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-transparent rounded-lg transition-all"
+            className="p-1.5 border border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-450 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-transparent rounded-lg transition-all"
           >
             <ChevronRight size={16} />
           </button>

@@ -21,7 +21,7 @@ export function PayrollTable({
 }: PayrollTableProps) {
   if (records.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900/10">
+      <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-gray-200 dark:border-gray-850 rounded-2xl bg-white dark:bg-gray-900/10">
         <Inbox className="w-10 h-10 text-gray-300 dark:text-gray-700 stroke-[1.5]" />
         <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mt-3">No matching payroll records</h3>
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your filters or generate a new payroll record.</p>
@@ -30,11 +30,11 @@ export function PayrollTable({
   }
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+    <div className="w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+            <tr className="border-b border-gray-150 dark:border-gray-850 bg-gray-50/50 dark:bg-gray-900 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
               <th className="px-6 py-4">Employee</th>
               <th className="px-6 py-4">Designation</th>
               <th className="px-6 py-4">Month</th>
@@ -111,7 +111,7 @@ export function PayrollTable({
                       <button
                         onClick={() => onMarkPaid(record.id)}
                         title="Mark as Paid"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/20 hover:bg-violet-100 dark:hover:bg-violet-900/30 border border-violet-100 dark:border-violet-900/30 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border border-blue-100 dark:border-blue-900/30 transition-colors"
                       >
                         <CheckCircle2 size={12} />
                         <span>Mark Paid</span>
@@ -124,7 +124,7 @@ export function PayrollTable({
                     <button
                       onClick={() => onViewPayslip(record)}
                       title="View Payslip Preview"
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition-colors"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors"
                     >
                       <FileText size={13.5} />
                     </button>

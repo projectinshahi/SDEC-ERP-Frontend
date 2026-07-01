@@ -116,7 +116,7 @@ export default function AttendancePage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -132,7 +132,7 @@ export default function AttendancePage() {
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs">{error}</p>
         <button
           onClick={refresh}
-          className="mt-4 px-4 py-2 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition"
+          className="mt-4 px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition"
         >
           Retry
         </button>

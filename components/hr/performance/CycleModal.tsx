@@ -58,7 +58,7 @@ export function CycleModal({
       <div className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[85vh] overflow-hidden">
+      <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-850 flex flex-col max-h-[85vh] overflow-hidden">
         
         {/* Header */}
         <div className="bg-amber-500 dark:bg-amber-600 px-6 py-6 text-white shrink-0 relative">
@@ -94,7 +94,7 @@ export function CycleModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Q1 2026, Annual 2026"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
               required
             />
           </div>
@@ -110,7 +110,7 @@ export function CycleModal({
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition cursor-pointer"
+                  className="w-full pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition cursor-pointer"
                   required
                 />
               </div>
@@ -125,7 +125,7 @@ export function CycleModal({
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition cursor-pointer"
+                  className="w-full pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition cursor-pointer"
                   required
                 />
               </div>
@@ -141,7 +141,7 @@ export function CycleModal({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition cursor-pointer appearance-none"
+                className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-sm text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition cursor-pointer appearance-none"
                 required
               >
                 <option value="Upcoming" className="bg-white dark:bg-gray-900">Upcoming</option>
@@ -159,7 +159,7 @@ export function CycleModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
               disabled={isSubmitting}
             >
               Cancel

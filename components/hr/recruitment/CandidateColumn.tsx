@@ -34,7 +34,7 @@ export function CandidateColumn({
   const color = BADGE_COLORS[title] || BADGE_COLORS.Applied;
 
   return (
-    <div className="bg-slate-50/50 dark:bg-gray-800/10 rounded-2xl p-4.5 min-w-[310px] w-[310px] border border-gray-100/60 dark:border-gray-800/40 flex flex-col max-h-[80vh] shrink-0">
+    <div className="bg-slate-50/50 dark:bg-gray-800/10 rounded-2xl p-4.5 min-w-[310px] w-[310px] border border-gray-100/60 dark:border-gray-850/40 flex flex-col max-h-[80vh] shrink-0">
       
       {/* Column Header */}
       <div className="flex items-center justify-between mb-4 shrink-0 px-1">
@@ -50,7 +50,7 @@ export function CandidateColumn({
       {/* Cards container */}
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1 scrollbar-thin">
         {candidates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-xl bg-white/50 dark:bg-gray-900/10">
+          <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed border-gray-200 dark:border-gray-850 rounded-xl bg-white/50 dark:bg-gray-900/10">
             <Inbox className="w-8 h-8 text-gray-300 dark:text-gray-700 stroke-[1.5]" />
             <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-550 mt-2">No candidates</p>
           </div>

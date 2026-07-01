@@ -41,14 +41,14 @@ function SortableHeader({
   const isActive = currentKey === sortKey;
   return (
     <th
-      className="py-4 px-4 font-semibold cursor-pointer select-none hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+      className="py-4 px-4 font-semibold cursor-pointer select-none hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
       onClick={() => onSort(sortKey)}
     >
       <span className="inline-flex items-center gap-1.5">
         {label}
         <ArrowUpDown
           size={12}
-          className={`transition-opacity ${isActive ? 'opacity-100 text-violet-500' : 'opacity-30'}`}
+          className={`transition-opacity ${isActive ? 'opacity-100 text-blue-500' : 'opacity-30'}`}
         />
       </span>
     </th>
@@ -83,13 +83,13 @@ export function AttendanceTable({
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-gray-100 dark:border-gray-800/80 text-[10px] font-bold text-gray-400 dark:text-gray-500 bg-gray-50/30 dark:bg-gray-900/10 uppercase tracking-widest">
+            <tr className="border-b border-gray-100 dark:border-gray-850/80 text-[10px] font-bold text-gray-400 dark:text-gray-500 bg-gray-50/30 dark:bg-gray-900/10 uppercase tracking-widest">
               <th className="py-4 px-5 w-10 text-center">
                 <input
                   type="checkbox"
                   checked={allPageSelected}
                   onChange={onSelectAll}
-                  className="rounded border-gray-300 dark:border-gray-600 text-violet-600 focus:ring-violet-500 h-4 w-4"
+                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
                 />
               </th>
               <SortableHeader
@@ -169,11 +169,11 @@ export function AttendanceTable({
             return (
               <div
                 key={record.id}
-                className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-800/10 p-4 space-y-3"
+                className="rounded-2xl border border-gray-100 dark:border-gray-850 bg-gray-50/40 dark:bg-gray-800/10 p-4 space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-600/10 border border-violet-500/10 flex items-center justify-center font-black text-sm text-violet-600 dark:text-violet-400">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/10 flex items-center justify-center font-black text-sm text-blue-600 dark:text-blue-400">
                       {initials}
                     </div>
                     <div>
@@ -188,7 +188,7 @@ export function AttendanceTable({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-gray-800/60 pt-3">
+                <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-gray-850/60 pt-3">
                   {[
                     { label: 'Dept', value: record.department },
                     { label: 'Status', value: record.status },
@@ -211,7 +211,7 @@ export function AttendanceTable({
 
       {/* ─── Pagination footer ────────────────────────────────────────── */}
       {filteredTotal > 0 && (
-        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50/20 dark:bg-gray-900/10 flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-850/60 bg-gray-50/20 dark:bg-gray-900/10 flex flex-col sm:flex-row items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
               Showing {startEntry}–{endEntry} of {filteredTotal} records
@@ -239,7 +239,7 @@ export function AttendanceTable({
                 key={i}
                 onClick={() => onPageChange(i + 1)}
                 className={`w-8 h-8 rounded-xl text-xs font-bold transition ${currentPage === i + 1
-                  ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/20'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
                   : 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`}
               >

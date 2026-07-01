@@ -402,10 +402,10 @@ export function ReviewDetailDrawer({
       <div className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-xs" onClick={onClose} />
 
       {/* Sliding Drawer Container */}
-      <div className="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-800 flex flex-col h-full overflow-hidden">
+      <div className="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-850 flex flex-col h-full overflow-hidden">
         
         {/* Header */}
-        <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-5 flex items-center justify-between shrink-0">
+        <div className="border-b border-gray-200 dark:border-gray-850 px-6 py-5 flex items-center justify-between shrink-0">
           <div className="min-w-0">
             <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest block">
               Performance Review
@@ -444,7 +444,7 @@ export function ReviewDetailDrawer({
             )}
 
             {appraisal.status === 'completed' || (appraisal.status as string) === 'Approved' ? (
-              <div id="printable-appraisal-report" className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl space-y-6 shadow-xs">
+              <div id="printable-appraisal-report" className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-3xl space-y-6 shadow-xs">
                 {/* Report Header */}
                 <div className="flex items-start justify-between border-b border-gray-100 dark:border-gray-850 pb-5">
                   <div>
@@ -464,7 +464,7 @@ export function ReviewDetailDrawer({
                     <button
                       type="button"
                       onClick={() => generateAppraisalPdf(appraisal)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-violet-600 hover:bg-violet-700 active:bg-violet-850 text-white text-xs font-bold rounded-lg transition shadow-sm shadow-violet-500/20"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white text-xs font-bold rounded-lg transition shadow-sm shadow-blue-500/20"
                     >
                       <ArrowDownToLine size={13.5} />
                       <span>Download PDF</span>
@@ -474,13 +474,13 @@ export function ReviewDetailDrawer({
 
                 {/* Info Cards Grid */}
                 <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="space-y-1.5 p-3.5 bg-gray-50/50 dark:bg-gray-800/10 rounded-2xl border border-gray-100 dark:border-gray-800/40">
+                  <div className="space-y-1.5 p-3.5 bg-gray-50/50 dark:bg-gray-800/10 rounded-2xl border border-gray-100 dark:border-gray-850/40">
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Employee Details</span>
                     <div className="font-extrabold text-gray-800 dark:text-gray-255">{appraisal.employee_name}</div>
                     <div className="text-gray-405 font-medium">Code: {appraisal.employee_code}</div>
                     <div className="text-gray-405 font-medium">{appraisal.designation} &bull; {appraisal.department}</div>
                   </div>
-                  <div className="space-y-1.5 p-3.5 bg-gray-50/50 dark:bg-gray-800/10 rounded-2xl border border-gray-100 dark:border-gray-800/40">
+                  <div className="space-y-1.5 p-3.5 bg-gray-50/50 dark:bg-gray-800/10 rounded-2xl border border-gray-100 dark:border-gray-850/40">
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Evaluator Details</span>
                     <div className="font-extrabold text-gray-800 dark:text-gray-255">{appraisal.manager_name || 'Unassigned'}</div>
                     <div className="text-gray-405 font-medium">Code: {appraisal.manager_code || '—'}</div>
@@ -518,10 +518,10 @@ export function ReviewDetailDrawer({
                 {/* Ratings Table */}
                 <div className="space-y-2">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category Ratings Summary</span>
-                  <div className="border border-gray-150 dark:border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="border border-gray-150 dark:border-gray-850 rounded-2xl overflow-hidden">
                     <table className="w-full text-left text-xs">
                       <thead>
-                        <tr className="bg-gray-50 dark:bg-gray-800/10 border-b border-gray-150 dark:border-gray-800 font-bold text-gray-500">
+                        <tr className="bg-gray-50 dark:bg-gray-800/10 border-b border-gray-150 dark:border-gray-850 font-bold text-gray-500">
                           <th className="px-4 py-2.5">Category</th>
                           <th className="px-4 py-2.5 text-center">Self Score</th>
                           <th className="px-4 py-2.5 text-center">Manager Score</th>
@@ -544,10 +544,10 @@ export function ReviewDetailDrawer({
                 {appraisal.goals && appraisal.goals.length > 0 && (
                   <div className="space-y-2">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Assigned Goals & Objectives</span>
-                    <div className="border border-gray-150 dark:border-gray-800 rounded-2xl overflow-hidden">
+                    <div className="border border-gray-150 dark:border-gray-850 rounded-2xl overflow-hidden">
                       <table className="w-full text-left text-xs">
                         <thead>
-                          <tr className="bg-gray-50 dark:bg-gray-800/10 border-b border-gray-150 dark:border-gray-800 font-bold text-gray-500">
+                          <tr className="bg-gray-50 dark:bg-gray-800/10 border-b border-gray-150 dark:border-gray-850 font-bold text-gray-500">
                             <th className="px-4 py-2.5">Goal Description</th>
                             <th className="px-4 py-2.5 text-center">Weight</th>
                             <th className="px-4 py-2.5 text-center">Progress</th>
@@ -575,13 +575,13 @@ export function ReviewDetailDrawer({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div className="space-y-1">
                       <span className="font-bold text-gray-500">Employee Self Comments</span>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-800 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400">
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-850 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400">
                         {appraisal.self_comments || 'No self feedback logged.'}
                       </div>
                     </div>
                     <div className="space-y-1">
                       <span className="font-bold text-gray-500">Manager Review Comments</span>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-800 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400">
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-850 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400">
                         {appraisal.manager_comments || 'No evaluation comments logged.'}
                       </div>
                     </div>
@@ -590,19 +590,19 @@ export function ReviewDetailDrawer({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                     <div className="space-y-1">
                       <span className="font-bold text-gray-500 block">Strengths Notes</span>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-800 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400">
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-850 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400">
                         {appraisal.manager_scores?.strengths || '—'}
                       </div>
                     </div>
                     <div className="space-y-1">
                       <span className="font-bold text-gray-500 block">Areas of Improvement</span>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-800 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400">
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-850 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400">
                         {appraisal.manager_scores?.improvement_areas || '—'}
                       </div>
                     </div>
                     <div className="space-y-1">
                       <span className="font-bold text-gray-500 block">Promotion Recommendation</span>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-800 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400 font-semibold">
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/20 border border-gray-155 dark:border-gray-850 rounded-xl leading-relaxed text-gray-650 dark:text-gray-400 font-semibold">
                         {appraisal.manager_scores?.promotion_recommendation || 'No promotion details logged.'}
                       </div>
                     </div>
@@ -611,9 +611,9 @@ export function ReviewDetailDrawer({
 
                 {/* Sign Off Remarks */}
                 {appraisal.final_comments && (
-                  <div className="space-y-1 text-xs pt-4 border-t border-gray-150 dark:border-gray-800">
+                  <div className="space-y-1 text-xs pt-4 border-t border-gray-150 dark:border-gray-850">
                     <span className="font-bold text-gray-500 block">HR Approver Remarks & Sign-Off</span>
-                    <div className="p-3.5 bg-gray-50 dark:bg-gray-800/25 border border-gray-150 dark:border-gray-800 rounded-xl leading-relaxed text-gray-700 dark:text-gray-350 italic">
+                    <div className="p-3.5 bg-gray-50 dark:bg-gray-800/25 border border-gray-150 dark:border-gray-850 rounded-xl leading-relaxed text-gray-700 dark:text-gray-350 italic">
                       "{appraisal.final_comments}"
                     </div>
                   </div>
@@ -662,14 +662,14 @@ export function ReviewDetailDrawer({
                     </p>
                   </div>
 
-                  <div className="space-y-4 bg-gray-50/50 dark:bg-gray-800/10 p-5 rounded-2xl border border-gray-100 dark:border-gray-800/40">
+                  <div className="space-y-4 bg-gray-50/50 dark:bg-gray-800/10 p-5 rounded-2xl border border-gray-100 dark:border-gray-850/40">
                     {CATEGORIES.map((cat) => {
                       const selfVal = selfRatings[cat.key] || 0;
                       const scoreKey = CATEGORY_TO_SCORE_KEY[cat.key];
                       const managerVal = scoreKey ? (managerScores[scoreKey] || 0) : 0;
 
                       return (
-                        <div key={cat.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 first:pt-0 last:pb-0 border-b border-gray-100 dark:border-gray-800/50 last:border-0">
+                        <div key={cat.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 first:pt-0 last:pb-0 border-b border-gray-100 dark:border-gray-850/50 last:border-0">
                           <div className="min-w-0">
                             <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">{cat.label}</span>
                             <span className="text-[10px] text-gray-400 dark:text-gray-500 block mt-0.5 leading-normal">{cat.desc}</span>
@@ -680,7 +680,7 @@ export function ReviewDetailDrawer({
                             <div className="flex flex-col items-center">
                               <span className="text-[8px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Self</span>
                               {canEditSelf ? (
-                                <div className="flex items-center gap-1 mt-1 bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-800">
+                                <div className="flex items-center gap-1 mt-1 bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-850">
                                   {[1, 2, 3, 4, 5].map(val => (
                                     <button
                                       type="button"
@@ -689,7 +689,7 @@ export function ReviewDetailDrawer({
                                       className={`w-7 h-7 rounded-lg text-xs font-bold transition flex items-center justify-center border ${
                                         selfVal === val
                                           ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
-                                          : 'border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-850'
+                                          : 'border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-850'
                                       }`}
                                     >
                                       {val}
@@ -707,7 +707,7 @@ export function ReviewDetailDrawer({
                             <div className="flex flex-col items-center">
                               <span className="text-[8px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Manager</span>
                               {canEditManager ? (
-                                <div className="flex items-center gap-1 mt-1 bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-800">
+                                <div className="flex items-center gap-1 mt-1 bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-850">
                                   {[1, 2, 3, 4, 5].map(val => (
                                     <button
                                       type="button"
@@ -716,7 +716,7 @@ export function ReviewDetailDrawer({
                                       className={`w-7 h-7 rounded-lg text-xs font-bold transition flex items-center justify-center border ${
                                         managerVal === val
                                           ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
-                                          : 'border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-850'
+                                          : 'border-gray-200 dark:border-gray-850 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-850'
                                       }`}
                                     >
                                       {val}
@@ -749,10 +749,10 @@ export function ReviewDetailDrawer({
                         value={selfComments}
                         onChange={(e) => setSelfComments(e.target.value)}
                         placeholder="Enter self-reflection, highlights, areas for growth..."
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
                       />
                     ) : (
-                      <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/40 rounded-2xl text-xs text-gray-600 dark:text-gray-400 min-h-[100px] leading-relaxed whitespace-pre-wrap">
+                      <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-850/40 rounded-2xl text-xs text-gray-600 dark:text-gray-400 min-h-[100px] leading-relaxed whitespace-pre-wrap">
                         {appraisal.self_comments || 'No comments submitted.'}
                       </div>
                     )}
@@ -769,10 +769,10 @@ export function ReviewDetailDrawer({
                         value={managerComments}
                         onChange={(e) => setManagerComments(e.target.value)}
                         placeholder="Enter manager feedback, goals evaluation, performance summary..."
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
                       />
                     ) : (
-                      <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/40 rounded-2xl text-xs text-gray-600 dark:text-gray-400 min-h-[100px] leading-relaxed whitespace-pre-wrap">
+                      <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-850/40 rounded-2xl text-xs text-gray-600 dark:text-gray-400 min-h-[100px] leading-relaxed whitespace-pre-wrap">
                         {appraisal.manager_comments || 'No comments submitted.'}
                       </div>
                     )}
@@ -781,7 +781,7 @@ export function ReviewDetailDrawer({
 
                 {/* Phase 2 Manager Textareas (Strengths, Improvements, Recommendations) */}
                 {canEditManager && isEvaluator ? (
-                  <div className="space-y-4 border-t border-gray-100 dark:border-gray-800/60 pt-6">
+                  <div className="space-y-4 border-t border-gray-100 dark:border-gray-850/60 pt-6">
                     <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Manager Evaluation Areas</h4>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -795,7 +795,7 @@ export function ReviewDetailDrawer({
                           value={strengths}
                           onChange={(e) => setStrengths(e.target.value)}
                           placeholder="Key strengths, major milestones achieved, positive attributes..."
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
                         />
                       </div>
 
@@ -809,7 +809,7 @@ export function ReviewDetailDrawer({
                           value={improvementAreas}
                           onChange={(e) => setImprovementAreas(e.target.value)}
                           placeholder="Identified weaknesses, training needs, process enhancements..."
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
                         />
                       </div>
 
@@ -823,7 +823,7 @@ export function ReviewDetailDrawer({
                           value={promotionRecommendation}
                           onChange={(e) => setPromotionRecommendation(e.target.value)}
                           placeholder="Recommend for promotion? Next level designation..."
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
                         />
                       </div>
                     </div>
@@ -863,7 +863,7 @@ export function ReviewDetailDrawer({
                             value={newGoalTitle}
                             onChange={(e) => setNewGoalTitle(e.target.value)}
                             placeholder="e.g. Complete SDEC integrations framework..."
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
                           />
                         </div>
                       </div>
@@ -877,7 +877,7 @@ export function ReviewDetailDrawer({
                             max="100"
                             value={newGoalWeight}
                             onChange={(e) => setNewGoalWeight(e.target.value)}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
                           />
                         </div>
                         <div className="space-y-1">
@@ -888,7 +888,7 @@ export function ReviewDetailDrawer({
                             max="100"
                             value={newGoalProgress}
                             onChange={(e) => setNewGoalProgress(e.target.value)}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
                           />
                         </div>
                         <div className="space-y-1">
@@ -896,7 +896,7 @@ export function ReviewDetailDrawer({
                           <select
                             value={newGoalScore}
                             onChange={(e) => setNewGoalScore(e.target.value)}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition"
                           >
                             <option value="0">Unrated</option>
                             {[1, 2, 3, 4, 5].map(v => (
@@ -906,7 +906,7 @@ export function ReviewDetailDrawer({
                         </div>
                       </div>
 
-                      <div className="flex justify-end gap-2 pt-1.5 border-t border-gray-100 dark:border-gray-800/50">
+                      <div className="flex justify-end gap-2 pt-1.5 border-t border-gray-100 dark:border-gray-850/50">
                         <button
                           type="button"
                           onClick={() => setIsAddingGoal(false)}
@@ -927,7 +927,7 @@ export function ReviewDetailDrawer({
 
                   {/* Goals list */}
                   {!appraisal.goals || appraisal.goals.length === 0 ? (
-                    <div className="p-6 bg-gray-50 dark:bg-gray-800/10 rounded-2xl border border-gray-100 dark:border-gray-800/40 text-center flex flex-col items-center justify-center gap-2">
+                    <div className="p-6 bg-gray-50 dark:bg-gray-800/10 rounded-2xl border border-gray-100 dark:border-gray-850/40 text-center flex flex-col items-center justify-center gap-2">
                       <Target className="text-gray-300 dark:text-gray-700" size={24} />
                       <span className="text-xs text-gray-400 font-semibold">No target goals assigned for this review cycle.</span>
                     </div>
@@ -937,7 +937,7 @@ export function ReviewDetailDrawer({
                         const isGoalEditable = (appraisal.status === 'draft' || appraisal.status === 'self_review' || appraisal.status === 'manager_review') && (isEvaluator || isHR);
 
                         return (
-                          <div key={g.id} className="p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col gap-3">
+                          <div key={g.id} className="p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-850 flex flex-col gap-3">
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
                                 <span className="text-[9px] font-extrabold text-amber-500 dark:text-amber-500 uppercase tracking-wider block">
@@ -960,7 +960,7 @@ export function ReviewDetailDrawer({
                               )}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-gray-50 dark:border-gray-800/50">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-gray-50 dark:border-gray-850/50">
                               <div className="flex items-center gap-4 shrink-0">
                                 <div className="space-y-0.5">
                                   <span className="text-[9px] font-extrabold text-gray-450 dark:text-gray-500 uppercase block">Progress</span>
@@ -999,7 +999,7 @@ export function ReviewDetailDrawer({
                                         className={`text-[10px] font-extrabold w-5 h-5 rounded-md border flex items-center justify-center transition ${
                                           g.score === v
                                             ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
-                                            : 'border-gray-200 dark:border-gray-800 text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-850'
+                                            : 'border-gray-200 dark:border-gray-850 text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-850'
                                         }`}
                                       >
                                         {v}
@@ -1040,11 +1040,11 @@ export function ReviewDetailDrawer({
                           value={rejectComments}
                           onChange={(e) => setRejectComments(e.target.value)}
                           placeholder="Explain why this review is being returned..."
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-rose-500 dark:focus:border-rose-500 transition resize-none leading-relaxed"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-rose-500 dark:focus:border-rose-500 transition resize-none leading-relaxed"
                         />
                       </div>
 
-                      <div className="flex justify-end gap-2 pt-1 border-t border-gray-100 dark:border-gray-800/50">
+                      <div className="flex justify-end gap-2 pt-1 border-t border-gray-100 dark:border-gray-850/50">
                         <button
                           type="button"
                           onClick={() => setShowRejectForm(false)}
@@ -1066,7 +1066,7 @@ export function ReviewDetailDrawer({
 
                 {/* HR Sign Off Review */}
                 {canApprove && (
-                  <div className="p-5 border border-gray-200 dark:border-gray-800 rounded-2xl space-y-4">
+                  <div className="p-5 border border-gray-200 dark:border-gray-850 rounded-2xl space-y-4">
                     <div>
                       <h3 className="text-xs font-black uppercase text-gray-500 dark:text-gray-400 tracking-wider">
                         HR Sign-Off & Approvals
@@ -1082,7 +1082,7 @@ export function ReviewDetailDrawer({
                         value={hrComments}
                         onChange={(e) => setHrComments(e.target.value)}
                         placeholder="Enter HR approval remarks, final performance increment notes, action plans..."
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 bg-transparent text-xs text-gray-800 dark:text-gray-200 outline-none focus:border-amber-500 dark:focus:border-amber-500 transition resize-none leading-relaxed"
                       />
                     </div>
                   </div>
@@ -1094,11 +1094,11 @@ export function ReviewDetailDrawer({
 
         {/* Drawer Action Bar */}
         {!isLoading && appraisal && (
-          <div className="border-t border-gray-200 dark:border-gray-800 px-6 py-4 bg-gray-50/50 dark:bg-gray-900 flex justify-end gap-3 shrink-0">
+          <div className="border-t border-gray-200 dark:border-gray-850 px-6 py-4 bg-gray-50/50 dark:bg-gray-900 flex justify-end gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
               disabled={isSubmitting}
             >
               Close Drawer
@@ -1110,7 +1110,7 @@ export function ReviewDetailDrawer({
                 <button
                   type="button"
                   onClick={() => submitSelf(true)}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                   disabled={isSubmitting}
                 >
                   Save Draft
@@ -1145,7 +1145,7 @@ export function ReviewDetailDrawer({
                 <button
                   type="button"
                   onClick={() => submitManager(true)}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-850 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                   disabled={isSubmitting}
                 >
                   Save Draft

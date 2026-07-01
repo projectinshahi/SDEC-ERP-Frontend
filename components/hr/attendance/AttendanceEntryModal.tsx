@@ -66,13 +66,13 @@ export function AttendanceEntryModal({
       />
 
       {/* Modal panel */}
-      <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]">
+      <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-850 flex flex-col max-h-[90vh]">
 
         {/* Modal header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-850 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30 flex items-center justify-center">
-              <ClipboardEdit size={16} className="text-violet-500 dark:text-violet-400" />
+            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center">
+              <ClipboardEdit size={16} className="text-blue-500 dark:text-blue-400" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-gray-900 dark:text-white">

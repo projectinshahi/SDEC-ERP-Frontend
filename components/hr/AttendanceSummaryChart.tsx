@@ -11,9 +11,9 @@ export function AttendanceSummaryChart() {
   );
 
   return (
-    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 h-full shadow-sm">
+    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 h-full shadow-sm">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-850 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">
           Attendance Summary
         </h2>
@@ -58,7 +58,7 @@ export function AttendanceSummaryChart() {
 
           {/* Center */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-28 h-28 rounded-full bg-white dark:bg-gray-950 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center">
+            <div className="w-28 h-28 rounded-full bg-white dark:bg-gray-950 shadow-sm border border-gray-100 dark:border-gray-850 flex flex-col items-center justify-center">
               <span className="text-3xl font-black text-gray-900 dark:text-white leading-none tabular-nums">
                 {total}
               </span>
@@ -74,7 +74,7 @@ export function AttendanceSummaryChart() {
           {MOCK_ATTENDANCE_SUMMARY.map((item) => (
             <div
               key={item.name}
-              className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-800 px-4 py-3 bg-gray-50/70 dark:bg-gray-800/20 hover:bg-gray-100 dark:hover:bg-gray-800/40 transition"
+              className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-850 px-4 py-3 bg-gray-50/70 dark:bg-gray-800/20 hover:bg-gray-100 dark:hover:bg-gray-800/40 transition"
             >
               <div className="flex items-center gap-3">
                 <span

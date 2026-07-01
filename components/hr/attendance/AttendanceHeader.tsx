@@ -22,7 +22,7 @@ export function AttendanceHeader({ selectedDate, onDateChange, onOpenEntry, onEx
     <div className="flex items-end justify-between gap-4 flex-wrap">
       {/* Left: title block */}
       <div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300 mb-3 border border-violet-100 dark:border-violet-900/30">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300 mb-3 border border-blue-100 dark:border-blue-900/30">
           <Clock size={12} />
           Attendance Module
         </div>
@@ -47,7 +47,7 @@ export function AttendanceHeader({ selectedDate, onDateChange, onOpenEntry, onEx
             value={selectedDate}
             onChange={(e) => onDateChange(e.target.value)}
             title={formatted}
-            className="pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition-all duration-200"
+            className="pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition-all duration-200"
           />
         </div>
 
@@ -61,7 +61,7 @@ export function AttendanceHeader({ selectedDate, onDateChange, onOpenEntry, onEx
 
         <button
           onClick={onOpenEntry}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-semibold transition shadow-sm shadow-violet-500/20"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold transition shadow-sm shadow-blue-500/20"
         >
           <ClipboardEdit size={15} />
           <span>Attendance Entry</span>

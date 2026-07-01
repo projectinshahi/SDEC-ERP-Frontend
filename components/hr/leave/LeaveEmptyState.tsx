@@ -9,7 +9,7 @@ interface LeaveEmptyStateProps {
 
 export function LeaveEmptyState({ userRole }: LeaveEmptyStateProps) {
   return (
-    <Card className="border border-gray-150 dark:border-gray-800 shadow-xs">
+    <Card className="border border-gray-150 dark:border-gray-850 shadow-xs">
       <CardBody className="py-16 px-4 flex flex-col items-center justify-center text-center">
         {/* Visual Graphic Wrapper */}
         <div className="w-16 h-16 rounded-2xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 mb-5 shadow-xs">

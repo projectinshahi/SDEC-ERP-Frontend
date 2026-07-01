@@ -31,7 +31,7 @@ export function PayrollFilters({
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4.5 bg-gray-50/50 dark:bg-gray-800/10 border border-gray-150 dark:border-gray-800 rounded-2xl">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4.5 bg-gray-50/50 dark:bg-gray-800/10 border border-gray-150 dark:border-gray-850 rounded-2xl">
       
       {/* Filters Left Side */}
       <div className="flex flex-1 flex-wrap items-center gap-3">
@@ -43,7 +43,7 @@ export function PayrollFilters({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by employee name or code..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 text-xs font-semibold text-gray-800 dark:text-gray-150 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 text-xs font-semibold text-gray-800 dark:text-gray-150 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 transition"
           />
         </div>
 
@@ -51,7 +51,7 @@ export function PayrollFilters({
         <select
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
-          className="px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 text-xs font-bold text-gray-750 dark:text-gray-200 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 cursor-pointer transition"
+          className="px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 text-xs font-bold text-gray-750 dark:text-gray-200 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 cursor-pointer transition"
         >
           <option value="All">All Months</option>
           {availableMonths.map((m) => (
@@ -65,7 +65,7 @@ export function PayrollFilters({
         <select
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
-          className="px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 text-xs font-bold text-gray-750 dark:text-gray-200 outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 cursor-pointer transition"
+          className="px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 text-xs font-bold text-gray-750 dark:text-gray-200 outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 cursor-pointer transition"
         >
           <option value="All">All Statuses</option>
           <option value="Pending">Pending</option>
@@ -88,7 +88,7 @@ export function PayrollFilters({
           <>
             {/* Backdrop cover click handler */}
             <div className="fixed inset-0 z-10" onClick={() => setIsExportOpen(false)} />
-            <div className="absolute right-0 mt-2 z-20 w-44 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 rounded-xl shadow-lg p-1.5 space-y-1">
+            <div className="absolute right-0 mt-2 z-20 w-44 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-850 rounded-xl shadow-lg p-1.5 space-y-1">
               {/* Excel */}
               <button
                 onClick={() => {

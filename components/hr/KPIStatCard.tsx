@@ -17,7 +17,7 @@ const VARIANT_MAP: Record<string, { icon: string; badge: string; accent: string 
   amber:   { icon: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-300',   badge: 'text-amber-600 dark:text-amber-400',   accent: 'from-amber-500' },
   rose:    { icon: 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300',     badge: 'text-rose-600 dark:text-rose-400',     accent: 'from-rose-500' },
   indigo:  { icon: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300', badge: 'text-indigo-600 dark:text-indigo-400', accent: 'from-indigo-500' },
-  violet:  { icon: 'bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300', badge: 'text-violet-600 dark:text-violet-400', accent: 'from-violet-500' },
+  violet:  { icon: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300', badge: 'text-blue-600 dark:text-blue-400', accent: 'from-blue-500' },
   sky:     { icon: 'bg-sky-50 text-sky-600 dark:bg-sky-950/50 dark:text-sky-300',       badge: 'text-sky-600 dark:text-sky-400',       accent: 'from-sky-500' },
   teal:    { icon: 'bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-300',     badge: 'text-teal-600 dark:text-teal-400',     accent: 'from-teal-500' },
   orange:  { icon: 'bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-300', badge: 'text-orange-600 dark:text-orange-400', accent: 'from-orange-500' },
@@ -27,9 +27,9 @@ const VARIANT_MAP: Record<string, { icon: string; badge: string; accent: string 
 /** Determine font size class based on value string length to prevent overflow */
 function getValueClass(value: string | number): string {
   const str = String(value);
-  if (str.length > 9) return 'text-lg font-black';
-  if (str.length > 6) return 'text-2xl font-black';
-  return 'text-3xl font-black';
+  if (str.length > 9) return 'text-lg font-bold';
+  if (str.length > 6) return 'text-xl font-bold';
+  return 'text-2xl font-bold';
 }
 
 export function KPIStatCard({
@@ -45,14 +45,14 @@ export function KPIStatCard({
 
   if (loading) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 h-[120px] animate-pulse">
+      <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 p-5 h-28 animate-pulse">
         <div className="flex items-start justify-between">
           <div className="space-y-2 flex-1 pr-4">
             <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-3" />
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-3" />
             <div className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded w-3/4 mt-2" />
           </div>
-          <div className="w-11 h-11 rounded-xl bg-gray-100 dark:bg-gray-800 shrink-0" />
+          <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 shrink-0" />
         </div>
       </div>
     );
@@ -61,33 +61,29 @@ export function KPIStatCard({
   return (
     <div className="
       group relative overflow-hidden rounded-2xl
-      border border-gray-200 dark:border-gray-800
+      border border-gray-200 dark:border-gray-850
       bg-white dark:bg-gray-900
-      p-5 h-[120px]
+      p-5 h-28
       shadow-sm hover:shadow-md
-      transition-all duration-300
-      hover:-translate-y-0.5
+      transition-shadow duration-200
       cursor-default
     ">
-      {/* Colored left accent bar */}
-      <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${v.accent} to-transparent opacity-60 rounded-l-2xl`} />
-
       <div className="flex items-start justify-between h-full">
         {/* Text content */}
         <div className="flex flex-col justify-between h-full min-w-0 flex-1 pr-3">
           {/* Label */}
-          <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 leading-none">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate leading-none">
             {label}
           </p>
 
           {/* Value — font scales dynamically */}
-          <p className={`${valueClass} text-gray-900 dark:text-white tracking-tight leading-none tabular-nums`}>
+          <p className={`${valueClass} text-gray-900 dark:text-white tracking-tight leading-none mt-1 tabular-nums`}>
             {value}
           </p>
 
           {/* Subtitle */}
           {subtitle && (
-            <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 leading-none truncate">
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 leading-none mt-1 truncate">
               {subtitle}
             </p>
           )}
@@ -95,14 +91,12 @@ export function KPIStatCard({
 
         {/* Icon badge */}
         <div className={`
-          w-11 h-11 rounded-xl shrink-0
+          w-10 h-10 rounded-xl shrink-0
           flex items-center justify-center
-          border border-current/10
-          transition-transform duration-300
-          group-hover:scale-110
+          transition-colors duration-200
           ${v.icon}
         `}>
-          <Icon size={19} />
+          <Icon size={20} />
         </div>
       </div>
     </div>

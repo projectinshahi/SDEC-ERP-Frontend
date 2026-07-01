@@ -14,9 +14,9 @@ export function RecruitmentPipeline() {
   );
 
   return (
-    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 h-full shadow-sm">
+    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 h-full shadow-sm">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-850 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">
           Recruitment Pipeline
         </h2>

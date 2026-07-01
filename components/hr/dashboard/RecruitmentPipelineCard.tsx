@@ -18,11 +18,11 @@ interface RecruitmentPipelineCardProps {
 }
 
 const STAGES = [
-  { key: 'Applied',   label: 'Applied',   color: '#3b82f6', bg: 'bg-blue-500' },
-  { key: 'Screening', label: 'Screening', color: '#f59e0b', bg: 'bg-amber-500' },
-  { key: 'Interview', label: 'Interview', color: '#8b5cf6', bg: 'bg-violet-500' },
-  { key: 'Offer',     label: 'Offer',     color: '#10b981', bg: 'bg-emerald-500' },
-  { key: 'Hired',     label: 'Hired',     color: '#6366f1', bg: 'bg-indigo-500' },
+  { key: 'Applied',   label: 'Applied',   color: '#2563eb', bg: 'bg-blue-600' },
+  { key: 'Screening', label: 'Screening', color: '#3b82f6', bg: 'bg-blue-500' },
+  { key: 'Interview', label: 'Interview', color: '#60a5fa', bg: 'bg-blue-400' },
+  { key: 'Offer',     label: 'Offer',     color: '#6366f1', bg: 'bg-indigo-500' },
+  { key: 'Hired',     label: 'Hired',     color: '#4f46e5', bg: 'bg-indigo-600' },
 ];
 
 export function RecruitmentPipelineCard({ stats, loading = false }: RecruitmentPipelineCardProps) {
@@ -36,9 +36,9 @@ export function RecruitmentPipelineCard({ stats, loading = false }: RecruitmentP
   const isEmpty = !loading && !data;
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden h-full flex flex-col">
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-sm overflow-hidden h-full flex flex-col">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-850 flex items-center justify-between shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center text-blue-600 dark:text-blue-400">
@@ -50,7 +50,7 @@ export function RecruitmentPipelineCard({ stats, loading = false }: RecruitmentP
         </div>
         <Link
           href="/dashboard/hr/recruitment"
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
         >
           View all <ArrowRight size={11} />
         </Link>

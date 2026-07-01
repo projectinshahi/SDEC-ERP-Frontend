@@ -27,7 +27,7 @@ export function CandidateFilters({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search candidate..."
-          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
         />
       </div>
 
@@ -35,7 +35,7 @@ export function CandidateFilters({
       <select
         value={stage}
         onChange={(e) => setStage(e.target.value)}
-        className="px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+        className="px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
       >
         <option value="All">All Stages</option>
         <option value="Applied">Applied</option>

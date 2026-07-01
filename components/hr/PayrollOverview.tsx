@@ -27,9 +27,9 @@ export function PayrollOverview() {
   };
 
   return (
-    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 h-full shadow-sm">
+    <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 h-full shadow-sm">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-850 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -51,7 +51,7 @@ export function PayrollOverview() {
       </div>
 
       {/* KPI Cards */}
-      <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-900/20">
+      <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 border-b border-gray-100 dark:border-gray-850 bg-gray-50/40 dark:bg-gray-900/20">
         <MiniCard title="Total Employees" value="48" />
         <MiniCard title="Processed" value="36" valueClass="text-emerald-600 dark:text-emerald-300" />
         <MiniCard title="Pending" value="12" valueClass="text-amber-600 dark:text-amber-300" />
@@ -62,7 +62,7 @@ export function PayrollOverview() {
       <div className="flex-1 overflow-x-auto scrollbar-hide">
         <table className="w-full min-w-[700px] border-collapse">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900/30 border-b border-gray-100 dark:border-gray-800 text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <tr className="bg-gray-50 dark:bg-gray-900/30 border-b border-gray-100 dark:border-gray-850 text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
               <th className="py-4 px-6 text-left">Month</th>
               <th className="py-4 px-4 text-center">Employees</th>
               <th className="py-4 px-4 text-center">Processed</th>

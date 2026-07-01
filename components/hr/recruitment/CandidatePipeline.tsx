@@ -46,14 +46,14 @@ export function CandidatePipeline({ state }: CandidatePipelineProps) {
   return (
     <div className="space-y-5">
       {/* Header Panel with Title & Button */}
-      <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-gray-100 dark:border-gray-850">
         <div>
           <h2 className="text-sm font-bold text-gray-850 dark:text-gray-200">Hiring Pipeline</h2>
           <p className="text-[11px] text-gray-400 dark:text-gray-550 font-medium">Manage and transition candidate stages</p>
         </div>
         <button
           onClick={handleOpenAdd}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-850 text-white text-xs font-bold transition shadow-sm shadow-violet-500/20"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
         >
           <UserPlus size={15} />
           <span>Add Candidate</span>
@@ -68,7 +68,7 @@ export function CandidatePipeline({ state }: CandidatePipelineProps) {
       />
 
       {filteredCandidates.length === 0 && search ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900/10">
+        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-gray-200 dark:border-gray-850 rounded-2xl bg-white dark:bg-gray-900/10">
           <Inbox className="w-10 h-10 text-gray-300 dark:text-gray-700 stroke-[1.5]" />
           <h3 className="text-sm font-bold text-gray-805 dark:text-gray-200 mt-3">No matching candidates</h3>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try relaxing your search keywords or filters.</p>

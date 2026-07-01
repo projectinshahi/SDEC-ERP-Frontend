@@ -82,9 +82,9 @@ export function AttendanceTable() {
   };
 
   return (
-  <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm h-full flex flex-col">
+  <Card className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-sm h-full flex flex-col">
     {/* Header */}
-    <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+    <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-850 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -114,7 +114,7 @@ export function AttendanceTable() {
     </div>
 
     {/* Filters */}
-    <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
+    <div className="p-5 border-b border-gray-100 dark:border-gray-850 bg-gray-50/60 dark:bg-gray-900/40">
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search
@@ -148,7 +148,7 @@ export function AttendanceTable() {
     <div className="flex-1 overflow-auto">
       <table className="w-full text-left">
         <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900 z-10">
-          <tr className="border-b border-gray-200 dark:border-gray-800 text-xs uppercase tracking-wider text-gray-500">
+          <tr className="border-b border-gray-200 dark:border-gray-850 text-xs uppercase tracking-wider text-gray-500">
             <th className="px-4 py-4 text-center">✓</th>
             <th className="px-4 py-4">Employee</th>
             <th className="px-4 py-4">Check In</th>
@@ -165,7 +165,7 @@ export function AttendanceTable() {
             return (
               <tr
                 key={row.id}
-                className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30 ${
+                className={`border-b border-gray-100 dark:border-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800/30 ${
                   isSelected ? 'bg-blue-50/40 dark:bg-blue-950/10' : ''
                 }`}
               >
@@ -232,7 +232,7 @@ export function AttendanceTable() {
     </div>
 
     {/* Footer */}
-    <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-between flex-wrap gap-3">
+    <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-850 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-between flex-wrap gap-3">
       <span className="text-sm text-gray-500">
         {selectedIds.length} employee(s) selected
       </span>

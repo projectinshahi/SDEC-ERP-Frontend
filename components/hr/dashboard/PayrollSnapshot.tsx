@@ -37,9 +37,9 @@ export function PayrollSnapshot({
   const isEmpty = tot === 0 && !loading;
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden h-full flex flex-col">
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-sm overflow-hidden h-full flex flex-col">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-850 flex items-center justify-between shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
@@ -51,7 +51,7 @@ export function PayrollSnapshot({
         </div>
         <Link
           href="/dashboard/hr/payroll"
-          className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-305 transition-colors"
         >
           Manage <ArrowRight size={11} />
         </Link>
@@ -78,9 +78,9 @@ export function PayrollSnapshot({
         ) : (
           <>
             {/* Pending amount headline */}
-            <div className="rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/60 dark:bg-amber-950/15 px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-500 dark:text-amber-400 mb-1">Pending Payroll Amount</p>
-              <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{formatINR(amount)}</p>
+            <div className="rounded-xl border border-amber-105 dark:border-amber-900/30 bg-amber-50/60 dark:bg-amber-950/15 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-500 dark:text-amber-450 mb-1">Pending Payroll Amount</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">{formatINR(amount)}</p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{tot} records this cycle</p>
             </div>
 
@@ -92,7 +92,7 @@ export function PayrollSnapshot({
               </div>
               <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-500 transition-all duration-700"
+                  className="h-full rounded-full bg-amber-500 transition-all duration-700"
                   style={{ width: `${processedPct}%` }}
                 />
               </div>
@@ -100,23 +100,23 @@ export function PayrollSnapshot({
 
             {/* Mini stat grid */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/20 p-3 text-center">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Records</p>
-                <p className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{tot}</p>
+              <div className="rounded-xl border border-gray-100 dark:border-gray-850 bg-gray-50/60 dark:bg-gray-800/20 p-3 text-center">
+                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-550 uppercase tracking-wide mb-1">Records</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">{tot}</p>
               </div>
-              <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/60 dark:bg-emerald-950/15 p-3 text-center">
+              <div className="rounded-xl border border-gray-100 dark:border-gray-850 bg-gray-50/60 dark:bg-gray-800/20 p-3 text-center">
                 <div className="flex items-center justify-center gap-1 mb-1">
-                  <CheckCircle2 size={10} className="text-emerald-500" />
-                  <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Paid</p>
+                  <CheckCircle2 size={10} className="text-gray-400" />
+                  <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Paid</p>
                 </div>
-                <p className="text-lg font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{paidCount}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">{paidCount}</p>
               </div>
               <div className="rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/60 dark:bg-amber-950/15 p-3 text-center">
                 <div className="flex items-center justify-center gap-1 mb-1">
-                  <Clock size={10} className="text-amber-500" />
+                  <Clock size={10} className="text-amber-550" />
                   <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">Pending</p>
                 </div>
-                <p className="text-lg font-black text-amber-700 dark:text-amber-400 tabular-nums">{pendCount}</p>
+                <p className="text-lg font-bold text-amber-700 dark:text-amber-450 tabular-nums">{pendCount}</p>
               </div>
             </div>
           </>

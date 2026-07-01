@@ -17,11 +17,7 @@ interface BirthdaysAnniversariesProps {
 }
 
 const INITIALS_COLORS = [
-  'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-400',
-  'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400',
-  'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',
-  'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400',
-  'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400',
+  'bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300',
 ];
 
 /** Compute upcoming work anniversaries within next 30 days (inclusive today) */
@@ -95,9 +91,9 @@ export function BirthdaysAnniversaries({ loading: parentLoading = false }: Birth
   const todayCount = events.filter((e) => e.label === 'Today').length;
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden h-full flex flex-col">
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-850 bg-white dark:bg-gray-900 shadow-sm overflow-hidden h-full flex flex-col">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-850 flex items-center justify-between shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-pink-50 dark:bg-pink-950/40 flex items-center justify-center text-pink-600 dark:text-pink-400">
@@ -146,7 +142,7 @@ export function BirthdaysAnniversaries({ loading: parentLoading = false }: Birth
                 className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
                   isToday
                     ? 'border-pink-100 dark:border-pink-900/30 bg-pink-50/60 dark:bg-pink-950/15'
-                    : 'border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-800/10'
+                    : 'border-gray-100 dark:border-gray-850 bg-gray-50/40 dark:bg-gray-800/10'
                 }`}
               >
                 {/* Avatar */}
@@ -158,7 +154,7 @@ export function BirthdaysAnniversaries({ loading: parentLoading = false }: Birth
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-bold text-gray-800 dark:text-gray-200 truncate">{event.name}</p>
                   <div className="flex items-center gap-1 mt-0.5">
-                    <PartyPopper size={10} className="text-violet-400" />
+                    <PartyPopper size={10} className="text-blue-400" />
                     <span className="text-[11px] text-gray-500 dark:text-gray-400">{event.detail}</span>
                   </div>
                 </div>
