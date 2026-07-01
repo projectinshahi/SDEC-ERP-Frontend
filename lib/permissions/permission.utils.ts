@@ -31,11 +31,22 @@ function salesGrants(permissions: string[], key: string): boolean {
 }
 
 /**
+ * Finance coarse→granular VIEW bridge (mirrors the backend financeGrants). The
+ * `finance.view` master implies every `finance.*.view` tab key; it never implies
+ * create/edit/delete, which stay exact-match.
+ */
+function financeGrants(permissions: string[], key: string): boolean {
+  if (!key.startsWith('finance.')) return false;
+  if (key.endsWith('.view') && permissions.includes('finance.view')) return true;
+  return false;
+}
+
+/**
  * Check if the given permissions array grants a specific permission key
- * (exact match, or via the Sales coarse→granular bridge).
+ * (exact match, or via the Sales / Finance coarse→granular bridges).
  */
 export function hasPermission(permissions: string[], key: PermissionKey): boolean {
-  return permissions.includes(key) || salesGrants(permissions, key);
+  return permissions.includes(key) || salesGrants(permissions, key) || financeGrants(permissions, key);
 }
 
 /**

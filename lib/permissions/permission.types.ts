@@ -118,6 +118,7 @@ export type PermissionKey =
   | 'sales.tasks.team.view'
   | 'sales.tasks.team.update'
   | 'sales.targets.view'
+  | 'sales.targets.history.view'
   | 'sales.reports.export'
   // Sales Tickets (independent per-action keys; mirror the Development tickets module)
   | 'sales.tickets.view'
@@ -144,7 +145,23 @@ export type PermissionKey =
   | 'hr.performance.review'
   | 'hr.performance.approve'
   | 'hr.documents.view'
-  | 'hr.settings.view';
+  | 'hr.settings.view'
+  // Finance Module — independent ERP module (mirrors Sales/Development RBAC).
+  // `finance.view` is the coarse module-access key; each page has its own View key;
+  // Income & Expenses add create/edit/delete for full CRUD.
+  | 'finance.view'
+  | 'finance.dashboard.view'
+  | 'finance.income.view'
+  | 'finance.income.create'
+  | 'finance.income.edit'
+  | 'finance.income.delete'
+  | 'finance.expenses.view'
+  | 'finance.expenses.create'
+  | 'finance.expenses.edit'
+  | 'finance.expenses.delete'
+  | 'finance.transactions.view'
+  | 'finance.reports.view'
+  | 'finance.settings.view';
 
 /**
  * Module names used for sidebar filtering and route protection.

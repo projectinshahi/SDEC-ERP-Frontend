@@ -66,12 +66,8 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     icon: 'BarChart3',
     module: null,
   },
-  {
-    label: 'Finance',
-    href: '/master-dashboard/finance',
-    icon: 'DollarSign',
-    module: null,
-  },
+  // Finance is now a standalone ERP module (/dashboard/finance), no longer a
+  // Master Dashboard page — see lib/permissions/moduleAccess.ts + sidebar.config.ts.
   {
     label: 'Settings',
     href: '/master-dashboard/settings',
