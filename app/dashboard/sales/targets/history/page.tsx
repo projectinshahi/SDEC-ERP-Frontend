@@ -202,7 +202,7 @@ function TargetHistoryPageInner() {
 
 export default function TargetHistoryPage() {
   return (
-    <PermissionPageGuard module="sales">
+    <PermissionPageGuard require="sales.targets.history.view">
       <TargetHistoryPageInner />
     </PermissionPageGuard>
   );

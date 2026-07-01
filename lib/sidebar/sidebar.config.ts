@@ -197,7 +197,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/sales/targets/history',
     icon: 'Target',
     module: 'sales',
-    permission: ['sales.targets.manage'],
+    permission: ['sales.targets.history.view'],
   },
   {
     label: 'Incentives',
@@ -403,6 +403,56 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'Settings',
     module: 'hr',
     permission: ['hr.settings.view', 'hr.view'],
+  },
+
+  // Finance Module — independent ERP module. Each item is gated on its own
+  // View permission OR the coarse `finance.view` (same OR pattern as HR).
+  {
+    label: 'Finance',
+    isPartition: true,
+    module: 'finance',
+  },
+  {
+    label: 'Dashboard',
+    href: '/dashboard/finance',
+    icon: 'LayoutDashboard',
+    module: 'finance',
+    permission: ['finance.dashboard.view', 'finance.view'],
+  },
+  {
+    label: 'Income',
+    href: '/dashboard/finance/income',
+    icon: 'TrendingUp',
+    module: 'finance',
+    permission: ['finance.income.view', 'finance.view'],
+  },
+  {
+    label: 'Expenses',
+    href: '/dashboard/finance/expenses',
+    icon: 'DollarSign',
+    module: 'finance',
+    permission: ['finance.expenses.view', 'finance.view'],
+  },
+  {
+    label: 'Transactions',
+    href: '/dashboard/finance/transactions',
+    icon: 'LayoutGrid',
+    module: 'finance',
+    permission: ['finance.transactions.view', 'finance.view'],
+  },
+  {
+    label: 'Reports',
+    href: '/dashboard/finance/reports',
+    icon: 'BarChart3',
+    module: 'finance',
+    permission: ['finance.reports.view', 'finance.view'],
+  },
+  {
+    label: 'Settings',
+    href: '/dashboard/finance/settings',
+    icon: 'Settings',
+    module: 'finance',
+    permission: ['finance.settings.view', 'finance.view'],
   },
 ];
 

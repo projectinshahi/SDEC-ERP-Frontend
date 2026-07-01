@@ -13,7 +13,7 @@
 
 import type { ModuleName } from './permission.types';
 
-export type TopModule = 'development' | 'sales' | 'user' | 'master' | 'hr';
+export type TopModule = 'development' | 'sales' | 'user' | 'master' | 'hr' | 'finance';
 
 export interface ModuleAccessUser {
   roleName?: string;
@@ -27,6 +27,7 @@ export const MODULE_LABELS: Record<TopModule, string> = {
   user: 'User Management',
   master: 'Master Dashboard',
   hr: 'HR',
+  finance: 'Finance',
 };
 
 /** Lower-cases and strips spaces/underscores/hyphens so "Super Admin" === "superadmin". */
@@ -98,9 +99,12 @@ export const APP_MODULES: AppModuleDef[] = [
   fallbackHref: '/dashboard/hr',
 },
   {
+    // Finance is a first-class, independent ERP module (same architecture as
+    // Sales / Development): visible when the user holds ANY `finance.*` permission
+    // (SuperAdmin/Admin bypass), and it opens on its own /dashboard/finance route.
     key: 'finance', title: 'Finance', icon: 'Wallet', accent: 'rose',
     description: 'Invoices, billing & expenses.',
-    prefixes: ['finance.'], future: true,
+    prefixes: ['finance.'], topModule: 'finance', fallbackHref: '/dashboard/finance',
   },
 ];
 
@@ -140,7 +144,7 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
     result[m.key as TopModule] = isModuleVisible(user, m);
   }
   // Ensure every TopModule key exists even if no registry entry matched
-  for (const k of ['master', 'development', 'sales', 'user', 'hr'] as TopModule[]) {
+  for (const k of ['master', 'development', 'sales', 'user', 'hr', 'finance'] as TopModule[]) {
     if (!(k in result)) result[k] = false;
   }
   return result;
@@ -148,7 +152,7 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
 
 /** The first module (in priority order) the user can access — used as a landing fallback. */
 export function primaryModule(access: Record<TopModule, boolean>): TopModule | null {
-  return (['master', 'development', 'sales', 'user', 'hr'] as TopModule[]).find((m) => access[m]) ?? null;
+  return (['master', 'development', 'sales', 'user', 'hr', 'finance'] as TopModule[]).find((m) => access[m]) ?? null;
 }
 
 /** Routes that are shared across modules and must NOT be module-gated. */
@@ -163,6 +167,7 @@ export function moduleForPath(pathname: string): TopModule {
   if (pathname.startsWith('/dashboard/user-management')) return 'user';
   if (pathname.startsWith('/dashboard/sales')) return 'sales';
   if (pathname.startsWith('/dashboard/hr')) return 'hr';
+  if (pathname.startsWith('/dashboard/finance')) return 'finance';
   return 'development';
 }
 
@@ -171,5 +176,6 @@ export function groupForModule(module?: ModuleName | null): TopModule {
   if (module === 'sales') return 'sales';
   if (module === 'user' || module === 'role') return 'user';
   if (module === 'hr') return 'hr';
+  if (module === 'finance') return 'finance';
   return 'development';
 }

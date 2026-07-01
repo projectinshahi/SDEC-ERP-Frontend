@@ -49,8 +49,10 @@ interface SourceAnalytics {
 
 const STATUS_OPTIONS = ['new', 'contacted', 'qualified', 'won', 'lost', 'converted', 'disqualified', 'closed'];
 
-// Leads that have left the active pipeline are hidden from the Kanban board
-// (they remain visible in the table, which shows every status).
+// Terminal statuses. A lead with one of these is hidden from the Kanban board
+// UNLESS it is sitting in a real column whose name matches the status (i.e. it
+// was dragged into a "Won"/"Lost" terminal column — see leadsByStage). It always
+// remains visible in the table, which shows every status.
 const INACTIVE_PIPELINE_STATUSES = ['disqualified', 'converted', 'won', 'lost', 'closed'];
 
 type ViewMode = 'table' | 'pipeline';
@@ -215,9 +217,24 @@ export default function SalesLeadsPage() {
     const map: Record<string, Lead[]> = {};
     for (const s of stages) map[s.name] = [];
     for (const lead of leads) {
-      if (INACTIVE_PIPELINE_STATUSES.includes((lead.status || '').toLowerCase())) continue;
-      // A lead always belongs to exactly one stage; default unknown to first column.
-      const key = map[lead.stage] ? lead.stage : stages[0]?.name;
+      const status = (lead.status || '').toLowerCase();
+      // `map[lead.stage]` is an array iff the stage is a real (current) column.
+      const inRealColumn = !!map[lead.stage];
+      // A lead sits in the column named by its stage. It stays on the board while
+      // active; once its status is terminal it stays ONLY if it reached a terminal
+      // COLUMN by drag — i.e. its stage is a real column whose name equals the
+      // status ("Won"/"Lost"), which drag guarantees (moveLeadStage sets
+      // status = stage.toLowerCase()). Leads made terminal by an action
+      // (converted → deal, disqualified) keep their earlier stage, so their
+      // stage ≠ status and they correctly leave the board.
+      if (
+        INACTIVE_PIPELINE_STATUSES.includes(status) &&
+        !(inRealColumn && lead.stage.toLowerCase() === status)
+      ) {
+        continue;
+      }
+      // Active leads on an unknown/renamed stage fold into the first column.
+      const key = inRealColumn ? lead.stage : stages[0]?.name;
       if (key) map[key].push(lead);
     }
     return map;

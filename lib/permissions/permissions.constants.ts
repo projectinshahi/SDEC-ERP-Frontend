@@ -475,6 +475,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   },
   {
     module: 'sales',
+    label: 'Sales · Target History',
+    permissions: [
+      { key: 'sales.targets.history.view', label: 'View Target History', description: 'View period-by-period target achievement and incentives earned', module: 'sales' },
+    ],
+  },
+  {
+    module: 'sales',
     label: 'Sales · Reports',
     permissions: [
       { key: 'sales.reports.view', label: 'View Reports', description: 'Organization-wide reporting and executive analytics visibility', module: 'sales' },
@@ -511,6 +518,25 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'hr.performance.view', label: 'View Performance', description: 'View employee performance analytics', module: 'hr' },
       { key: 'hr.documents.view', label: 'View Documents', description: 'Access HR documents and files', module: 'hr' },
       { key: 'hr.settings.view', label: 'View Settings', description: 'Access HR module settings', module: 'hr' },
+    ],
+  },
+  {
+    module: 'finance',
+    label: 'Finance Management',
+    permissions: [
+      { key: 'finance.view', label: 'View Finance Module', description: 'General access to the Finance module', module: 'finance' },
+      { key: 'finance.dashboard.view', label: 'View Dashboard', description: 'Access the Finance dashboard overview', module: 'finance' },
+      { key: 'finance.income.view', label: 'View Income', description: 'View recorded income entries', module: 'finance' },
+      { key: 'finance.income.create', label: 'Create Income', description: 'Record new income entries', module: 'finance' },
+      { key: 'finance.income.edit', label: 'Edit Income', description: 'Edit existing income entries', module: 'finance' },
+      { key: 'finance.income.delete', label: 'Delete Income', description: 'Delete income entries', module: 'finance' },
+      { key: 'finance.expenses.view', label: 'View Expenses', description: 'View recorded expense entries', module: 'finance' },
+      { key: 'finance.expenses.create', label: 'Create Expenses', description: 'Record new expense entries', module: 'finance' },
+      { key: 'finance.expenses.edit', label: 'Edit Expenses', description: 'Edit existing expense entries', module: 'finance' },
+      { key: 'finance.expenses.delete', label: 'Delete Expenses', description: 'Delete expense entries', module: 'finance' },
+      { key: 'finance.transactions.view', label: 'View Transactions', description: 'View the unified income + expense feed', module: 'finance' },
+      { key: 'finance.reports.view', label: 'View Reports', description: 'View financial summaries and reports', module: 'finance' },
+      { key: 'finance.settings.view', label: 'View Settings', description: 'Access Finance module settings', module: 'finance' },
     ],
   },
 ];
