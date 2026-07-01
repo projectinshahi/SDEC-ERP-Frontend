@@ -193,6 +193,21 @@ export default function SalesLeadsPage() {
     fetchAssignableUsers().then(setOwners).catch(() => setOwners([]));
   }, [fetchAnalytics, fetchCustomers, loadStages]);
 
+  // Keep the list live: refetch when the tab/window regains focus (e.g. after
+  // changing a lead's stage on the Details page), so the Table and Kanban board
+  // always show the latest status with no manual refresh.
+  useEffect(() => {
+    const onFocus = () => {
+      if (document.visibilityState !== 'hidden') fetchLeads();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [fetchLeads]);
+
   const refresh = () => {
     fetchLeads();
     fetchAnalytics();
