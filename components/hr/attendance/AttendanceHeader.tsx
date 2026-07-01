@@ -7,9 +7,10 @@ interface AttendanceHeaderProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   onOpenEntry: () => void;
+  onExport: () => void;
 }
 
-export function AttendanceHeader({ selectedDate, onDateChange, onOpenEntry }: AttendanceHeaderProps) {
+export function AttendanceHeader({ selectedDate, onDateChange, onOpenEntry, onExport }: AttendanceHeaderProps) {
   const formatted = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -50,7 +51,10 @@ export function AttendanceHeader({ selectedDate, onDateChange, onOpenEntry }: At
           />
         </div>
 
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+        <button
+          onClick={onExport}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+        >
           <Download size={15} />
           <span>Export</span>
         </button>

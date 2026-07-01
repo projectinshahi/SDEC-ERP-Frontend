@@ -141,6 +141,9 @@ export type PermissionKey =
   | 'hr.recruitment.view'
   | 'hr.payroll.view'
   | 'hr.performance.view'
+  | 'hr.performance.create'
+  | 'hr.performance.review'
+  | 'hr.performance.approve'
   | 'hr.documents.view'
   | 'hr.settings.view'
   // Finance Module — independent ERP module (mirrors Sales/Development RBAC).

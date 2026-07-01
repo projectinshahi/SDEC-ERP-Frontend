@@ -191,7 +191,8 @@ export function AttendanceFormPanel({
                 value={employeeId ?? ''}
                 onChange={e => setEmployeeId(Number(e.target.value))}
                 required
-                className="w-full appearance-none pl-3 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 font-medium focus:outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+                disabled={!!editRecord}
+                className="w-full appearance-none pl-3 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 font-medium focus:outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-850 disabled:cursor-not-allowed transition"
               >
                 <option value="">— Select employee —</option>
                 {employees.map(emp => (
@@ -215,7 +216,8 @@ export function AttendanceFormPanel({
               value={date}
               onChange={e => setDate(e.target.value)}
               required
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 transition"
+              disabled={!!editRecord}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-850 disabled:cursor-not-allowed transition"
             />
           </div>
 
