@@ -348,7 +348,8 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/hr/leave',
     icon: 'CalendarClock',
     module: 'hr',
-    permission: ['hr.leave.view', 'hr.leave.self', 'hr.view'],
+    // Independent leave views: HR Admin (hr.leave.view) OR Staff (hr.leave.self).
+    permission: ['hr.leave.view', 'hr.leave.self'],
   },
 
   {

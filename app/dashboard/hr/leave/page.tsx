@@ -10,17 +10,26 @@ import { LeaveDetailsModal } from '@/components/hr/leave/LeaveDetailsModal';
 import { useLeave } from '@/lib/hr/useLeave';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { useConfirm } from '@/components/ConfirmDialogProvider';
+import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 
 export default function HRLeavePage() {
   const { user } = useAuth();
   const { hasAnyPermission } = usePermissions();
   
-  const isSelfService = useMemo(() => {
-    return hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']);
-  }, [hasAnyPermission]);
+  // Independent leave-view permissions (global admins bypass → both true).
+  // "View HR Admin Leave" (hr.leave.view) → HR Admin view (all requests, approve/
+  // reject, filter, analytics). "View Staff Leave" (hr.leave.self) → Staff view
+  // (own requests only). A user may hold one, both, or neither.
+  const canViewAdmin = hasAnyPermission(['hr.leave.view']);
+  const canViewStaff = hasAnyPermission(['hr.leave.self']);
+  const canSwitch = canViewAdmin && canViewStaff;
+  // Staff-only users get the self-service experience (no admin tools/toggle).
+  const isSelfService = canViewStaff && !canViewAdmin;
 
   const [userRoleState, setUserRoleState] = useState<'admin' | 'staff'>('admin');
-  const userRole = isSelfService ? 'staff' : userRoleState;
+  // Constrain the active view to what the user is permitted to see.
+  const userRole: 'admin' | 'staff' = canViewAdmin ? (canViewStaff ? userRoleState : 'admin') : 'staff';
   const [selectedStaffEmployeeId, setSelectedStaffEmployeeId] = useState('');
 
   const {
@@ -50,10 +59,40 @@ export default function HRLeavePage() {
     handleApplyLeaveSubmit,
     handleApproveLeave,
     handleRejectLeave,
+    handleDeleteLeave,
   } = useLeave();
+
+  const { confirm } = useConfirm();
+  // HR Admins (hr.delete) can delete any request; self-service staff
+  // (hr.leave.self) can delete their own — the server enforces ownership.
+  const canDelete = hasAnyPermission(['hr.delete', 'hr.leave.self']);
 
   const handleRoleToggle = () => {
     setUserRoleState((prev) => (prev === 'admin' ? 'staff' : 'admin'));
+  };
+
+  // Delete an Approved/Rejected request (confirmation required).
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: 'Delete Leave Request',
+      message: 'Are you sure you want to permanently delete this leave request? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+    });
+    if (!ok) return;
+    await handleDeleteLeave(id);
+  };
+
+  // Cancel (remove) a staff member's own Pending request (confirmation required).
+  const handleCancelRequest = async (id: string) => {
+    const ok = await confirm({
+      title: 'Cancel Leave Request',
+      message: 'Are you sure you want to cancel and remove this leave request?',
+      confirmLabel: 'Cancel Request',
+      intent: 'danger',
+    });
+    if (!ok) return;
+    await handleDeleteLeave(id);
   };
 
   const currentEmployee = useMemo(() => {
@@ -87,6 +126,7 @@ export default function HRLeavePage() {
   };
 
   return (
+    <PermissionPageGuard requireAny={['hr.leave.view', 'hr.leave.self']}>
     <div className="space-y-6">
       {/* Header */}
       <LeaveHeader
@@ -98,6 +138,7 @@ export default function HRLeavePage() {
         onExportClick={handleExport}
         employees={employees}
         isSelfService={isSelfService}
+        canSwitch={canSwitch}
       />
 
       {/* Error state alert */}
@@ -135,7 +176,9 @@ export default function HRLeavePage() {
           onPageChange={setCurrentPage}
           onApprove={handleApproveLeave}
           onReject={handleRejectLeave}
-          onCancel={() => {}}
+          onCancel={handleCancelRequest}
+          onDelete={handleDelete}
+          canDelete={canDelete}
           onViewDetails={setSelectedRequest}
           itemsPerPage={ITEMS_PER_PAGE}
         />
@@ -158,5 +201,6 @@ export default function HRLeavePage() {
         onClose={() => setSelectedRequest(null)}
       />
     </div>
+    </PermissionPageGuard>
   );
 }

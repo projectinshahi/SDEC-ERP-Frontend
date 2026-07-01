@@ -42,27 +42,17 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
     [shared, access, pathname],
   );
 
-  // Route guard (UI layer; APIs are independently permission-checked):
+  // Route guard (UI layer; APIs are independently permission-checked) — purely
+  // permission-driven, no module-specific special-casing:
   //   1. module isolation — user must have access to the module that owns the route, AND
   //   2. STRICT per-page permission — user must hold the page's required permission.
-  const isSelfService = useMemo(() => {
-    const isEmpRole = String(user?.roleName || user?.role || '').toLowerCase() === 'employee';
-    return hasAnyPermission(['hr.leave.self']) && (!hasAnyPermission(['hr.view', 'hr.dashboard.view']) || isEmpRole);
-  }, [hasAnyPermission, user]);
-
   const moduleOfPath = moduleForPath(pathname);
   const requiredPerms = permissionsForPath(pathname);
   const permitted = requiredPerms.length === 0 || isSuperAdmin || hasAnyPermission(requiredPerms);
-  const allowed = shared || (isSelfService ? pathname === '/dashboard/hr/leave' : (access[moduleOfPath] && permitted));
+  const allowed = shared || (access[moduleOfPath] && permitted);
 
   useEffect(() => {
     if (!user) return;
-    if (isSelfService) {
-      if (!allowed) {
-        router.replace('/dashboard/hr/leave');
-      }
-      return;
-    }
     if (allowed) return;
     // If the user CAN access this module but not this specific page, land them on
     // the first page they ARE allowed to see; otherwise send them to /modules.
@@ -72,16 +62,11 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
     } else {
       router.replace('/modules');
     }
-  }, [user, allowed, isSelfService, access, moduleOfPath, hasAnyPermission, router]);
+  }, [user, allowed, access, moduleOfPath, hasAnyPermission, router]);
 
   // A single sidebar item is visible when: correct module + module access + the
   // item's specific permission (SuperAdmin/Admin bypass via usePermissions).
   const isItemVisible = useCallback((item: SidebarMenuItem): boolean => {
-    const isEmpRole = String(user?.roleName || user?.role || '').toLowerCase() === 'employee';
-    const isUserSelfService = hasAnyPermission(['hr.leave.self']) && (!hasAnyPermission(['hr.view', 'hr.dashboard.view']) || isEmpRole);
-    if (isUserSelfService) {
-      return item.href === '/dashboard/hr/leave';
-    }
     if (item.module === null || item.module === undefined) return true;
     if (!canAccessModule(item.module)) return false;
     const perms = itemPermissions(item);

@@ -12,6 +12,9 @@ interface LeaveHeaderProps {
   onExportClick: () => void;
   employees: ApiEmployee[];
   isSelfService?: boolean;
+  /** Show the HR Admin ⇄ Staff view toggle — only when the user holds BOTH the
+   *  HR-Admin and Staff leave permissions. */
+  canSwitch?: boolean;
 }
 
 export function LeaveHeader({
@@ -23,6 +26,7 @@ export function LeaveHeader({
   onExportClick,
   employees,
   isSelfService = false,
+  canSwitch = false,
 }: LeaveHeaderProps) {
   return (
     <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b border-gray-100 dark:border-gray-850/60 pb-6">
@@ -44,8 +48,8 @@ export function LeaveHeader({
 
       {/* Role Context Switcher & Action Buttons */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Role Toggle Switcher */}
-        {!isSelfService && (
+        {/* Role Toggle Switcher — only when the user can access BOTH views */}
+        {canSwitch && (
           <div className="inline-flex items-center p-1 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200/50 dark:border-gray-700/50">
             <button
               onClick={onRoleToggle}
