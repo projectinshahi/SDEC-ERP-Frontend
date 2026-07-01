@@ -12,35 +12,46 @@ export interface ApiEmployee {
   designation: string;       
   role: string;              
   phone: string | null;
+  address: string | null;
+  emergency_contact: string | null;
   salary: number;
   employment_status: string; 
   join_date: string;
   date_of_birth: string | null;
+  manager_id: number | null;
+}
+
+export interface ApiAvailableUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
 }
 
 export interface CreateEmployeePayload {
-  name: string;
-  email: string;
-  role: string;              // system role name (from roles table)
+  user_id: number;
   department: string;        // required — selected from dropdown
   designation: string;       // job title
   phone?: string;
+  address?: string;
+  emergency_contact?: string;
   salary?: number;
   join_date: string;
   date_of_birth: string;
   employment_status?: string;
+  manager_id?: number;
 }
 
 export interface UpdateEmployeePayload {
-  name?: string;
-  email?: string;
-  role?: string;
   department?: string;
-  designation: string;
+  designation?: string;
   phone?: string;
+  address?: string;
+  emergency_contact?: string;
   salary?: number;
   date_of_birth?: string;
   employment_status?: string;
+  manager_id?: number;
 }
 
 /* ── API functions ──────────────────────────────────────────────────────── */
@@ -55,7 +66,29 @@ export async function fetchEmployees(): Promise<ApiEmployee[]> {
 }
 
 /**
- * Atomically create a user + employee record on the backend.
+ * Fetch available users who are not linked to an employee profile.
+ * GET /hr/available-users
+ */
+export async function fetchAvailableUsers(): Promise<ApiAvailableUser[]> {
+  const res = await apiClient.get<{ success: boolean; data: ApiAvailableUser[] }>('/hr/available-users');
+  return res.data?.data ?? [];
+}
+
+/**
+ * Create a new user account inline from the employee onboarding modal.
+ * POST /hr/users
+ */
+export async function createInlineUser(data: {
+  name: string;
+  email: string;
+  role: string;
+}): Promise<{ success: boolean; data: ApiAvailableUser }> {
+  const res = await apiClient.post<{ success: boolean; data: ApiAvailableUser }>('/hr/users', data);
+  return res.data;
+}
+
+/**
+ * Create an employee record linked to an existing user.
  * POST /hr/employees
  */
 export async function createEmployee(data: CreateEmployeePayload): Promise<any> {
@@ -64,7 +97,7 @@ export async function createEmployee(data: CreateEmployeePayload): Promise<any> 
 }
 
 /**
- * Update both the employee row and the linked users row.
+ * Update the employee row.
  * PUT /hr/employees/:id
  */
 export async function updateEmployee(id: number, data: UpdateEmployeePayload): Promise<any> {

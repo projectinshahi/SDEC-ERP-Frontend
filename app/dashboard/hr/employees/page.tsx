@@ -29,7 +29,10 @@ import {
   createEmployee,
   updateEmployee,
   deleteEmployee,
+  fetchAvailableUsers,
+  createInlineUser,
   type ApiEmployee,
+  type ApiAvailableUser,
 } from '@/lib/api/hr';
 import { fetchRolesApi } from '@/lib/api/roles';
 
@@ -74,6 +77,9 @@ export default function EmployeesPage() {
   const [isLoading, setIsLoading]       = useState(true);
   const [error, setError]               = useState<string | null>(null);
 
+  const [availableUsers, setAvailableUsers] = useState<ApiAvailableUser[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+
   /* ── Filter / pagination state ─────────────────────────────────────────── */
   const [searchTerm, setSearchTerm]         = useState('');
   const [selectedDept, setSelectedDept]     = useState('All');
@@ -99,10 +105,21 @@ export default function EmployeesPage() {
   const [formDesignation, setFormDesignation]     = useState('');           // job title
   const [formDepartment, setFormDepartment]       = useState('');           // explicit department
   const [formPhone, setFormPhone]                 = useState('');
+  const [formAddress, setFormAddress]             = useState('');
+  const [formEmergencyContact, setFormEmergencyContact] = useState('');
   const [formSalary, setFormSalary]               = useState('');
   const [formStatus, setFormStatus]               = useState<DisplayStatus>('Active');
   const [formJoinDate, setFormJoinDate]           = useState('');
   const [formDateOfBirth, setFormDateOfBirth]     = useState('');
+  const [formManagerId, setFormManagerId]         = useState('');
+
+  // Inline user registration states
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [inlineName, setInlineName]               = useState('');
+  const [inlineEmail, setInlineEmail]             = useState('');
+  const [inlineRole, setInlineRole]               = useState('');
+  const [inlineError, setInlineError]             = useState<string | null>(null);
+  const [isInlineSaving, setIsInlineSaving]       = useState(false);
 
   const itemsPerPage = 8;
 
@@ -173,6 +190,10 @@ export default function EmployeesPage() {
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
 
+  const managerOptions = useMemo(() => {
+    return employees.filter(e => String(e.id) !== formId);
+  }, [employees, formId]);
+
   /* ── Selection helpers ──────────────────────────────────────────────────── */
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
@@ -199,17 +220,27 @@ export default function EmployeesPage() {
     setFormDesignation('');
     setFormDepartment('');
     setFormPhone('');
+    setFormAddress('');
+    setFormEmergencyContact('');
     setFormSalary('');
     setFormStatus('Active');
     setFormJoinDate(new Date().toISOString().split('T')[0]);
     setFormDateOfBirth('');
+    setFormManagerId('');
+    setSelectedUserId('');
     setSaveError(null);
   };
 
-  const handleOpenAddDrawer = () => {
+  const handleOpenAddDrawer = async () => {
     setIsEditMode(false);
     resetForm();
     setIsDrawerOpen(true);
+    try {
+      const users = await fetchAvailableUsers();
+      setAvailableUsers(users);
+    } catch (err: any) {
+      console.error('Failed to load available users:', err);
+    }
   };
 
   const handleOpenEditDrawer = (emp: ApiEmployee) => {
@@ -221,10 +252,13 @@ export default function EmployeesPage() {
     setFormDesignation(emp.designation ?? '');
     setFormDepartment(emp.department ?? '');
     setFormPhone(emp.phone ?? '');
+    setFormAddress(emp.address ?? '');
+    setFormEmergencyContact(emp.emergency_contact ?? '');
     setFormSalary(emp.salary != null ? String(emp.salary) : '');
     setFormStatus(toDisplay(emp.employment_status));
     setFormJoinDate(formatDate(emp.join_date));
     setFormDateOfBirth(emp.date_of_birth ? formatDate(emp.date_of_birth) : '');
+    setFormManagerId(emp.manager_id != null ? String(emp.manager_id) : '');
     setSaveError(null);
     setIsDrawerOpen(true);
   };
@@ -232,8 +266,12 @@ export default function EmployeesPage() {
   /* ── CRUD handlers ──────────────────────────────────────────────────────── */
   const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName || !formEmail || !formDesignation || !formDepartment || !formJoinDate || (!isEditMode && !formDateOfBirth)) {
-      setSaveError('Please fill in all required fields (Name, Email, Designation, Department, Onboarding Date, and Date of Birth).');
+    if (!isEditMode && !selectedUserId) {
+      setSaveError('Please select a user to link to this employee.');
+      return;
+    }
+    if (!formDesignation || !formDepartment || !formJoinDate || (!isEditMode && !formDateOfBirth)) {
+      setSaveError('Please fill in all required fields (Designation, Department, Onboarding Date, and Date of Birth).');
       return;
     }
 
@@ -243,28 +281,29 @@ export default function EmployeesPage() {
     try {
       if (isEditMode) {
         await updateEmployee(Number(formId), {
-          name:              formName,
-          email:             formEmail,
-          role:              formRole,
           department:        formDepartment,
           designation:       formDesignation,
           phone:             formPhone || undefined,
+          address:           formAddress || undefined,
+          emergency_contact: formEmergencyContact || undefined,
           salary:            formSalary ? Number(formSalary) : undefined,
           date_of_birth:     formDateOfBirth || undefined,
           employment_status: toDbStatus(formStatus),
+          manager_id:        formManagerId ? Number(formManagerId) : undefined,
         });
       } else {
         await createEmployee({
-          name:              formName,
-          email:             formEmail,
-          role:              formRole,
+          user_id:           Number(selectedUserId),
           department:        formDepartment,
           designation:       formDesignation,
           phone:             formPhone || undefined,
+          address:           formAddress || undefined,
+          emergency_contact: formEmergencyContact || undefined,
           salary:            formSalary ? Number(formSalary) : undefined,
           join_date:         formJoinDate,
           date_of_birth:     formDateOfBirth,
           employment_status: toDbStatus(formStatus),
+          manager_id:        formManagerId ? Number(formManagerId) : undefined,
         });
       }
       setIsDrawerOpen(false);
@@ -700,6 +739,53 @@ export default function EmployeesPage() {
                   {/* Form */}
                   <form onSubmit={handleSaveEmployee} className="flex-1 space-y-5">
 
+                     {/* Select User Dropdown */}
+                     {!isEditMode && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center justify-between">
+                          <span>Select User <span className="text-rose-500">*</span></span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInlineError(null);
+                              setInlineName('');
+                              setInlineEmail('');
+                              setInlineRole(roles[0]?.name ?? '');
+                              setIsAddUserModalOpen(true);
+                            }}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700 transition"
+                          >
+                            + Add User
+                          </button>
+                        </label>
+                        <select
+                          value={selectedUserId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedUserId(val);
+                            const matched = availableUsers.find(u => String(u.id) === val);
+                            if (matched) {
+                              setFormName(matched.name);
+                              setFormEmail(matched.email);
+                              setFormRole(matched.role);
+                            } else {
+                              setFormName('');
+                              setFormEmail('');
+                              setFormRole('');
+                            }
+                          }}
+                          className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                        >
+                          <option value="">Select a user account…</option>
+                          {availableUsers.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name} ({u.role})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     {/* Name */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Full Name</label>
@@ -707,11 +793,10 @@ export default function EmployeesPage() {
                         <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                           type="text"
-                          required
+                          readOnly
                           value={formName}
-                          onChange={(e) => setFormName(e.target.value)}
-                          placeholder="e.g. Jaseem K M"
-                          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                          placeholder="User's full name"
+                          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-gray-55 dark:bg-gray-850 rounded-xl text-sm focus:outline-none dark:text-gray-300 cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -723,11 +808,10 @@ export default function EmployeesPage() {
                         <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                           type="email"
-                          required
+                          readOnly
                           value={formEmail}
-                          onChange={(e) => setFormEmail(e.target.value)}
-                          placeholder="e.g. jaseem@shahi.in"
-                          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                          placeholder="User's email address"
+                          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-gray-55 dark:bg-gray-850 rounded-xl text-sm focus:outline-none dark:text-gray-300 cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -737,16 +821,13 @@ export default function EmployeesPage() {
                       <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">System Role</label>
                       <div className="relative">
                         <ShieldCheck size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <select
+                        <input
+                          type="text"
+                          readOnly
                           value={formRole}
-                          onChange={(e) => setFormRole(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100 appearance-none"
-                        >
-                          <option value="">Select role…</option>
-                          {roles.map((r) => (
-                            <option key={r.id} value={r.name}>{r.name}</option>
-                          ))}
-                        </select>
+                          placeholder="User's system role"
+                          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-gray-55 dark:bg-gray-850 rounded-xl text-sm focus:outline-none dark:text-gray-300 cursor-not-allowed"
+                        />
                       </div>
                     </div>
 
@@ -822,6 +903,50 @@ export default function EmployeesPage() {
                       </div>
                     </div>
 
+                    {/* Address */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Residential Address</label>
+                      <textarea
+                        value={formAddress}
+                        onChange={(e) => setFormAddress(e.target.value)}
+                        placeholder="e.g. Apartment, Street, City, ZIP Code"
+                        rows={2}
+                        className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                      />
+                    </div>
+
+                    {/* Emergency Contact */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Emergency Contact Number</label>
+                      <div className="relative">
+                        <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="tel"
+                          value={formEmergencyContact}
+                          onChange={(e) => setFormEmergencyContact(e.target.value)}
+                          placeholder="e.g. +91 9876543210 (Spouse/Parent)"
+                          className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Manager Dropdown */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Reporting Manager</label>
+                      <select
+                        value={formManagerId}
+                        onChange={(e) => setFormManagerId(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                      >
+                        <option value="">Select Reporting Manager…</option>
+                        {managerOptions.map((mgr) => (
+                          <option key={mgr.id} value={mgr.id}>
+                            {mgr.name} ({mgr.designation || 'Staff'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     {/* Status + Join Date */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
@@ -850,19 +975,19 @@ export default function EmployeesPage() {
                           />
                         </div>
                       </div>
+                    </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Date of Birth {!isEditMode && <span className="text-rose-500">*</span>}</label>
-                        <div className="relative">
-                          <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <input
-                            type="date"
-                            required={!isEditMode}
-                            value={formDateOfBirth}
-                            onChange={(e) => setFormDateOfBirth(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
-                          />
-                        </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Date of Birth {!isEditMode && <span className="text-rose-500">*</span>}</label>
+                      <div className="relative">
+                        <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="date"
+                          required={!isEditMode}
+                          value={formDateOfBirth}
+                          onChange={(e) => setFormDateOfBirth(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                        />
                       </div>
                     </div>
 
@@ -980,6 +1105,26 @@ export default function EmployeesPage() {
                       </p>
                     </div>
                   )}
+                  {selectedEmployee.address && (
+                    <div className="space-y-1 col-span-2">
+                      <span className="text-[10px] uppercase font-bold text-gray-450 dark:text-gray-500 tracking-wider">Address</span>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{selectedEmployee.address}</p>
+                    </div>
+                  )}
+                  {selectedEmployee.emergency_contact && (
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-gray-450 dark:text-gray-500 tracking-wider">Emergency Contact</span>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{selectedEmployee.emergency_contact}</p>
+                    </div>
+                  )}
+                  {selectedEmployee.manager_id && (
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-gray-450 dark:text-gray-500 tracking-wider">Reporting Manager</span>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        {employees.find(e => e.id === selectedEmployee.manager_id)?.name || 'Unknown'}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 justify-end pt-2">
@@ -998,6 +1143,124 @@ export default function EmployeesPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. Inline Add User Modal */}
+      {isAddUserModalOpen && (
+        <div className="fixed inset-0 overflow-y-auto z-[60] flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+            onClick={() => !isInlineSaving && setIsAddUserModalOpen(false)}
+          />
+
+          <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-850 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl z-10 p-6 space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">Create New Login User</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Generates a secure temporary password and fires credentials email automatically.
+              </p>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!inlineName || !inlineEmail || !inlineRole) {
+                setInlineError('All fields are required.');
+                return;
+              }
+              setIsInlineSaving(true);
+              setInlineError(null);
+              try {
+                const res = await createInlineUser({
+                  name: inlineName,
+                  email: inlineEmail,
+                  role: inlineRole,
+                });
+                if (res.success && res.data) {
+                  const newUser = res.data;
+                  // Refresh available users list
+                  const freshUsers = await fetchAvailableUsers();
+                  setAvailableUsers(freshUsers);
+                  // Auto-select and populate form
+                  setSelectedUserId(String(newUser.id));
+                  setFormName(newUser.name);
+                  setFormEmail(newUser.email);
+                  setFormRole(newUser.role);
+                  setIsAddUserModalOpen(false);
+                }
+              } catch (err: any) {
+                setInlineError(err?.message ?? 'Failed to create user. Make sure email is a valid @gmail.com address.');
+              } finally {
+                setIsInlineSaving(false);
+              }
+            }} className="space-y-4">
+              
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Name</label>
+                <input
+                  type="text"
+                  required
+                  value={inlineName}
+                  onChange={(e) => setInlineName(e.target.value)}
+                  placeholder="e.g. Danish Pv"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Email Address (must end in @gmail.com)</label>
+                <input
+                  type="email"
+                  required
+                  value={inlineEmail}
+                  onChange={(e) => setInlineEmail(e.target.value)}
+                  placeholder="e.g. danish@gmail.com"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">System Role</label>
+                <select
+                  value={inlineRole}
+                  required
+                  onChange={(e) => setInlineRole(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 dark:text-gray-100"
+                >
+                  <option value="">Select role…</option>
+                  {roles
+                    .filter(r => !r.name.toLowerCase().includes('superadmin'))
+                    .map((r) => (
+                      <option key={r.id} value={r.name}>{r.name}</option>
+                    ))}
+                </select>
+              </div>
+
+              {inlineError && (
+                <p className="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-2">
+                  {inlineError}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => !isInlineSaving && setIsAddUserModalOpen(false)}
+                  disabled={isInlineSaving}
+                  className="flex-1 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 dark:text-gray-200 dark:border-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isInlineSaving}
+                  className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition disabled:opacity-75 inline-flex items-center justify-center gap-1.5"
+                >
+                  {isInlineSaving ? <><Loader2 size={13} className="animate-spin" />Creating…</> : 'Create User'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
