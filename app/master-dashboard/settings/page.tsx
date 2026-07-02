@@ -37,7 +37,6 @@ export default function MasterSettingsPage() {
         subtitle="Organization-wide access control, user provisioning, role assignments, and audit oversight."
         accent="bg-slate-800 dark:bg-slate-700"
         shadow="shadow-slate-500/20"
-        onRefresh={reload}
       />
 
       {/* Tabs */}

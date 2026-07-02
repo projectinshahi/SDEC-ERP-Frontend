@@ -65,7 +65,6 @@ export default function MasterBusinessHubPage() {
         subtitle="Centralised command workspace — live organization snapshot with direct access to every departmental module."
         accent="bg-amber-600"
         shadow="shadow-amber-500/20"
-        onRefresh={reload}
       />
 
       {/* Live org snapshot */}

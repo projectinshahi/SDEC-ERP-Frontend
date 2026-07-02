@@ -114,7 +114,8 @@ function matchesStatusFilter(p: MasterProject, filter: string): boolean {
 export default function MasterProjectsPage() {
   // Poll every 60s so KPIs and project progress update live without a manual
   // refresh (silent background refresh — keeps current data on screen).
-  const { data, status, errorMsg, reload, refresh, isRefreshing } = useMasterResource(fetchMasterProjects, { pollMs: 60000 });
+  // Live sync stays always-on via the 60s background poll (no manual controls).
+  const { data, status, errorMsg, reload } = useMasterResource(fetchMasterProjects, { pollMs: 60000 });
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -203,10 +204,6 @@ export default function MasterProjectsPage() {
         title="Project Dashboard"
         subtitle="Organization-wide view of every enterprise project, health metric, and resource allocation — live."
         actions={<ExportPdfButton build={buildReport} />}
-        onRefresh={refresh}
-        refreshIconOnly
-        hideLivePill
-        isRefreshing={isRefreshing}
       />
 
       {/* PROJECT STATUS — 10 live KPI cards (5 per row on desktop, 3 on tablet,
