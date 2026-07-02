@@ -31,18 +31,14 @@ const SHOW_FUTURE_ANALYTICS: boolean = false;
 export default function MasterDashboardPage() {
   const [data, setData] = useState<MasterDashboardAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // `refresh` re-fetches without blanking the page to a skeleton, so the
-  // header refresh control can show its own inline loading (spinning icon).
-  const loadData = async ({ refresh = false }: { refresh?: boolean } = {}) => {
+  const loadData = async () => {
     try {
-      if (refresh) setIsRefreshing(true);
-      else setIsLoading(true);
+      setIsLoading(true);
       setError(null);
       const analyticsData = await fetchMasterAnalytics();
       setData(analyticsData);
@@ -55,8 +51,7 @@ export default function MasterDashboardPage() {
       else if (status === 401) setError('Your session has expired. Please sign in again.');
       else setError('Failed to load dashboard data. Please check your connection and try again.');
     } finally {
-      if (refresh) setIsRefreshing(false);
-      else setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -224,16 +219,6 @@ export default function MasterDashboardPage() {
           >
             {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
             {isExporting ? 'Generating…' : 'Export PDF'}
-          </button>
-          <button
-            type="button"
-            onClick={() => loadData({ refresh: true })}
-            disabled={isRefreshing}
-            title="Refresh Dashboard"
-            aria-label="Refresh Dashboard"
-            className="inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={classNames('w-4 h-4', isRefreshing && 'animate-spin')} />
           </button>
         </div>
       </header>

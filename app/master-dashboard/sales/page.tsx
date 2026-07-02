@@ -101,13 +101,7 @@ export default function MasterSalesPage() {
         subtitle="Organization-wide revenue forecasting, pipeline analysis, and conversion tracking across every sales division."
         accent="bg-emerald-600"
         shadow="shadow-emerald-500/20"
-        onRefresh={reload}
-        actions={
-          <>
-            <ExportPdfButton build={buildReport} />
-
-          </>
-        }
+        actions={<ExportPdfButton build={buildReport} />}
       />
 
       {/* Forecast highlight + key revenue stats */}
