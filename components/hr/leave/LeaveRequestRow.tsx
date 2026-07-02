@@ -10,6 +10,8 @@ interface LeaveRequestRowProps {
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onCancel: (id: string) => void;
+  onDelete: (id: string) => void;
+  canDelete: boolean;
   onViewDetails: (request: LeaveRequest) => void;
 }
 
@@ -19,6 +21,8 @@ export function LeaveRequestRow({
   onApprove,
   onReject,
   onCancel,
+  onDelete,
+  canDelete,
   onViewDetails,
 }: LeaveRequestRowProps) {
   
@@ -70,7 +74,7 @@ export function LeaveRequestRow({
   return (
     <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-all border-b border-gray-100 dark:border-gray-850/60 last:border-b-0 group">
       {/* Employee */}
-      <td className="px-6 py-4.5 whitespace-nowrap">
+      <td className="px-4 py-3 whitespace-nowrap">
         <div className="flex items-center gap-3">
           <div
             className={`w-9 h-9 rounded-xl bg-gradient-to-br ${getAvatarColor(
@@ -91,35 +95,35 @@ export function LeaveRequestRow({
       </td>
 
       {/* Department */}
-      <td className="px-6 py-4.5 whitespace-nowrap">
+      <td className="px-4 py-3 whitespace-nowrap">
         <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
           {request.department}
         </span>
       </td>
 
       {/* Leave Type */}
-      <td className="px-6 py-4.5 whitespace-nowrap">
+      <td className="px-4 py-3 whitespace-nowrap">
         <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
           {request.leaveType}
         </span>
       </td>
 
       {/* Date Range */}
-      <td className="px-6 py-4.5 whitespace-nowrap">
+      <td className="px-4 py-3 whitespace-nowrap">
         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
           {formatDateRange(request.startDate, request.endDate)}
         </span>
       </td>
 
       {/* Days */}
-      <td className="px-6 py-4.5 whitespace-nowrap">
+      <td className="px-4 py-3 whitespace-nowrap">
         <span className="text-sm font-bold text-gray-900 dark:text-white">
           {request.days} <span className="text-2xs font-semibold text-gray-400 dark:text-gray-500">days</span>
         </span>
       </td>
 
       {/* Reason */}
-      <td className="px-6 py-4.5 max-w-xs truncate">
+      <td className="px-4 py-3 max-w-[180px] truncate">
         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
           <span className="truncate block" title={request.reason}>
             {request.reason}
@@ -133,12 +137,12 @@ export function LeaveRequestRow({
       </td>
 
       {/* Status */}
-      <td className="px-6 py-4.5 whitespace-nowrap">
+      <td className="px-4 py-3 whitespace-nowrap">
         <LeaveStatusBadge status={request.status} />
       </td>
 
       {/* Actions */}
-      <td className="px-6 py-4.5 whitespace-nowrap text-right text-xs">
+      <td className="px-4 py-3 whitespace-nowrap text-right text-xs">
         <div className="flex items-center justify-end gap-2">
           {/* View Details always available */}
           <button
@@ -178,6 +182,20 @@ export function LeaveRequestRow({
             >
               <Trash2 size={12} />
               <span>Cancel</span>
+            </button>
+          )}
+
+          {/* Delete — available on resolved (Approved/Rejected) requests for
+              anyone with delete permission (admin: any; staff: own, enforced
+              server-side). */}
+          {canDelete && (request.status === 'Approved' || request.status === 'Rejected') && (
+            <button
+              onClick={() => onDelete(request.id)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-2xs font-bold text-rose-600 hover:text-white hover:bg-rose-500 dark:hover:bg-rose-600 rounded-lg border border-rose-500/10 hover:border-rose-500 transition-all"
+              title="Delete Request"
+            >
+              <Trash2 size={12} />
+              <span>Delete</span>
             </button>
           )}
         </div>

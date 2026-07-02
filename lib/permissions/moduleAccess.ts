@@ -96,7 +96,10 @@ export const APP_MODULES: AppModuleDef[] = [
   description: 'Employees, leave & attendance.',
   prefixes: ['hr.'],
   topModule: 'hr',
-  fallbackHref: '/dashboard/hr/leave', // self-service employees land here; HR admins get redirected to /dashboard/hr by firstAccessibleHref
+  // HR module home. The actual landing is permission-aware via firstAccessibleHref:
+  // users with dashboard access open /dashboard/hr; others land on their first
+  // permitted tab (e.g. Leave). Matches the Sales/Development pattern.
+  fallbackHref: '/dashboard/hr',
 },
   {
     // Finance is a first-class, independent ERP module (same architecture as
@@ -118,12 +121,6 @@ export const APP_MODULES: AppModuleDef[] = [
  */
 export function isModuleVisible(user: ModuleAccessUser | null | undefined, m: AppModuleDef): boolean {
   const perms = user?.permissions ?? [];
-  const isEmpSelfService = perms.includes('hr.leave.self') && !perms.includes('hr.view');
-  
-  if (isEmpSelfService) {
-    return m.key === 'hr';
-  }
-
   const r = normalizeRole(user?.roleName) || normalizeRole(user?.role);
   const isSuper = r === 'superadmin';
   if (isSuper) return true;
@@ -144,21 +141,6 @@ export function visibleModules(user: ModuleAccessUser | null | undefined): AppMo
  * core; otherwise permission-prefix driven).
  */
 export function getModuleAccess(user: ModuleAccessUser | null | undefined): Record<TopModule, boolean> {
-  const perms = user?.permissions ?? [];
-  const isEmpRole = String(user?.roleName || user?.role || '').toLowerCase() === 'employee';
-  const isEmpSelfService = perms.includes('hr.leave.self') && (!perms.includes('hr.view') || isEmpRole);
-
-  if (isEmpSelfService) {
-    return {
-      master: false,
-      sales: false,
-      development: false,
-      user: false,
-      hr: true,
-      finance: false,
-    };
-  }
-
   const result = {} as Record<TopModule, boolean>;
   for (const m of APP_MODULES) {
     if (m.key in result) continue; // skip duplicate keys (e.g. 'hr' appears in TopModule union)

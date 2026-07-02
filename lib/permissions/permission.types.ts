@@ -139,6 +139,9 @@ export type PermissionKey =
   | 'hr.attendance.view'
   | 'hr.leave.view'
   | 'hr.leave.self'
+  // Backend HR-admin delete permission (held by the HR Admin role); used to gate
+  // the Delete Leave action. Not a catalog "view" key, so it's listed here only.
+  | 'hr.delete'
   | 'hr.recruitment.view'
   | 'hr.payroll.view'
   | 'hr.performance.view'

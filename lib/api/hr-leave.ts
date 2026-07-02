@@ -67,3 +67,11 @@ export async function approveLeave(id: number): Promise<void> {
 export async function rejectLeave(id: number): Promise<void> {
   await apiClient.put<{ success: boolean }>(`/hr/leaves/${id}/reject`);
 }
+
+/**
+ * Delete a leave request (HR Admin: any; self-service staff: own only —
+ * enforced server-side).
+ */
+export async function deleteLeave(id: number): Promise<void> {
+  await apiClient.delete<{ success: boolean }>(`/hr/leaves/${id}`);
+}

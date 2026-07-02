@@ -19,6 +19,8 @@ interface LeaveRequestTableProps {
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onCancel: (id: string) => void;
+  onDelete: (id: string) => void;
+  canDelete: boolean;
   onViewDetails: (request: LeaveRequest) => void;
   itemsPerPage: number;
 }
@@ -36,6 +38,8 @@ export function LeaveRequestTable({
   onApprove,
   onReject,
   onCancel,
+  onDelete,
+  canDelete,
   onViewDetails,
   itemsPerPage,
 }: LeaveRequestTableProps) {
@@ -47,7 +51,7 @@ export function LeaveRequestTable({
   const renderHeader = (label: string, key?: LeaveSortKey) => {
     if (!key) {
       return (
-        <th className="px-6 py-4.5 text-left text-2xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+        <th className="px-4 py-3 text-left text-2xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
           {label}
         </th>
       );
@@ -56,7 +60,7 @@ export function LeaveRequestTable({
     const isActive = sortKey === key;
     return (
       <th 
-        className="px-6 py-4.5 text-left text-2xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        className="px-4 py-3 text-left text-2xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
         onClick={() => onSort(key)}
       >
         <div className="flex items-center gap-1.5 select-none">
@@ -92,7 +96,7 @@ export function LeaveRequestTable({
               {renderHeader('Days', 'days')}
               {renderHeader('Reason')}
               {renderHeader('Status', 'status')}
-              <th className="px-6 py-4.5 text-right text-2xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-right text-2xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -106,6 +110,8 @@ export function LeaveRequestTable({
                 onApprove={onApprove}
                 onReject={onReject}
                 onCancel={onCancel}
+                onDelete={onDelete}
+                canDelete={canDelete}
                 onViewDetails={onViewDetails}
               />
             ))}
@@ -192,6 +198,15 @@ export function LeaveRequestTable({
                       className="px-2.5 py-1 text-2xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg shadow-sm transition-all"
                     >
                       Cancel
+                    </button>
+                  )}
+
+                  {canDelete && (req.status === 'Approved' || req.status === 'Rejected') && (
+                    <button
+                      onClick={() => onDelete(req.id)}
+                      className="px-2.5 py-1 text-2xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg shadow-sm transition-all"
+                    >
+                      Delete
                     </button>
                   )}
                 </div>
