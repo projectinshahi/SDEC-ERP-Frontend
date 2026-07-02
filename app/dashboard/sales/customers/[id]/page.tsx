@@ -13,6 +13,7 @@ import {
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { useToast } from '@/lib/hooks/useToast';
 import { apiClient } from '@/lib/api/api-client';
+import { formatINR } from '@/lib/utils/currency';
 
 interface ContactLead {
   id: number; title: string; status: string; stage: string; score: number; createdAt: string;
@@ -44,7 +45,8 @@ const fmtDate = (iso: string) => {
     return iso;
   }
 };
-const money = (n: number) => `$${(n || 0).toLocaleString()}`;
+// Centralized INR formatter — single source of truth for the ₹ symbol.
+const money = (n: number) => formatINR(n || 0);
 
 export default function ContactDetailsPage() {
   const params = useParams();

@@ -17,6 +17,7 @@ import { DealPipelineBoard } from '@/components/deals/DealPipelineBoard';
 import { StageFormModal } from '@/components/sales-execution/pipeline/StageFormModal';
 import { DeleteStageModal } from '@/components/sales-execution/pipeline/DeleteStageModal';
 import { classNames } from '@/lib/utils';
+import { formatINR } from '@/lib/utils/currency';
 import type { Deal, DealStage } from '@/lib/types/leadLifecycle';
 import type { AssignableUser } from '@/lib/types/lead';
 
@@ -305,7 +306,7 @@ export default function SalesDealsPage() {
                             {deal.title}
                           </Link>
                         </td>
-                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">${deal.amount?.toLocaleString()}</td>
+                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{formatINR(deal.amount)}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400">
                             {deal.stage || '—'}

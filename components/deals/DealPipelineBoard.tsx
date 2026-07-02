@@ -6,6 +6,7 @@ import { DealCard } from './DealCard';
 import { StageColumnMenu } from '@/components/sales-execution/pipeline/StageColumnMenu';
 import { dealStageTheme } from '@/lib/data/dealStages';
 import type { Deal, DealStage } from '@/lib/types/leadLifecycle';
+import { formatINR } from '@/lib/utils/currency';
 
 interface DealPipelineBoardProps {
   stages: DealStage[];
@@ -28,8 +29,9 @@ interface DealPipelineBoardProps {
   onMove: (dealId: number, targetStage: string) => void;
 }
 
-const money = (n: number) =>
-  new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+// Centralized INR formatter (single source of truth for the ₹ symbol + Indian
+// digit grouping); change lib/utils/currency.ts to adjust currency app-wide.
+const money = (n: number) => formatINR(n || 0);
 
 /**
  * Deal pipeline Kanban board (native HTML5 drag-and-drop). Mirrors the lead

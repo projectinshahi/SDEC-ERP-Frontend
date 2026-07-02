@@ -17,6 +17,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { fetchDeal, fetchDealStages, deleteDeal } from '@/lib/api/leadLifecycle';
 import { fetchAssignableUsers } from '@/lib/api/leads';
+import { formatINR } from '@/lib/utils/currency';
 import { DealFormModal } from '@/components/deals/DealFormModal';
 import { DealNotesPanel } from '@/components/deals/DealNotesPanel';
 import { DealDocApprovalPanel } from '@/components/deals/DealDocApprovalPanel';
@@ -35,9 +36,11 @@ function stageTone(stage: string) {
   return STAGE_TONES[stage] ?? { border: 'border-t-indigo-500', dot: 'bg-indigo-500' };
 }
 
-function fmtMoney(amount?: number | null, currency?: string | null): string {
-  const n = Number(amount || 0);
-  return `${currency || 'INR'} ${n.toLocaleString()}`;
+// Centralized INR formatter → "₹1,25,000" (Indian lakh/crore grouping). The
+// currency arg is accepted for call-site compatibility but the app is INR-only;
+// switch lib/utils/currency.ts to change currency behavior app-wide.
+function fmtMoney(amount?: number | null, _currency?: string | null): string {
+  return formatINR(amount);
 }
 function fmtDate(iso?: string | null): string {
   if (!iso) return NOT_PROVIDED;
