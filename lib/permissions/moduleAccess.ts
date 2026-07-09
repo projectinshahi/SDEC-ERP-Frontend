@@ -145,8 +145,7 @@ export function visibleModules(user: ModuleAccessUser | null | undefined): AppMo
  */
 export function getModuleAccess(user: ModuleAccessUser | null | undefined): Record<TopModule, boolean> {
   const perms = user?.permissions ?? [];
-  const isEmpRole = String(user?.roleName || user?.role || '').toLowerCase() === 'employee';
-  const isEmpSelfService = perms.includes('hr.leave.self') && (!perms.includes('hr.view') || isEmpRole);
+  const isEmpSelfService = perms.includes('hr.leave.self') && !perms.includes('hr.view');
 
   if (isEmpSelfService) {
     return {

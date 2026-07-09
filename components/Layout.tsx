@@ -46,9 +46,8 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
   //   1. module isolation — user must have access to the module that owns the route, AND
   //   2. STRICT per-page permission — user must hold the page's required permission.
   const isSelfService = useMemo(() => {
-    const isEmpRole = String(user?.roleName || user?.role || '').toLowerCase() === 'employee';
-    return hasAnyPermission(['hr.leave.self']) && (!hasAnyPermission(['hr.view', 'hr.dashboard.view']) || isEmpRole);
-  }, [hasAnyPermission, user]);
+    return hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']);
+  }, [hasAnyPermission]);
 
   const moduleOfPath = moduleForPath(pathname);
   const requiredPerms = permissionsForPath(pathname);
@@ -77,8 +76,7 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
   // A single sidebar item is visible when: correct module + module access + the
   // item's specific permission (SuperAdmin/Admin bypass via usePermissions).
   const isItemVisible = useCallback((item: SidebarMenuItem): boolean => {
-    const isEmpRole = String(user?.roleName || user?.role || '').toLowerCase() === 'employee';
-    const isUserSelfService = hasAnyPermission(['hr.leave.self']) && (!hasAnyPermission(['hr.view', 'hr.dashboard.view']) || isEmpRole);
+    const isUserSelfService = hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']);
     if (isUserSelfService) {
       return item.href === '/dashboard/hr/leave';
     }
