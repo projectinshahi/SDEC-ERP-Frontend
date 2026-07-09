@@ -31,6 +31,17 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     module: null,
   },
   {
+    // GLOBAL My Tasks — renders the SAME independent Global My Tasks workspace,
+    // but IN-SHELL at /master-dashboard/my-tasks so the Founder stays inside the
+    // Master Dashboard layout (master sidebar/header stay). Must NOT point at
+    // /dashboard/my-tasks (that switches to the Development-module sidebar) and
+    // MUST NOT point at /dashboard/tasks (the Development Kanban).
+    label: 'My Tasks',
+    href: '/master-dashboard/my-tasks',
+    icon: 'ListTodo',
+    module: null,
+  },
+  {
     label: 'Projects',
     href: '/master-dashboard/projects',
     icon: 'Briefcase',

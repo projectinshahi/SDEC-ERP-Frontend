@@ -46,8 +46,8 @@ interface KanbanBoardProps {
 /**
  * KanbanBoard orchestrator - Manages main state and operations of the tasks and dynamic columns.
  */
-export function KanbanBoard({ 
-  boardId, 
+export function KanbanBoard({
+  boardId,
   sprintId,
   projectId,
   boards = [],
@@ -152,7 +152,7 @@ export function KanbanBoard({
       try {
         const cols = await fetchKanbanColumns(boardId ?? undefined);
         const tsk = await fetchKanbanTasks(boardId ?? undefined, sprintId ?? undefined);
-        
+
         let usrs: { name: string }[] = [];
         if (projectId) {
           const members = await fetchProjectMembers(projectId);
@@ -160,7 +160,7 @@ export function KanbanBoard({
         } else {
           usrs = await fetchUsers();
         }
-        
+
         setColumns(cols);
         setTasks(tsk);
         // @ts-ignore - Temporary cast to handle both UserDbResponse and ProjectMember shape
@@ -181,7 +181,7 @@ export function KanbanBoard({
     const token = localStorage.getItem('authToken');
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     const socketUrl = apiUrl.endsWith('/api') ? apiUrl.replace('/api', '') : apiUrl;
-    
+
     socketRef.current = io(socketUrl, {
       auth: { token },
       withCredentials: true
@@ -195,18 +195,18 @@ export function KanbanBoard({
 
     socketRef.current.on('task_unread_updated', (data: { taskId: string, senderId: number }) => {
       if (data.senderId !== currentUserId) {
-        setTasks(prev => prev.map(t => 
-          t.id === data.taskId 
-            ? { ...t, unreadCount: (t.unreadCount || 0) + 1 } 
+        setTasks(prev => prev.map(t =>
+          t.id === data.taskId
+            ? { ...t, unreadCount: (t.unreadCount || 0) + 1 }
             : t
         ));
       }
     });
 
     socketRef.current.on('task_read', (data: { taskId: string, boardId: string }) => {
-      setTasks(prev => prev.map(t => 
-        t.id === data.taskId 
-          ? { ...t, unreadCount: 0 } 
+      setTasks(prev => prev.map(t =>
+        t.id === data.taskId
+          ? { ...t, unreadCount: 0 }
           : t
       ));
     });
@@ -393,7 +393,7 @@ export function KanbanBoard({
 
       try {
         await updateKanbanTask(editingTask.id, data);
-        
+
         // Also upload pending files if any
         if (data.pendingFiles && data.pendingFiles.length > 0) {
           const newlyUploadedAttachments: TaskAttachment[] = [];
@@ -410,10 +410,10 @@ export function KanbanBoard({
             }
           }
           if (newlyUploadedAttachments.length > 0) {
-            setTasks(prev => prev.map(t => 
-              t.id === editingTask.id ? { 
-                ...t, 
-                attachments: [...(t.attachments || []), ...newlyUploadedAttachments] 
+            setTasks(prev => prev.map(t =>
+              t.id === editingTask.id ? {
+                ...t,
+                attachments: [...(t.attachments || []), ...newlyUploadedAttachments]
               } : t
             ));
           }
@@ -433,7 +433,7 @@ export function KanbanBoard({
         const response = await createKanbanTask({ ...newTask, boardId: boardId ?? undefined });
         if (response?.task) {
           const createdTask = response.task;
-          
+
           // Process attachments upload sequentially after task is created
           if (data.pendingFiles && data.pendingFiles.length > 0) {
             const uploadedAttachments = [];
@@ -556,8 +556,8 @@ export function KanbanBoard({
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer dark:text-gray-200 transition-all ${filterPriority !== 'all'
-                  ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-1 ring-blue-200 dark:ring-blue-800'
-                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900'
+                ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-1 ring-blue-200 dark:ring-blue-800'
+                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900'
                 }`}
             >
               <option value="all">All Priorities</option>
@@ -574,8 +574,8 @@ export function KanbanBoard({
               value={filterAssignee}
               onChange={(e) => setFilterAssignee(e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer dark:text-gray-200 transition-all ${filterAssignee !== 'all'
-                  ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-1 ring-blue-200 dark:ring-blue-800'
-                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900'
+                ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-1 ring-blue-200 dark:ring-blue-800'
+                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900'
                 }`}
             >
               <option value="all">All Assignees</option>
@@ -592,8 +592,8 @@ export function KanbanBoard({
             onClick={handleClearFilters}
             disabled={!hasActiveFilters}
             className={`text-xs font-semibold px-3 py-1.5 rounded-md select-none transition-all duration-200 ${hasActiveFilters
-                ? 'text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 cursor-pointer'
-                : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+              ? 'text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 cursor-pointer'
+              : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
               }`}
           >
             Reset
@@ -629,8 +629,8 @@ export function KanbanBoard({
           )}
           {filterPriority !== 'all' && (
             <span className={`inline-flex items-center gap-1.5 text-xs font-medium border px-2.5 py-1 rounded-full transition-all ${filterPriority === 'high' ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800' :
-                filterPriority === 'medium' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' :
-                  'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
+              filterPriority === 'medium' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' :
+                'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
               }`}>
               <AlertTriangle size={11} />
               {filterPriority.charAt(0).toUpperCase() + filterPriority.slice(1)} Priority

@@ -27,6 +27,14 @@ export type PermissionKey =
   | 'task.column.create'
   | 'task.column.update'
   | 'task.column.delete'
+  // My Tasks — standalone collaboration module (independent of task.* / sales.tasks.*)
+  | 'mytasks.view'
+  | 'mytasks.create'
+  | 'mytasks.edit'
+  | 'mytasks.delete'
+  | 'mytasks.assign'
+  | 'mytasks.chat.view'
+  | 'mytasks.chat.send'
   // Role Management
   | 'role.create'
   | 'role.read'
@@ -171,7 +179,7 @@ export type PermissionKey =
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr' | 'finance';
+export type ModuleName = 'user' | 'task' | 'mytasks' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr' | 'finance';
 
 /**
  * A single permission definition with metadata for UI rendering.

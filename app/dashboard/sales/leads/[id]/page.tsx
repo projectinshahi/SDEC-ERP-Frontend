@@ -193,6 +193,9 @@ export default function LeadDetailPage() {
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">
                     <Detail label="Source" value={formatLeadSource(lead.source)} />
+                    {lead.source === 'referral' && (
+                      <Detail label="Referral Name" value={lead.referralName || NOT_PROVIDED} />
+                    )}
                     <Detail label="Owner" value={lead.owner?.name || NOT_PROVIDED} />
                     <Detail label="Stage" value={lead.stage} />
                     <Detail label="Score" value={formatScore(lead.score)} />

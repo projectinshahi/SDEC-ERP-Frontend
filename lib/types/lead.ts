@@ -42,6 +42,7 @@ export interface Lead {
   title: string;
   description?: string | null;
   source: string;
+  referralName?: string | null;
   status: string;
   stage: string;
   orderIndex: number;
@@ -94,6 +95,7 @@ export interface UpdateLeadPayload {
   title?: string;
   description?: string | null;
   source?: string;
+  referralName?: string | null;
   status?: string;
   stage?: string;
   priority?: string;

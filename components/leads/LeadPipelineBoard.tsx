@@ -5,7 +5,14 @@ import { Plus } from 'lucide-react';
 import { LeadCard } from './LeadCard';
 import { StageColumnMenu } from '@/components/sales-execution/pipeline/StageColumnMenu';
 import { leadStageTheme } from '@/lib/data/leadStages';
+import { formatINR } from '@/lib/utils/currency';
 import type { Lead, LeadStage } from '@/lib/types/lead';
+
+function getLeadValue(lead: Lead): number {
+  if (!lead.description) return 0;
+  const match = lead.description.match(/Lead Value:\s*([\d.]+)/i);
+  return match ? parseFloat(match[1]) : 0;
+}
 
 interface LeadPipelineBoardProps {
   stages: LeadStage[];
@@ -62,9 +69,7 @@ export function LeadPipelineBoard({
         const isFirst = index === 0;
         const isLast = index === stages.length - 1;
         const hotCount = columnLeads.filter((l) => (l.score ?? 0) >= 80).length;
-        const avgScore = columnLeads.length
-          ? Math.round(columnLeads.reduce((sum, l) => sum + (l.score ?? 0), 0) / columnLeads.length)
-          : 0;
+        const totalLeadValue = columnLeads.reduce((sum, l) => sum + getLeadValue(l), 0);
 
         return (
           <div
@@ -124,7 +129,7 @@ export function LeadPipelineBoard({
               </div>
               {columnLeads.length > 0 && (
                 <p className="text-[11px] text-gray-400 mt-1 ml-[18px] flex items-center gap-2">
-                  <span>avg score {avgScore}</span>
+                  <span>{formatINR(totalLeadValue)}</span>
                   {hotCount > 0 && <span className="text-rose-500 font-semibold">🔥 {hotCount} hot</span>}
                 </p>
               )}

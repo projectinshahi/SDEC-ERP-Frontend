@@ -18,6 +18,7 @@ import {
   Pause,
   Trophy,
   XCircle,
+  Download,
 } from 'lucide-react';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -26,7 +27,7 @@ import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuar
 import { useToast } from '@/lib/hooks/useToast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { fetchBdeDashboard } from '@/lib/api/bdeDashboard';
+import { fetchBdeDashboard, exportBdeSummary } from '@/lib/api/bdeDashboard';
 import type { BdeDashboard } from '@/lib/types/salesExecution';
 import { SmartAlertsBanner } from '@/components/sales-execution/bde/SmartAlertsBanner';
 import { TargetProgressCard } from '@/components/sales-execution/bde/TargetProgressCard';
@@ -105,10 +106,20 @@ export default function BdeDashboardPage() {
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{todayLabel()}</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => load(true)} disabled={isLoading || isRefreshing}>
-            <RefreshCw size={15} className={isRefreshing ? 'animate-spin' : ''} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => exportBdeSummary('daily')} disabled={isLoading || isRefreshing} title="Download Daily Summary (PDF)">
+              <Download size={15} />
+              Daily
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => exportBdeSummary('weekly')} disabled={isLoading || isRefreshing} title="Download Weekly Summary (PDF)">
+              <Download size={15} />
+              Weekly
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => load(true)} disabled={isLoading || isRefreshing}>
+              <RefreshCw size={15} className={isRefreshing ? 'animate-spin' : ''} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -161,12 +172,12 @@ export default function BdeDashboardPage() {
               </div>
             </div>
 
-            {/* Lead + Deal summaries */}
+            {/* Total Lead + Deal summaries */}
             {(canViewLeads || canViewDeals) && (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
                 {canViewLeads && (
                   <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                    <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Lead Summary</h3>
+                    <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Total Lead Summary</h3>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <MiniTile label="Assigned" value={data.leads.assigned} icon={Users} tone="indigo" />
                       <MiniTile label="New" value={data.leads.new} icon={UserPlus} tone="blue" />
@@ -178,12 +189,41 @@ export default function BdeDashboardPage() {
 
                 {canViewDeals && (
                   <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                    <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Deal Summary</h3>
+                    <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Total Deal Summary</h3>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <MiniTile label="Active" value={data.deals.active} icon={Briefcase} tone="blue" />
                       <MiniTile label="Stalled" value={data.deals.stalled} icon={Pause} tone="amber" />
                       <MiniTile label="Won" value={data.deals.won} icon={Trophy} tone="emerald" />
                       <MiniTile label="Lost" value={data.deals.lost} icon={XCircle} tone="rose" />
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Today's Lead + Deal summaries */}
+            {(canViewLeads || canViewDeals) && (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {canViewLeads && (
+                  <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                    <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Today Lead Summary</h3>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <MiniTile label="Assigned" value={data.todayLeads.assigned} icon={Users} tone="indigo" />
+                      <MiniTile label="New" value={data.todayLeads.new} icon={UserPlus} tone="blue" />
+                      <MiniTile label="Qualified" value={data.todayLeads.qualified} icon={TargetIcon} tone="violet" />
+                      <MiniTile label="Converted" value={data.todayLeads.converted} icon={TrendingUp} tone="emerald" />
+                    </div>
+                  </Card>
+                )}
+
+                {canViewDeals && (
+                  <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                    <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Today Deal Summary</h3>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <MiniTile label="Active" value={data.todayDeals.active} icon={Briefcase} tone="blue" />
+                      <MiniTile label="Stalled" value={data.todayDeals.stalled} icon={Pause} tone="amber" />
+                      <MiniTile label="Won" value={data.todayDeals.won} icon={Trophy} tone="emerald" />
+                      <MiniTile label="Lost" value={data.todayDeals.lost} icon={XCircle} tone="rose" />
                     </div>
                   </Card>
                 )}
