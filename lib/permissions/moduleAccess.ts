@@ -141,6 +141,20 @@ export function visibleModules(user: ModuleAccessUser | null | undefined): AppMo
  * core; otherwise permission-prefix driven).
  */
 export function getModuleAccess(user: ModuleAccessUser | null | undefined): Record<TopModule, boolean> {
+  const perms = user?.permissions ?? [];
+  const isEmpSelfService = perms.includes('hr.leave.self') && !perms.includes('hr.view');
+
+  if (isEmpSelfService) {
+    return {
+      master: false,
+      sales: false,
+      development: false,
+      user: false,
+      hr: true,
+      finance: false,
+    };
+  }
+
   const result = {} as Record<TopModule, boolean>;
   for (const m of APP_MODULES) {
     if (m.key in result) continue; // skip duplicate keys (e.g. 'hr' appears in TopModule union)
