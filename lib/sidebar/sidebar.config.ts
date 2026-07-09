@@ -5,11 +5,18 @@ export interface SidebarMenuItem {
   label: string;
   href?: string;
   /** Must match a key in Sidebar's iconMap */
-  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'CalendarClock' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid' | 'Settings' | 'DollarSign' | 'FileText';
+  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ListTodo' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'CalendarClock' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid' | 'Settings' | 'DollarSign' | 'FileText';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module?: ModuleName | null;
   permission?: PermissionKey | PermissionKey[];
   isPartition?: boolean;
+  /**
+   * GLOBAL item — appears in EVERY module's sidebar (not filtered to one module
+   * group). For cross-cutting workspaces like My Tasks. Its route must also be in
+   * SHARED_PREFIXES (moduleAccess.ts) so the layout guard never bounces a user
+   * whose primary module differs; visibility still honors `permission`.
+   */
+  global?: boolean;
   /**
    * When true, `permissionsForPath` matches this item ONLY on an exact pathname
    * (not as a prefix). Needed for "/dashboard": its href is a prefix of every
@@ -22,6 +29,18 @@ export interface SidebarMenuItem {
 const SALES_REPORTS: PermissionKey[] = ['sales.reports.view'];
 
 export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
+  {
+    // GLOBAL & UNGATED — the standalone My Tasks workspace is a common feature for
+    // EVERY authenticated user, shown in every module's sidebar. No permission /
+    // role / module gate on the item (module:null + global:true + no permission →
+    // isItemVisible returns true for everyone). Task DATA stays permission-scoped:
+    // the workspace is self-scoped server-side and chat is member-only.
+    label: 'My Tasks',
+    href: '/dashboard/my-tasks',
+    icon: 'ListTodo',
+    module: null,
+    global: true,
+  },
   {
     label: 'Dashboard',
     href: '/dashboard',

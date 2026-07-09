@@ -272,7 +272,9 @@ export interface BdeDashboard {
   };
   followUps: { scheduled: number; missed: number; completed: number; dueToday: number };
   leads: { assigned: number; new: number; qualified: number; converted: number };
+  todayLeads: { assigned: number; new: number; qualified: number; converted: number };
   deals: { active: number; stalled: number; won: number; lost: number };
+  todayDeals: { active: number; stalled: number; won: number; lost: number };
   target: TargetProgress;
   productivity: {
     callsCompleted: number;

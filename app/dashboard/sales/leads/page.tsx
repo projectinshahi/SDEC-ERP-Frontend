@@ -24,6 +24,7 @@ import {
   leadSourceVariant,
 } from '@/lib/data/leadSources';
 import { formatScore, scoreColorClass } from '@/lib/data/leadRating';
+import { formatINR } from '@/lib/utils/currency';
 import { classNames } from '@/lib/utils';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
 
@@ -252,6 +253,14 @@ export default function SalesLeadsPage() {
     return map;
   }, [leads, stages]);
 
+  const totalPipelineValue = useMemo(() => {
+    return leads.reduce((sum, lead) => {
+      if (!lead.description) return sum;
+      const match = lead.description.match(/Lead Value:\s*([\d.]+)/i);
+      return sum + (match ? parseFloat(match[1]) : 0);
+    }, 0);
+  }, [leads]);
+
   // Optimistic move with revert on failure (invalid drops never reach here).
   // Updates the shared `leads` state, so the table reflects the move too.
   const handleMove = async (leadId: number, targetStage: string) => {
@@ -401,6 +410,12 @@ export default function SalesLeadsPage() {
         {/* Source analytics summary */}
         {analytics && analytics.totalLeads > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Card className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Total Lead Value</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate" title={formatINR(totalPipelineValue)}>
+                {formatINR(totalPipelineValue)}
+              </p>
+            </Card>
             <Card className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
               <p className="text-xs text-gray-500 dark:text-gray-400">Total Leads</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.totalLeads}</p>

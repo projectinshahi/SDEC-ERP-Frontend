@@ -8,6 +8,11 @@ import { SelectField } from '@/components/ui/SelectField';
 import { TextareaField } from '@/components/ui/TextareaField';
 import { useToast } from '@/lib/hooks/useToast';
 import {
+  sanitizeText,
+  validateName,
+  validateLongText,
+} from '@/lib/validation';
+import {
   createDeal,
   updateDeal,
   fetchSalesCustomers,
@@ -37,6 +42,8 @@ interface FieldErrors {
   customerId?: string;
   amount?: string;
   probability?: string;
+  notes?: string;
+  description?: string;
 }
 
 /** ISO timestamp → 'YYYY-MM-DD' for a <input type="date">. */
@@ -121,19 +128,35 @@ export function DealFormModal({ isOpen, onClose, onSaved, deal, stages, owners, 
 
   const validate = (): boolean => {
     const next: FieldErrors = {};
-    if (!title.trim()) next.title = 'Deal name is required.';
+
+    // ── Deal Name (required, name-rules) ─────────────────────────────────
+    const nameErr = validateName(title, 'Deal Name');
+    if (nameErr) next.title = nameErr;
+
+    // ── Linked Account (required on create) ─────────────────────────────
     if (!isEdit && !customerId) next.customerId = 'Select a linked account.';
+
+    // ── Deal Value ───────────────────────────────────────────────────────
     const value = Number(amount);
-    // Create requires a positive value; edit only forbids negatives (matches the
-    // backend, which permits an existing deal to be set to 0).
     const amountOk = isEdit ? value >= 0 : value > 0;
     if (amount === '' || isNaN(value) || !amountOk) {
       next.amount = isEdit ? 'Deal value cannot be negative.' : 'Deal value must be greater than 0.';
     }
+
+    // ── Probability ──────────────────────────────────────────────────────
     if (probability !== '') {
       const p = Number(probability);
       if (isNaN(p) || p < 0 || p > 100) next.probability = 'Probability must be between 0 and 100.';
     }
+
+    // ── Notes ─────────────────────────────────────────────────────────────
+    const notesErr = validateLongText(notes, 'Notes', { maxLength: 5000 });
+    if (notesErr) next.notes = notesErr;
+
+    // ── Description ──────────────────────────────────────────────────────
+    const descErr = validateLongText(description, 'Description', { maxLength: 10000 });
+    if (descErr) next.description = descErr;
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -141,7 +164,7 @@ export function DealFormModal({ isOpen, onClose, onSaved, deal, stages, owners, 
   const handleSave = async () => {
     if (readOnly || !validate()) return;
     const common = {
-      title: title.trim(),
+      title: sanitizeText(title),
       amount: Number(amount),
       stage: stage || undefined,
       ownerId: ownerId ? Number(ownerId) : undefined,
@@ -184,7 +207,7 @@ export function DealFormModal({ isOpen, onClose, onSaved, deal, stages, owners, 
           label="Deal Name"
           id="deal-title"
           value={title}
-          onChange={setTitle}
+          onChange={(v) => { setTitle(v); setErrors((p) => ({ ...p, title: undefined })); }}
           placeholder="e.g. Annual ERP Licence — Acme Corp"
           required
           disabled={readOnly}
@@ -295,20 +318,26 @@ export function DealFormModal({ isOpen, onClose, onSaved, deal, stages, owners, 
           label="Notes"
           id="deal-notes"
           value={notes}
-          onChange={setNotes}
+          onChange={(v) => { setNotes(v); setErrors((p) => ({ ...p, notes: undefined })); }}
           placeholder="Short internal note."
           rows={2}
           disabled={readOnly}
+          error={errors.notes}
+          maxLength={5000}
+          showCharCount
         />
 
         <TextareaField
           label="Description"
           id="deal-description"
           value={description}
-          onChange={setDescription}
+          onChange={(v) => { setDescription(v); setErrors((p) => ({ ...p, description: undefined })); }}
           placeholder="Full description of the deal, scope and context."
           rows={3}
           disabled={readOnly}
+          error={errors.description}
+          maxLength={10000}
+          showCharCount
         />
 
         <div className="flex justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-700">

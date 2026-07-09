@@ -3,10 +3,11 @@
  * and `/sales/targets`.
  */
 import { apiClient } from './api-client';
-import type {
+import {
   BdeDashboard, SalesTarget, TargetType, PeriodType, TargetHistoryResponse,
   TargetListResponse, TargetFilters, TargetDetail,
 } from '@/lib/types/salesExecution';
+import { jsPDF } from 'jspdf';
 
 export async function fetchBdeDashboard(ownerId?: number): Promise<BdeDashboard> {
   const qs = ownerId != null ? `?ownerId=${ownerId}` : '';
@@ -74,4 +75,64 @@ export async function fetchTargetById(id: number): Promise<TargetDetail> {
 
 export async function deleteTarget(id: number): Promise<void> {
   await apiClient.delete(`/sales/targets/${id}`);
+}
+
+export async function exportBdeSummary(type: 'daily' | 'weekly'): Promise<void> {
+  const p = new URLSearchParams();
+  p.set('type', type);
+  p.set('format', 'json');
+  const res = await apiClient.get<{ name: string; headers: string[]; rows: (string | number)[][] }>(`/sales/bde/dashboard/export?${p.toString()}`);
+  const sheet = res.data;
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  // Top header color block
+  doc.setFillColor(79, 70, 229); // Indigo
+  doc.rect(0, 0, 210, 36, 'F');
+
+  // Title
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text('SKPC Solutions Pvt Ltd', 15, 16);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`Sales / BDE — ${sheet.name}`, 15, 24);
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 155, 16);
+
+  // Table Details
+  doc.setTextColor(31, 41, 55);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SUMMARY METRICS', 15, 52);
+  doc.setDrawColor(229, 231, 235);
+  doc.line(15, 55, 195, 55);
+
+  // Headers
+  doc.setFillColor(249, 250, 251);
+  doc.rect(15, 60, 180, 8, 'F');
+  
+  doc.setFontSize(9);
+  doc.setTextColor(107, 114, 128); // Gray-500
+  doc.text(sheet.headers[0], 20, 65);
+  doc.text(sheet.headers[1], 155, 65);
+
+  // Values
+  doc.setTextColor(31, 41, 55);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+
+  let y = 76;
+  sheet.rows.forEach(row => {
+    doc.text(String(row[0]), 20, y);
+    doc.text(String(row[1]), 155, y);
+    y += 8;
+  });
+
+  doc.save(`bde_${type}_summary_${new Date().toISOString().split('T')[0]}.pdf`);
 }

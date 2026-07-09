@@ -62,6 +62,7 @@ export interface CreateLeadPayload {
   email?: string;
   phone?: string;
   source: string;
+  referralName?: string;
   /** Owner of the new lead; defaults to the creator when omitted. */
   ownerId?: number;
   industry?: string;

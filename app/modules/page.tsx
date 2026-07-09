@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Code2, ShieldCheck, Briefcase, Users, ArrowRight, LogOut, Building2, Loader2,
-  UserCog, Wallet, type LucideIcon,
+  UserCog, Wallet, ListTodo, type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -195,14 +195,23 @@ export default function ModulesPage() {
           </header>
 
           {modules.length === 0 ? (
+            // No module access yet — but My Tasks is a GLOBAL feature available to
+            // every authenticated user, so always offer it as an entry point (a
+            // "My Tasks only" role would otherwise dead-end here).
             <div className="text-center py-16 max-w-md mx-auto">
-              <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center mx-auto mb-4">
-                <ShieldCheck className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+                <ListTodo className="w-8 h-8" />
               </div>
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">No modules available</h2>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white">Your workspace</h2>
               <p className="text-sm text-slate-500 mt-2">
-                Your account has no module access yet. Contact an administrator to be assigned a role.
+                You don’t have a module assigned yet, but you can always manage your personal tasks. Contact an administrator to be assigned a role.
               </p>
+              <button
+                onClick={() => router.push('/dashboard/my-tasks')}
+                className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
+              >
+                <ListTodo size={16} /> Open My Tasks <ArrowRight size={15} />
+              </button>
             </div>
           ) : (
             <div className={classNames('mx-auto grid gap-5', gridCls)}>

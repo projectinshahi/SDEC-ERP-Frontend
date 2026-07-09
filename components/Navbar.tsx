@@ -39,7 +39,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
         </div>
 
         {/* Center: Centered Search Bar */}
-        <div className="hidden md:flex items-center justify-center flex-1 max-w-md mx-8">
+        {/* <div className="hidden md:flex items-center justify-center flex-1 max-w-md mx-8">
           <div className="relative w-full">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
             <input
@@ -48,7 +48,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-1.5 pl-10 pr-4 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-500 transition-all duration-200"
             />
           </div>
-        </div>
+        </div> */}
 
         {/* Right: User Info and Actions */}
         <div className="flex items-center gap-2 sm:gap-3.5 ml-auto">
