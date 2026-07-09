@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Circle, AlertCircle, MessageSquare, Paperclip, UserPlus, FileText } from 'lucide-react';
-import { useNotificationsApi, Notification } from '@/lib/api/notifications';
+import { useNotificationsApi, type Notification as AppNotification } from '@/lib/api/notifications';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,7 +12,7 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC
 
 export const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState('all');
 
@@ -43,7 +43,7 @@ export const NotificationBell = () => {
           console.error('[NotificationBell] Socket connection error:', err.message);
         });
 
-        socketRef.current.on('new_notification', (newNotif: Notification) => {
+        socketRef.current.on('new_notification', (newNotif: AppNotification) => {
           console.log('[NotificationBell] Received new notification:', newNotif);
           setNotifications(prev => [newNotif, ...prev]);
           setUnreadCount(prev => prev + 1);
@@ -82,7 +82,7 @@ export const NotificationBell = () => {
     setUnreadCount(data.unreadCount || 0);
   };
 
-  const handleNotificationClick = async (notif: Notification) => {
+  const handleNotificationClick = async (notif: AppNotification) => {
     if (!notif.is_read) {
       await markAsRead(notif.id);
       setNotifications(prev =>

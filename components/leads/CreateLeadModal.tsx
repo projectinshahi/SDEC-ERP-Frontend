@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Phone, Mail, Globe, MessageCircle, Megaphone, Users, MoreHorizontal, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Phone, Mail, Globe, MessageCircle, Megaphone, Users, MoreHorizontal, Plus, ChevronDown, ChevronUp, Handshake } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/ui/InputField';
@@ -11,6 +11,16 @@ import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { useToast } from '@/lib/hooks/useToast';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { classNames } from '@/lib/utils';
+import { SELECTABLE_LEAD_SOURCES } from '@/lib/data/leadSources';
+import {
+  sanitizeText,
+  validateName,
+  validateTextField,
+  validateLongText,
+  validateEmail,
+  validatePhone,
+  validateAmount,
+} from '@/lib/validation';
 import {
   createManualLead,
   fetchAssignableUsers,
@@ -34,6 +44,7 @@ const SOURCE_OPTIONS = [
   { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { value: 'meta_ads', label: 'Meta Ads', icon: Megaphone },
   { value: 'referral', label: 'Referrals', icon: Users },
+  { value: 'face_to_face', label: 'Face-to-Face', icon: Handshake },
   { value: 'other', label: 'Others', icon: MoreHorizontal },
 ] as const;
 
@@ -54,12 +65,7 @@ const ACTION_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const isValidPhone = (phone: string) => {
-  if (!/^[+\d][\d\s().-]*$/.test(phone)) return false;
-  const digits = phone.replace(/\D/g, '');
-  return digits.length >= 7 && digits.length <= 15;
-};
+// Email and phone validation now delegated to @/lib/validation.
 
 /** Returns tomorrow (same time) as a value for the date-time picker. */
 function tomorrowDateTimeLocal(): string {
@@ -96,6 +102,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     leadValue: '',
     priority: 'medium',
     notes: '',
+    referralName: '',
   });
 
   const [withAction, setWithAction] = useState(false);
@@ -126,21 +133,79 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     return opts;
   }, [owners, meId, user?.name]);
 
-  const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
-  const setAct = (key: keyof typeof action, value: string) =>
+  // Set a field and immediately clear its validation error (real-time feedback).
+  const set = (key: keyof typeof form, value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
+  };
+  const setAct = (key: keyof typeof action, value: string) => {
     setAction((a) => ({ ...a, [key]: value }));
+    // Clear related action errors.
+    if (key === 'title') setErrors((p) => { const n = { ...p }; delete n.actionTitle; return n; });
+    if (key === 'description') setErrors((p) => { const n = { ...p }; delete n.actionDescription; return n; });
+  };
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!form.name.trim()) e.name = 'Lead name is required.';
-    if (!form.email.trim() && !form.phone.trim()) e.contact = 'Email or phone number is required.';
-    if (form.email.trim() && !isValidEmail(form.email.trim())) e.email = 'Enter a valid email address.';
-    if (form.phone.trim() && !isValidPhone(form.phone.trim())) e.phone = 'Enter a valid phone number.';
-    if (!form.source) e.source = 'Lead source is required.';
-    if (withAction) {
-      if (!action.title.trim()) e.actionTitle = 'Action title is required.';
-      if (!action.dueDate) e.actionDue = 'A due date & time is required.';
+
+    // ── Lead Name (required, name-rules) ──────────────────────────────────
+    const nameErr = validateName(form.name, 'Lead Name');
+    if (nameErr) e.name = nameErr;
+
+    // ── Contact: at least email or phone ──────────────────────────────────
+    if (!form.email.trim() && !form.phone.trim()) {
+      e.contact = 'Email or phone number is required.';
     }
+
+    // ── Email ─────────────────────────────────────────────────────────────
+    const emailErr = validateEmail(form.email, 'Email');
+    if (emailErr) e.email = emailErr;
+
+    // ── Phone ─────────────────────────────────────────────────────────────
+    const phoneErr = validatePhone(form.phone, 'Phone number');
+    if (phoneErr) e.phone = phoneErr;
+
+    // ── Source ────────────────────────────────────────────────────────────
+    if (!form.source) e.source = 'Lead source is required.';
+    else if (form.source === 'referral') {
+      const refErr = validateName(form.referralName, 'Referral Name', { maxLength: 200 });
+      if (refErr) e.referralName = refErr;
+      else if (!form.referralName.trim()) e.referralName = 'Referral Name is required.';
+    }
+
+    // ── Company ───────────────────────────────────────────────────────────
+    const companyErr = validateTextField(form.company, 'Company', { maxLength: 200 });
+    if (companyErr) e.company = companyErr;
+
+    // ── Industry ──────────────────────────────────────────────────────────
+    const industryErr = validateTextField(form.industry, 'Industry', { maxLength: 100 });
+    if (industryErr) e.industry = industryErr;
+
+    // ── Website ───────────────────────────────────────────────────────────
+    const websiteErr = validateTextField(form.website, 'Website', { maxLength: 500 });
+    if (websiteErr) e.website = websiteErr;
+
+    // ── Location / Address ────────────────────────────────────────────────
+    const addressErr = validateTextField(form.address, 'Location', { maxLength: 500 });
+    if (addressErr) e.address = addressErr;
+
+    // ── Lead Value ────────────────────────────────────────────────────────
+    const valueErr = validateAmount(form.leadValue, 'Lead Value');
+    if (valueErr) e.leadValue = valueErr;
+
+    // ── Notes ─────────────────────────────────────────────────────────────
+    const notesErr = validateLongText(form.notes, 'Notes', { maxLength: 5000 });
+    if (notesErr) e.notes = notesErr;
+
+    // ── Next Action (optional section) ────────────────────────────────────
+    if (withAction) {
+      const actionTitleErr = validateName(action.title, 'Action title', { maxLength: 200 });
+      if (actionTitleErr) e.actionTitle = actionTitleErr;
+      if (!action.dueDate) e.actionDue = 'A due date & time is required.';
+      const actionDescErr = validateLongText(action.description, 'Action description', { maxLength: 2000 });
+      if (actionDescErr) e.actionDescription = actionDescErr;
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -151,18 +216,19 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     if (!validate()) return;
 
     const payload: CreateLeadPayload = {
-      name: form.name.trim(),
-      company: form.company.trim() || undefined,
-      email: form.email.trim() || undefined,
+      name: sanitizeText(form.name),
+      company: sanitizeText(form.company) || undefined,
+      email: form.email.trim().toLowerCase() || undefined,
       phone: form.phone.trim() || undefined,
       source: form.source,
       ownerId: form.ownerId ? Number(form.ownerId) : undefined,
-      industry: form.industry.trim() || undefined,
+      industry: sanitizeText(form.industry) || undefined,
       website: form.website.trim() || undefined,
-      address: form.address.trim() || undefined,
+      address: sanitizeText(form.address) || undefined,
       leadValue: form.leadValue.trim() || undefined,
       priority: form.priority,
       notes: form.notes.trim() || undefined,
+      referralName: form.source === 'referral' ? sanitizeText(form.referralName) || undefined : undefined,
     };
     if (withAction) {
       payload.nextAction = {
@@ -239,7 +305,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
             placeholder="e.g. John Doe"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputField label="Company" id="lead-company" value={form.company} onChange={(v) => set('company', v)} placeholder="e.g. ABC Technologies" />
+            <InputField label="Company" id="lead-company" value={form.company} onChange={(v) => set('company', v)} error={errors.company} placeholder="e.g. ABC Technologies" />
             <SelectField
               label="Owner" id="lead-owner" value={form.ownerId} onChange={(v) => set('ownerId', v)}
               placeholder="Assign to…" options={ownerOptions}
@@ -254,10 +320,22 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               onChange={(v) => set('phone', v)} error={errors.phone}
               placeholder="+1 555 123 4567"
             />
-            <InputField label="Industry" id="lead-industry" value={form.industry} onChange={(v) => set('industry', v)} />
-            <InputField label="Website" id="lead-website" value={form.website} onChange={(v) => set('website', v)} placeholder="https://" />
-            <InputField label="Location" id="lead-location" value={form.address} onChange={(v) => set('address', v)} placeholder="City / address" />
-            <InputField label="Lead Value" id="lead-value" value={form.leadValue} onChange={(v) => set('leadValue', v)} placeholder="e.g. 5000" />
+            <InputField label="Industry" id="lead-industry" value={form.industry} onChange={(v) => set('industry', v)} error={errors.industry} />
+            <InputField label="Website" id="lead-website" value={form.website} onChange={(v) => set('website', v)} error={errors.website} placeholder="https://" />
+            <InputField label="Location" id="lead-location" value={form.address} onChange={(v) => set('address', v)} error={errors.address} placeholder="City / address" />
+            <InputField label="Lead Value" id="lead-value" value={form.leadValue} onChange={(v) => set('leadValue', v)} error={errors.leadValue} placeholder="e.g. 5000" />
+            {/* Removed duplicate SelectField for Lead Source */}
+            {form.source === 'referral' && (
+              <InputField
+                label="Referral Name"
+                id="referralName"
+                value={form.referralName}
+                onChange={(v) => set('referralName', v)}
+                error={errors.referralName}
+                required
+                placeholder="Name of person or organization who referred this lead"
+              />
+            )}
             <SelectField
               label="Priority" id="lead-priority" value={form.priority} onChange={(v) => set('priority', v)}
               options={PRIORITY_OPTIONS}
@@ -275,6 +353,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           <TextareaField
             label="Notes" id="lead-notes" rows={4}
             value={form.notes} onChange={(v) => set('notes', v)}
+            error={errors.notes}
+            maxLength={5000} showCharCount
             placeholder="What is the lead interested in? Notes appear in the lead's Notes section and can be edited later."
           />
         </section>

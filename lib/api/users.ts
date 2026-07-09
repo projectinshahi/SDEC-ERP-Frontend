@@ -50,6 +50,21 @@ export async function fetchUsersDirectory(): Promise<UserDbResponse[]> {
 }
 
 /**
+ * EVERY ACTIVE user in the system (across all modules), from the User-Management
+ * users table — the single source of truth. Hits the authenticate-only picklist
+ * with NO module/team/role filter; the backend returns the complete active-user
+ * list (excluding only deactivated/deleted accounts), so callers should NOT apply
+ * any further filtering. For cross-module member pickers (e.g. My Tasks).
+ *
+ * Deliberately takes NO `module` argument so it can never accidentally scope the
+ * result to one module (the bug this guards against).
+ */
+export async function fetchAllUsers(): Promise<UserDbResponse[]> {
+  const response = await apiClient.get<UserDbResponse[]>('/users/picklist');
+  return response.data;
+}
+
+/**
  * Create a new user on the live database
  */
 export async function createUserApi(data: any): Promise<any> {

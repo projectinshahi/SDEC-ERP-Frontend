@@ -54,6 +54,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
     tags: '',
     ownerId: '',
     description: '',
+    referralName: '',
   });
 
   // Hydrate the form whenever the modal opens for a (possibly new) lead.
@@ -75,6 +76,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
       tags: lead.tags || '',
       ownerId: lead.ownerId ? String(lead.ownerId) : '',
       description: lead.description || '',
+      referralName: lead.referralName || '',
     });
   }, [isOpen, lead]);
 
@@ -91,6 +93,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
     if (!form.title.trim()) e.title = 'Lead name is required.';
     if (form.email.trim() && !isValidEmail(form.email.trim())) e.email = 'Enter a valid email address.';
     if (form.phone.trim() && !isValidPhone(form.phone.trim())) e.phone = 'Enter a valid phone number.';
+    if (form.source === 'referral' && !form.referralName.trim()) e.referralName = 'Referral Name is required.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -113,6 +116,8 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
       website: form.website.trim(),
       industry: form.industry.trim(),
       address: form.address.trim(),
+
+      referralName: form.source === 'referral' ? form.referralName.trim() : undefined,
     };
     if (form.ownerId) payload.ownerId = Number(form.ownerId);
 
@@ -172,9 +177,21 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
               options={owners.map((o) => ({ value: String(o.id), label: o.name }))}
             />
             <SelectField
-              label="Source" id="source" value={form.source} onChange={(v) => set('source', v)}
+              label="Lead Source" id="source"
+              value={form.source} onChange={(v) => set('source', v)}
               options={SELECTABLE_LEAD_SOURCES.map((s) => ({ value: s, label: formatLeadSource(s) }))}
             />
+            {form.source === 'referral' && (
+              <InputField
+                label="Referral Name"
+                id="referralName"
+                value={form.referralName}
+                onChange={(v) => set('referralName', v)}
+                error={errors.referralName}
+                required
+                placeholder="Name of person or organization who referred this lead"
+              />
+            )}
             <SelectField
               label="Stage" id="stage" value={form.stage} onChange={(v) => set('stage', v)}
               options={stages.map((s) => ({ value: s.name, label: s.name }))}

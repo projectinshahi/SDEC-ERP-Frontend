@@ -12,6 +12,7 @@ import type { PermissionKey, ModuleName, PermissionGroup } from './permission.ty
 export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string> = {
   user: 'user.',
   task: 'task.',
+  mytasks: 'mytasks.',
   role: 'role.',
   bugs: 'bugs.',
   tickets: 'tickets.',
@@ -134,6 +135,54 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         label: 'Delete Column',
         description: 'Remove status columns from the Kanban board',
         module: 'task',
+      },
+    ],
+  },
+  {
+    module: 'mytasks',
+    label: 'My Tasks',
+    permissions: [
+      {
+        key: 'mytasks.view',
+        label: 'View My Tasks',
+        description: 'Open the My Tasks workspace and see your Today / Inbox / Outbox — controls the My Tasks sidebar item',
+        module: 'mytasks',
+      },
+      {
+        key: 'mytasks.create',
+        label: 'Create Task',
+        description: 'Create new personal/collaboration tasks in the My Tasks module',
+        module: 'mytasks',
+      },
+      {
+        key: 'mytasks.edit',
+        label: 'Edit Task',
+        description: 'Edit title, description, priority, due date and status of My Tasks',
+        module: 'mytasks',
+      },
+      {
+        key: 'mytasks.delete',
+        label: 'Delete Task',
+        description: 'Delete tasks you created in the My Tasks module',
+        module: 'mytasks',
+      },
+      {
+        key: 'mytasks.assign',
+        label: 'Assign Members',
+        description: 'Add or remove members on a My Task',
+        module: 'mytasks',
+      },
+      {
+        key: 'mytasks.chat.view',
+        label: 'View Chat',
+        description: 'Read the real-time chat on tasks you are a member of',
+        module: 'mytasks',
+      },
+      {
+        key: 'mytasks.chat.send',
+        label: 'Send Chat',
+        description: 'Send messages in the real-time chat on tasks you are a member of',
+        module: 'mytasks',
       },
     ],
   },
