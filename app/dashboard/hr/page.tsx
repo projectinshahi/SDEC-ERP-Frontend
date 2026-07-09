@@ -228,7 +228,7 @@ export default function HRDashboard() {
       ['Present Today', kpis.presentToday, `${kpis.totalEmployees > 0 ? Math.round((kpis.presentToday / kpis.totalEmployees) * 100) : 0}% of total`],
       ['Absent Today', absentLateCount, `${kpis.lateToday} late, ${kpis.onLeave} on leave`],
       ['Active Candidates', kpiCards[3].value, `${recruitmentStats?.Hired ?? 0} hired`],
-      ['Pending Payroll', kpis.payrollPendingAmount, `${kpis.payrollPending} records pending`],
+      ['Pending Payroll', formatINR(kpis.payrollPendingAmount), `${kpis.payrollPending} records pending`],
       ['Pending Reviews', kpiCards[5].value, `${performanceStats?.manager_pending ?? 0} manager, ${performanceStats?.self_pending ?? 0} self`],
     ];
 

@@ -111,23 +111,23 @@ export function LeaveFilters({ filters, onChange, userRole }: LeaveFiltersProps)
                 Date Range
               </label>
               <div className="flex items-center gap-2">
-                <div className="relative flex-1">
+                <div className="relative flex-1 min-w-0">
                   <Calendar size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="date"
                     value={filters.startDate}
                     onChange={(e) => onChange({ startDate: e.target.value })}
-                    className="w-full pl-8 pr-2 py-1.5 text-xs bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
+                    className="w-full pl-8 pr-2 py-2 text-sm bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
                   />
                 </div>
                 <span className="text-gray-400 text-xs">to</span>
-                <div className="relative flex-1">
+                <div className="relative flex-1 min-w-0">
                   <Calendar size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="date"
                     value={filters.endDate}
                     onChange={(e) => onChange({ endDate: e.target.value })}
-                    className="w-full pl-8 pr-2 py-1.5 text-xs bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
+                    className="w-full pl-8 pr-2 py-2 text-sm bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-850 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-500 shadow-2xs"
                   />
                 </div>
               </div>

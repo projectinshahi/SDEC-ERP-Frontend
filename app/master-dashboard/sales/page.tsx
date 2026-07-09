@@ -101,13 +101,7 @@ export default function MasterSalesPage() {
         subtitle="Organization-wide revenue forecasting, pipeline analysis, and conversion tracking across every sales division."
         accent="bg-emerald-600"
         shadow="shadow-emerald-500/20"
-        onRefresh={reload}
-        actions={
-          <>
-            <ExportPdfButton build={buildReport} />
-
-          </>
-        }
+        actions={<ExportPdfButton build={buildReport} />}
       />
 
       {/* Forecast highlight + key revenue stats */}
@@ -128,7 +122,7 @@ export default function MasterSalesPage() {
                 </p>
               </div>
               <span className="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold w-fit bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
-                {stats.conversionRate}% conversion rate
+                {stats.conversionRate}% conversion rate~
               </span>
             </div>
             <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50">

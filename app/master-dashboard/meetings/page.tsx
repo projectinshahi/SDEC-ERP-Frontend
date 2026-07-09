@@ -4,7 +4,7 @@ import { useState, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   Calendar, CalendarDays, Clock, CheckCircle, ListTodo, PlayCircle, CalendarClock,
-  Search, X, RefreshCw, Video, Eye, ChevronLeft, ChevronRight,
+  Search, X, Video, Eye, ChevronLeft, ChevronRight,
   Users, Building2, FileText, ExternalLink, AlignLeft, UserCircle,
 } from 'lucide-react';
 import { fetchMasterMeetings, type MasterMeeting } from '@/lib/api/masterModules';
@@ -101,16 +101,15 @@ export default function MasterMeetingsPage() {
     { label: 'Cancelled', value: stats.cancelled, icon: X, iconBg: 'bg-rose-500/10', iconColor: 'text-rose-600' },
   ];
 
-  return <MasterMeetingsContent statCards={statCards} typeCounts={typeCounts} meetings={meetings} reload={reload} />;
+  return <MasterMeetingsContent statCards={statCards} typeCounts={typeCounts} meetings={meetings} />;
 }
 
 function MasterMeetingsContent({
-  statCards, typeCounts, meetings, reload,
+  statCards, typeCounts, meetings,
 }: {
   statCards: Array<{ label: string; value: number; icon: any; iconBg: string; iconColor: string }>;
   typeCounts: Record<string, number>;
   meetings: MasterMeeting[];
-  reload: () => void;
 }) {
   const [selected, setSelected] = useState<MasterMeeting | null>(null);
 
@@ -187,12 +186,6 @@ function MasterMeetingsContent({
           <p className="text-gray-500 mt-1.5 text-sm max-w-xl leading-relaxed">
             Unified view of every meeting across all modules — Development, Sales and beyond.
           </p>
-        </div>
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          <button onClick={reload} title="Refresh"
-            className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-            <RefreshCw size={16} />
-          </button>
         </div>
       </section>
 

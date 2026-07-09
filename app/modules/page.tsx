@@ -123,8 +123,9 @@ export default function ModulesPage() {
   }, [user, hasAnyPermission]);
 
   // Auto-redirect: if the user only has access to ONE module, skip the workspace
-  // selection screen and go directly to that module's landing page.
-  // Handles the employee self-service case (hr.leave.self only → /dashboard/hr/leave).
+  // selection screen and go directly to that module's landing page (which is
+  // permission-aware via firstAccessibleHref — e.g. HR opens on the Dashboard for
+  // users with dashboard access, or the first permitted tab otherwise).
   useEffect(() => {
     if (isLoading || !isAuthenticated || !user) return;
     if (user.mustChangePassword) return; // handled by the auth redirect above

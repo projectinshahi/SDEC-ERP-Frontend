@@ -4,17 +4,16 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/Badge';
 import { StalledBadge } from './StalledBadge';
 import type { PipelineDeal } from '@/lib/types/salesExecution';
+import { formatINR } from '@/lib/utils/currency';
 
 interface PipelineDealTableProps {
   deals: PipelineDeal[];
 }
 
+// Centralized INR formatter → "₹1,25,000"; matches the deal card/board views so
+// every deal surface renders the rupee consistently (single source of truth).
 function money(deal: PipelineDeal): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: deal.currency || 'INR',
-    maximumFractionDigits: 0,
-  }).format(deal.amount || 0);
+  return formatINR(deal.amount);
 }
 
 function formatDate(value?: string | null): string {

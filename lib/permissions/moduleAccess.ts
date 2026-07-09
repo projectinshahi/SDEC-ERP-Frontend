@@ -96,7 +96,10 @@ export const APP_MODULES: AppModuleDef[] = [
   description: 'Employees, leave & attendance.',
   prefixes: ['hr.'],
   topModule: 'hr',
-  fallbackHref: '/dashboard/hr/leave', // self-service employees land here; HR admins get redirected to /dashboard/hr by firstAccessibleHref
+  // HR module home. The actual landing is permission-aware via firstAccessibleHref:
+  // users with dashboard access open /dashboard/hr; others land on their first
+  // permitted tab (e.g. Leave). Matches the Sales/Development pattern.
+  fallbackHref: '/dashboard/hr',
 },
   {
     // Finance is a first-class, independent ERP module (same architecture as
@@ -118,12 +121,6 @@ export const APP_MODULES: AppModuleDef[] = [
  */
 export function isModuleVisible(user: ModuleAccessUser | null | undefined, m: AppModuleDef): boolean {
   const perms = user?.permissions ?? [];
-  const isEmpSelfService = perms.includes('hr.leave.self') && !perms.includes('hr.view');
-  
-  if (isEmpSelfService) {
-    return m.key === 'hr';
-  }
-
   const r = normalizeRole(user?.roleName) || normalizeRole(user?.role);
   const isSuper = r === 'superadmin';
   if (isSuper) return true;

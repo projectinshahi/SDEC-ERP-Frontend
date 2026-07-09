@@ -14,6 +14,7 @@ import {
   createLeave,
   approveLeave,
   rejectLeave,
+  deleteLeave,
   ApiLeaveRecord,
 } from '@/lib/api/hr-leave';
 import { fetchEmployees, ApiEmployee } from '@/lib/api/hr';
@@ -89,8 +90,10 @@ export function useLeave() {
 
   const { isLoading: authLoading, isAuthenticated, user } = useAuth();
   const { hasAnyPermission } = usePermissions();
+  // Staff-only (self-service) = has "View Staff Leave" but NOT "View HR Admin
+  // Leave". Drives whether the employee directory is fetched (admins need it).
   const isSelfService = useMemo(() => {
-    return hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']);
+    return hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.leave.view']);
   }, [hasAnyPermission]);
 
   const loadLeaveData = useCallback(async () => {
@@ -165,11 +168,6 @@ export function useLeave() {
       reason: data.reason,
     };
 
-    console.log('ROLE:', user?.role);
-    console.log('PERMISSIONS:', user?.permissions);
-    console.log('EMPLOYEE_ID:', data.employeeId);
-    console.log('LEAVE PAYLOAD:', payload);
-
     try {
       await createLeave(payload);
       setSuccessMsg('Leave request submitted successfully');
@@ -209,6 +207,27 @@ export function useLeave() {
       await loadLeaveData();
     } catch (err: any) {
       setError(err?.message ?? 'Failed to reject leave request');
+    }
+  };
+
+  // Delete (Approved/Rejected) or Cancel (own Pending) a leave request.
+  // Optimistically drops it from the list (stats are derived, so they recompute
+  // instantly), then reconciles with the server; reverts the list on failure.
+  const handleDeleteLeave = async (id: string) => {
+    const previous = rawRequests;
+    setRawRequests((prev) => prev.filter((r) => String(r.id) !== id));
+    try {
+      setError(null);
+      await deleteLeave(Number(id));
+      toast('Leave request deleted', 'success');
+      await loadLeaveData();
+    } catch (err: any) {
+      setRawRequests(previous);
+      const status = err?.response?.status;
+      let msg = err?.response?.data?.message || err?.message || 'Failed to delete leave request';
+      if (status === 403) msg = "You don't have permission to delete this leave request";
+      setError(msg);
+      toast(msg, 'error');
     }
   };
 
@@ -289,6 +308,7 @@ export function useLeave() {
     handleApplyLeaveSubmit,
     handleApproveLeave,
     handleRejectLeave,
+    handleDeleteLeave,
     refresh: loadLeaveData,
   };
 }

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Building2, Link2, FolderKanban, Trash2 } from 'lucide-react';
 import type { Deal } from '@/lib/types/leadLifecycle';
+import { formatINR } from '@/lib/utils/currency';
 
 interface DealCardProps {
   deal: Deal;
@@ -26,8 +27,9 @@ function avatar(name: string) {
   return { initials, color: colors[Math.abs(hash) % colors.length] };
 }
 
-const money = (n: number) =>
-  new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+// Centralized INR formatter (single source of truth for the ₹ symbol + Indian
+// digit grouping); change lib/utils/currency.ts to adjust currency app-wide.
+const money = (n: number) => formatINR(n || 0);
 
 /** Lightly humanize a status string: "in_progress" -> "In Progress". */
 const humanizeStatus = (s: string) =>

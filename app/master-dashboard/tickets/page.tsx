@@ -3,15 +3,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Siren, Download, FileText, AlertTriangle, ShieldAlert, Flame, CheckCircle2,
+  Siren, Download, AlertTriangle, ShieldAlert, Flame, CheckCircle2,
   CheckCheck, Loader, MessageSquare, ArrowUp, ArrowDown, Search, ChevronLeft,
-  ChevronRight, ArrowRight, ArrowUpDown, Users, RefreshCw,
+  ChevronRight, ArrowRight, ArrowUpDown, Users,
 } from 'lucide-react';
 import { fetchMasterTickets, MasterTicket, AgentPerformance } from '@/lib/api/masterModules';
 import {
   useMasterResource, ModuleStateScreen, ModuleHeader, ChartCard, DonutChart,
   CategoryBars, LineTrend, GroupedTrend, ActivityFeed, EmptyState,
 } from '@/components/master/MasterKit';
+import { ExportPdfButton } from '@/components/master/ExportPdfButton';
+import type { DashboardReport } from '@/lib/pdf/dashboardPdf';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import { Card } from '@/components/Card';
 import { classNames } from '@/lib/utils';
@@ -58,9 +61,10 @@ const PAGE_SIZE = 10;
 type SortKey = 'created' | 'updated' | 'priority';
 
 export default function MasterTicketsPage() {
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const { data, status, errorMsg, reload, refresh, isRefreshing, lastUpdated } =
-    useMasterResource(fetchMasterTickets, { pollMs: autoRefresh ? 60000 : undefined });
+  const { user } = useAuth();
+  // Live sync stays always-on (60s background poll). The manual Auto/Refresh
+  // controls were removed from the header, but the real-time refresh continues.
+  const { data, status, errorMsg, reload } = useMasterResource(fetchMasterTickets, { pollMs: 60000 });
 
   const [range, setRange] = useState<7 | 30 | 90>(30);
   const [search, setSearch] = useState('');
@@ -167,6 +171,69 @@ export default function MasterTicketsPage() {
   const toggleSort = (key: SortKey) =>
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' }));
 
+  // PDF report — a proper branded document (NOT a page screenshot) built from the
+  // already-loaded, currently-FILTERED ticket data. KPIs + charts + the ENTIRE
+  // filtered ticket list are exported; the shared template paginates long tables
+  // across pages automatically. Charts are auto-captured from the live recharts.
+  const buildReport = (): DashboardReport => {
+    const filters: { label: string; value: string }[] = [];
+    if (search.trim()) filters.push({ label: 'Search', value: search.trim() });
+    if (statusFilter !== 'all') filters.push({ label: 'Status', value: statusFilter });
+    if (priorityFilter !== 'all') filters.push({ label: 'Priority', value: priorityFilter });
+    if (categoryFilter !== 'all') filters.push({ label: 'Category', value: categoryFilter });
+    if (assigneeFilter !== 'all') filters.push({ label: 'Assignee', value: assigneeFilter });
+    if (dateFilter !== 'all') {
+      const dl: Record<string, string> = { today: 'Today', '7d': 'Last 7 days', '30d': 'Last 30 days' };
+      filters.push({ label: 'Date', value: dl[dateFilter] ?? dateFilter });
+    }
+    // Always note the Resolution-Trends window — it's baked into the captured
+    // trend chart, so the reader needs it to interpret that chart's time scope.
+    filters.push({ label: 'Trend window', value: `Last ${range} days` });
+    return {
+      dashboardName: 'Tickets Report',
+      fileBase: 'Tickets_Report',
+      generatedBy: user?.name || user?.email || 'Founder / Admin',
+      filters,
+      kpis: [
+        { label: 'Total Tickets', value: stats.total },
+        { label: 'Open', value: stats.open },
+        { label: 'In Progress', value: stats.inProgress },
+        { label: 'Resolved', value: stats.resolved },
+        { label: 'Closed', value: stats.closed },
+        { label: 'Pending Reply', value: stats.pendingReply },
+        { label: 'Critical', value: stats.critical },
+        { label: 'Escalated', value: stats.escalated },
+      ],
+      tables: [
+        {
+          title: `All Tickets (${filteredSorted.length})`,
+          note: 'Complete filtered ticket list — every matching ticket is included.',
+          columns: ['Ticket ID', 'Subject', 'Reporter', 'Project', 'Category', 'Priority', 'Status', 'Assignee', 'Created', 'Updated'],
+          rows: filteredSorted.map((t) => [
+            `TKT-${t.id}`,
+            t.title,
+            t.reporter?.name || '—',
+            t.project?.name || '—',
+            t.category || '—',
+            priorityMeta(t.severity).label,
+            t.status || 'unknown',
+            t.assignee?.name || 'Unassigned',
+            fmtDate(t.createdAt),
+            fmtDate(t.updatedAt),
+          ]),
+        },
+        {
+          title: `Agent Performance (${agents.length})`,
+          columns: ['Agent', 'Assigned', 'Resolved', 'Escalated', 'Avg Resolution', 'CSAT', 'Resolution Rate'],
+          rows: agents.map((a) => [
+            a.name, a.assigned, a.resolved, a.escalated,
+            fmtHours(a.avgResolutionHours), a.csat == null ? 'N/A' : a.csat, `${a.resolutionRate}%`,
+          ]),
+        },
+      ],
+    };
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <ModuleHeader
@@ -175,40 +242,15 @@ export default function MasterTicketsPage() {
         subtitle="Monitor, manage, and resolve all customer support tickets in real time."
         accent="bg-rose-600"
         shadow="shadow-rose-500/20"
-        onRefresh={refresh}
         actions={
           <>
-            {lastUpdated && (
-              <span className="hidden md:inline text-xs text-slate-400">
-                Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                {isRefreshing && ' · syncing…'}
-              </span>
-            )}
-            <button
-              onClick={() => setAutoRefresh((v) => !v)}
-              className={classNames(
-                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition',
-                autoRefresh
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/50'
-                  : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800',
-              )}
-              title="Toggle 60s auto-refresh"
-            >
-              <RefreshCw className={classNames('w-3.5 h-3.5', autoRefresh && 'animate-spin')} style={autoRefresh ? { animationDuration: '3s' } : undefined} />
-              Auto {autoRefresh ? 'On' : 'Off'}
-            </button>
             <button
               onClick={exportCsv}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
-              <Download className="w-4 h-4" /> Export
+              <Download className="w-4 h-4" /> Export CSV
             </button>
-            <button
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold shadow-sm transition"
-            >
-              <FileText className="w-4 h-4" /> Reports
-            </button>
+            <ExportPdfButton build={buildReport} />
           </>
         }
       />

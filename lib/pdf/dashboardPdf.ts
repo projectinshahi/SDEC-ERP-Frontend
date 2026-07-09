@@ -179,11 +179,11 @@ function buildReportHtml(report: DashboardReport, filename: string): string {
 <html lang="en"><head><meta charset="utf-8" />
 <title>${escapeHtml(filename)}</title>
 <style>
-  @page { size: A4 landscape; margin: 14mm 12mm 18mm; }
+  @page { size: A4 landscape; margin: 15mm 14mm 20mm; }
   @page { @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 9px; color: #94a3b8; } }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: Arial, Helvetica, sans-serif; color: #1e293b; font-size: 11px; line-height: 1.4; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #1e293b; font-size: 11px; line-height: 1.45; }
   .brandbar { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #4f46e5; padding-bottom: 10px; margin-bottom: 6px; }
   .company { font-size: 20px; font-weight: 800; letter-spacing: .5px; color: #0f172a; }
   .company .sub { display: block; font-size: 10px; font-weight: 700; color: #6366f1; letter-spacing: 3px; margin-top: 2px; }
@@ -191,16 +191,20 @@ function buildReportHtml(report: DashboardReport, filename: string): string {
   .meta .dash { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 2px; }
   .filters { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-top: 12px; font-size: 10px; color: #475569; }
   .filters b { color: #0f172a; }
-  h2.section { font-size: 13px; font-weight: 700; color: #0f172a; margin: 18px 0 8px; padding-bottom: 5px; border-bottom: 1px solid #e2e8f0; }
-  .note { font-size: 10px; color: #64748b; margin: -2px 0 8px; }
-  .kpis { display: flex; flex-wrap: wrap; gap: 8px; }
-  .kpi { flex: 1 1 150px; min-width: 150px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 12px; background: #fff; page-break-inside: avoid; }
+  h2.section { font-size: 13px; font-weight: 700; color: #0f172a; margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; }
+  h2.section:first-of-type { margin-top: 18px; }
+  .note { font-size: 10px; color: #64748b; margin: -4px 0 10px; }
+  .kpis { display: flex; flex-wrap: wrap; gap: 10px; }
+  .kpi { flex: 1 1 150px; min-width: 150px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 13px; background: #fff; page-break-inside: avoid; }
   .kpi .l { font-size: 8.5px; text-transform: uppercase; letter-spacing: .5px; color: #64748b; font-weight: 700; }
-  .kpi .v { font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 3px; }
-  .charts { display: flex; flex-wrap: wrap; gap: 14px; }
-  .chart { flex: 1 1 46%; min-width: 46%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #fff; page-break-inside: avoid; }
-  .chart h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; color: #334155; }
-  .chart img { width: 100%; height: auto; display: block; }
+  .kpi .v { font-size: 17px; font-weight: 800; color: #0f172a; margin-top: 3px; }
+  /* Charts: compact 2-up grid. Each chart is capped in height and never grows to
+     fill a half-empty row, so graphs stay small and evenly spaced (no oversized
+     single chart hogging a page). */
+  .charts { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .chart { flex: 0 1 calc(50% - 9px); max-width: calc(50% - 9px); border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; background: #fff; page-break-inside: avoid; }
+  .chart h3 { margin: 0 0 10px; font-size: 11px; font-weight: 700; color: #334155; }
+  .chart img { display: block; margin: 0 auto; max-width: 100%; max-height: 200px; width: auto; height: auto; }
   table { width: 100%; border-collapse: collapse; }
   thead { display: table-header-group; }
   th { background: #f1f5f9; color: #334155; font-size: 9px; text-transform: uppercase; letter-spacing: .4px; text-align: left; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; }
