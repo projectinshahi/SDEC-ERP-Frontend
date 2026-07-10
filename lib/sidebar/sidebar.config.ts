@@ -28,6 +28,15 @@ export interface SidebarMenuItem {
 
 const SALES_REPORTS: PermissionKey[] = ['sales.reports.view'];
 
+// HR Attendance Analytics — access model (Phase 1, FINAL — audit decision F1 / Option A).
+// Attendance Analytics is intentionally NOT a standalone page or nav item: it is a TAB
+// inside the Attendance page (Attendance ├─ Daily └─ Analytics), reached via the existing
+// "Attendance" menu item below, which is gated by ['hr.attendance.view','hr.view'].
+// `hr.analytics.view` is therefore an ADDITIONAL analytics capability for HR users layered
+// on top of Attendance access (it broadens the analytics *API* surface) — NOT a separate
+// entry point. This constant is the canonical reference for that permission set.
+export const HR_ANALYTICS: PermissionKey[] = ['hr.analytics.view', 'hr.view'];
+
 export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
   {
     label: 'Dashboard',

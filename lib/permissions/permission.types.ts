@@ -145,6 +145,7 @@ export type PermissionKey =
   | 'hr.dashboard.view'
   | 'hr.employees.view'
   | 'hr.attendance.view'
+  | 'hr.analytics.view'
   | 'hr.leave.view'
   | 'hr.leave.self'
   // Backend HR-admin delete permission (held by the HR Admin role); used to gate

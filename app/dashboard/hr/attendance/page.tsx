@@ -1,15 +1,25 @@
 'use client';
 
-import React from 'react';
-import { Loader2, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Loader2, X, CalendarDays, BarChart3 } from 'lucide-react';
 import { AttendanceHeader } from '@/components/hr/attendance/AttendanceHeader';
 import { AttendanceStatsRow } from '@/components/hr/attendance/AttendanceStats';
 import { AttendanceFiltersBar } from '@/components/hr/attendance/AttendanceFilters';
 import { AttendanceTable } from '@/components/hr/attendance/AttendanceTable';
 import { BreakTimeCard } from '@/components/hr/attendance/BreakTimeCard';
 import { AttendanceEntryModal } from '@/components/hr/attendance/AttendanceEntryModal';
+import { AttendanceAnalyticsTab } from '@/components/hr/attendance/analytics/AttendanceAnalyticsTab';
 import { AttendanceRecord } from '@/lib/hr/attendance.types';
 import { useAttendance } from '@/lib/hr/useAttendance';
+
+type AttendanceTab = 'daily' | 'analytics';
+
+const tabButtonClass = (active: boolean) =>
+  `inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+    active
+      ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
+      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+  }`;
 
 export default function AttendancePage() {
   const {
@@ -26,6 +36,8 @@ export default function AttendancePage() {
     isEntryModalOpen, editRecord, openEntryModal, openEditModal, closeEntryModal,
     refresh,
   } = useAttendance();
+
+  const [tab, setTab] = useState<AttendanceTab>('daily');
 
   /* ── Edit handler — finds the raw record by ID or constructs a dummy one for virtual rows ─ */
   const handleEdit = (record: AttendanceRecord) => {
@@ -112,18 +124,16 @@ export default function AttendancePage() {
     document.body.removeChild(link);
   };
 
-  /* ── Loading screen ──────────────────────────────────────────────────────── */
+  /* ── Daily tab body — keeps the original loading / error gates & layout unchanged ─ */
+  let dailyBody: React.ReactNode;
   if (isLoading) {
-    return (
+    dailyBody = (
       <div className="flex items-center justify-center py-32">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
-  }
-
-  /* ── Error screen ────────────────────────────────────────────────────────── */
-  if (error) {
-    return (
+  } else if (error) {
+    dailyBody = (
       <div className="flex flex-col items-center justify-center py-32 text-center">
         <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500 mb-4">
           <X size={22} />
@@ -138,61 +148,77 @@ export default function AttendancePage() {
         </button>
       </div>
     );
+  } else {
+    dailyBody = (
+      <div className="space-y-7">
+        {/* Header — full width, contains "Attendance Entry" button */}
+        <AttendanceHeader
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          onOpenEntry={openEntryModal}
+          onExport={handleExport}
+        />
+
+        <AttendanceStatsRow stats={stats} />
+
+        {/* Full-width content — no sidebar grid */}
+        <div className="space-y-5">
+          <AttendanceFiltersBar
+            filters={filters}
+            onChange={handleFilterChange}
+            totalResults={records.length}
+            filteredResults={filtered.length}
+          />
+
+          <AttendanceTable
+            records={paginated}
+            selectedIds={selectedIds}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            currentPage={currentPage}
+            itemsPerPage={ITEMS_PER_PAGE}
+            filteredTotal={filtered.length}
+            onSelectAll={() => toggleSelectAll(paginated.map(r => r.id))}
+            onSelectRow={toggleSelectRow}
+            onEdit={handleEdit}
+            onRemove={handleRemove}
+            onSort={handleSort}
+            onPageChange={setCurrentPage}
+            onBulkRemove={handleBulkRemove}
+          />
+
+          <BreakTimeCard records={records} />
+        </div>
+
+        {/* Modal — rendered at page root level, outside the table */}
+        <AttendanceEntryModal
+          isOpen={isEntryModalOpen}
+          onClose={closeEntryModal}
+          employees={employees}
+          allRecords={rawRecords}
+          editRecord={editRecord}
+          isSaving={isSaving}
+          saveError={saveError}
+          successMsg={successMsg}
+          onSave={handleFormSave}
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-7">
-      {/* Header — full width, contains "Attendance Entry" button */}
-      <AttendanceHeader
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        onOpenEntry={openEntryModal}
-        onExport={handleExport}
-      />
-
-      <AttendanceStatsRow stats={stats} />
-
-      {/* Full-width content — no sidebar grid */}
-      <div className="space-y-5">
-        <AttendanceFiltersBar
-          filters={filters}
-          onChange={handleFilterChange}
-          totalResults={records.length}
-          filteredResults={filtered.length}
-        />
-
-        <AttendanceTable
-          records={paginated}
-          selectedIds={selectedIds}
-          sortKey={sortKey}
-          sortDir={sortDir}
-          currentPage={currentPage}
-          itemsPerPage={ITEMS_PER_PAGE}
-          filteredTotal={filtered.length}
-          onSelectAll={() => toggleSelectAll(paginated.map(r => r.id))}
-          onSelectRow={toggleSelectRow}
-          onEdit={handleEdit}
-          onRemove={handleRemove}
-          onSort={handleSort}
-          onPageChange={setCurrentPage}
-          onBulkRemove={handleBulkRemove}
-        />
-
-        <BreakTimeCard records={records} />
+    <div className="space-y-6">
+      {/* Tab switcher */}
+      <div className="flex w-fit items-center gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800/60">
+        <button className={tabButtonClass(tab === 'daily')} onClick={() => setTab('daily')}>
+          <CalendarDays size={15} /> Daily Attendance
+        </button>
+        <button className={tabButtonClass(tab === 'analytics')} onClick={() => setTab('analytics')}>
+          <BarChart3 size={15} /> Analytics
+        </button>
       </div>
 
-      {/* Modal — rendered at page root level, outside the table */}
-      <AttendanceEntryModal
-        isOpen={isEntryModalOpen}
-        onClose={closeEntryModal}
-        employees={employees}
-        allRecords={rawRecords}
-        editRecord={editRecord}
-        isSaving={isSaving}
-        saveError={saveError}
-        successMsg={successMsg}
-        onSave={handleFormSave}
-      />
+      {tab === 'daily' ? dailyBody : <AttendanceAnalyticsTab employees={employees} />}
     </div>
   );
 }
