@@ -30,18 +30,6 @@ const SALES_REPORTS: PermissionKey[] = ['sales.reports.view'];
 
 export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
   {
-    // GLOBAL & UNGATED — the standalone My Tasks workspace is a common feature for
-    // EVERY authenticated user, shown in every module's sidebar. No permission /
-    // role / module gate on the item (module:null + global:true + no permission →
-    // isItemVisible returns true for everyone). Task DATA stays permission-scoped:
-    // the workspace is self-scoped server-side and chat is member-only.
-    label: 'My Tasks',
-    href: '/dashboard/my-tasks',
-    icon: 'ListTodo',
-    module: null,
-    global: true,
-  },
-  {
     label: 'Dashboard',
     href: '/dashboard',
     icon: 'LayoutDashboard',
@@ -480,6 +468,19 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'Settings',
     module: 'finance',
     permission: ['finance.settings.view', 'finance.view'],
+  },
+  {
+    // GLOBAL & UNGATED — the standalone My Tasks workspace, a common utility for
+    // EVERY authenticated user. Placed LAST and pinned to the BOTTOM of every
+    // module's sidebar by Layout.tsx (globals are appended after the module menu),
+    // below the primary navigation, never above Dashboard. module:null +
+    // global:true + no permission → visible to everyone; task DATA stays
+    // permission-scoped (self-scoped workspace, member-only chat).
+    label: 'My Tasks',
+    href: '/dashboard/my-tasks',
+    icon: 'ListTodo',
+    module: null,
+    global: true,
   },
 ];
 
