@@ -43,6 +43,7 @@ export interface Lead {
   description?: string | null;
   source: string;
   referralName?: string | null;
+  leadValue?: number | null;
   status: string;
   stage: string;
   orderIndex: number;
@@ -102,6 +103,7 @@ export interface UpdateLeadPayload {
   score?: number;
   tags?: string | null;
   ownerId?: number;
+  leadValue?: number | string | null;
   // Contact fields persisted on the linked customer.
   name?: string;
   company?: string;

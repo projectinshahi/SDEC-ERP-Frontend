@@ -254,11 +254,7 @@ export default function SalesLeadsPage() {
   }, [leads, stages]);
 
   const totalPipelineValue = useMemo(() => {
-    return leads.reduce((sum, lead) => {
-      if (!lead.description) return sum;
-      const match = lead.description.match(/Lead Value:\s*([\d.]+)/i);
-      return sum + (match ? parseFloat(match[1]) : 0);
-    }, 0);
+    return leads.reduce((sum, lead) => sum + (lead.leadValue ?? 0), 0);
   }, [leads]);
 
   // Optimistic move with revert on failure (invalid drops never reach here).
