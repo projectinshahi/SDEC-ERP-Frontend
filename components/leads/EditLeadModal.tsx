@@ -55,6 +55,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
     ownerId: '',
     description: '',
     referralName: '',
+    leadValue: '',
   });
 
   // Hydrate the form whenever the modal opens for a (possibly new) lead.
@@ -77,6 +78,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
       ownerId: lead.ownerId ? String(lead.ownerId) : '',
       description: lead.description || '',
       referralName: lead.referralName || '',
+      leadValue: lead.leadValue != null ? String(lead.leadValue) : '',
     });
   }, [isOpen, lead]);
 
@@ -94,6 +96,10 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
     if (form.email.trim() && !isValidEmail(form.email.trim())) e.email = 'Enter a valid email address.';
     if (form.phone.trim() && !isValidPhone(form.phone.trim())) e.phone = 'Enter a valid phone number.';
     if (form.source === 'referral' && !form.referralName.trim()) e.referralName = 'Referral Name is required.';
+    if (form.leadValue.trim()) {
+      const num = Number(form.leadValue);
+      if (isNaN(num) || num < 0) e.leadValue = 'Lead Value must be a valid positive number.';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -118,6 +124,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
       address: form.address.trim(),
 
       referralName: form.source === 'referral' ? form.referralName.trim() : undefined,
+      leadValue: form.leadValue.trim() ? Number(form.leadValue.trim()) : null,
     };
     if (form.ownerId) payload.ownerId = Number(form.ownerId);
 
@@ -161,6 +168,11 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
           <InputField
             label="Tags (comma separated)" id="tags"
             value={form.tags} onChange={(v) => set('tags', v)} placeholder="enterprise, hot, referral"
+          />
+          <InputField
+            label="Lead Value" id="edit-lead-value"
+            value={form.leadValue} onChange={(v) => set('leadValue', v)}
+            error={errors.leadValue} placeholder="e.g. 5000"
           />
           <p className="text-xs text-gray-400">
             The lead score is calculated automatically from your scoring criteria and the lead&apos;s activity.

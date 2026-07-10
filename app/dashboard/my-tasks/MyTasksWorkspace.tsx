@@ -21,7 +21,7 @@ import { CreateMyTaskModal } from '@/components/tasks/mytasks/CreateMyTaskModal'
 type Bucket = 'today' | 'inbox' | 'outbox';
 const BUCKETS: { key: Bucket; label: string; icon: any; hint: string }[] = [
   { key: 'today', label: 'Today', icon: Sun, hint: 'Due today' },
-  { key: 'inbox', label: 'Inbox', icon: Inbox, hint: 'Assigned to me' },
+  { key: 'inbox', label: 'Inbox', icon: Inbox, hint: 'Received & sent — everything' },
   { key: 'outbox', label: 'Outbox', icon: Send, hint: 'Created by me' },
 ];
 const COLLAPSE_KEY = 'my-tasks-details-collapsed';
@@ -80,7 +80,7 @@ function MemberAvatars({ members }: { members: { id: number; name: string }[] })
 }
 
 /* ── left-panel task row ──────────────────────────────────────────────── */
-function TaskRow({ task, active, onClick }: { task: MyTask; active: boolean; onClick: () => void }) {
+function TaskRow({ task, active, onClick, showDirection }: { task: MyTask; active: boolean; onClick: () => void; showDirection?: boolean }) {
   const prio = priorityMeta(task.priority);
   const due = fmtDue(task.dueDate);
   const st = statusMeta(task.status);
@@ -102,7 +102,18 @@ function TaskRow({ task, active, onClick }: { task: MyTask; active: boolean; onC
           <span className="shrink-0 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{task.unreadCount}</span>
         )}
       </div>
-      <div className="mt-2 flex items-center gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {showDirection && (
+          <span
+            className={classNames(
+              'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold',
+              task.createdByMe ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600',
+            )}
+            title={task.createdByMe ? 'Created by me (Sent)' : 'Assigned to me (Received)'}
+          >
+            {task.createdByMe ? 'Sent' : 'Received'}
+          </span>
+        )}
         <span className={classNames('inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold', st.tone)}>{st.label}</span>
         <span className={classNames('inline-flex items-center gap-1 text-[11px]', due.tone)}>
           <Calendar className="h-3 w-3" /> {due.label}
@@ -337,7 +348,8 @@ function WorkspaceInner() {
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 disabled:opacity-60">
             <RefreshCw className={classNames('h-4 w-4', refreshing && 'animate-spin')} />
           </button>
-          {canCreate && (
+          {/* New Task lives ONLY in the Outbox (tasks you create/send to others). */}
+          {canCreate && bucket === 'outbox' && (
             <button type="button" onClick={() => { setEditing(null); setModalOpen(true); }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
               <Plus className="h-4 w-4" /> New Task
@@ -373,11 +385,11 @@ function WorkspaceInner() {
             ) : currentList.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
                 <p className="text-sm font-medium text-gray-500">
-                  {bucket === 'today' ? 'Nothing due today.' : bucket === 'inbox' ? 'No tasks assigned to you.' : 'You have not created any tasks.'}
+                  {bucket === 'today' ? 'Nothing due today.' : bucket === 'inbox' ? 'Your inbox is empty.' : 'You have not created any tasks.'}
                 </p>
               </div>
             ) : (
-              currentList.map((t) => <TaskRow key={t.id} task={t} active={selectedId === t.id} onClick={() => openTask(t)} />)
+              currentList.map((t) => <TaskRow key={t.id} task={t} active={selectedId === t.id} onClick={() => openTask(t)} showDirection={bucket === 'inbox'} />)
             )}
           </div>
         </aside>
