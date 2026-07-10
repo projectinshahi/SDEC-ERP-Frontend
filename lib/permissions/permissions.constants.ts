@@ -561,6 +561,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'hr.dashboard.view', label: 'View HR Dashboard', description: 'Access the HR dashboard overview', module: 'hr' },
       { key: 'hr.employees.view', label: 'View Employees', description: 'View workforce employees directory', module: 'hr' },
       { key: 'hr.attendance.view', label: 'View Attendance', description: 'View workforce attendance logs', module: 'hr' },
+      { key: 'hr.analytics.view', label: 'View Attendance Analytics', description: 'Additional analytics capability inside the Attendance module (Attendance → Analytics tab): summary, trend, status distribution, department ranking, employee report and drill-down. Reached through Attendance for HR users — not a standalone page.', module: 'hr' },
       { key: 'hr.leave.view', label: 'View HR Admin Leave', description: 'HR Admin leave view: see, approve/reject, filter and manage ALL employee leave requests', module: 'hr' },
       { key: 'hr.leave.self', label: 'View Staff Leave', description: 'Staff leave view: submit and track your OWN leave requests', module: 'hr' },
       { key: 'hr.recruitment.view', label: 'View Recruitment', description: 'Access hiring and recruitment pipelines', module: 'hr' },

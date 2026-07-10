@@ -23,6 +23,15 @@ const INITIALS_COLORS = [
     'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300',
 ];
 
+/**
+ * Always resolve a non-empty, safe display name. Employees whose profile isn't
+ * linked to a user account (or whose linked user was removed) come back from the
+ * API with a null/blank name — never let that reach the render layer.
+ */
+function displayName(name: string | null | undefined): string {
+    return name && name.trim() ? name.trim() : 'Unknown Employee';
+}
+
 /** Parse dates and compute upcoming birthdays within next 30 days */
 function computeBirthdays(employees: ApiEmployee[]): BirthdayEvent[] {
     const today = new Date();
@@ -50,7 +59,7 @@ function computeBirthdays(employees: ApiEmployee[]): BirthdayEvent[] {
 
             events.push({
                 id: emp.id,
-                name: emp.name,
+                name: displayName(emp.name),
                 label,
                 daysRemaining: diffDays,
                 detail: `Birthday (${emp.designation || 'Staff'})`,
@@ -121,7 +130,7 @@ export function UpcomingBirthdays({ loading: parentLoading = false }: UpcomingBi
                 ) : (
                     displayedEvents.map((event, idx) => {
                         const colorClass = INITIALS_COLORS[idx % INITIALS_COLORS.length];
-                        const initial = event.name.charAt(0).toUpperCase();
+                        const initial = (event.name.charAt(0) || '?').toUpperCase();
                         const isToday = event.daysRemaining === 0;
                         const itemColorClass = isToday
                             ? 'border-blue-100 dark:border-blue-900/30 bg-blue-50/60 dark:bg-blue-950/15'
