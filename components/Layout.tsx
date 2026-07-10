@@ -67,7 +67,6 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
     return hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']);
   }, [hasAnyPermission]);
 
-  const moduleOfPath = moduleForPath(pathname);
   const requiredPerms = permissionsForPath(pathname);
   const permitted = requiredPerms.length === 0 || isSuperAdmin || hasAnyPermission(requiredPerms);
   const allowed = shared || (access[moduleOfPath] && permitted);
@@ -91,6 +90,7 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
     const isUserSelfService = hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']);
     if (isUserSelfService) {
       return item.href === '/dashboard/hr/leave';
+    }
     // Global items (e.g. My Tasks) skip module-access but STILL honor their own
     // permission — so the item shows in every module, gated on that permission.
     if (item.global) {
