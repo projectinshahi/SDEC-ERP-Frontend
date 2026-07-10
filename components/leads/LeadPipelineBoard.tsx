@@ -9,9 +9,7 @@ import { formatINR } from '@/lib/utils/currency';
 import type { Lead, LeadStage } from '@/lib/types/lead';
 
 function getLeadValue(lead: Lead): number {
-  if (!lead.description) return 0;
-  const match = lead.description.match(/Lead Value:\s*([\d.]+)/i);
-  return match ? parseFloat(match[1]) : 0;
+  return lead.leadValue ?? 0;
 }
 
 interface LeadPipelineBoardProps {

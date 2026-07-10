@@ -17,6 +17,7 @@ import { fetchLead, fetchLeadStages } from '@/lib/api/leads';
 import { formatLeadSource, leadSourceVariant } from '@/lib/data/leadSources';
 import { leadStageTheme } from '@/lib/data/leadStages';
 import { formatScore } from '@/lib/data/leadRating';
+import { formatINR } from '@/lib/utils/currency';
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel';
 import { LeadDocApprovalPanel } from '@/components/leads/LeadDocApprovalPanel';
 import { EditLeadModal } from '@/components/leads/EditLeadModal';
@@ -201,6 +202,9 @@ export default function LeadDetailPage() {
                     <Detail label="Score" value={formatScore(lead.score)} />
                     <Detail label="Status" value={lead.status} />
                     <Detail label="Priority" value={lead.priority} />
+                    {lead.leadValue != null && (
+                      <Detail label="Lead Value" value={formatINR(lead.leadValue)} />
+                    )}
                     <Detail label="Created" value={new Date(lead.createdAt).toLocaleString()} />
                     <Detail label="Last Updated" value={new Date(lead.updatedAt).toLocaleString()} />
                   </div>

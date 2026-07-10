@@ -98,7 +98,7 @@ export async function exportBdeSummary(type: 'daily' | 'weekly'): Promise<void> 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.text('SKPC Solutions Pvt Ltd', 15, 16);
+  doc.text('Shahi Solutions Pvt Ltd', 15, 16);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -116,7 +116,7 @@ export async function exportBdeSummary(type: 'daily' | 'weekly'): Promise<void> 
   // Headers
   doc.setFillColor(249, 250, 251);
   doc.rect(15, 60, 180, 8, 'F');
-  
+
   doc.setFontSize(9);
   doc.setTextColor(107, 114, 128); // Gray-500
   doc.text(sheet.headers[0], 20, 65);

@@ -19,7 +19,7 @@ export function generateAppraisalPdf(appraisal: ApiAppraisal) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
-  doc.text('SKPC Solutions Pvt Ltd', 15, 14);
+  doc.text('', 15, 14);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
