@@ -135,7 +135,8 @@ export type PermissionKey =
   | 'sales.tickets.edit'
   | 'sales.tickets.delete'
   | 'sales.tickets.assign'
-  // Sales Meetings (independent per-action keys)
+
+
   | 'sales.meetings.view'
   | 'sales.meetings.create'
   | 'sales.meetings.edit'
