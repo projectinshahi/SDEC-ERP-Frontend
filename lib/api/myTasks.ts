@@ -27,9 +27,11 @@ export interface MyTask {
   priority: string;
   status: string;
   dueDate: string | null;
+  dueTime: string | null;
   createdAt: string;
   updatedAt: string;
   createdBy: { id: number; name: string; email: string | null };
+  inChargeId?: number | null;
   members: MyTaskMember[];
   memberCount: number;
   assignedToMe: boolean;
@@ -50,6 +52,7 @@ export interface MyTaskMessage {
   task_id: number;
   sender_id: number;
   message: string;
+  metadata?: any;
   created_at: string;
   sender: { id: number; name: string; email: string | null } | null;
 }
@@ -59,7 +62,9 @@ export interface CreateMyTaskInput {
   description?: string;
   priority?: string;
   dueDate?: string | null;
+  dueTime?: string | null;
   memberIds?: number[];
+  inChargeId?: number | null;
 }
 
 export async function fetchMyTaskWorkspace(): Promise<MyTaskWorkspace> {
@@ -110,9 +115,9 @@ export async function fetchMyTaskMessages(id: number): Promise<MyTaskMessage[]> 
   return r.data;
 }
 
-export async function sendMyTaskMessage(id: number, message: string): Promise<{ success: boolean; message: MyTaskMessage }> {
-  const r = await apiClient.post<{ success: boolean; message: MyTaskMessage }>(`/my-tasks/${id}/messages`, { message });
-  return r.data;
+export async function sendMyTaskMessage(taskId: number, message: string, mentions?: number[]): Promise<MyTaskMessage> {
+  const r = await apiClient.post<{ message: MyTaskMessage }>(`/my-tasks/${taskId}/messages`, { message, mentions });
+  return r.data.message;
 }
 
 export async function deleteMyTaskMessage(id: number, messageId: number): Promise<{ success: boolean }> {

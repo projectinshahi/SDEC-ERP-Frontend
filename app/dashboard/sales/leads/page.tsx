@@ -6,7 +6,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Clock, List, Columns3, Trash2 } from 'lucide-react';
+import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Clock, List, Columns3, Trash2, Download, Loader2 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
@@ -27,6 +27,7 @@ import { formatScore, scoreColorClass } from '@/lib/data/leadRating';
 import { formatINR } from '@/lib/utils/currency';
 import { classNames } from '@/lib/utils';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
+import { exportLeadReport } from '@/lib/utils/exportLeadReport';
 
 type ScoreSort = 'none' | 'desc' | 'asc';
 
@@ -109,6 +110,9 @@ export default function SalesLeadsPage() {
   // Lead Analytics is gated by its own independent permission (the Analytics
   // nav button must respect it just like the sidebar item + page guard).
   const canViewAnalytics = hasPermission('sales.leads.analytics');
+  const canExportReport = hasPermission('sales.leads.export');
+  
+  const [isExporting, setIsExporting] = useState(false);
 
   // Initialise the view from the URL (?view=pipeline) — read on the client to
   // avoid a useSearchParams Suspense boundary / hydration mismatch. This also
@@ -326,6 +330,26 @@ export default function SalesLeadsPage() {
 
   const existingStageNames = stages.map((s) => s.name);
 
+  const handleExportReport = async () => {
+    try {
+      setIsExporting(true);
+      await exportLeadReport(visibleLeads, stages, {
+        searchQuery,
+        source: sourceFilter,
+        status: statusFilter,
+        stage: stageFilter,
+        owner: ownerFilter,
+        location: locationFilter
+      });
+      toast('Report downloaded successfully', 'success');
+    } catch (err) {
+      console.error(err);
+      toast('Failed to generate report', 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <PermissionPageGuard module="sales">
       <div className="space-y-6">
@@ -366,6 +390,12 @@ export default function SalesLeadsPage() {
                 Aging
               </Button>
             </Link>
+            {canExportReport && (
+              <Button variant="secondary" onClick={handleExportReport} disabled={isExporting}>
+                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                Report
+              </Button>
+            )}
             <Button variant="secondary" onClick={() => setIsImportOpen(true)}>
               <Upload className="w-4 h-4 mr-2" />
               Import
