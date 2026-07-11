@@ -95,6 +95,7 @@ export type PermissionKey =
   | 'sales.leads.create'
   | 'sales.leads.edit'
   | 'sales.leads.delete'
+  | 'sales.leads.export'
   | 'sales.leads.analytics'
   | 'sales.leads.pipeline.manage'
   | 'sales.leads.pipeline.delete'
@@ -134,7 +135,8 @@ export type PermissionKey =
   | 'sales.tickets.edit'
   | 'sales.tickets.delete'
   | 'sales.tickets.assign'
-  // Sales Meetings (independent per-action keys)
+
+
   | 'sales.meetings.view'
   | 'sales.meetings.create'
   | 'sales.meetings.edit'

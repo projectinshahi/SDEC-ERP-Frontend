@@ -424,6 +424,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'sales.leads.create', label: 'Create Leads', description: 'Add new leads', module: 'sales' },
       { key: 'sales.leads.edit', label: 'Edit Leads', description: 'Update lead details and status', module: 'sales' },
       { key: 'sales.leads.delete', label: 'Delete Leads', description: 'Remove leads', module: 'sales' },
+      { key: 'sales.leads.export', label: 'Download Lead Report', description: 'Export a PDF report of filtered leads, KPI summaries and analytics', module: 'sales' },
       { key: 'sales.leads.analytics', label: 'View Lead Analytics', description: 'Open the Lead Analytics dashboard (scores, conversion, interactions). Independent of View Leads.', module: 'sales' },
       { key: 'sales.leads.pipeline.manage', label: 'Manage Lead Pipeline Columns', description: 'Add, rename, reorder the lead pipeline (Kanban) stage columns. Independent of editing leads.', module: 'sales' },
       { key: 'sales.leads.pipeline.delete', label: 'Delete Lead Pipeline Columns', description: 'Delete lead pipeline stage columns (leads are safely moved to another stage first).', module: 'sales' },

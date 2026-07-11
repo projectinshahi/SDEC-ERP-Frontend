@@ -15,7 +15,7 @@ import {
  * REST endpoints (/my-tasks/:id/messages). Membership is enforced server-side on
  * both the room join and the REST calls; a non-member sees an access-denied state.
  */
-export function MyTaskChat({ taskId, currentUserId }: { taskId: number; currentUserId?: number }) {
+export function MyTaskChat({ taskId, currentUserId, members = [] }: { taskId: number; currentUserId?: number; members?: { id: number, name: string }[] }) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<MyTaskMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,8 +23,13 @@ export function MyTaskChat({ taskId, currentUserId }: { taskId: number; currentU
   const [input, setInput] = useState('');
   const [typists, setTypists] = useState<Set<string>>(new Set());
   const [isTyping, setIsTyping] = useState(false);
+  const [mentionActive, setMentionActive] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [cursorPos, setCursorPos] = useState(0);
 
   const socketRef = useRef<Socket | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<NodeJS.Timeout | null>(null);
   const meRef = useRef<number | undefined>(currentUserId);
@@ -83,8 +88,48 @@ export function MyTaskChat({ taskId, currentUserId }: { taskId: number; currentU
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
 
-  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
+  const filteredMembers = React.useMemo(() => {
+    if (!mentionActive) return [];
+    const q = mentionQuery.toLowerCase();
+    return members.filter((m) => m.name.toLowerCase().includes(q));
+  }, [mentionActive, mentionQuery, members]);
+
+  const insertMention = (member: { id: number; name: string }) => {
+    const textBeforeMatch = input.slice(0, cursorPos - mentionQuery.length - 1);
+    const textAfterMatch = input.slice(cursorPos);
+    const newText = `${textBeforeMatch}@${member.name} ${textAfterMatch}`;
+    setInput(newText);
+    setMentionActive(false);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const newPos = textBeforeMatch.length + member.name.length + 2;
+        textareaRef.current.setSelectionRange(newPos, newPos);
+      }
+    }, 0);
+  };
+
+  const onInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setInput(val);
+    
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+
+    const pos = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, pos);
+    const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
+    if (match) {
+      setMentionActive(true);
+      setMentionQuery(match[1]);
+      setMentionIndex(0);
+      setCursorPos(pos);
+    } else {
+      setMentionActive(false);
+    }
+
     if (!isTyping) {
       setIsTyping(true);
       socketRef.current?.emit('mytask_typing', { taskId, userName: 'Someone' });
@@ -96,15 +141,55 @@ export function MyTaskChat({ taskId, currentUserId }: { taskId: number; currentU
     }, 1000);
   };
 
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionActive && filteredMembers.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex((prev) => (prev + 1) % filteredMembers.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex((prev) => (prev - 1 + filteredMembers.length) % filteredMembers.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertMention(filteredMembers[mentionIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionActive(false);
+        return;
+      }
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      onSend(e as unknown as React.FormEvent);
+    }
+  };
+
   const onSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
+    
+    const mentionedIds = members
+      .filter((m) => text.includes(`@${m.name}`))
+      .map((m) => m.id);
+
     setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.focus();
+    }
+    setMentionActive(false);
     setIsTyping(false);
     socketRef.current?.emit('mytask_stop_typing', { taskId });
     try {
-      await sendMyTaskMessage(taskId, text);
+      await sendMyTaskMessage(taskId, text, mentionedIds);
     } catch (err: any) {
       console.error('Failed to send message', err);
       // Restore the text so it is never silently lost, and explain why.
@@ -120,6 +205,37 @@ export function MyTaskChat({ taskId, currentUserId }: { taskId: number; currentU
     } catch (err) {
       console.error('Failed to delete message', err);
     }
+  };
+
+  const renderMessageText = (text: string, isMe: boolean) => {
+    if (!members || members.length === 0) return text;
+    const sortedMembers = [...members].sort((a, b) => b.name.length - a.name.length);
+    let parts: React.ReactNode[] = [text];
+    for (const m of sortedMembers) {
+      const mentionStr = `@${m.name}`;
+      parts = parts.flatMap((part) => {
+        if (typeof part !== 'string') return part;
+        const chunks = part.split(mentionStr);
+        if (chunks.length === 1) return part;
+        const newParts: React.ReactNode[] = [];
+        for (let i = 0; i < chunks.length; i++) {
+          newParts.push(chunks[i]);
+          if (i < chunks.length - 1) {
+            const isCurrentUser = m.id === currentUserId;
+            const badgeClass = isMe
+              ? 'bg-blue-500 text-white shadow-sm'
+              : (isCurrentUser ? 'bg-amber-100 text-amber-700 shadow-sm' : 'bg-blue-50 text-blue-600 shadow-sm');
+            newParts.push(
+              <span key={`${m.id}-${i}`} className={`font-semibold px-1.5 py-0.5 rounded-md ${badgeClass}`}>
+                {mentionStr}
+              </span>
+            );
+          }
+        }
+        return newParts;
+      });
+    }
+    return parts;
   };
 
   if (denied) {
@@ -178,7 +294,7 @@ export function MyTaskChat({ taskId, currentUserId }: { taskId: number; currentU
                     <div className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-2 text-sm shadow-sm ${
                       isMe ? 'rounded-tr-sm bg-blue-600 text-white' : 'rounded-tl-sm border border-gray-100 bg-white text-gray-800'
                     }`}>
-                      {msg.message}
+                      {renderMessageText(msg.message, isMe)}
                     </div>
                   </div>
                   <span className="mt-1 text-[10px] text-gray-400">
@@ -196,19 +312,39 @@ export function MyTaskChat({ taskId, currentUserId }: { taskId: number; currentU
         <div className="border-t border-gray-50 bg-white px-4 py-2 text-xs italic text-gray-500">Someone is typing…</div>
       )}
 
-      <div className="border-t border-gray-100 bg-white p-4">
-        <form onSubmit={onSend} className="relative flex items-center">
-          <input
-            type="text"
+      <div className="border-t border-gray-100 bg-white p-4 relative">
+        {mentionActive && filteredMembers.length > 0 && (
+          <div className="absolute bottom-full left-4 mb-2 w-64 max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg z-10">
+            {filteredMembers.map((m, idx) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${idx === mentionIndex ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                onClick={() => insertMention(m)}
+              >
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600">
+                  {m.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="truncate font-medium text-gray-700">{m.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <form onSubmit={onSend} className="relative flex items-end">
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={onInputChange}
+            onKeyDown={onKeyDown}
             placeholder="Type a message…"
-            className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-4 pr-12 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            rows={1}
+            className="w-full resize-none overflow-y-auto rounded-[20px] border border-gray-200 bg-gray-50 py-2.5 pl-4 pr-12 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ minHeight: '42px', maxHeight: '120px' }}
           />
           <button
             type="submit"
             disabled={!input.trim()}
-            className="absolute right-1.5 rounded-full bg-blue-600 p-1.5 text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute bottom-1.5 right-1.5 rounded-full bg-blue-600 p-1.5 text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Send className="ml-0.5 h-4 w-4" />
           </button>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import {
   Sun, Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo,
@@ -47,13 +48,24 @@ function todayYmd(): string {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 }
-function fmtDue(ymd?: string | null): { label: string; tone: string } {
+function formatTime12h(time?: string | null): string {
+  if (!time) return '';
+  const [h, m] = time.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return '';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+function fmtDue(ymd?: string | null, time?: string | null): { label: string; tone: string } {
   if (!ymd) return { label: 'No due date', tone: 'text-gray-400' };
   const today = todayYmd();
   const nice = new Date(ymd + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-  if (ymd === today) return { label: 'Due today', tone: 'text-amber-600 font-semibold' };
-  if (ymd < today) return { label: `Overdue · ${nice}`, tone: 'text-rose-600 font-semibold' };
-  return { label: `Due ${nice}`, tone: 'text-gray-500' };
+  const timeStr = formatTime12h(time);
+  const timeSuffix = timeStr ? ` • ${timeStr}` : '';
+  if (ymd === today) return { label: `Due today${timeSuffix}`, tone: 'text-amber-600 font-semibold' };
+  if (ymd < today) return { label: `Overdue · ${nice}${timeSuffix}`, tone: 'text-rose-600 font-semibold' };
+  return { label: `Due ${nice}${timeSuffix}`, tone: 'text-gray-500' };
 }
 function fmtDate(iso?: string | null): string {
   if (!iso) return '—';
@@ -82,7 +94,7 @@ function MemberAvatars({ members }: { members: { id: number; name: string }[] })
 /* ── left-panel task row ──────────────────────────────────────────────── */
 function TaskRow({ task, active, onClick, showDirection }: { task: MyTask; active: boolean; onClick: () => void; showDirection?: boolean }) {
   const prio = priorityMeta(task.priority);
-  const due = fmtDue(task.dueDate);
+  const due = fmtDue(task.dueDate, task.dueTime);
   const st = statusMeta(task.status);
   return (
     <button
@@ -150,7 +162,7 @@ function DetailsPanel({
   onEdit: () => void; onDelete: () => void; onStatus: (s: string) => void;
 }) {
   const prio = priorityMeta(task.priority);
-  const due = fmtDue(task.dueDate);
+  const due = fmtDue(task.dueDate, task.dueTime);
   const st = statusMeta(task.status);
   return (
     <div className="rounded-2xl border border-gray-200 bg-white">
@@ -186,7 +198,14 @@ function DetailsPanel({
           )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <DetailRow icon={Users} label="Members">
+            {task.inChargeId && (
+              <DetailRow icon={User} label="Task In-Charge">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-sm font-medium text-blue-700">
+                  ⭐ {task.members.find((m) => m.id === task.inChargeId)?.name || 'Unknown'}
+                </span>
+              </DetailRow>
+            )}
+            <DetailRow icon={Users} label="Assigned Members">
               {task.members.length ? task.members.map((m) => m.name).join(', ') : 'No members'}
             </DetailRow>
             <DetailRow icon={User} label="Created By">{task.createdBy?.name || '—'}</DetailRow>
@@ -203,7 +222,7 @@ function DetailsPanel({
               ) : st.label}
             </DetailRow>
             <DetailRow icon={Clock} label="Created">{fmtDate(task.createdAt)}</DetailRow>
-            <DetailRow icon={Calendar} label="Due Date"><span className={due.tone}>{due.label}</span></DetailRow>
+            <DetailRow icon={Calendar} label="Deadline"><span className={due.tone}>{due.label}</span></DetailRow>
           </div>
 
           {task.attachments.length > 0 && (
@@ -231,6 +250,8 @@ function WorkspaceInner() {
   const { hasPermission, isSuperAdmin } = usePermissions();
   const { toast } = useToast();
   const { confirm } = useConfirm();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const currentUserId = user?.id && !isNaN(Number(user.id)) ? Number(user.id) : undefined;
   const canCreate = isSuperAdmin || hasPermission('mytasks.create');
   const canEdit = isSuperAdmin || hasPermission('mytasks.edit');
@@ -298,7 +319,32 @@ function WorkspaceInner() {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onFocus);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
+
+  useEffect(() => {
+    const taskIdStr = searchParams.get('taskId');
+    if (taskIdStr && data) {
+      const tid = Number(taskIdStr);
+      // Attempt to find it in the current data payload
+      let found = data.today.find((t) => t.id === tid);
+      if (found) { setBucket('today'); setSelectedId(tid); }
+      else {
+        found = data.inbox.find((t) => t.id === tid);
+        if (found) { setBucket('inbox'); setSelectedId(tid); }
+        else {
+          found = data.outbox.find((t) => t.id === tid);
+          if (found) { setBucket('outbox'); setSelectedId(tid); }
+        }
+      }
+      
+      // Clean up the URL
+      if (found) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [searchParams, data]);
 
   const lists = useMemo(() => ({
     today: data?.today ?? [], inbox: data?.inbox ?? [], outbox: data?.outbox ?? [],
@@ -415,7 +461,7 @@ function WorkspaceInner() {
                 onStatus={(s) => handleStatus(selectedTask.id, s)}
               />
               <div className="h-[560px]">
-                <MyTaskChat key={selectedTask.id} taskId={selectedTask.id} currentUserId={currentUserId} />
+                <MyTaskChat key={selectedTask.id} taskId={selectedTask.id} currentUserId={currentUserId} members={selectedTask.members} />
               </div>
             </div>
           )}
@@ -439,5 +485,9 @@ export function MyTasksWorkspace() {
   // SHARED_PREFIXES so the module route-guard never bounces a cross-module user.
   // No permission gate here: task DATA is permission-scoped server-side (the
   // workspace is self-scoped, chat is member-only, mutations stay mytasks.*-gated).
-  return <WorkspaceInner />;
+  return (
+    <Suspense fallback={<div className="flex h-[calc(100vh-80px)] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>}>
+      <WorkspaceInner />
+    </Suspense>
+  );
 }

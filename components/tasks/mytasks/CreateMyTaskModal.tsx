@@ -39,7 +39,9 @@ export function CreateMyTaskModal({
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
   const [dueDate, setDueDate] = useState('');
+  const [dueTime, setDueTime] = useState('');
   const [selected, setSelected] = useState<Map<number, string>>(new Map());
+  const [inChargeId, setInChargeId] = useState<number | null>(null);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [search, setSearch] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -59,13 +61,17 @@ export function CreateMyTaskModal({
       setDescription(editTask.description || '');
       setPriority(editTask.priority || 'medium');
       setDueDate(editTask.dueDate || '');
+      setDueTime(editTask.dueTime || '');
       setSelected(new Map(editTask.members.map((m) => [m.id, m.name])));
+      setInChargeId(editTask.inChargeId || null);
     } else {
       setTitle('');
       setDescription('');
       setPriority('medium');
       setDueDate('');
+      setDueTime('');
       setSelected(new Map());
+      setInChargeId(null);
     }
   }, [isOpen, editTask]);
 
@@ -86,6 +92,7 @@ export function CreateMyTaskModal({
       else next.set(u.id, u.name);
       return next;
     });
+    setInChargeId((prev) => (prev === u.id ? null : prev));
   };
 
   const uploadFiles = async (taskId: number) => {
@@ -102,12 +109,23 @@ export function CreateMyTaskModal({
 
   const submit = async () => {
     if (!title.trim()) { toast('Title is required.', 'error'); return; }
+    if (dueDate && !dueTime) { toast('Due Time is required when a Due Date is set.', 'error'); return; }
     // At least one assignee must be selected (when the member picker is shown).
     if (showMembers && selected.size === 0) { toast('Select at least one member.', 'error'); return; }
+    let finalInCharge = inChargeId;
+    if (showMembers && selected.size === 1) {
+      finalInCharge = Array.from(selected.keys())[0];
+    } else if (showMembers && selected.size > 1) {
+      if (!finalInCharge || !selected.has(finalInCharge)) {
+        toast('Please select an In-Charge for this task.', 'error');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       if (editTask) {
-        await updateMyTask(editTask.id, { title: title.trim(), description, priority, dueDate: dueDate || null });
+        await updateMyTask(editTask.id, { title: title.trim(), description, priority, dueDate: dueDate || null, dueTime: dueTime || null, inChargeId: finalInCharge });
         if (canAssign) {
           const orig = new Set(editTask.members.map((m) => m.id));
           const now = new Set(selected.keys());
@@ -130,7 +148,9 @@ export function CreateMyTaskModal({
           description,
           priority,
           dueDate: dueDate || null,
+          dueTime: dueTime || null,
           memberIds: Array.from(selected.keys()),
+          inChargeId: finalInCharge,
         });
         await uploadFiles(created.id);
         toast('Task created.', 'success');
@@ -171,7 +191,7 @@ export function CreateMyTaskModal({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
             <select
@@ -191,6 +211,15 @@ export function CreateMyTaskModal({
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Due Time</label>
+            <input
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
         {/* Members — hidden in EDIT mode without the Assign Members permission
@@ -201,15 +230,43 @@ export function CreateMyTaskModal({
             <Users className="h-4 w-4 text-gray-400" /> Members {selected.size > 0 && <span className="text-gray-400">({selected.size})</span>}
           </label>
           {selected.size > 0 && (
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {Array.from(selected.entries()).map(([id, name]) => (
-                <span key={id} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                  {name}
-                  <button type="button" onClick={() => setSelected((prev) => { const n = new Map(prev); n.delete(id); return n; })}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
+            <div className="mb-3 space-y-1 rounded-lg border border-gray-200 bg-gray-50 p-2">
+              {Array.from(selected.entries()).map(([id, name]) => {
+                const isCharge = inChargeId === id;
+                const onlyOne = selected.size === 1;
+                return (
+                  <div key={id} className="flex items-center justify-between rounded-md bg-white px-3 py-1.5 shadow-sm">
+                    <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      {name}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {!onlyOne && (
+                        <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900">
+                          <input
+                            type="radio"
+                            name="inCharge"
+                            checked={isCharge}
+                            onChange={() => setInChargeId(id)}
+                            className="h-3.5 w-3.5 border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          In-Charge
+                        </label>
+                      )}
+                      {onlyOne && <span className="text-xs font-medium text-blue-600">⭐ In-Charge</span>}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelected((prev) => { const n = new Map(prev); n.delete(id); return n; });
+                          setInChargeId((prev) => (prev === id ? null : prev));
+                        }}
+                        className="text-gray-400 hover:text-rose-500"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
           <div className="rounded-lg border border-gray-200">
