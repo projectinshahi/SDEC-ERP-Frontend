@@ -134,7 +134,7 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
     const stg = l.stage || (stages[0]?.name ?? 'Unknown');
     if (!stageMap[stg]) stageMap[stg] = { count: 0, value: 0 };
     stageMap[stg].count++;
-    stageMap[stg].value += Number(l.value || 0);
+    stageMap[stg].value += Number(l.leadValue || 0);
   });
 
   const pipelineData = Object.entries(stageMap).map(([stg, stats]) => [
@@ -177,15 +177,15 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   
   const leadTableData = leads.map(l => [
     l.title || '—',
-    l.company_name || '—',
-    l.contact_name || '—',
-    l.phone || '—',
-    l.email || '—',
+    l.customer?.company || '—',
+    l.customer?.name || '—',
+    l.customer?.phone || '—',
+    l.customer?.email || '—',
     l.source || '—',
-    formatINR(Number(l.value || 0)),
+    formatINR(Number(l.leadValue || 0)),
     l.owner?.name || 'Unassigned',
     (l.status || '').toUpperCase(),
-    l.created_at ? format(new Date(l.created_at), 'dd/MM/yyyy') : '—'
+    l.createdAt ? format(new Date(l.createdAt), 'dd/MM/yyyy') : '—'
   ]);
 
   autoTable(doc, {
@@ -198,7 +198,7 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
     margin: { left: 40, right: 40, bottom: 40 },
     didDrawPage: function (data: any) {
       // Add Page number to footer
-      const str = `Page ${doc.internal.getNumberOfPages()}`;
+      const str = `Page ${(doc as any).internal.getNumberOfPages()}`;
       doc.setFontSize(8);
       doc.setTextColor(150);
       const pageSize = doc.internal.pageSize;
