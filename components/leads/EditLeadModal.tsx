@@ -96,7 +96,9 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
     if (form.email.trim() && !isValidEmail(form.email.trim())) e.email = 'Enter a valid email address.';
     if (form.phone.trim() && !isValidPhone(form.phone.trim())) e.phone = 'Enter a valid phone number.';
     if (form.source === 'referral' && !form.referralName.trim()) e.referralName = 'Referral Name is required.';
-    if (form.leadValue.trim()) {
+    if (!form.leadValue.trim()) {
+      e.leadValue = 'Lead Value is required.';
+    } else {
       const num = Number(form.leadValue);
       if (isNaN(num) || num < 0) e.leadValue = 'Lead Value must be a valid positive number.';
     }
@@ -158,6 +160,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
             <InputField label="Phone" id="phone" value={form.phone} onChange={(v) => set('phone', v)} error={errors.phone} />
             <InputField label="Website" id="website" value={form.website} onChange={(v) => set('website', v)} />
             <InputField label="Address" id="address" value={form.address} onChange={(v) => set('address', v)} />
+            <InputField label="Lead Value" id="edit-lead-value" required value={form.leadValue} onChange={(v) => set('leadValue', v)} error={errors.leadValue} placeholder="e.g. 5000" />
           </div>
         </section>
 
@@ -168,11 +171,6 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
           <InputField
             label="Tags (comma separated)" id="tags"
             value={form.tags} onChange={(v) => set('tags', v)} placeholder="enterprise, hot, referral"
-          />
-          <InputField
-            label="Lead Value" id="edit-lead-value"
-            value={form.leadValue} onChange={(v) => set('leadValue', v)}
-            error={errors.leadValue} placeholder="e.g. 5000"
           />
           <p className="text-xs text-gray-400">
             The lead score is calculated automatically from your scoring criteria and the lead&apos;s activity.
