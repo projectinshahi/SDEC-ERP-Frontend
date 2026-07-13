@@ -451,282 +451,282 @@ export function DeveloperPerformanceView() {
           <p className="text-xs">Try a different range or preset.</p>
         </div>
       ) : (
-      <>
-      {/* Metric cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {cards.map((c) => (
-          <MetricCard key={c.title} title={c.title} icon={c.icon} tone={c.tone} metrics={c.metrics} />
-        ))}
-      </div>
-
-      {/* Developers list */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-gray-100 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-base font-semibold text-gray-800">Developers List</h3>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <select
-                value={view}
-                onChange={(e) => setView(e.target.value as 'all' | 'active' | 'busy')}
-                className="appearance-none rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-8 text-sm font-medium text-gray-600 focus:border-indigo-400 focus:outline-none"
-              >
-                <option value="all">All Developers</option>
-                <option value="active">Active</option>
-                <option value="busy">Busy</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
-            </div>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search developers…"
-                className="w-48 rounded-lg border border-gray-200 py-2 pl-8 pr-3 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-400 focus:outline-none"
-              />
-            </div>
-            <button
-              onClick={exportCsv}
-              className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </button>
+        <>
+          {/* Metric cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {cards.map((c) => (
+              <MetricCard key={c.title} title={c.title} icon={c.icon} tone={c.tone} metrics={c.metrics} />
+            ))}
           </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                <th className="px-4 py-3">Developer</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3 text-center">Projects</th>
-                <th className="px-4 py-3 text-center">Assigned</th>
-                <th className="px-4 py-3 text-center">Completed</th>
-                <th className="px-4 py-3 text-center">Today</th>
-                <th className="px-4 py-3">Completion</th>
-                <th className="px-4 py-3 text-center">Pending</th>
-                <th className="px-4 py-3 text-center">Bugs</th>
-                <th className="px-4 py-3">Last Activity</th>
-                <th className="px-4 py-3">Utilization</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredDevs.length === 0 ? (
-                <tr>
-                  <td colSpan={13} className="px-4 py-10 text-center text-sm text-gray-400">
-                    {data.developers.length === 0
-                      ? 'No developer data available yet.'
-                      : 'No developers match your filters.'}
-                  </td>
-                </tr>
-              ) : (
-                filteredDevs.map((d) => (
-                  <tr key={d.id} className="hover:bg-gray-50/60">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <div className={classNames('flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold', avatarTone(d.id))}>
-                            {initials(d.name)}
-                          </div>
-                          <span
-                            className={classNames(
-                              'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white',
-                              d.online ? 'bg-emerald-500' : 'bg-gray-300',
-                            )}
-                          />
-                        </div>
-                        <span className="font-medium text-gray-800">{d.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{d.role}</td>
-                    <td className="px-4 py-3 text-center text-gray-700">{d.activeProjects}</td>
-                    <td className="px-4 py-3 text-center font-medium text-gray-700">{d.assignedPoints}</td>
-                    <td className="px-4 py-3 text-center font-medium text-emerald-600">{d.completedPoints}</td>
-                    <td className="px-4 py-3 text-center text-gray-700">
-                      {d.todayPoints > 0
-                        ? <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">+{d.todayPoints}</span>
-                        : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-16 rounded-full bg-gray-100">
-                          <div
-                            className={classNames('h-1.5 rounded-full', d.completionRate >= 65 ? 'bg-emerald-500' : 'bg-amber-500')}
-                            style={{ width: `${d.completionRate}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500">{d.completionRate}%</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center text-gray-700">{d.tasksPending}</td>
-                    <td className="px-4 py-3 text-center">
-                      {d.bugs > 0
-                        ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600">{d.bugs}</span>
-                        : <span className="text-gray-300">0</span>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{relativeTime(d.lastActivity)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-16 rounded-full bg-gray-100">
-                          <div
-                            className={classNames(
-                              'h-1.5 rounded-full',
-                              d.utilization >= 85 ? 'bg-rose-500' : d.utilization >= 70 ? 'bg-amber-500' : 'bg-indigo-500',
-                            )}
-                            style={{ width: `${d.utilization}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500">{d.utilization}%</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={classNames(
-                          'rounded-full px-2.5 py-1 text-xs font-semibold',
-                          d.devStatus === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
-                        )}
-                      >
-                        {d.devStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-300">
-                      <MoreVertical className="h-4 w-4" />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Bottom panels */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Top performers today */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-gray-800">
-            {range ? `Top Performers · ${periodLabel}` : 'Top Performers Today'}
-          </h3>
-          {topPerformers.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-400">
-              {range ? 'No points completed in this period.' : 'No points completed yet today.'}
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {topPerformers.map((p, i) => (
-                <li key={p.id} className="flex items-center gap-3">
-                  <div className="flex h-6 w-6 items-center justify-center">{medalIcon(i)}</div>
-                  <div className={classNames('flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold', avatarTone(i + 3))}>
-                    {initials(p.name)}
-                  </div>
-                  <span className="flex-1 font-medium text-gray-800">{p.name}</span>
-                  <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
-                    {p.points} pts
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Capacity forecast */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-gray-800">Capacity Forecast</h3>
-          {capacityForecast.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-400">No capacity data available.</p>
-          ) : (
-            <ul className="space-y-3.5">
-              {capacityForecast.map((c) => (
-                <li key={c.id}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-700">{c.name}</span>
-                    <span className="text-xs text-gray-400">{c.availableCapacity}% free</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-gray-100">
-                    <div
-                      className={classNames(
-                        'h-2 rounded-full',
-                        c.currentLoad >= 85 ? 'bg-rose-500' : c.currentLoad >= 70 ? 'bg-amber-500' : 'bg-emerald-500',
-                      )}
-                      style={{ width: `${c.currentLoad}%` }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Weekly velocity trend */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-gray-800">Weekly Velocity Trend</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={velocityTrend} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="week" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line type="monotone" dataKey="assigned" name="Assigned" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="completed" name="Completed" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Task status overview — dynamic Kanban columns */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-4 text-base font-semibold text-gray-800">Task Status Overview</h3>
-          {donutData.length === 0 || donutTotal === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-400">
-              {donutData.length === 0 ? 'No Kanban columns found yet.' : 'No tasks in any column yet.'}
-            </p>
-          ) : (
-          <div className="flex flex-col items-center gap-4 sm:flex-row">
-            <div className="relative h-[200px] w-[200px] shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={donutData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={62}
-                    outerRadius={88}
-                    paddingAngle={2}
-                    dataKey="value"
+          {/* Developers list */}
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-gray-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-base font-semibold text-gray-800">Developers List</h3>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <select
+                    value={view}
+                    onChange={(e) => setView(e.target.value as 'all' | 'active' | 'busy')}
+                    className="appearance-none rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-8 text-sm font-medium text-gray-600 focus:border-indigo-400 focus:outline-none"
                   >
-                    {donutData.map((_, i) => (
-                      <Cell key={i} fill={donutColor(i)} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold text-gray-900">{donutTotal}</span>
-                <span className="text-xs text-gray-400">Total Tasks</span>
+                    <option value="all">All Developers</option>
+                    <option value="active">Active</option>
+                    <option value="busy">Busy</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search developers…"
+                    className="w-48 rounded-lg border border-gray-200 py-2 pl-8 pr-3 text-sm text-gray-700 placeholder-gray-400 focus:border-indigo-400 focus:outline-none"
+                  />
+                </div>
+                <button
+                  onClick={exportCsv}
+                  className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </button>
               </div>
             </div>
-            <ul className="flex-1 space-y-2 max-h-[220px] overflow-y-auto">
-              {donutData.map((s, i) => (
-                <li key={s.name} className="flex items-center gap-2 text-sm">
-                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: donutColor(i) }} />
-                  <span className="flex-1 text-gray-600 truncate" title={s.name}>{s.name}</span>
-                  <span className="font-semibold text-gray-800">{s.value}</span>
-                  <span className="w-10 text-right text-xs text-gray-400">
-                    {donutTotal > 0 ? Math.round(((s.value || 0) / donutTotal) * 100) : 0}%
-                  </span>
-                </li>
-              ))}
-            </ul>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1100px] text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    <th className="px-4 py-3 min-w-[200px]">Developer</th>
+                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3 text-center">Projects</th>
+                    <th className="px-4 py-3 text-center">Assigned</th>
+                    <th className="px-4 py-3 text-center">Completed</th>
+                    <th className="px-4 py-3 text-center">Today</th>
+                    <th className="px-4 py-3 min-w-[140px]">Completion</th>
+                    <th className="px-4 py-3 text-center">Pending</th>
+                    <th className="px-4 py-3 text-center">Bugs</th>
+                    <th className="px-4 py-3 min-w-[120px]">Last Activity</th>
+                    <th className="px-4 py-3 min-w-[140px]">Utilization</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredDevs.length === 0 ? (
+                    <tr>
+                      <td colSpan={13} className="px-4 py-10 text-center text-sm text-gray-400">
+                        {data.developers.length === 0
+                          ? 'No developer data available yet.'
+                          : 'No developers match your filters.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredDevs.map((d) => (
+                      <tr key={d.id} className="hover:bg-gray-50/60">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="relative">
+                              <div className={classNames('flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold', avatarTone(d.id))}>
+                                {initials(d.name)}
+                              </div>
+                              <span
+                                className={classNames(
+                                  'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white',
+                                  d.online ? 'bg-emerald-500' : 'bg-gray-300',
+                                )}
+                              />
+                            </div>
+                            <span className="font-medium text-gray-800">{d.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">{d.role}</td>
+                        <td className="px-4 py-3 text-center text-gray-700">{d.activeProjects}</td>
+                        <td className="px-4 py-3 text-center font-medium text-gray-700">{d.assignedPoints}</td>
+                        <td className="px-4 py-3 text-center font-medium text-emerald-600">{d.completedPoints}</td>
+                        <td className="px-4 py-3 text-center text-gray-700">
+                          {d.todayPoints > 0
+                            ? <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">+{d.todayPoints}</span>
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-nowrap items-center gap-2">
+                            <div className="h-1.5 w-16 shrink-0 rounded-full bg-gray-100">
+                              <div
+                                className={classNames('h-1.5 rounded-full', d.completionRate >= 65 ? 'bg-emerald-500' : 'bg-amber-500')}
+                                style={{ width: `${Math.min(100, d.completionRate)}%` }}
+                              />
+                            </div>
+                            <span className="shrink-0 text-xs font-medium text-gray-500">{d.completionRate}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center text-gray-700">{d.tasksPending}</td>
+                        <td className="px-4 py-3 text-center">
+                          {d.bugs > 0
+                            ? <span className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-600">{d.bugs}</span>
+                            : <span className="text-gray-300">0</span>}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-gray-500">{relativeTime(d.lastActivity)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-nowrap items-center gap-2">
+                            <div className="h-1.5 w-16 shrink-0 rounded-full bg-gray-100">
+                              <div
+                                className={classNames(
+                                  'h-1.5 rounded-full',
+                                  d.utilization >= 85 ? 'bg-rose-500' : d.utilization >= 70 ? 'bg-amber-500' : 'bg-indigo-500',
+                                )}
+                                style={{ width: `${Math.min(100, d.utilization)}%` }}
+                              />
+                            </div>
+                            <span className="shrink-0 text-xs font-medium text-gray-500">{d.utilization}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={classNames(
+                              'rounded-full px-2.5 py-1 text-xs font-semibold',
+                              d.devStatus === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
+                            )}
+                          >
+                            {d.devStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-300">
+                          <MoreVertical className="h-4 w-4" />
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          )}
-        </div>
-      </div>
-      </>
+
+          {/* Bottom panels */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* Top performers today */}
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-4 text-base font-semibold text-gray-800">
+                {range ? `Top Performers · ${periodLabel}` : 'Top Performers Today'}
+              </h3>
+              {topPerformers.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">
+                  {range ? 'No points completed in this period.' : 'No points completed yet today.'}
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {topPerformers.map((p, i) => (
+                    <li key={p.id} className="flex items-center gap-3">
+                      <div className="flex h-6 w-6 items-center justify-center">{medalIcon(i)}</div>
+                      <div className={classNames('flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold', avatarTone(i + 3))}>
+                        {initials(p.name)}
+                      </div>
+                      <span className="flex-1 font-medium text-gray-800">{p.name}</span>
+                      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                        {p.points} pts
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Capacity forecast */}
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-4 text-base font-semibold text-gray-800">Capacity Forecast</h3>
+              {capacityForecast.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">No capacity data available.</p>
+              ) : (
+                <ul className="space-y-3.5">
+                  {capacityForecast.map((c) => (
+                    <li key={c.id}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-700">{c.name}</span>
+                        <span className="text-xs text-gray-400">{c.availableCapacity}% free</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-gray-100">
+                        <div
+                          className={classNames(
+                            'h-2 rounded-full',
+                            c.currentLoad >= 85 ? 'bg-rose-500' : c.currentLoad >= 70 ? 'bg-amber-500' : 'bg-emerald-500',
+                          )}
+                          style={{ width: `${c.currentLoad}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Weekly velocity trend */}
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-4 text-base font-semibold text-gray-800">Weekly Velocity Trend</h3>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={velocityTrend} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="week" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="assigned" name="Assigned" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="completed" name="Completed" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Task status overview — dynamic Kanban columns */}
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-4 text-base font-semibold text-gray-800">Task Status Overview</h3>
+              {donutData.length === 0 || donutTotal === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">
+                  {donutData.length === 0 ? 'No Kanban columns found yet.' : 'No tasks in any column yet.'}
+                </p>
+              ) : (
+                <div className="flex flex-col items-center gap-4 sm:flex-row">
+                  <div className="relative h-[200px] w-[200px] shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={donutData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={62}
+                          outerRadius={88}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {donutData.map((_, i) => (
+                            <Cell key={i} fill={donutColor(i)} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-bold text-gray-900">{donutTotal}</span>
+                      <span className="text-xs text-gray-400">Total Tasks</span>
+                    </div>
+                  </div>
+                  <ul className="flex-1 space-y-2 max-h-[220px] overflow-y-auto">
+                    {donutData.map((s, i) => (
+                      <li key={s.name} className="flex items-center gap-2 text-sm">
+                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: donutColor(i) }} />
+                        <span className="flex-1 text-gray-600 truncate" title={s.name}>{s.name}</span>
+                        <span className="font-semibold text-gray-800">{s.value}</span>
+                        <span className="w-10 text-right text-xs text-gray-400">
+                          {donutTotal > 0 ? Math.round(((s.value || 0) / donutTotal) * 100) : 0}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
