@@ -190,8 +190,12 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     if (addressErr) e.address = addressErr;
 
     // ── Lead Value ────────────────────────────────────────────────────────
-    const valueErr = validateAmount(form.leadValue, 'Lead Value');
-    if (valueErr) e.leadValue = valueErr;
+    if (!form.leadValue.trim()) {
+      e.leadValue = 'Lead Value is required.';
+    } else {
+      const valueErr = validateAmount(form.leadValue, 'Lead Value');
+      if (valueErr) e.leadValue = valueErr;
+    }
 
     // ── Notes ─────────────────────────────────────────────────────────────
     const notesErr = validateLongText(form.notes, 'Notes', { maxLength: 5000 });
@@ -323,7 +327,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
             <InputField label="Industry" id="lead-industry" value={form.industry} onChange={(v) => set('industry', v)} error={errors.industry} />
             <InputField label="Website" id="lead-website" value={form.website} onChange={(v) => set('website', v)} error={errors.website} placeholder="https://" />
             <InputField label="Location" id="lead-location" value={form.address} onChange={(v) => set('address', v)} error={errors.address} placeholder="City / address" />
-            <InputField label="Lead Value" id="lead-value" value={form.leadValue} onChange={(v) => set('leadValue', v)} error={errors.leadValue} placeholder="e.g. 5000" />
+            <InputField label="Lead Value" id="lead-value" required value={form.leadValue} onChange={(v) => set('leadValue', v)} error={errors.leadValue} placeholder="e.g. 5000" />
             {/* Removed duplicate SelectField for Lead Source */}
             {form.source === 'referral' && (
               <InputField

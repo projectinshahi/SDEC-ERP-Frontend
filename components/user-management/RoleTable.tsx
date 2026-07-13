@@ -1,9 +1,22 @@
 'use client';
 
+import { useState } from 'react';
 import { Edit, Trash2, Shield } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import type { Role } from '@/lib/types/user-management';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
+import { classNames } from '@/lib/utils';
+
+const AVATAR_COLORS = [
+  'bg-violet-500', 'bg-indigo-500', 'bg-blue-500', 'bg-emerald-500',
+  'bg-amber-500', 'bg-rose-500', 'bg-teal-500', 'bg-fuchsia-500',
+];
+function avatarOf(name: string) {
+  const initials = name.trim().split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase() || '?';
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return { initials, color: AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length] };
+}
 
 interface RoleTableProps {
   roles: Role[];
@@ -15,6 +28,15 @@ interface RoleTableProps {
  * Role Table Component
  */
 export function RoleTable({ roles, onEdit, onDelete }: RoleTableProps) {
+  const [expandedRoles, setExpandedRoles] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (roleId: string) => {
+    const next = new Set(expandedRoles);
+    if (next.has(roleId)) next.delete(roleId);
+    else next.add(roleId);
+    setExpandedRoles(next);
+  };
+
   if (roles.length === 0) {
     return (
       <div className="text-center py-12 bg-white">
@@ -70,6 +92,48 @@ export function RoleTable({ roles, onEdit, onDelete }: RoleTableProps) {
               )}
             </div>
           </div>
+
+          {/* Assigned Users Preview */}
+          {role.users && role.users.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs text-gray-500 uppercase mb-2">Assigned Users</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(expandedRoles.has(role.id) ? role.users : role.users.slice(0, 6)).map((u, index) => {
+                  const av = avatarOf(u.name);
+                  return (
+                    <div
+                      key={index}
+                      title={u.name}
+                      className={classNames(
+                        'w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold cursor-default shadow-sm ring-2 ring-white',
+                        av.color
+                      )}
+                    >
+                      {av.initials}
+                    </div>
+                  );
+                })}
+                {!expandedRoles.has(role.id) && role.users.length > 6 && (
+                  <button
+                    onClick={() => toggleExpand(role.id)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 text-xs font-bold hover:bg-gray-200 transition-colors shadow-sm ring-2 ring-white"
+                    title={`Show ${role.users.length - 6} more`}
+                  >
+                    +{role.users.length - 6}
+                  </button>
+                )}
+                {expandedRoles.has(role.id) && role.users.length > 6 && (
+                  <button
+                    onClick={() => toggleExpand(role.id)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 text-xs font-bold hover:bg-gray-200 transition-colors shadow-sm ring-2 ring-white"
+                    title="Show less"
+                  >
+                    -
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-2 pt-4 border-t border-gray-200">

@@ -156,6 +156,7 @@ export function UserManagementClient() {
       setRoles(data.map((r: any) => ({
         id: String(r.id), name: r.name, description: r.description || '',
         permissions: Array.isArray(r.permissions) ? r.permissions : [], userCount: r.userCount || 0,
+        users: Array.isArray(r.users) ? r.users : [],
       })));
     } catch {
       toast('Failed to sync roles with database', 'error');
