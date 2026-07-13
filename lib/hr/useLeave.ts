@@ -7,6 +7,7 @@ import {
   LeaveStatus,
   LeaveStats,
   LeaveType,
+  HalfPeriod,
 } from './leave.types';
 import {
   fetchLeaves,
@@ -36,13 +37,17 @@ function mapLeaveStatus(raw: string): LeaveStatus {
 }
 
 function adaptLeaveRecord(r: ApiLeaveRecord): LeaveRequest {
-  // Extract clean leave type and detect half-day from backend leave_type string
+  // Clean the category, then determine half-day from the STRUCTURED half_period
+  // (new records) or the legacy " (Half Day)" suffix (old records). A legacy
+  // half-day has no known session → halfPeriod stays null (do not guess).
   let leaveTypeClean = r.leave_type as LeaveType;
-  let isHalfDay = false;
+  let legacyHalf = false;
   if (r.leave_type && r.leave_type.includes('(Half Day)')) {
     leaveTypeClean = r.leave_type.replace(' (Half Day)', '').trim() as LeaveType;
-    isHalfDay = true;
+    legacyHalf = true;
   }
+  const halfPeriod: HalfPeriod | null = r.half_period ?? null;
+  const isHalfDay = halfPeriod != null || legacyHalf;
 
   return {
     id: String(r.id),
@@ -55,6 +60,8 @@ function adaptLeaveRecord(r: ApiLeaveRecord): LeaveRequest {
     days: r.days ?? 0,
     reason: r.reason ?? 'No reason provided',
     status: mapLeaveStatus(r.status),
+    halfPeriod,
+    isHalfDay,
     appliedDate: r.created_at ? r.created_at.split('T')[0] : '',
     attachmentName: isHalfDay ? 'Half Day duration' : undefined,
   };
@@ -155,17 +162,20 @@ export function useLeave() {
     startDate: string;
     endDate: string;
     halfDay: boolean;
+    halfPeriod?: HalfPeriod | null;
     reason: string;
   }) => {
     setIsSaving(true);
     setSaveError(null);
-    const leave_type = data.halfDay ? `${data.leaveType} (Half Day)` : data.leaveType;
+    // NEW model: keep leave_type as the clean category and carry the half-day
+    // session in the structured half_period field (no more " (Half Day)" suffix).
     const payload = {
       employee_id: data.employeeId,
-      leave_type,
+      leave_type: data.leaveType,
       start_date: data.startDate,
       end_date: data.endDate,
       reason: data.reason,
+      half_period: data.halfDay ? (data.halfPeriod ?? null) : null,
     };
 
     try {

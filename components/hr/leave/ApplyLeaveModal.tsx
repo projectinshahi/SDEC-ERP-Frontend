@@ -19,6 +19,7 @@ interface ApplyLeaveModalProps {
     startDate: string;
     endDate: string;
     halfDay: boolean;
+    halfPeriod?: 'first_half' | 'second_half' | null;
     reason: string;
     attachmentName?: string;
   }) => void;
@@ -50,6 +51,7 @@ export function ApplyLeaveModal({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [halfDay, setHalfDay] = useState(false);
+  const [halfPeriod, setHalfPeriod] = useState<'first_half' | 'second_half' | null>(null);
   const [reason, setReason] = useState('');
   const [attachmentName, setAttachmentName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -83,12 +85,18 @@ export function ApplyLeaveModal({
       return;
     }
 
+    if (halfDay && !halfPeriod) {
+      setError('Please choose First Half or Second Half for a half-day leave.');
+      return;
+    }
+
     onSubmit({
       employeeId: employeeId ?? 0,
       leaveType,
       startDate,
       endDate,
       halfDay,
+      halfPeriod: halfDay ? halfPeriod : null,
       reason,
       attachmentName: attachmentName || undefined,
     });
@@ -98,6 +106,7 @@ export function ApplyLeaveModal({
     setStartDate('');
     setEndDate('');
     setHalfDay(false);
+    setHalfPeriod(null);
     setReason('');
     setAttachmentName('');
   };
@@ -221,7 +230,7 @@ export function ApplyLeaveModal({
                     type="radio"
                     name="duration_type"
                     checked={!halfDay}
-                    onChange={() => setHalfDay(false)}
+                    onChange={() => { setHalfDay(false); setHalfPeriod(null); }}
                     className="rounded-full border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 h-4 w-4"
                   />
                   Full Day
@@ -238,6 +247,42 @@ export function ApplyLeaveModal({
                 </label>
               </div>
             </div>
+
+            {/* Half-day session — shown only for Half Day, required before submit */}
+            {halfDay && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1.5 uppercase tracking-wider">
+                  Half-Day Session <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {([
+                    { value: 'first_half' as const, title: 'First Half', time: '10:00 AM – 01:00 PM' },
+                    { value: 'second_half' as const, title: 'Second Half', time: '02:00 PM – 05:30 PM' },
+                  ]).map((opt) => {
+                    const active = halfPeriod === opt.value;
+                    return (
+                      <button
+                        type="button"
+                        key={opt.value}
+                        onClick={() => setHalfPeriod(opt.value)}
+                        className={`flex flex-col items-start gap-0.5 rounded-xl border px-3.5 py-2.5 text-left transition-all ${
+                          active
+                            ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/20 ring-1 ring-teal-500/40'
+                            : 'border-gray-200 dark:border-gray-850 bg-gray-50 dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700'
+                        }`}
+                      >
+                        <span className={`text-xs font-bold ${active ? 'text-teal-700 dark:text-teal-300' : 'text-gray-700 dark:text-gray-200'}`}>
+                          {opt.title}
+                        </span>
+                        <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500">
+                          {opt.time}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Reason Textarea */}
             <div>

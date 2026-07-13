@@ -42,6 +42,11 @@ export interface AttendanceRecord {
   overtime: string | null;    // "0h 30m" | null
   note?: string;              // optional HR note
   leaveType?: 'full_day' | 'half_day' | null;
+  /** Which half is on approved leave (derived overlay). null/undefined when the
+   *  leave is full-day, unknown-legacy-half, or there is no leave. */
+  leaveHalf?: 'first_half' | 'second_half' | null;
+  /** True when a derived approved leave is overlaid on this row. */
+  isDerivedLeave?: boolean;
 }
 
 // ─── Summary / stats ─────────────────────────────────────────────────────────
