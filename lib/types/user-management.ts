@@ -21,6 +21,7 @@ export interface Role {
   /** Array of PermissionKey values (e.g. 'user.create', 'task.read', 'role.delete') */
   permissions: string[];
   userCount?: number;
+  users?: { id: number; name: string; email: string }[];
 }
 
 export interface Permission {
