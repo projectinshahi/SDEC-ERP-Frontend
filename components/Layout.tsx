@@ -51,6 +51,14 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
   const permitted = requiredPerms.length === 0 || isSuperAdmin || hasAnyPermission(requiredPerms);
   const allowed = shared || (access[moduleOfPath] && permitted);
 
+  // Leave-only SELF-SERVICE employee: holds hr.leave.self but NOT hr.view /
+  // hr.dashboard.view. Their HR sidebar is trimmed to just "Leave" (applied
+  // per-item in isItemVisible). Memoised once and reused — never recomputed inline.
+  const isSelfService = useMemo(
+    () => hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']),
+    [hasAnyPermission],
+  );
+
   useEffect(() => {
     if (!user) return;
     if (allowed) return;
@@ -67,11 +75,23 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
   // A single sidebar item is visible when: correct module + module access + the
   // item's specific permission (SuperAdmin/Admin bypass via usePermissions).
   const isItemVisible = useCallback((item: SidebarMenuItem): boolean => {
+    // Leave-only self-service employees see ONLY the HR "Leave" item — and only
+    // while inside the HR module, so this restriction can never blank out another
+    // module's sidebar (defence-in-depth; getModuleAccess already confines them to HR).
+    if (isSelfService && currentModule === 'hr') {
+      return item.href === '/dashboard/hr/leave';
+    }
+    // Global items (e.g. My Tasks) skip module-access but STILL honor their own
+    // permission — so the item shows in every module, gated on that permission.
+    if (item.global) {
+      const perms = itemPermissions(item);
+      return perms.length === 0 || hasAnyPermission(perms);
+    }
     if (item.module === null || item.module === undefined) return true;
     if (!canAccessModule(item.module)) return false;
     const perms = itemPermissions(item);
     return perms.length === 0 || hasAnyPermission(perms);
-  }, [canAccessModule, hasAnyPermission]);
+  }, [canAccessModule, hasAnyPermission, isSelfService, currentModule]);
 
   /**
    * Sidebar items = items of the CURRENT module only, permission-filtered. A
