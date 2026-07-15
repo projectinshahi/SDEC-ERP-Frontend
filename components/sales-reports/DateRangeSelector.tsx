@@ -18,21 +18,27 @@ import { SelectField } from '@/components/ui/SelectField';
 import type { ReportWindow } from '@/lib/api/salesReports';
 
 export type RangePreset =
+  | 'allTime'
   | 'today'
   | 'yesterday'
   | 'last7'
   | 'last30'
   | 'thisMonth'
   | 'lastMonth'
+  | 'thisQuarter'
+  | 'thisYear'
   | 'custom';
 
 const PRESET_OPTIONS: { value: RangePreset; label: string }[] = [
+  { value: 'allTime', label: 'All Time' },
   { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
   { value: 'last7', label: 'Last 7 Days' },
   { value: 'last30', label: 'Last 30 Days' },
   { value: 'thisMonth', label: 'This Month' },
   { value: 'lastMonth', label: 'Last Month' },
+  { value: 'thisQuarter', label: 'This Quarter' },
+  { value: 'thisYear', label: 'This Year' },
   { value: 'custom', label: 'Custom Range' },
 ];
 
@@ -77,6 +83,17 @@ export function presetWindow(name: Exclude<RangePreset, 'custom'>): ReportWindow
       const to = new Date(today.getFullYear(), today.getMonth(), 0); // last day of prev month
       return { from: toISODate(from), to: toISODate(to) };
     }
+    case 'thisQuarter': {
+      const currentQuarter = Math.floor(today.getMonth() / 3);
+      const from = new Date(today.getFullYear(), currentQuarter * 3, 1);
+      return { from: toISODate(from), to: toISODate(today) };
+    }
+    case 'thisYear': {
+      const from = new Date(today.getFullYear(), 0, 1);
+      return { from: toISODate(from), to: toISODate(today) };
+    }
+    case 'allTime':
+      return { from: '', to: '' };
     default:
       return { from: toISODate(today), to: toISODate(today) };
   }
@@ -88,11 +105,13 @@ export const defaultRangeWindow: ReportWindow = presetWindow('last30');
 export function DateRangeSelector({
   value,
   onChange,
+  defaultPreset = 'last30',
 }: {
   value: ReportWindow;
   onChange: (w: ReportWindow) => void;
+  defaultPreset?: RangePreset;
 }) {
-  const [preset, setPreset] = useState<RangePreset>('last30');
+  const [preset, setPreset] = useState<RangePreset>(defaultPreset);
   // Local custom-range buffers — only committed to `onChange` once valid.
   const [customStart, setCustomStart] = useState<string>(value.from ?? '');
   const [customEnd, setCustomEnd] = useState<string>(value.to ?? '');
