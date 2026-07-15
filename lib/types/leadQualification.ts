@@ -96,4 +96,11 @@ export interface LeadOverviewAnalytics {
     rating: LeadRating;
     count: number;
   }[];
+  /** Count of HOT leads — replaces the average-score headline. */
+  hotLeads: number;
+  /** Lead Temperature distribution (COLD / WARM / HOT). */
+  temperatureDistribution: {
+    temperature: string;
+    count: number;
+  }[];
 }

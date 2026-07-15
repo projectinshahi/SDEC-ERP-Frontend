@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, User, Star, Trash2 } from 'lucide-react';
+import { Building2, User, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { formatLeadSource, leadSourceVariant } from '@/lib/data/leadSources';
 import { LeadHealthBadge } from './LeadHealthBadge';
@@ -59,12 +59,6 @@ export function LeadCard({ lead, draggable, isDragging, onDragStart, onDragEnd, 
           {lead.title}
         </h3>
         <div className="flex items-center gap-1 shrink-0">
-          {lead.score > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded">
-              <Star size={10} className="fill-amber-400 text-amber-400" />
-              {lead.score}
-            </span>
-          )}
           {canDelete && onDelete && (
             <button
               type="button"
@@ -88,9 +82,9 @@ export function LeadCard({ lead, draggable, isDragging, onDragStart, onDragEnd, 
         </p>
       )}
 
-      {/* Lead-health intelligence indicator */}
+      {/* Lead temperature indicator */}
       <div className="mb-3">
-        <LeadHealthBadge score={lead.score} showLabel />
+        <LeadHealthBadge temperature={lead.temperature} showLabel />
       </div>
 
       <div className="flex items-center justify-between gap-2 mt-auto">

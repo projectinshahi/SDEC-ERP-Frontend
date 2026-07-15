@@ -5,11 +5,12 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
   PieChart, Pie, Legend,
 } from 'recharts';
-import { Users, Gauge, TrendingUp, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Users, Flame, TrendingUp, CheckCircle2, MessageSquare } from 'lucide-react';
 import { Card } from '@/components/Card';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { useToast } from '@/lib/hooks/useToast';
 import { fetchLeadOverviewAnalytics } from '@/lib/api/leadQualification';
+import { temperatureLabel } from '@/lib/data/leadTemperature';
 import type { LeadOverviewAnalytics } from '@/lib/types/leadQualification';
 
 const INTERACTION_COLORS: Record<string, string> = {
@@ -17,11 +18,10 @@ const INTERACTION_COLORS: Record<string, string> = {
   Email: '#f59e0b',
   Meeting: '#10b981',
 };
-const RATING_COLORS: Record<string, string> = {
+const TEMPERATURE_COLORS: Record<string, string> = {
   Hot: '#ef4444',
   Warm: '#f59e0b',
   Cold: '#3b82f6',
-  'Not Scored': '#9ca3af',
 };
 const BAR_COLORS = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -49,13 +49,13 @@ export function LeadAnalyticsDashboard() {
     load();
   }, [load]);
 
-  const bdeData = (data?.leadsPerBde ?? []).slice(0, 8).map((b) => ({ name: b.name, leads: b.leads, avgScore: b.avgScore }));
+  const bdeData = (data?.leadsPerBde ?? []).slice(0, 8).map((b) => ({ name: b.name, leads: b.leads }));
   const interactionData = (data?.interactions.byType ?? [])
     .filter((i) => i.count > 0)
     .map((i) => ({ name: i.type, value: i.count }));
-  const ratingData = (data?.scoreDistribution ?? [])
+  const temperatureData = (data?.temperatureDistribution ?? [])
     .filter((r) => r.count > 0)
-    .map((r) => ({ name: r.rating, value: r.count }));
+    .map((r) => ({ name: temperatureLabel(r.temperature), value: r.count }));
 
   return (
     <div className="space-y-6">
@@ -66,7 +66,7 @@ export function LeadAnalyticsDashboard() {
           isLoading={isLoading} isError={isError} onRetry={load}
         />
         <StatCard
-          label="Average Score" value={data?.averageScore ?? 0} icon={Gauge} variant="info"
+          label="Hot Leads" value={data?.hotLeads ?? 0} icon={Flame} variant="warning"
           isLoading={isLoading} isError={isError} onRetry={load}
         />
         <StatCard
@@ -131,23 +131,23 @@ export function LeadAnalyticsDashboard() {
         </Card>
       </div>
 
-      {/* Lead score distribution */}
+      {/* Lead temperature distribution */}
       <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Lead Score Distribution</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Lead Temperature Distribution</h3>
         {isLoading ? (
           <p className="text-sm text-gray-500">Loading…</p>
-        ) : ratingData.length === 0 ? (
-          <p className="text-sm text-gray-500">No leads to score yet.</p>
+        ) : temperatureData.length === 0 ? (
+          <p className="text-sm text-gray-500">No leads yet.</p>
         ) : (
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={ratingData}>
+            <BarChart data={temperatureData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
               <YAxis allowDecimals={false} stroke="#9ca3af" fontSize={12} />
               <Tooltip />
               <Bar dataKey="value" name="Leads" radius={[4, 4, 0, 0]}>
-                {ratingData.map((entry) => (
-                  <Cell key={entry.name} fill={RATING_COLORS[entry.name] || '#6366f1'} />
+                {temperatureData.map((entry) => (
+                  <Cell key={entry.name} fill={TEMPERATURE_COLORS[entry.name] || '#6366f1'} />
                 ))}
               </Bar>
             </BarChart>

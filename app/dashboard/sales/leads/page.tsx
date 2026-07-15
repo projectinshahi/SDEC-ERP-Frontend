@@ -6,7 +6,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Clock, List, Columns3, Trash2, Download, Loader2 } from 'lucide-react';
+import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, Clock, List, Columns3, Trash2, Download, Loader2 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
@@ -23,7 +23,8 @@ import {
   formatLeadSource,
   leadSourceVariant,
 } from '@/lib/data/leadSources';
-import { formatScore, scoreColorClass } from '@/lib/data/leadRating';
+import { LeadHealthBadge } from '@/components/leads/LeadHealthBadge';
+import { TEMPERATURE_OPTIONS } from '@/lib/data/leadTemperature';
 import { formatINR } from '@/lib/utils/currency';
 import { classNames } from '@/lib/utils';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
@@ -31,8 +32,6 @@ import { exportLeadReport } from '@/lib/utils/exportLeadReport';
 import type { ReportWindow } from '@/lib/api/salesReports';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { InputField } from '@/components/ui/InputField';
-
-type ScoreSort = 'none' | 'desc' | 'asc';
 
 interface Customer {
   id: number;
@@ -77,8 +76,7 @@ export default function SalesLeadsPage() {
   const [stageFilter, setStageFilter] = useState('all');
   const [ownerFilter, setOwnerFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('');
-  const [scoreMin, setScoreMin] = useState('');
-  const [scoreMax, setScoreMax] = useState('');
+  const [temperatureFilter, setTemperatureFilter] = useState('all');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [exportDateRange, setExportDateRange] = useState<ReportWindow>({ from: '', to: '' });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -88,7 +86,6 @@ export default function SalesLeadsPage() {
 
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [scoreSort, setScoreSort] = useState<ScoreSort>('none');
 
   // Table ↔ Pipeline view (both render the SAME live `leads` dataset).
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -100,7 +97,6 @@ export default function SalesLeadsPage() {
   const { toast } = useToast();
   const { confirm } = useConfirm();
   const { hasPermission } = usePermissions();
-  const canConfigureScoring = hasPermission('sales.scoring');
   // Granular Leads keys (the coarse→granular bridge in permission.utils means a
   // role holding the coarse sales.edit/delete/create still satisfies these).
   const canMove = hasPermission('sales.leads.edit');
@@ -152,8 +148,7 @@ export default function SalesLeadsPage() {
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (ownerFilter !== 'all') params.set('ownerId', ownerFilter);
       if (locationFilter.trim()) params.set('location', locationFilter.trim());
-      if (scoreMin.trim()) params.set('scoreMin', scoreMin.trim());
-      if (scoreMax.trim()) params.set('scoreMax', scoreMax.trim());
+      if (temperatureFilter !== 'all') params.set('temperature', temperatureFilter);
       if (searchQuery.trim()) params.set('search', searchQuery.trim());
       const res = await apiClient.get<Lead[]>(`/sales/leads?${params.toString()}`);
       setLeads(res.data);
@@ -162,7 +157,7 @@ export default function SalesLeadsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [sourceFilter, statusFilter, ownerFilter, locationFilter, scoreMin, scoreMax, searchQuery, toast]);
+  }, [sourceFilter, statusFilter, ownerFilter, locationFilter, temperatureFilter, searchQuery, toast]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -225,23 +220,14 @@ export default function SalesLeadsPage() {
 
   const clearFilters = () => {
     setSourceFilter('all'); setStatusFilter('all'); setStageFilter('all');
-    setOwnerFilter('all'); setLocationFilter(''); setScoreMin(''); setScoreMax('');
+    setOwnerFilter('all'); setLocationFilter(''); setTemperatureFilter('all');
   };
 
-  // Most filters are server-side. Stage filter + score sort are client-side and
-  // apply to the TABLE only — the Pipeline board always shows every stage (that's
-  // the point of a Kanban board), so it reads the unfiltered `leads`.
+  // Most filters (incl. temperature) are server-side. The stage filter is
+  // client-side and applies to the TABLE only — the Pipeline board always shows
+  // every stage (that's the point of a Kanban board), so it reads `leads`.
   const visibleLeads = [...leads]
-    .filter((l) => stageFilter === 'all' || l.stage === stageFilter)
-    .sort((a, b) => {
-      if (scoreSort === 'desc') return (b.score ?? 0) - (a.score ?? 0);
-      if (scoreSort === 'asc') return (a.score ?? 0) - (b.score ?? 0);
-      return 0;
-    });
-
-  // Cycle the score sort: none → high→low → low→high → none.
-  const cycleScoreSort = () =>
-    setScoreSort((s) => (s === 'none' ? 'desc' : s === 'desc' ? 'asc' : 'none'));
+    .filter((l) => stageFilter === 'all' || l.stage === stageFilter);
 
   // Pipeline grouping — derived from the SAME `leads` (already filtered
   // server-side), minus inactive statuses, so a move in either view is reflected
@@ -395,14 +381,6 @@ export default function SalesLeadsPage() {
                 <Button variant="secondary">
                   <BarChart3 className="w-4 h-4 mr-2" />
                   Analytics
-                </Button>
-              </Link>
-            )}
-            {canConfigureScoring && (
-              <Link href="/dashboard/leads/scoring-settings">
-                <Button variant="secondary">
-                  <SlidersHorizontal className="w-4 h-4 mr-2" />
-                  Scoring
                 </Button>
               </Link>
             )}
@@ -566,18 +544,17 @@ export default function SalesLeadsPage() {
                 onChange={(e) => setLocationFilter(e.target.value)}
                 className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
               />
-              <div className="flex items-center gap-2">
-                <input
-                  type="number" placeholder="Min score" value={scoreMin}
-                  onChange={(e) => setScoreMin(e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
-                />
-                <input
-                  type="number" placeholder="Max score" value={scoreMax}
-                  onChange={(e) => setScoreMax(e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
-                />
-              </div>
+              <select
+                value={temperatureFilter}
+                onChange={(e) => setTemperatureFilter(e.target.value)}
+                aria-label="Filter by temperature"
+                className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+              >
+                <option value="all">All Temperatures</option>
+                {TEMPERATURE_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
               <Button variant="secondary" onClick={clearFilters}>Clear Filters</Button>
             </div>
           )}
@@ -594,18 +571,7 @@ export default function SalesLeadsPage() {
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Source</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Status</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Priority</th>
-                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">
-                      <button
-                        onClick={cycleScoreSort}
-                        className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                        title="Sort by score"
-                      >
-                        Score
-                        {scoreSort === 'desc' ? <ArrowDown className="w-3.5 h-3.5" />
-                          : scoreSort === 'asc' ? <ArrowUp className="w-3.5 h-3.5" />
-                          : <ArrowUpDown className="w-3.5 h-3.5 opacity-50" />}
-                      </button>
-                    </th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Temperature</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Owner</th>
                     {canDeleteLead && (
                       <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400 text-right">Actions</th>
@@ -649,9 +615,7 @@ export default function SalesLeadsPage() {
                         </td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.priority}</td>
                         <td className="px-6 py-4">
-                          <span className={`font-semibold tabular-nums ${scoreColorClass(lead.score)}`}>
-                            {formatScore(lead.score)}
-                          </span>
+                          <LeadHealthBadge temperature={lead.temperature} showLabel={false} />
                         </td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.owner?.name}</td>
                         {canDeleteLead && (

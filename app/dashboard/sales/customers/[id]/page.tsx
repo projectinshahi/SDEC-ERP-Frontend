@@ -14,9 +14,10 @@ import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuar
 import { useToast } from '@/lib/hooks/useToast';
 import { apiClient } from '@/lib/api/api-client';
 import { formatINR } from '@/lib/utils/currency';
+import { LeadHealthBadge } from '@/components/leads/LeadHealthBadge';
 
 interface ContactLead {
-  id: number; title: string; status: string; stage: string; score: number; createdAt: string;
+  id: number; title: string; status: string; stage: string; temperature: string; createdAt: string;
 }
 interface ContactDeal {
   id: number; title: string; amount: number; stage: string; status: string; createdAt: string;
@@ -170,7 +171,7 @@ export default function ContactDetailsPage() {
                             <p className="truncate text-sm font-medium text-gray-800 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">{l.title}</p>
                             <p className="text-xs text-gray-400">{l.stage} · {l.status}</p>
                           </div>
-                          <span className="shrink-0 text-xs font-semibold text-gray-500 tabular-nums">Score {l.score}</span>
+                          <span className="shrink-0"><LeadHealthBadge temperature={l.temperature} showLabel={false} /></span>
                         </Link>
                       </li>
                     ))}

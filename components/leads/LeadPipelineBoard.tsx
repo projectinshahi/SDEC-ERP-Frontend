@@ -66,7 +66,7 @@ export function LeadPipelineBoard({
         const isOver = dragOverStage === stage.name;
         const isFirst = index === 0;
         const isLast = index === stages.length - 1;
-        const hotCount = columnLeads.filter((l) => (l.score ?? 0) >= 80).length;
+        const hotCount = columnLeads.filter((l) => l.temperature === 'HOT').length;
         const totalLeadValue = columnLeads.reduce((sum, l) => sum + getLeadValue(l), 0);
 
         return (

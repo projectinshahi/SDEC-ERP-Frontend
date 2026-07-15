@@ -2,6 +2,8 @@
  * Lead Management domain types (frontend).
  */
 
+import type { LeadTemperature } from '@/lib/data/leadTemperature';
+
 export interface LeadOwner {
   id: number;
   name: string;
@@ -48,7 +50,10 @@ export interface Lead {
   stage: string;
   orderIndex: number;
   priority: string;
-  score: number;
+  /** Manual classification (COLD / WARM / HOT) — replaces the numeric score. */
+  temperature: LeadTemperature;
+  /** @deprecated numeric score is no longer shown in the Leads UI. */
+  score?: number;
   tags?: string | null;
   disqualifyReason?: string | null;
   flaggedForReview: boolean;
@@ -100,7 +105,7 @@ export interface UpdateLeadPayload {
   status?: string;
   stage?: string;
   priority?: string;
-  score?: number;
+  temperature?: LeadTemperature;
   tags?: string | null;
   ownerId?: number;
   leadValue?: number | string | null;
