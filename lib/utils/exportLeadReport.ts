@@ -11,6 +11,7 @@ interface ReportFilters {
   stage?: string;
   owner?: string;
   location?: string;
+  dateRange?: { from?: string; to?: string };
 }
 
 export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filters: ReportFilters) {
@@ -31,6 +32,13 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   
   // Applied Filters
   let filterText = [];
+  if (filters.dateRange && filters.dateRange.from && filters.dateRange.to) {
+    if (filters.dateRange.from === filters.dateRange.to) {
+      filterText.push(`Date Range: ${format(new Date(filters.dateRange.from), 'dd MMM yyyy')}`);
+    } else {
+      filterText.push(`Date Range: ${format(new Date(filters.dateRange.from), 'dd MMM yyyy')} - ${format(new Date(filters.dateRange.to), 'dd MMM yyyy')}`);
+    }
+  }
   if (filters.searchQuery) filterText.push(`Search: "${filters.searchQuery}"`);
   if (filters.source && filters.source !== 'all') filterText.push(`Source: ${filters.source}`);
   if (filters.status && filters.status !== 'all') filterText.push(`Status: ${filters.status}`);
