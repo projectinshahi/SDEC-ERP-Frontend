@@ -12,6 +12,7 @@ import { useToast } from '@/lib/hooks/useToast';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { classNames } from '@/lib/utils';
 import { SELECTABLE_LEAD_SOURCES } from '@/lib/data/leadSources';
+import { TEMPERATURE_OPTIONS, type LeadTemperature } from '@/lib/data/leadTemperature';
 import {
   sanitizeText,
   validateName,
@@ -101,6 +102,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     address: '',
     leadValue: '',
     priority: 'medium',
+    temperature: 'COLD',
     notes: '',
     referralName: '',
   });
@@ -231,6 +233,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
       address: sanitizeText(form.address) || undefined,
       leadValue: form.leadValue.trim() || undefined,
       priority: form.priority,
+      temperature: form.temperature as LeadTemperature,
       notes: form.notes.trim() || undefined,
       referralName: form.source === 'referral' ? sanitizeText(form.referralName) || undefined : undefined,
     };
@@ -343,6 +346,11 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
             <SelectField
               label="Priority" id="lead-priority" value={form.priority} onChange={(v) => set('priority', v)}
               options={PRIORITY_OPTIONS}
+            />
+            <SelectField
+              label="Lead Temperature" id="lead-temperature" value={form.temperature} onChange={(v) => set('temperature', v)}
+              options={TEMPERATURE_OPTIONS}
+              required
             />
           </div>
           {errors.contact && (

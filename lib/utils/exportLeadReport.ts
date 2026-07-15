@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { Lead, LeadStage } from '@/lib/types/lead';
 import { formatINR } from '@/lib/utils/currency';
+import { temperatureLabel } from '@/lib/data/leadTemperature';
 
 interface ReportFilters {
   searchQuery?: string;
@@ -193,12 +194,13 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
     formatINR(Number(l.leadValue || 0)),
     l.owner?.name || 'Unassigned',
     (l.status || '').toUpperCase(),
+    temperatureLabel(l.temperature),
     l.createdAt ? format(new Date(l.createdAt), 'dd/MM/yyyy') : '—'
   ]);
 
   autoTable(doc, {
     startY: cursorY + 20,
-    head: [['Lead Name', 'Company', 'Contact', 'Phone', 'Email', 'Source', 'Value', 'Assigned To', 'Status', 'Created']],
+    head: [['Lead Name', 'Company', 'Contact', 'Phone', 'Email', 'Source', 'Value', 'Assigned To', 'Status', 'Temperature', 'Created']],
     body: leadTableData,
     theme: 'striped',
     styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },

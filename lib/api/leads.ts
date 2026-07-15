@@ -6,6 +6,7 @@
  */
 
 import { apiClient } from './api-client';
+import type { LeadTemperature } from '@/lib/data/leadTemperature';
 import type {
   Lead,
   LeadDetail,
@@ -71,6 +72,8 @@ export interface CreateLeadPayload {
   address?: string;
   leadValue?: string;
   priority?: string;
+  /** Manual lead classification (COLD / WARM / HOT); defaults to COLD. */
+  temperature?: LeadTemperature;
   /** Free-text notes — stored as an editable lead note. */
   notes?: string;
   nextAction?: CreateLeadNextAction;

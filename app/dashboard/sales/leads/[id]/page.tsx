@@ -16,12 +16,11 @@ import { useToast } from '@/lib/hooks/useToast';
 import { fetchLead, fetchLeadStages } from '@/lib/api/leads';
 import { formatLeadSource, leadSourceVariant } from '@/lib/data/leadSources';
 import { leadStageTheme } from '@/lib/data/leadStages';
-import { formatScore } from '@/lib/data/leadRating';
+import { temperatureLabel, temperatureDot, temperatureTextClass } from '@/lib/data/leadTemperature';
 import { formatINR } from '@/lib/utils/currency';
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel';
 import { LeadDocApprovalPanel } from '@/components/leads/LeadDocApprovalPanel';
 import { EditLeadModal } from '@/components/leads/EditLeadModal';
-import { ScoreCard } from '@/components/leads/ScoreCard';
 import { InteractionTimeline } from '@/components/leads/InteractionTimeline';
 import { FollowUpHistory } from '@/components/leads/FollowUpHistory';
 import { AssignLeadModal } from '@/components/leads/AssignLeadModal';
@@ -199,7 +198,7 @@ export default function LeadDetailPage() {
                     )}
                     <Detail label="Owner" value={lead.owner?.name || NOT_PROVIDED} />
                     <Detail label="Stage" value={lead.stage} />
-                    <Detail label="Score" value={formatScore(lead.score)} />
+                    <Detail label="Temperature" value={temperatureLabel(lead.temperature)} />
                     <Detail label="Status" value={lead.status} />
                     <Detail label="Priority" value={lead.priority} />
                     {lead.leadValue != null && (
@@ -260,8 +259,19 @@ export default function LeadDetailPage() {
 
               {/* Side column */}
               <div className="space-y-6">
-                {/* Lead score + rating + breakdown */}
-                <ScoreCard leadId={lead.id} refreshKey={refreshKey} />
+                {/* Lead Temperature — prominent classification display */}
+                <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Lead Temperature</h2>
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl leading-none" aria-hidden>{temperatureDot(lead.temperature)}</span>
+                    <div>
+                      <p className={`text-2xl font-bold ${temperatureTextClass(lead.temperature)}`}>
+                        {temperatureLabel(lead.temperature)}
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Manual lead classification</p>
+                    </div>
+                  </div>
+                </Card>
 
                 {/* Contact information */}
                 <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
