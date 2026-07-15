@@ -42,7 +42,6 @@ export interface MyTask {
 
 export interface MyTaskWorkspace {
   me: { id: number };
-  today: MyTask[];
   inbox: MyTask[];
   outbox: MyTask[];
 }
