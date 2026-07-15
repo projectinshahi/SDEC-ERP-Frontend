@@ -15,6 +15,7 @@ interface ReportFilters {
   dateRange?: { from?: string; to?: string };
 }
 
+
 export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filters: ReportFilters) {
   const doc = new jsPDF('p', 'pt', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -30,7 +31,7 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   doc.setTextColor(100);
   doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`, 40, cursorY + 15);
   doc.text(`Total Records: ${leads.length}`, 40, cursorY + 30);
-  
+
   // Applied Filters
   let filterText = [];
   if (filters.dateRange && filters.dateRange.from && filters.dateRange.to) {
@@ -46,7 +47,7 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   if (filters.stage && filters.stage !== 'all') filterText.push(`Stage: ${filters.stage}`);
   if (filters.owner && filters.owner !== 'all') filterText.push(`Owner ID: ${filters.owner}`);
   if (filters.location) filterText.push(`Location: ${filters.location}`);
-  
+
   if (filterText.length > 0) {
     doc.text(`Active Filters: ${filterText.join(' | ')}`, 40, cursorY + 45);
     cursorY += 75;
@@ -102,7 +103,7 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
     sourceMap[src].total++;
     if (l.status === 'converted') sourceMap[src].converted++;
   });
-  
+
   const sourceData = Object.entries(sourceMap)
     .sort((a, b) => b[1].total - a[1].total)
     .map(([src, stats]) => [
@@ -137,7 +138,7 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   // Calculate Pipeline Analytics
   const stageMap: Record<string, { count: number; value: number }> = {};
   stages.forEach(s => stageMap[s.name] = { count: 0, value: 0 });
-  
+
   leads.forEach((l) => {
     // Treat null/unknown stages safely
     const stg = l.stage || (stages[0]?.name ?? 'Unknown');
@@ -183,7 +184,7 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.text('Detailed Lead Listing', 40, cursorY);
-  
+
   const leadTableData = leads.map(l => [
     l.title || '—',
     l.customer?.company || '—',
