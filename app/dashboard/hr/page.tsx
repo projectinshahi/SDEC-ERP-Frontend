@@ -375,7 +375,7 @@ export default function HRDashboard() {
       {/* ── Footer ───────────────────────────────────────────────── */}
       <footer className="pt-4 border-t border-gray-200 dark:border-gray-850 print:mt-10 print:border-gray-300">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400 dark:text-gray-600 print:text-black">
-          <p>© 2026 SKPC Solutions Pvt Ltd. All rights reserved.</p>
+          <p>© 2026 Shahi Solutions Pvt Ltd. All rights reserved.</p>
           <div className="flex items-center gap-4 print:hidden">
             <a href="#" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Privacy Policy</a>
             <span className="text-gray-300 dark:text-gray-700">|</span>
