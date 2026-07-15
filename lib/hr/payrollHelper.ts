@@ -20,7 +20,7 @@ export function generatePayslipPdf(record: PayrollRecord) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.text('SKPC Solutions Pvt Ltd', 15, 16);
+  doc.text('Shahi Solutions Pvt Ltd', 15, 16);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
