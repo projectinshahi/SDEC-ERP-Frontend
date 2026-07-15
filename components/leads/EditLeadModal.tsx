@@ -9,6 +9,7 @@ import { TextareaField } from '@/components/ui/TextareaField';
 import { useToast } from '@/lib/hooks/useToast';
 import { updateLead, fetchAssignableUsers } from '@/lib/api/leads';
 import { SELECTABLE_LEAD_SOURCES, formatLeadSource } from '@/lib/data/leadSources';
+import { TEMPERATURE_OPTIONS, type LeadTemperature } from '@/lib/data/leadTemperature';
 import type { LeadDetail, LeadStage, AssignableUser, UpdateLeadPayload } from '@/lib/types/lead';
 
 interface EditLeadModalProps {
@@ -50,6 +51,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
     address: '',
     source: 'manual',
     priority: 'medium',
+    temperature: 'COLD',
     stage: 'New',
     tags: '',
     ownerId: '',
@@ -73,6 +75,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
       address: lead.customer?.address || '',
       source: lead.source || 'manual',
       priority: lead.priority || 'medium',
+      temperature: lead.temperature || 'COLD',
       stage: lead.stage || 'New',
       tags: lead.tags || '',
       ownerId: lead.ownerId ? String(lead.ownerId) : '',
@@ -115,6 +118,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
       description: form.description,
       source: form.source,
       priority: form.priority,
+      temperature: form.temperature as LeadTemperature,
       stage: form.stage,
       tags: form.tags.trim() || null,
       name: form.name.trim(),
@@ -172,9 +176,6 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
             label="Tags (comma separated)" id="tags"
             value={form.tags} onChange={(v) => set('tags', v)} placeholder="enterprise, hot, referral"
           />
-          <p className="text-xs text-gray-400">
-            The lead score is calculated automatically from your scoring criteria and the lead&apos;s activity.
-          </p>
         </section>
 
         {/* Assignment & pipeline */}
@@ -209,6 +210,11 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
             <SelectField
               label="Priority" id="priority" value={form.priority} onChange={(v) => set('priority', v)}
               options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
+            />
+            <SelectField
+              label="Lead Temperature" id="temperature" value={form.temperature} onChange={(v) => set('temperature', v)}
+              options={TEMPERATURE_OPTIONS}
+              required
             />
           </div>
           <TextareaField
