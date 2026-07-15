@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'rea
 import { useSearchParams, useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import {
-  Sun, Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo,
+  Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo,
   Calendar, User, Users, Flag, Clock, Paperclip, RefreshCw, Pencil, Trash2, ShieldAlert,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
@@ -19,10 +19,9 @@ import {
 import { MyTaskChat } from '@/components/tasks/mytasks/MyTaskChat';
 import { CreateMyTaskModal } from '@/components/tasks/mytasks/CreateMyTaskModal';
 
-type Bucket = 'today' | 'inbox' | 'outbox';
+type Bucket = 'inbox' | 'outbox';
 const BUCKETS: { key: Bucket; label: string; icon: any; hint: string }[] = [
-  { key: 'today', label: 'Today', icon: Sun, hint: 'Due today' },
-  { key: 'inbox', label: 'Inbox', icon: Inbox, hint: 'Received & sent — everything' },
+  { key: 'inbox', label: 'Inbox', icon: Inbox, hint: 'Tasks assigned to me (due today, upcoming & overdue)' },
   { key: 'outbox', label: 'Outbox', icon: Send, hint: 'Created by me' },
 ];
 const COLLAPSE_KEY = 'my-tasks-details-collapsed';
@@ -261,7 +260,7 @@ function WorkspaceInner() {
   const [data, setData] = useState<MyTaskWorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [bucket, setBucket] = useState<Bucket>('today');
+  const [bucket, setBucket] = useState<Bucket>('inbox');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -327,15 +326,11 @@ function WorkspaceInner() {
     if (taskIdStr && data) {
       const tid = Number(taskIdStr);
       // Attempt to find it in the current data payload
-      let found = data.today.find((t) => t.id === tid);
-      if (found) { setBucket('today'); setSelectedId(tid); }
+      let found = data.inbox.find((t) => t.id === tid);
+      if (found) { setBucket('inbox'); setSelectedId(tid); }
       else {
-        found = data.inbox.find((t) => t.id === tid);
-        if (found) { setBucket('inbox'); setSelectedId(tid); }
-        else {
-          found = data.outbox.find((t) => t.id === tid);
-          if (found) { setBucket('outbox'); setSelectedId(tid); }
-        }
+        found = data.outbox.find((t) => t.id === tid);
+        if (found) { setBucket('outbox'); setSelectedId(tid); }
       }
       
       // Clean up the URL
@@ -347,12 +342,12 @@ function WorkspaceInner() {
   }, [searchParams, data]);
 
   const lists = useMemo(() => ({
-    today: data?.today ?? [], inbox: data?.inbox ?? [], outbox: data?.outbox ?? [],
+    inbox: data?.inbox ?? [], outbox: data?.outbox ?? [],
   }), [data]);
   const currentList = lists[bucket];
   const selectedTask = useMemo(() => {
     if (selectedId == null || !data) return null;
-    return [...data.today, ...data.inbox, ...data.outbox].find((t) => t.id === selectedId) || null;
+    return [...data.inbox, ...data.outbox].find((t) => t.id === selectedId) || null;
   }, [selectedId, data]);
 
   const openTask = (task: MyTask) => {
@@ -361,7 +356,7 @@ function WorkspaceInner() {
       setData((prev) => {
         if (!prev) return prev;
         const clr = (arr: MyTask[]) => arr.map((t) => (t.id === task.id ? { ...t, unreadCount: 0 } : t));
-        return { ...prev, today: clr(prev.today), inbox: clr(prev.inbox), outbox: clr(prev.outbox) };
+        return { ...prev, inbox: clr(prev.inbox), outbox: clr(prev.outbox) };
       });
     }
   };
@@ -387,7 +382,7 @@ function WorkspaceInner() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900"><ListTodo className="h-6 w-6 text-indigo-600" /> My Tasks</h1>
-          <p className="mt-0.5 text-sm text-gray-500">A standalone workspace — Today, Inbox &amp; Outbox with real-time task chat.</p>
+          <p className="mt-0.5 text-sm text-gray-500">A standalone workspace — Inbox &amp; Outbox with real-time task chat.</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => load(true)} disabled={refreshing} title="Refresh"
@@ -407,7 +402,7 @@ function WorkspaceInner() {
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* LEFT */}
         <aside className="lg:w-[360px] lg:shrink-0">
-          <div className="mb-3 grid grid-cols-3 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+          <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
             {BUCKETS.map((b) => {
               const Icon = b.icon;
               const count = lists[b.key].length;
@@ -431,7 +426,7 @@ function WorkspaceInner() {
             ) : currentList.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
                 <p className="text-sm font-medium text-gray-500">
-                  {bucket === 'today' ? 'Nothing due today.' : bucket === 'inbox' ? 'Your inbox is empty.' : 'You have not created any tasks.'}
+                  {bucket === 'inbox' ? 'Your inbox is empty.' : 'You have not created any tasks.'}
                 </p>
               </div>
             ) : (
