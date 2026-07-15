@@ -28,6 +28,9 @@ import { formatINR } from '@/lib/utils/currency';
 import { classNames } from '@/lib/utils';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
 import { exportLeadReport } from '@/lib/utils/exportLeadReport';
+import type { ReportWindow } from '@/lib/api/salesReports';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
+import { InputField } from '@/components/ui/InputField';
 
 type ScoreSort = 'none' | 'desc' | 'asc';
 
@@ -77,6 +80,8 @@ export default function SalesLeadsPage() {
   const [scoreMin, setScoreMin] = useState('');
   const [scoreMax, setScoreMax] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [exportDateRange, setExportDateRange] = useState<ReportWindow>({ from: '', to: '' });
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const [stages, setStages] = useState<LeadStage[]>([]);
   const [owners, setOwners] = useState<AssignableUser[]>([]);
@@ -330,18 +335,41 @@ export default function SalesLeadsPage() {
 
   const existingStageNames = stages.map((s) => s.name);
 
-  const handleExportReport = async () => {
+  const handleExportReport = () => {
+    setIsExportModalOpen(true);
+  };
+
+  const confirmDownloadReport = async () => {
+    setIsExporting(true);
     try {
-      setIsExporting(true);
-      await exportLeadReport(visibleLeads, stages, {
+      let filteredForReport = visibleLeads;
+      if (exportDateRange.from || exportDateRange.to) {
+        filteredForReport = visibleLeads.filter(l => {
+          const leadDate = new Date(l.createdAt).getTime();
+          let passes = true;
+          if (exportDateRange.from) {
+            passes = passes && leadDate >= new Date(exportDateRange.from).getTime();
+          }
+          if (exportDateRange.to) {
+            const toDate = new Date(exportDateRange.to);
+            toDate.setUTCHours(23, 59, 59, 999);
+            passes = passes && leadDate <= toDate.getTime();
+          }
+          return passes;
+        });
+      }
+
+      await exportLeadReport(filteredForReport, stages, {
         searchQuery,
         source: sourceFilter,
         status: statusFilter,
         stage: stageFilter,
         owner: ownerFilter,
-        location: locationFilter
+        location: locationFilter,
+        dateRange: exportDateRange
       });
       toast('Report downloaded successfully', 'success');
+      setIsExportModalOpen(false);
     } catch (err) {
       console.error(err);
       toast('Failed to generate report', 'error');
@@ -718,6 +746,45 @@ export default function SalesLeadsPage() {
         onClose={() => setDeleteTarget(null)}
         onDeleted={() => { loadStages(); fetchLeads(); }}
       />
+
+      <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export Leads Report</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-500 mb-4">
+              Select a date range to filter the leads included in the exported report.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <InputField
+                id="export-from-date"
+                label="From Date"
+                type="date"
+                value={exportDateRange.from ?? ''}
+                onChange={(v) => setExportDateRange({ ...exportDateRange, from: v })}
+                max={exportDateRange.to || undefined}
+              />
+              <InputField
+                id="export-to-date"
+                label="To Date"
+                type="date"
+                value={exportDateRange.to ?? ''}
+                onChange={(v) => setExportDateRange({ ...exportDateRange, to: v })}
+                min={exportDateRange.from || undefined}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="secondary" onClick={() => setIsExportModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmDownloadReport} disabled={isExporting}>
+              {isExporting ? 'Generating...' : 'Generate & Download'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PermissionPageGuard>
   );
 }
