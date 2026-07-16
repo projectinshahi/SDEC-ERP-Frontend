@@ -316,8 +316,8 @@ function DetailsPanel({
         </div>
       </div>
 
-      {!collapsed && (
-        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+      <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+        {!collapsed && (
           {/* ── SECTION 1 & 2: Basic Info + Responsibility side-by-side ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 shrink-0">
             {/* Section 1: Basic Information */}
@@ -390,10 +390,11 @@ function DetailsPanel({
               </div>
             </div>
           </div>
+        )}
 
-          {/* ── SECTION 3: Activity (Tabs) ── */}
-          <div className="flex flex-col flex-1 border-t border-gray-200">
-            {/* Tab bar */}
+        {/* ── SECTION 3: Activity (Tabs) ── */}
+        <div className="flex flex-col flex-1 border-t border-gray-200 min-h-0">
+          {/* Tab bar */}
             <div className="flex items-center border-b border-gray-100 bg-gray-50/80 px-2 shrink-0">
               {[
                 { key: 'chat' as const, icon: MessageCircle, label: 'Task Chat', count: 0 },
@@ -469,7 +470,7 @@ function DetailsPanel({
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
