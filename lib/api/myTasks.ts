@@ -20,6 +20,14 @@ export interface MyTaskAttachment {
   uploader?: { id: number; name: string } | null;
 }
 
+export interface MyTaskActivity {
+  id: number;
+  action: string;
+  details?: any;
+  createdAt: string;
+  user?: { id: number; name: string } | null;
+}
+
 export interface MyTask {
   id: number;
   title: string;
@@ -37,7 +45,10 @@ export interface MyTask {
   assignedToMe: boolean;
   createdByMe: boolean;
   unreadCount: number;
+  /** Per-user unread flag: never opened, changed since last open, or new chat msgs. */
+  unread: boolean;
   attachments: MyTaskAttachment[];
+  activities: MyTaskActivity[];
 }
 
 export interface MyTaskWorkspace {
