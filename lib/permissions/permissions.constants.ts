@@ -184,6 +184,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: 'Send messages in the real-time chat on tasks you are a member of',
         module: 'mytasks',
       },
+      {
+        key: 'mytasks.dashboard.view',
+        label: 'View Task Dashboard',
+        description: 'Open the org-wide Task Dashboard (summary, employee & department performance, analytics) from My Tasks — intended for Founder/CEO, HR, Department Heads, Team Leads and Managers',
+        module: 'mytasks',
+      },
     ],
   },
   {

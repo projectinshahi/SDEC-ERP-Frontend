@@ -40,6 +40,11 @@ export interface MyTask {
   updatedAt: string;
   createdBy: { id: number; name: string; email: string | null };
   inChargeId?: number | null;
+  /** Dependency reason shown while status === 'waiting' (null otherwise). */
+  waitingReason?: string | null;
+  /** Optional Project link (projects.id is a string id). */
+  projectId?: string | null;
+  projectName?: string | null;
   members: MyTaskMember[];
   memberCount: number;
   assignedToMe: boolean;
@@ -75,6 +80,112 @@ export interface CreateMyTaskInput {
   dueTime?: string | null;
   memberIds?: number[];
   inChargeId?: number | null;
+  projectId?: string | null;
+}
+
+/* ── Task Dashboard (org-wide analytics; needs mytasks.dashboard.view) ────── */
+
+export interface MyTaskDashboardFilters {
+  employeeId?: number | null;
+  department?: string | null;
+  projectId?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  status?: string | null;
+  priority?: string | null;
+  inChargeId?: number | null;
+}
+
+export interface MyTaskDashboardEmployee {
+  userId: number;
+  name: string;
+  email: string | null;
+  department: string;
+  designation: string | null;
+  total: number;
+  completed: number;
+  done: number;
+  approved: number;
+  pending: number;
+  waiting: number;
+  delayed: number;
+  completionPct: number;
+  /** Derived from the activity timeline; null when no completion was ever logged. */
+  avgCompletionHours: number | null;
+}
+
+export interface MyTaskDashboardDepartment {
+  department: string;
+  people: number;
+  total: number;
+  completed: number;
+  pending: number;
+  waiting: number;
+  delayed: number;
+  completionPct: number;
+}
+
+export interface MyTaskBottleneckRow {
+  userId: number;
+  name: string;
+  department: string;
+  total: number;
+  pending: number;
+  delayed: number;
+  completionPct: number;
+}
+
+export interface MyTaskDashboardData {
+  summary: {
+    total: number; active: number; todo: number; inProgress: number;
+    waiting: number; done: number; approved: number; delayed: number; dueToday: number;
+  };
+  statusDistribution: { label: string; value: number }[];
+  priorityDistribution: { label: string; value: number }[];
+  trend: { label: string; created: number; completed: number }[];
+  /** Currently-overdue tasks bucketed by the day they were DUE (not a historical snapshot). */
+  delayedTrend: { label: string; delayed: number }[];
+  employees: MyTaskDashboardEmployee[];
+  departments: MyTaskDashboardDepartment[];
+  companyProgress: {
+    total: number; completed: number; completionPct: number;
+    approvedPct: number; delayedPct: number; activePct: number; people: number;
+  };
+  bottlenecks: { highestPending: MyTaskBottleneckRow[]; highestDelayed: MyTaskBottleneckRow[] };
+  workload: {
+    byDepartment: { label: string; value: number }[];
+    byEmployee: { label: string; value: number }[];
+  };
+  recentlyCompleted: {
+    id: number; title: string; status: string | null;
+    completedAt: string; completedBy: string | null;
+  }[];
+  upcomingDeadlines: {
+    id: number; title: string; dueDate: string | null; dueTime: string | null;
+    status: string; priority: string; inCharge: string | null;
+  }[];
+  filterOptions: {
+    employees: { id: number; name: string }[];
+    departments: string[];
+    projects: { id: string; name: string }[];
+    statuses: { value: string; label: string }[];
+  };
+  generatedAt: string;
+}
+
+export async function fetchMyTaskDashboard(f: MyTaskDashboardFilters = {}): Promise<MyTaskDashboardData> {
+  const p = new URLSearchParams();
+  if (f.employeeId) p.set('employeeId', String(f.employeeId));
+  if (f.department) p.set('department', f.department);
+  if (f.projectId) p.set('projectId', f.projectId);
+  if (f.startDate) p.set('startDate', f.startDate);
+  if (f.endDate) p.set('endDate', f.endDate);
+  if (f.status) p.set('status', f.status);
+  if (f.priority) p.set('priority', f.priority);
+  if (f.inChargeId) p.set('inChargeId', String(f.inChargeId));
+  const qs = p.toString();
+  const r = await apiClient.get<MyTaskDashboardData>(`/my-tasks/dashboard${qs ? `?${qs}` : ''}`);
+  return r.data;
 }
 
 export async function fetchMyTaskWorkspace(): Promise<MyTaskWorkspace> {
@@ -100,8 +211,8 @@ export async function updateMyTask(
   return r.data;
 }
 
-export async function updateMyTaskStatus(id: number, status: string): Promise<{ success: boolean; status: string }> {
-  const r = await apiClient.patch<{ success: boolean; status: string }>(`/my-tasks/${id}/status`, { status });
+export async function updateMyTaskStatus(id: number, status: string, waitingReason?: string | null): Promise<{ success: boolean; status: string; waitingReason?: string | null }> {
+  const r = await apiClient.patch<{ success: boolean; status: string; waitingReason?: string | null }>(`/my-tasks/${id}/status`, { status, waitingReason });
   return r.data;
 }
 

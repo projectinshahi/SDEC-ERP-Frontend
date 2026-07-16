@@ -6,6 +6,7 @@ import { Button } from '@/components/Button';
 import { Loader2, Search, X, Check, Users, Paperclip } from 'lucide-react';
 import { useToast } from '@/lib/hooks/useToast';
 import { fetchAllUsers, type UserDbResponse } from '@/lib/api/users';
+import { fetchProjects } from '@/lib/api/projects';
 import {
   createMyTask, updateMyTask, addMyTaskMembers, removeMyTaskMember, fetchMyTask,
   uploadMyTaskAttachment, type MyTask,
@@ -42,6 +43,8 @@ export function CreateMyTaskModal({
   const [dueTime, setDueTime] = useState('');
   const [selected, setSelected] = useState<Map<number, string>>(new Map());
   const [inChargeId, setInChargeId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<string>('');
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [search, setSearch] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -54,6 +57,10 @@ export function CreateMyTaskModal({
     // complete active-user list (single source of truth, no module/role/team
     // scoping), so NO additional client-side filtering is applied here.
     fetchAllUsers().then(setUsers).catch(() => {});
+    // Project list for the optional Project link (reuses the existing projects API).
+    fetchProjects()
+      .then((ps) => setProjects((ps || []).map((p: any) => ({ id: String(p.id), name: p.name }))))
+      .catch(() => {});
     setSearch('');
     setPendingFiles([]);
     if (editTask) {
@@ -64,6 +71,7 @@ export function CreateMyTaskModal({
       setDueTime(editTask.dueTime || '');
       setSelected(new Map(editTask.members.map((m) => [m.id, m.name])));
       setInChargeId(editTask.inChargeId || null);
+      setProjectId(editTask.projectId || '');
     } else {
       setTitle('');
       setDescription('');
@@ -72,6 +80,7 @@ export function CreateMyTaskModal({
       setDueTime('');
       setSelected(new Map());
       setInChargeId(null);
+      setProjectId('');
     }
   }, [isOpen, editTask]);
 
@@ -125,7 +134,7 @@ export function CreateMyTaskModal({
     setSaving(true);
     try {
       if (editTask) {
-        await updateMyTask(editTask.id, { title: title.trim(), description, priority, dueDate: dueDate || null, dueTime: dueTime || null, inChargeId: finalInCharge });
+        await updateMyTask(editTask.id, { title: title.trim(), description, priority, dueDate: dueDate || null, dueTime: dueTime || null, inChargeId: finalInCharge, projectId: projectId || null });
         if (canAssign) {
           const orig = new Set(editTask.members.map((m) => m.id));
           const now = new Set(selected.keys());
@@ -151,6 +160,7 @@ export function CreateMyTaskModal({
           dueTime: dueTime || null,
           memberIds: Array.from(selected.keys()),
           inChargeId: finalInCharge,
+          projectId: projectId || null,
         });
         await uploadFiles(created.id);
         toast('Task created.', 'success');
@@ -189,6 +199,21 @@ export function CreateMyTaskModal({
             placeholder="Add more detail…"
             className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
+        </div>
+
+        {/* Optional Project link — powers the Task Dashboard's Project filter. */}
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Project <span className="font-normal text-gray-400">(optional)</span>
+          </label>
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">No project</option>
+            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
