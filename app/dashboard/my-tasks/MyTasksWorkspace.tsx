@@ -318,8 +318,9 @@ function DetailsPanel({
 
       <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
         {!collapsed && (
-          {/* ── SECTION 1 & 2: Basic Info + Responsibility side-by-side ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 shrink-0">
+          <>
+            {/* ── SECTION 1 & 2: Basic Info + Responsibility side-by-side ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 shrink-0">
             {/* Section 1: Basic Information */}
             <div className="p-5 space-y-4">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-1.5">
@@ -389,7 +390,7 @@ function DetailsPanel({
                 </DetailRow>
               </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* ── SECTION 3: Activity (Tabs) ── */}
