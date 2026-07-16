@@ -35,8 +35,8 @@ const DATE_FILTERS: { key: DateKey | 'all'; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'all', label: 'All' },
 ];
-// Default Inbox view = actionable now (Today + Delayed), no manual filtering needed.
-const DEFAULT_DATE_FILTERS: (DateKey | 'all')[] = ['today', 'delayed'];
+// Default Inbox view = all tasks, as requested by user.
+const DEFAULT_DATE_FILTERS: (DateKey | 'all')[] = ['all'];
 const STATUS_FILTERS: { key: string; label: string }[] = [
   { key: 'todo', label: 'To Do' },
   { key: 'in_progress', label: 'In Progress' },
