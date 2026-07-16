@@ -217,9 +217,10 @@ export function DeveloperPerformanceView() {
 
   const exportCsv = () => {
     if (!data) return;
+    const isPeriod = !!range;
     const headers = [
       'Developer', 'Role', 'Active Projects', 'Assigned Points', 'Completed Points',
-      'Today Pts', 'Completion %', 'Tasks Pending', 'Bugs', 'Utilization %', 'Status',
+      isPeriod ? 'Period Pts' : 'Today Pts', 'Completion %', 'Tasks Pending', 'Bugs', 'Utilization %', 'Status',
     ];
     const rows = filteredDevs.map((d) => [
       d.name, d.role, d.activeProjects, d.assignedPoints, d.completedPoints,
@@ -237,28 +238,7 @@ export function DeveloperPerformanceView() {
     URL.revokeObjectURL(url);
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-gray-400">
-        <AlertCircle size={36} />
-        <p className="text-sm font-semibold">Failed to load developer performance.</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+  const isPeriod = !!range;
 
   const { capacity, delivery, quality, timeline, daily, taskStatus, taskStatusColumns, topPerformers, capacityForecast, velocityTrend } = data;
 
@@ -333,14 +313,14 @@ export function DeveloperPerformanceView() {
       ],
     },
     {
-      title: 'Daily Productivity',
+      title: isPeriod ? 'Period Productivity' : 'Daily Productivity',
       icon: <Zap className="h-5 w-5 text-amber-600" />,
       tone: 'bg-amber-50',
       metrics: [
-        { label: 'Points Today', value: String(daily.pointsToday) },
-        { label: 'Active Today', value: String(daily.activeToday) },
-        { label: 'Avg Pts / Dev', value: String(daily.avgPointsPerDev) },
-        { label: 'Top Contributor', value: daily.topContributor?.name?.split(' ')[0] || '—', sub: daily.topContributor ? `(${daily.topContributor.points})` : undefined },
+        { label: isPeriod ? 'Points (Period)' : 'Points Today', value: String(daily?.pointsToday || 0) },
+        { label: isPeriod ? 'Active (Period)' : 'Active Today', value: String(daily?.activeToday || 0) },
+        { label: 'Avg Pts / Dev', value: String(daily?.avgPointsPerDev || 0) },
+        { label: 'Top Contributor', value: daily?.topContributor?.name?.split(' ')[0] || '—', sub: daily?.topContributor ? `(${daily.topContributor.points})` : undefined },
       ],
     },
   ];
@@ -368,7 +348,7 @@ export function DeveloperPerformanceView() {
     tables: [
       {
         title: `Developers (${filteredDevs.length} shown)`,
-        columns: ['Developer', 'Role', 'Projects', 'Assigned', 'Completed', 'Today', 'Completion %', 'Pending', 'Bugs', 'Utilization %', 'Status'],
+        columns: ['Developer', 'Role', 'Projects', 'Assigned', 'Completed', isPeriod ? 'Period Pts' : 'Today Pts', 'Completion %', 'Pending', 'Bugs', 'Utilization %', 'Status'],
         rows: filteredDevs.map((d) => [
           d.name, d.role, d.activeProjects, d.assignedPoints, d.completedPoints,
           d.todayPoints, `${d.completionRate}%`, d.tasksPending, d.bugs, `${d.utilization}%`, d.devStatus,
@@ -444,7 +424,24 @@ export function DeveloperPerformanceView() {
         </div>
       </div>
 
-      {noPeriodData ? (
+      {loading && !data ? (
+        <div className="flex h-[60vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        </div>
+      ) : error || !data ? (
+        <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-gray-400">
+          <AlertCircle size={36} />
+          <p className="text-sm font-semibold">Failed to load developer performance.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          >
+            Retry
+          </button>
+        </div>
+      ) : (
+        <div className={classNames("space-y-6 transition-opacity", loading && "opacity-50 pointer-events-none")}>
+          {noPeriodData ? (
         <div className="flex h-[50vh] flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white text-gray-400">
           <Calendar size={36} />
           <p className="text-sm font-semibold text-gray-500">No performance data available for the selected date range.</p>
@@ -504,7 +501,7 @@ export function DeveloperPerformanceView() {
                     <th className="px-4 py-3 text-center">Projects</th>
                     <th className="px-4 py-3 text-center">Assigned</th>
                     <th className="px-4 py-3 text-center">Completed</th>
-                    <th className="px-4 py-3 text-center">Today</th>
+                    <th className="px-4 py-3 text-center min-w-[80px]">{isPeriod ? 'Period' : 'Today'}</th>
                     <th className="px-4 py-3 min-w-[140px]">Completion</th>
                     <th className="px-4 py-3 text-center">Pending</th>
                     <th className="px-4 py-3 text-center">Bugs</th>
@@ -652,7 +649,7 @@ export function DeveloperPerformanceView() {
                             'h-2 rounded-full',
                             c.currentLoad >= 85 ? 'bg-rose-500' : c.currentLoad >= 70 ? 'bg-amber-500' : 'bg-emerald-500',
                           )}
-                          style={{ width: `${c.currentLoad}%` }}
+                          style={{ width: `${Math.min(100, c.currentLoad)}%` }}
                         />
                       </div>
                     </li>
@@ -726,7 +723,7 @@ export function DeveloperPerformanceView() {
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
