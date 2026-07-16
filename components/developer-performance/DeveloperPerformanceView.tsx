@@ -240,6 +240,37 @@ export function DeveloperPerformanceView() {
 
   const isPeriod = !!range;
 
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Developer Performance</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Track developer productivity, points, quality, and delivery performance.
+            </p>
+          </div>
+        </div>
+        {loading ? (
+          <div className="flex h-[60vh] items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+          </div>
+        ) : (
+          <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-gray-400">
+            <AlertCircle size={36} />
+            <p className="text-sm font-semibold">Failed to load developer performance.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const { capacity, delivery, quality, timeline, daily, taskStatus, taskStatusColumns, topPerformers, capacityForecast, velocityTrend } = data;
 
   // When a date range is active but the period has no activity, show an explicit
@@ -424,23 +455,7 @@ export function DeveloperPerformanceView() {
         </div>
       </div>
 
-      {loading && !data ? (
-        <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-        </div>
-      ) : error || !data ? (
-        <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-gray-400">
-          <AlertCircle size={36} />
-          <p className="text-sm font-semibold">Failed to load developer performance.</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
-          >
-            Retry
-          </button>
-        </div>
-      ) : (
-        <div className={classNames("space-y-6 transition-opacity", loading && "opacity-50 pointer-events-none")}>
+      <div className={classNames("space-y-6 transition-opacity", loading && "opacity-50 pointer-events-none")}>
           {noPeriodData ? (
         <div className="flex h-[50vh] flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white text-gray-400">
           <Calendar size={36} />
@@ -723,8 +738,9 @@ export function DeveloperPerformanceView() {
               )}
             </div>
           </div>
-        </div>
+        </>
       )}
+    </div>
     </div>
   );
 }
