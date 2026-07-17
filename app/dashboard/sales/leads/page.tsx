@@ -227,7 +227,13 @@ export default function SalesLeadsPage() {
   // client-side and applies to the TABLE only — the Pipeline board always shows
   // every stage (that's the point of a Kanban board), so it reads `leads`.
   const visibleLeads = [...leads]
-    .filter((l) => stageFilter === 'all' || l.stage === stageFilter);
+    .filter((l) => stageFilter === 'all' || l.stage === stageFilter)
+    // Default TABLE order = newest created first, so a lead you just created is row 1.
+    // Deliberately applied here and NOT to the API query: that query is ordered by
+    // stage + orderIndex to render the Pipeline board's manual drag-and-drop card
+    // order, which `leadsByStage` still relies on. Sorting only this table-scoped
+    // list keeps both views correct.
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Pipeline grouping — derived from the SAME `leads` (already filtered
   // server-side), minus inactive statuses, so a move in either view is reflected

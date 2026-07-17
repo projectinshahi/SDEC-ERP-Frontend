@@ -133,6 +133,16 @@ export default function SalesDealsPage() {
 
   // Group the (filtered) deals by stage for the Kanban columns — same dataset
   // the table renders, so the two views never diverge.
+  // Default TABLE order = newest created first, so a deal you just created is row 1.
+  // Kept as a SEPARATE list (not a sort of `visibleDeals`) on purpose: `dealsByStage`
+  // below iterates `visibleDeals` in array order, so the Pipeline board's columns
+  // depend on the API's stage + orderIndex drag arrangement. Re-sorting the shared
+  // list would silently scramble the board's manual card order.
+  const tableDeals = useMemo(
+    () => [...visibleDeals].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [visibleDeals],
+  );
+
   const dealsByStage = useMemo(() => {
     const map: Record<string, Deal[]> = {};
     for (const s of stages) map[s.name] = [];
@@ -291,12 +301,12 @@ export default function SalesDealsPage() {
                     <tr>
                       <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Loading deals...</td>
                     </tr>
-                  ) : visibleDeals.length === 0 ? (
+                  ) : tableDeals.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-6 py-8 text-center text-gray-500">No deals found</td>
                     </tr>
                   ) : (
-                    visibleDeals.map((deal) => (
+                    tableDeals.map((deal) => (
                       <tr key={deal.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                         <td className="px-6 py-4 font-medium">
                           <Link
