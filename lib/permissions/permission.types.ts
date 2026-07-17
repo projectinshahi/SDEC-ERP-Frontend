@@ -36,6 +36,7 @@ export type PermissionKey =
   | 'mytasks.chat.view'
   | 'mytasks.chat.send'
   | 'mytasks.dashboard.view'
+  | 'mytasks.dashboard.export'
   // Role Management
   | 'role.create'
   | 'role.read'

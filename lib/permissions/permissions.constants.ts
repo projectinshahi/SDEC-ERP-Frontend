@@ -190,6 +190,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: 'Open the org-wide Task Dashboard (summary, employee & department performance, analytics) from My Tasks — intended for Founder/CEO, HR, Department Heads, Team Leads and Managers',
         module: 'mytasks',
       },
+      {
+        key: 'mytasks.dashboard.export',
+        label: 'Download Task Analytics Report',
+        description: 'Download the Task Analytics dashboard as a branded PDF report, including the detailed filtered task list',
+        module: 'mytasks',
+      },
     ],
   },
   {
