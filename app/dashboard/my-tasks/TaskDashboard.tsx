@@ -435,9 +435,9 @@ export function TaskDashboard() {
         </div>
         <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-slate-100 pt-2.5">
           <p className="text-[11px] text-slate-400">
-            Live · auto-refreshes every 30s
-            {res.lastUpdated && <> · updated {res.lastUpdated.toLocaleTimeString()}</>}
-            {res.isRefreshing && <span className="ml-1 text-indigo-500">· refreshing…</span>}
+            {/* Live · auto-refreshes every 30s */}
+            {/* {res.lastUpdated && <> · updated {res.lastUpdated.toLocaleTimeString()}</>} */}
+            {/* {res.isRefreshing && <span className="ml-1 text-indigo-500">· refreshing…</span>} */}
           </p>
           <div className="flex items-center gap-1.5">
             {filtersDirty && (
@@ -503,24 +503,24 @@ export function TaskDashboard() {
 
       {/* ── Overview ───────────────────────────────────────────────────────── */}
       {tab === 'overview' && (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ChartCard title="Status Distribution" subtitle={STATUS_CHART_SUBTITLE}>
-          <DonutChart data={data.statusDistribution} />
-        </ChartCard>
-        <ChartCard title="Priority Breakdown" subtitle="Tasks by priority">
-          <CategoryBars data={data.priorityDistribution} />
-        </ChartCard>
-        <ChartCard title="Task Trend" subtitle="Created vs completed · last 30 days" className="lg:col-span-1">
-          <LineTrend
-            data={data.trend}
-            height={240}
-            series={[
-              { key: 'created', name: 'Created', color: CHART_COLORS[0] },
-              { key: 'completed', name: 'Completed', color: CHART_COLORS[1] },
-            ]}
-          />
-        </ChartCard>
-      </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <ChartCard title="Status Distribution" subtitle={STATUS_CHART_SUBTITLE}>
+            <DonutChart data={data.statusDistribution} />
+          </ChartCard>
+          <ChartCard title="Priority Breakdown" subtitle="Tasks by priority">
+            <CategoryBars data={data.priorityDistribution} />
+          </ChartCard>
+          <ChartCard title="Task Trend" subtitle="Created vs completed · last 30 days" className="lg:col-span-1">
+            <LineTrend
+              data={data.trend}
+              height={240}
+              series={[
+                { key: 'created', name: 'Created', color: CHART_COLORS[0] },
+                { key: 'completed', name: 'Completed', color: CHART_COLORS[1] },
+              ]}
+            />
+          </ChartCard>
+        </div>
       )}
 
       {tab === 'overview' && (
@@ -535,76 +535,76 @@ export function TaskDashboard() {
 
       {/* ── Employee performance ───────────────────────────────────────────── */}
       {tab === 'employees' && (
-      <ChartCard
-        title="Employee Performance"
-        subtitle={`${employees.length} ${employees.length === 1 ? 'person' : 'people'} with assigned tasks`}
-        action={(
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:outline-none"
-          >
-            {SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-          </select>
-        )}
-      >
-        {employees.length === 0 ? (
-          <ChartEmpty label="No employees match these filters" />
-        ) : (
-          <div className="-mx-2 overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 text-left">
-                  {['Employee', 'Department', 'Total', 'Completed', 'Pending', 'Waiting', 'Delayed', 'Completion', 'Avg Time', ''].map((h) => (
-                    <th key={h} className="px-2 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((e) => {
-                  const badge = perfBadge(e.completionPct, e.total);
-                  return (
-                    <tr key={e.userId} className="border-b border-slate-50 transition-colors hover:bg-slate-50/60">
-                      <td className="px-2 py-2.5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[11px] font-bold text-indigo-700">
-                            {initials(e.name)}
+        <ChartCard
+          title="Employee Performance"
+          subtitle={`${employees.length} ${employees.length === 1 ? 'person' : 'people'} with assigned tasks`}
+          action={(
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:outline-none"
+            >
+              {SORTS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </select>
+          )}
+        >
+          {employees.length === 0 ? (
+            <ChartEmpty label="No employees match these filters" />
+          ) : (
+            <div className="-mx-2 overflow-x-auto">
+              <table className="w-full min-w-[860px] border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left">
+                    {['Employee', 'Department', 'Total', 'Completed', 'Pending', 'Waiting', 'Delayed', 'Completion', 'Avg Time', ''].map((h) => (
+                      <th key={h} className="px-2 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {employees.map((e) => {
+                    const badge = perfBadge(e.completionPct, e.total);
+                    return (
+                      <tr key={e.userId} className="border-b border-slate-50 transition-colors hover:bg-slate-50/60">
+                        <td className="px-2 py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[11px] font-bold text-indigo-700">
+                              {initials(e.name)}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-semibold text-slate-800">{e.name}</span>
+                              {e.designation && <span className="block truncate text-[11px] text-slate-400">{e.designation}</span>}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                            {e.department}
                           </span>
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold text-slate-800">{e.name}</span>
-                            {e.designation && <span className="block truncate text-[11px] text-slate-400">{e.designation}</span>}
+                        </td>
+                        <td className="px-2 py-2.5 text-sm font-bold text-slate-700">{e.total}</td>
+                        <td className="px-2 py-2.5 text-sm font-semibold text-emerald-600">{e.completed}</td>
+                        <td className="px-2 py-2.5 text-sm font-semibold text-slate-600">{e.pending}</td>
+                        <td className="px-2 py-2.5 text-sm font-semibold text-amber-600">{e.waiting}</td>
+                        <td className={classNames('px-2 py-2.5 text-sm font-semibold', e.delayed > 0 ? 'text-rose-600' : 'text-slate-400')}>{e.delayed}</td>
+                        <td className="px-2 py-2.5 min-w-[130px]"><Bar pct={e.completionPct} /></td>
+                        <td className="px-2 py-2.5 text-xs font-medium text-slate-500">
+                          {e.avgCompletionHours == null
+                            ? <span className="text-slate-300">—</span>
+                            : fmtAvgHours(e.avgCompletionHours)}
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <span className={classNames('inline-flex whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[10px] font-semibold', badge.tone)}>
+                            {badge.label}
                           </span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2.5">
-                        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
-                          {e.department}
-                        </span>
-                      </td>
-                      <td className="px-2 py-2.5 text-sm font-bold text-slate-700">{e.total}</td>
-                      <td className="px-2 py-2.5 text-sm font-semibold text-emerald-600">{e.completed}</td>
-                      <td className="px-2 py-2.5 text-sm font-semibold text-slate-600">{e.pending}</td>
-                      <td className="px-2 py-2.5 text-sm font-semibold text-amber-600">{e.waiting}</td>
-                      <td className={classNames('px-2 py-2.5 text-sm font-semibold', e.delayed > 0 ? 'text-rose-600' : 'text-slate-400')}>{e.delayed}</td>
-                      <td className="px-2 py-2.5 min-w-[130px]"><Bar pct={e.completionPct} /></td>
-                      <td className="px-2 py-2.5 text-xs font-medium text-slate-500">
-                        {e.avgCompletionHours == null
-                          ? <span className="text-slate-300">—</span>
-                          : fmtAvgHours(e.avgCompletionHours)}
-                      </td>
-                      <td className="px-2 py-2.5">
-                        <span className={classNames('inline-flex whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[10px] font-semibold', badge.tone)}>
-                          {badge.label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </ChartCard>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </ChartCard>
       )}
 
       {/* ── Department performance ─────────────────────────────────────────── */}
