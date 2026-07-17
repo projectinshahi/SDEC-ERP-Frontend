@@ -6,7 +6,7 @@ import { io } from 'socket.io-client';
 import {
   Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
   Calendar, User, Users, Flag, Clock, Paperclip, RefreshCw, Pencil, Trash2, ShieldAlert,
-  MessageCircle, Activity, Download, BarChart3, AtSign,
+  MessageCircle, Activity, Download, BarChart3, AtSign, X, ArrowLeft,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -22,11 +22,19 @@ import { CreateMyTaskModal } from '@/components/tasks/mytasks/CreateMyTaskModal'
 import { TaskDashboard } from './TaskDashboard';
 
 type Bucket = 'inbox' | 'outbox';
-const BUCKETS: { key: Bucket; label: string; icon: any; hint: string }[] = [
-  { key: 'inbox', label: 'Inbox', icon: Inbox, hint: 'Tasks assigned to me (due today, upcoming & overdue)' },
-  { key: 'outbox', label: 'Outbox', icon: Send, hint: 'Created by me' },
-];
 const COLLAPSE_KEY = 'my-tasks-details-collapsed';
+
+/**
+ * Primary navigation. Inbox/Outbox drive the workspace `bucket`; Analytics renders
+ * the existing <TaskDashboard />. Kept as one list so the tab bar is a single strip,
+ * but the underlying state (bucket + view) is unchanged.
+ */
+type TabKey = Bucket | 'analytics';
+const TABS: { key: TabKey; label: string; icon: any; hint: string }[] = [
+  { key: 'inbox', label: 'Inbox', icon: Inbox, hint: 'Tasks assigned to me' },
+  { key: 'outbox', label: 'Outbox', icon: Send, hint: 'Tasks I created' },
+  { key: 'analytics', label: 'Analytics', icon: BarChart3, hint: 'Organisation-wide task analytics' },
+];
 
 // ── Inbox filters (client-side over the already-fetched inbox; no extra API) ──
 type DateKey = 'today' | 'delayed' | 'upcoming';
@@ -60,6 +68,34 @@ function matchRead(t: MyTask, mode: ReadKey): boolean {
   if (mode === 'unread') return !!t.unread;
   if (mode === 'read') return !t.unread;
   return true;
+}
+
+/**
+ * Instant text search across the fields a user actually looks a task up by:
+ * Task Name, Creator (Owner), Task In-Charge, Assigned Members and Project.
+ * Purely client-side over the already-fetched workspace payload — no API call.
+ * (Department is not part of this payload; the Analytics dashboard already has a
+ * server-side Department filter, which is where that dimension is applicable.)
+ */
+function matchSearch(t: MyTask, needle: string): boolean {
+  if (!needle) return true;
+  const inChargeName = t.inChargeId ? t.members.find((m) => m.id === t.inChargeId)?.name : null;
+  const haystack = [t.title, t.createdBy?.name, inChargeName, t.projectName, ...t.members.map((m) => m.name)];
+  return haystack.some((s) => !!s && s.toLowerCase().includes(needle));
+}
+
+/**
+ * Debounced mirror of a value. The filters are client-side, so this is about render
+ * cost rather than API traffic: typing stays instant while the filter pass over a
+ * large list runs at most once per `delay`.
+ */
+function useDebouncedValue<T>(value: T, delay = 200): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
 }
 // Per-tab date defaults: Inbox opens on actionable work (Today + Delayed);
 // Outbox opens on everything the user created.
@@ -323,6 +359,58 @@ function ActivityTimeline({ activities }: { activities: MyTaskActivity[] }) {
   );
 }
 
+/**
+ * Description with Read More / Read Less.
+ *
+ * The clamp is CSS (`line-clamp-4`), so it truncates at a LINE boundary — never
+ * mid-word — while `whitespace-pre-wrap` keeps the author's line breaks intact.
+ * The toggle appears only when the text ACTUALLY overflows (measured from the DOM
+ * rather than guessed from character count), so short descriptions render exactly
+ * as they do today, with no button.
+ */
+function TaskDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    // Measure ONLY while clamped: once expanded the element is at full height, so a
+    // re-measure would conclude it "fits" and wrongly hide the Read Less action.
+    if (!el || expanded) return;
+    const check = () => setOverflows(el.scrollHeight > el.clientHeight + 1);
+    check();
+    // A narrower panel can push a short description past 4 lines — re-check on resize.
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [text, expanded]);
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+      <p
+        ref={ref}
+        className={classNames(
+          'whitespace-pre-wrap text-sm leading-relaxed text-gray-700',
+          !expanded && 'line-clamp-4',
+        )}
+      >
+        {text}
+      </p>
+      {(overflows || expanded) && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="mt-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:text-indigo-700 hover:underline"
+        >
+          {expanded ? 'Read Less' : 'Read More'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Reason picker shown when a task moves to (or edits) Waiting status. Self-contained
     overlay — reuses the ERP amber "waiting" tone; 'Other' reveals a free-text field. */
 function WaitingReasonModal({
@@ -376,11 +464,18 @@ function WaitingReasonModal({
 }
 
 function DetailsPanel({
-  task, collapsed, onToggle, canEdit, canDelete, onEdit, onDelete, onStatus, currentUserId,
+  task, collapsed, onToggle, canEdit, canDelete, onEdit, onDelete, onStatus, onBack,
+  canExecute, canApprove, currentUserId,
 }: {
   task: MyTask; collapsed: boolean; onToggle: () => void;
   canEdit: boolean; canDelete: boolean;
   onEdit: () => void; onDelete: () => void; onStatus: (s: string, waitingReason?: string) => void;
+  /** Mobile-only: return to the task list (WhatsApp-style back). */
+  onBack: () => void;
+  /** Execution rights: change status / waiting reason (creator, In-Charge, admin). */
+  canExecute: boolean;
+  /** Owner rights: approve the task (creator / admin only). */
+  canApprove: boolean;
   currentUserId?: number;
 }) {
   const prio = priorityMeta(task.priority);
@@ -404,6 +499,16 @@ function DetailsPanel({
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col h-full">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+        {/* WhatsApp-style back — mobile only. Desktop keeps the persistent split view,
+            where the list is always beside the details and Back would be meaningless. */}
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to task list"
+          className="-ml-2 shrink-0 rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700 lg:hidden"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
         <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={classNames('inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold', st.tone)}>{st.label}</span>
@@ -415,19 +520,21 @@ function DetailsPanel({
         </button>
         <div className="flex items-center gap-1 shrink-0">
           {canEdit && (
-            <button type="button" onClick={onEdit} title="Edit task" className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors"><Pencil className="h-4 w-4" /></button>
+            <button type="button" onClick={onEdit} title="Edit task" className="rounded-lg p-2 sm:p-1.5 text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors"><Pencil className="h-4 w-4" /></button>
           )}
           {canDelete && (
-            <button type="button" onClick={onDelete} title="Delete task" className="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
+            <button type="button" onClick={onDelete} title="Delete task" className="rounded-lg p-2 sm:p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
           )}
-          <button type="button" onClick={onToggle} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-50 transition-colors">
+          <button type="button" onClick={onToggle} className="rounded-lg p-2 sm:p-1.5 text-gray-400 hover:bg-gray-50 transition-colors">
             {collapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
           </button>
         </div>
       </div>
 
+      {/* The 55% cap + inner scroll only make sense in the fixed-height desktop
+          pane; on mobile the details simply flow above the chat (one page scroll). */}
       {!collapsed && (
-        <div className="shrink-0 overflow-y-auto" style={{ maxHeight: '55%' }}>
+        <div className="shrink-0 lg:max-h-[55%] lg:overflow-y-auto">
           {/* ── SECTION 1 & 2: Basic Info + Responsibility side-by-side ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
             {/* Section 1: Basic Information */}
@@ -437,7 +544,7 @@ function DetailsPanel({
               </h3>
 
               {task.description ? (
-                <p className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">{task.description}</p>
+                <TaskDescription text={task.description} />
               ) : (
                 <p className="text-sm italic text-gray-400 bg-gray-50 p-3 rounded-xl border border-gray-100">No description provided.</p>
               )}
@@ -445,7 +552,7 @@ function DetailsPanel({
               <div className="grid grid-cols-2 gap-4">
                 <DetailRow icon={Flag} label="Priority"><span className={prio.text}>{prio.label}</span></DetailRow>
                 <DetailRow icon={ListTodo} label="Status">
-                  {canEdit ? (
+                  {canExecute ? (
                     <select
                       value={task.status}
                       onChange={(e) => {
@@ -457,7 +564,12 @@ function DetailsPanel({
                       }}
                       className="rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 transition"
                     >
-                      {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {/* Approve is the owner's verification step — hidden from the
+                          In-Charge. Kept when it IS the current status, otherwise a
+                          controlled <select> would render blank on an approved task. */}
+                      {STATUS_OPTIONS
+                        .filter((o) => o.value !== 'approved' || canApprove || task.status === 'approved')
+                        .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   ) : st.label}
                 </DetailRow>
@@ -471,7 +583,7 @@ function DetailsPanel({
                     <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                       {task.waitingReason || '—'}
                     </span>
-                    {canEdit && (
+                    {canExecute && (
                       <button type="button" onClick={() => setWaitingOpen(true)} className="text-xs font-medium text-indigo-600 hover:underline">
                         Edit
                       </button>
@@ -537,27 +649,35 @@ function DetailsPanel({
           details grid above. ── */}
       <div className="flex flex-col flex-1 min-h-0 border-t border-gray-200">
             {/* Tab bar */}
-            <div className="flex items-center border-b border-gray-100 bg-gray-50/80 px-2 shrink-0">
+            {/* MOBILE: three equal-width tabs with short labels, so the row always fits
+                the viewport (the full labels totalled ~450px and overflowed a 375px
+                screen, clipping the last tab AND pushing the whole panel sideways).
+                `min-w-0` lets a tab shrink; `overflow-x-auto` is a safety net so an
+                unusually long count can never force the page wide again.
+                DESKTOP (sm+): reverts to the original auto-width tabs + full labels. */}
+            <div className="flex items-center overflow-x-auto border-b border-gray-100 bg-gray-50/80 px-2 shrink-0">
               {[
-                { key: 'chat' as const, icon: MessageCircle, label: 'Task Chat', count: 0 },
-                { key: 'attachments' as const, icon: Paperclip, label: 'Attachments', count: task.attachments.length },
-                { key: 'timeline' as const, icon: Activity, label: 'Activity Timeline', count: (task.activities || []).length },
+                { key: 'chat' as const, icon: MessageCircle, label: 'Task Chat', short: 'Chat', count: 0 },
+                { key: 'attachments' as const, icon: Paperclip, label: 'Attachments', short: 'Files', count: task.attachments.length },
+                { key: 'timeline' as const, icon: Activity, label: 'Activity Timeline', short: 'Activity', count: (task.activities || []).length },
               ].map((tab) => (
                 <button
                   key={tab.key}
                   type="button"
                   onClick={() => setActiveTab(tab.key)}
+                  title={tab.label}
                   className={classNames(
-                    'flex items-center gap-1.5 px-3.5 py-3 text-[13px] font-semibold border-b-2 transition-colors whitespace-nowrap',
+                    'flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 py-3 text-[13px] font-semibold border-b-2 transition-colors whitespace-nowrap sm:flex-none sm:justify-start sm:px-3.5',
                     activeTab === tab.key
                       ? 'border-indigo-500 text-indigo-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700',
                   )}
                 >
-                  <tab.icon className="h-3.5 w-3.5" />
-                  {tab.label}
+                  <tab.icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="sm:hidden">{tab.short}</span>
+                  <span className="hidden sm:inline">{tab.label}</span>
                   {tab.count > 0 && (
-                    <span className="ml-0.5 rounded-full bg-gray-200 px-1.5 py-px text-[10px] font-bold text-gray-600">{tab.count}</span>
+                    <span className="ml-0.5 shrink-0 rounded-full bg-gray-200 px-1.5 py-px text-[10px] font-bold text-gray-600">{tab.count}</span>
                   )}
                 </button>
               ))}
@@ -637,7 +757,7 @@ function InChargeFilter({
   return (
     <div ref={ref} className="relative">
       <button type="button" onClick={() => setOpen((o) => !o)}
-        className={classNames('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition',
+        className={classNames('inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
           value != null ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
         <User className="h-3 w-3" /> {selected ? selected.name : 'Any In-Charge'} <ChevronDown className="h-3 w-3" />
       </button>
@@ -682,12 +802,27 @@ function WorkspaceInner() {
   const canAssign = isSuperAdmin || hasPermission('mytasks.assign');
   // Org-wide Task Dashboard (Founder/CEO/HR/Leads/Managers) — toggled in-place.
   const canViewDashboard = isSuperAdmin || hasPermission('mytasks.dashboard.view');
+  // Per-task roles — mirror the backend (utils/myTaskAccess.ts) so the UI never
+  // offers an action the server will reject. The coarse mytasks.* permission still
+  // applies on top; these only narrow it further.
+  const isOwnerOf = (t: MyTask) => t.createdByMe || isSuperAdmin;
+  const isInChargeOf = (t: MyTask) => currentUserId != null && t.inChargeId === currentUserId;
   const [view, setView] = useState<'workspace' | 'dashboard'>('workspace');
 
   const [data, setData] = useState<MyTaskWorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [bucket, setBucket] = useState<Bucket>('inbox');
+
+  // Active tab is DERIVED from the existing state — Analytics is simply
+  // view === 'dashboard'. No new state, and no duplicated Analytics implementation:
+  // the tab renders the very same <TaskDashboard /> the old header button did.
+  const activeTab: TabKey = view === 'dashboard' ? 'analytics' : bucket;
+  const selectTab = (key: TabKey) => {
+    if (key === 'analytics') { setView('dashboard'); return; }
+    setView('workspace');
+    setBucket(key);
+  };
   // Per-tab filters (client-side). Same Date+Status logic for both tabs — Inbox
   // default = Today+Delayed, Outbox default = All; Outbox adds a Task In-Charge filter.
   const [dateFilters, setDateFilters] = useState<Record<Bucket, Set<string>>>(() => ({
@@ -700,14 +835,23 @@ function WorkspaceInner() {
   const [inChargeFilter, setInChargeFilter] = useState<number | null>(null); // Outbox only
   const [waitingReasonFilter, setWaitingReasonFilter] = useState<Record<Bucket, string | null>>({ inbox: null, outbox: null }); // per-bucket, active only when Waiting is filtered
   const [readFilter, setReadFilter] = useState<Record<Bucket, ReadKey>>({ inbox: 'all', outbox: 'all' }); // per-bucket (never global — it would leak across tabs)
+  const [search, setSearch] = useState<Record<Bucket, string>>({ inbox: '', outbox: '' }); // per-bucket, like every other filter here
+  // Filter on the DEBOUNCED text (keeps typing snappy); `search` drives the input itself.
+  const debouncedSearch = useDebouncedValue(search, 200);
+  const searchInbox = debouncedSearch.inbox.trim().toLowerCase();
+  const searchOutbox = debouncedSearch.outbox.trim().toLowerCase();
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  // Details start COLLAPSED: the header (title + status + priority) is enough to scan,
+  // and the chat gets the space. Reuses the existing toggle + sessionStorage, so an
+  // explicit "expanded" choice ('0') still wins — only the DEFAULT changed.
+  const [collapsed, setCollapsed] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MyTask | null>(null);
 
   useEffect(() => {
-    try { setCollapsed(sessionStorage.getItem(COLLAPSE_KEY) === '1'); } catch { /* ignore */ }
+    // Collapsed unless the user explicitly expanded before ('0').
+    try { setCollapsed(sessionStorage.getItem(COLLAPSE_KEY) !== '0'); } catch { /* ignore */ }
   }, []);
   const toggleCollapsed = () => {
     setCollapsed((c) => {
@@ -795,16 +939,18 @@ function WorkspaceInner() {
   const inboxFiltered = useMemo(
     () => lists.inbox.filter((t) => matchDateStatus(t, dateFilters.inbox, statusFilters.inbox, false)
       && matchWaitingReason(t, waitingReasonFilter.inbox)
-      && matchRead(t, readFilter.inbox)),
-    [lists.inbox, dateFilters.inbox, statusFilters.inbox, waitingReasonFilter.inbox, readFilter.inbox],
+      && matchRead(t, readFilter.inbox)
+      && matchSearch(t, searchInbox)),
+    [lists.inbox, dateFilters.inbox, statusFilters.inbox, waitingReasonFilter.inbox, readFilter.inbox, searchInbox],
   );
   const outboxFiltered = useMemo(
     () => lists.outbox.filter((t) =>
       matchDateStatus(t, dateFilters.outbox, statusFilters.outbox, true)
       && matchWaitingReason(t, waitingReasonFilter.outbox)
       && matchRead(t, readFilter.outbox)
+      && matchSearch(t, searchOutbox)
       && (inChargeFilter == null || t.inChargeId === inChargeFilter)),
-    [lists.outbox, dateFilters.outbox, statusFilters.outbox, inChargeFilter, waitingReasonFilter.outbox, readFilter.outbox],
+    [lists.outbox, dateFilters.outbox, statusFilters.outbox, inChargeFilter, waitingReasonFilter.outbox, readFilter.outbox, searchOutbox],
   );
   const currentList = bucket === 'inbox' ? inboxFiltered : outboxFiltered;
 
@@ -849,6 +995,7 @@ function WorkspaceInner() {
     setStatusFilters((prev) => ({ ...prev, [bucket]: new Set<string>() }));
     setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: null }));
     setReadFilter((prev) => ({ ...prev, [bucket]: 'all' }));
+    setSearch((prev) => ({ ...prev, [bucket]: '' }));
     if (bucket === 'outbox') setInChargeFilter(null);
   };
   const defDates = DEFAULT_DATE_BY_BUCKET[bucket];
@@ -857,7 +1004,8 @@ function WorkspaceInner() {
     || !defDates.every((d) => dateSel.has(d))
     || (bucket === 'outbox' && inChargeFilter !== null)
     || (statusSel.has('waiting') && waitingReasonFilter[bucket] !== null)
-    || readFilter[bucket] !== 'all';
+    || readFilter[bucket] !== 'all'
+    || search[bucket].trim() !== '';
 
   const selectedTask = useMemo(() => {
     if (selectedId == null || !data) return null;
@@ -866,6 +1014,11 @@ function WorkspaceInner() {
 
   const openTask = (task: MyTask) => {
     setSelectedId(task.id);
+    // Mobile only: the details replace the list, so start at the top like opening a
+    // WhatsApp conversation. Desktop is a split view — keep the user's scroll position.
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
     // Opening a task marks it read (backend read fires from MyTaskChat on mount);
     // clear the unread flag + message count locally so the indicator vanishes at once.
     if (task.unreadCount > 0 || task.unread || task.unreadMentions > 0) {
@@ -896,35 +1049,45 @@ function WorkspaceInner() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900"><ListTodo className="h-6 w-6 text-indigo-600" /> My Tasks</h1>
-          <p className="mt-0.5 text-sm text-gray-500">
-            {view === 'dashboard'
-              ? 'Organisation-wide task execution, workload and employee performance.'
-              : 'A standalone workspace — Inbox & Outbox with real-time task chat.'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Analytics toggle — swaps this tab between the personal workspace and the
-              org-wide Task Dashboard. Gated by mytasks.dashboard.view. */}
-          {canViewDashboard && (
-            <button
-              type="button"
-              onClick={() => setView((v) => (v === 'dashboard' ? 'workspace' : 'dashboard'))}
-              className={classNames(
-                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition',
-                view === 'dashboard'
-                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
-              )}
-            >
-              {view === 'dashboard'
-                ? <><Inbox className="h-4 w-4" /> Back to Workspace</>
-                : <><BarChart3 className="h-4 w-4" /> Analytics</>}
-            </button>
-          )}
+    <div className="space-y-4">
+      {/* ── Primary navigation: Inbox | Outbox | Analytics ──────────────────────
+          Replaces the old page header (title/subtitle/Analytics button) so the
+          workspace starts at the top. The active tab is DERIVED from the existing
+          `view` + `bucket` state — no new state, no duplicated routing: Analytics
+          simply renders the same <TaskDashboard /> the old button did.
+          Underline styling mirrors the DetailsPanel tabs (the module's tab language). */}
+      <div className="flex items-end justify-between gap-3 border-b border-gray-200">
+        <nav className="-mb-px flex items-center gap-0.5 overflow-x-auto" aria-label="My Tasks sections">
+          {TABS.filter((t) => t.key !== 'analytics' || canViewDashboard).map((t) => {
+            const Icon = t.icon;
+            const active = activeTab === t.key;
+            const count = t.key === 'analytics' ? null : lists[t.key as Bucket].length;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => selectTab(t.key)}
+                title={t.hint}
+                aria-current={active ? 'page' : undefined}
+                className={classNames(
+                  'flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors sm:px-4',
+                  active
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700',
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {t.label}
+                {count != null && (
+                  <span className={classNames('rounded-full px-1.5 text-[10px] font-bold',
+                    active ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-500')}>{count}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+        {/* Actions stay with the navigation now that the header is gone. */}
+        <div className="flex shrink-0 items-center gap-2 pb-1.5">
           {view === 'workspace' && (
             <button type="button" onClick={() => load(true)} disabled={refreshing} title="Refresh"
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 disabled:opacity-60">
@@ -934,41 +1097,56 @@ function WorkspaceInner() {
           {/* New Task lives ONLY in the Outbox (tasks you create/send to others). */}
           {view === 'workspace' && canCreate && bucket === 'outbox' && (
             <button type="button" onClick={() => { setEditing(null); setModalOpen(true); }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
-              <Plus className="h-4 w-4" /> New Task
+              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 sm:px-3.5">
+              <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New Task</span><span className="sm:hidden">New</span>
             </button>
           )}
         </div>
       </div>
 
       {view === 'dashboard' ? <TaskDashboard /> : (
-      <div className="flex flex-col gap-5 lg:flex-row">
-        {/* LEFT */}
-        <aside className="lg:w-[360px] lg:shrink-0">
-          <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
-            {BUCKETS.map((b) => {
-              const Icon = b.icon;
-              const count = lists[b.key].length;
-              const active = bucket === b.key;
-              return (
-                <button key={b.key} type="button" onClick={() => setBucket(b.key)} title={b.hint}
-                  className={classNames('flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold transition',
-                    active ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-                  <Icon className="h-3.5 w-3.5" /> {b.label}
-                  <span className={classNames('rounded-full px-1.5 text-[10px]', active ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-500')}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
+      /* DESKTOP: the row is pinned to the viewport, so the PAGE never scrolls — the
+         task list and the details panel each scroll inside their own column
+         (WhatsApp/Slack-style). MOBILE: unconstrained, so the page keeps its single
+         natural scroll (no nested scrolling). */
+      <div className="flex flex-col gap-5 lg:h-[calc(100vh_-_160px)] lg:flex-row">
+        {/* LEFT — the task list.
+            MOBILE (WhatsApp-style): this is the "list screen". Once a task is opened
+            it steps aside so the details get the full width — never a split screen.
+            DESKTOP (lg+): always visible beside the details, exactly as before. */}
+        {/* `hidden` + `lg:flex`: the responsive variant is emitted later, so the list
+            re-appears as a flex COLUMN on desktop (filters fixed, list scrolls). */}
+        <aside className={classNames('lg:flex lg:h-full lg:min-h-0 lg:w-[360px] lg:shrink-0 lg:flex-col', selectedId != null && 'hidden')}>
+          {/* (The Inbox/Outbox switch now lives in the primary tab bar above — a
+              second strip here would be a duplicate control.) */}
 
           {/* Filters — combinable Date + Status (both tabs), plus Task In-Charge
               on the Outbox. Instant, client-side over the already-fetched list. */}
-          <div className="mb-3 space-y-2 rounded-xl border border-gray-200 bg-white p-2.5">
+          <div className="mb-3 space-y-2 rounded-xl border border-gray-200 bg-white p-2.5 lg:shrink-0">
+            {/* Instant search — Task Name, Creator, In-Charge, Members, Project.
+                Composes with every filter below; debounced, no API call. */}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search[bucket]}
+                onChange={(e) => setSearch((prev) => ({ ...prev, [bucket]: e.target.value }))}
+                placeholder="Search task, creator, in-charge, member or project…"
+                aria-label="Search tasks"
+                className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-7 text-xs text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+              />
+              {search[bucket] && (
+                <button type="button" onClick={() => setSearch((prev) => ({ ...prev, [bucket]: '' }))}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Due</span>
               {DATE_FILTERS.map((f) => (
                 <button key={f.key} type="button" onClick={() => toggleDate(f.key)}
-                  className={classNames('rounded-full px-2.5 py-1 text-[11px] font-semibold transition',
+                  className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
                     dateSel.has(f.key) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
                   {f.label}
                 </button>
@@ -978,7 +1156,7 @@ function WorkspaceInner() {
               <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Status</span>
               {STATUS_FILTERS.map((f) => (
                 <button key={f.key} type="button" onClick={() => toggleStatus(f.key)}
-                  className={classNames('rounded-full px-2.5 py-1 text-[11px] font-semibold transition',
+                  className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
                     statusSel.has(f.key) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
                   {f.label}
                 </button>
@@ -995,7 +1173,7 @@ function WorkspaceInner() {
               <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Read</span>
               {READ_FILTERS.map((f) => (
                 <button key={f.key} type="button" onClick={() => setReadFilter((prev) => ({ ...prev, [bucket]: f.key }))}
-                  className={classNames('rounded-full px-2.5 py-1 text-[11px] font-semibold transition',
+                  className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
                     readSel === f.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
                   {f.label}
                 </button>
@@ -1005,11 +1183,11 @@ function WorkspaceInner() {
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Reason</span>
                 <button type="button" onClick={() => setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: null }))}
-                  className={classNames('rounded-full px-2.5 py-1 text-[11px] font-semibold transition',
+                  className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
                     waitingReasonFilter[bucket] === null ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>All</button>
                 {waitingReasonOptions.map((r) => (
                   <button key={r} type="button" onClick={() => setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: r }))}
-                    className={classNames('rounded-full px-2.5 py-1 text-[11px] font-semibold transition',
+                    className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
                       waitingReasonFilter[bucket] === r ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>{r}</button>
                 ))}
               </div>
@@ -1022,7 +1200,8 @@ function WorkspaceInner() {
             )}
           </div>
 
-          <div className="space-y-2">
+          {/* The ONLY scroller in this column on desktop — the filters above stay put. */}
+          <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
             {loading ? (
               <div className="flex items-center justify-center py-16 text-gray-300"><Loader2 className="h-6 w-6 animate-spin" /></div>
             ) : error ? (
@@ -1041,8 +1220,12 @@ function WorkspaceInner() {
           </div>
         </aside>
 
-        {/* RIGHT */}
-        <section className="min-w-0 flex-1">
+        {/* RIGHT — the details.
+            MOBILE: acts as the dedicated "details screen" (full width, Back button in
+            its header); hidden entirely while no task is open, so the empty
+            "Select a task" placeholder never eats a phone screen.
+            DESKTOP: unchanged — always rendered, placeholder included. */}
+        <section className={classNames('min-w-0 flex-1 lg:h-full lg:min-h-0', selectedId == null && 'hidden lg:block')}>
           {!selectedTask ? (
             <div className="flex h-full min-h-[400px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white text-center">
               <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 text-indigo-500"><ListTodo className="h-7 w-7" /></div>
@@ -1050,16 +1233,23 @@ function WorkspaceInner() {
               <p className="mt-1 text-sm text-gray-400">Choose a task from the left to see its details and chat.</p>
             </div>
           ) : (
-            <div className="h-full" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+            /* Mobile-first: let the panel size to its content so the PAGE owns the
+               single scroll. The fixed viewport-height pane (and its inner scroll) is
+               a desktop-only two-column affordance — on a phone it produced a
+               viewport-tall box nested inside an already-scrolling page. */
+            <div className="lg:h-full lg:min-h-0">
               <DetailsPanel
                 task={selectedTask}
                 collapsed={collapsed}
                 onToggle={toggleCollapsed}
-                canEdit={canEdit}
-                canDelete={canDelete && (selectedTask.createdByMe || isSuperAdmin)}
+                canEdit={canEdit && isOwnerOf(selectedTask)}
+                canDelete={canDelete && isOwnerOf(selectedTask)}
+                canExecute={canEdit && (isOwnerOf(selectedTask) || isInChargeOf(selectedTask))}
+                canApprove={canEdit && isOwnerOf(selectedTask)}
                 onEdit={() => { setEditing(selectedTask); setModalOpen(true); }}
                 onDelete={() => handleDelete(selectedTask)}
                 onStatus={(s, wr) => handleStatus(selectedTask.id, s, wr)}
+                onBack={() => setSelectedId(null)}
                 currentUserId={currentUserId}
               />
             </div>
