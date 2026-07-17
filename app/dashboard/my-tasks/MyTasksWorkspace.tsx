@@ -6,7 +6,7 @@ import { io } from 'socket.io-client';
 import {
   Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
   Calendar, User, Users, Flag, Clock, Paperclip, RefreshCw, Pencil, Trash2, ShieldAlert,
-  MessageCircle, Activity, Download, BarChart3,
+  MessageCircle, Activity, Download, BarChart3, AtSign,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -46,6 +46,21 @@ const STATUS_FILTERS: { key: string; label: string }[] = [
   { key: 'approved', label: 'Approved' },
 ];
 const COMPLETED_STATUSES = ['done', 'approved'];
+// Read-state filter. Reuses the EXISTING per-user `unread` flag the card badges
+// already use (server-computed: never opened OR changed since last open OR unread
+// chat messages / @mentions). This adds NO second unread mechanism — it only
+// filters on the flag the workspace payload already carries.
+type ReadKey = 'all' | 'unread' | 'read';
+const READ_FILTERS: { key: ReadKey; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'unread', label: 'Unread' },
+  { key: 'read', label: 'Read' },
+];
+function matchRead(t: MyTask, mode: ReadKey): boolean {
+  if (mode === 'unread') return !!t.unread;
+  if (mode === 'read') return !t.unread;
+  return true;
+}
 // Per-tab date defaults: Inbox opens on actionable work (Today + Delayed);
 // Outbox opens on everything the user created.
 const DEFAULT_DATE_BY_BUCKET: Record<'inbox' | 'outbox', string[]> = {
@@ -180,10 +195,23 @@ function TaskRow({ task, active, onClick, showDirection }: { task: MyTask; activ
           {task.unread && !active && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-rose-500" title="Unread" />}
           <span className={classNames('truncate text-sm text-gray-800', task.unread && !active ? 'font-bold' : 'font-semibold')}>{task.title}</span>
         </span>
-        {task.unreadCount > 0 && !active && (
-          <span className="shrink-0 rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
-            title={`${task.unreadCount} unread message${task.unreadCount === 1 ? '' : 's'}`}>{task.unreadCount}</span>
-        )}
+        <span className="flex shrink-0 items-center gap-1">
+          {/* Unread @mention badge — visible ONLY to the mentioned user (the count is
+              computed per-user server-side) and cleared when they open the task. */}
+          {task.unreadMentions > 0 && !active && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700"
+              title={`${task.unreadMentions} unread mention${task.unreadMentions === 1 ? '' : 's'} of you`}
+            >
+              <AtSign className="h-2.5 w-2.5" />
+              {task.unreadMentions > 1 && task.unreadMentions}
+            </span>
+          )}
+          {task.unreadCount > 0 && !active && (
+            <span className="rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
+              title={`${task.unreadCount} unread message${task.unreadCount === 1 ? '' : 's'}`}>{task.unreadCount}</span>
+          )}
+        </span>
       </div>
 
       {/* Priority + Status (+ Sent/Received direction) */}
@@ -361,6 +389,17 @@ function DetailsPanel({
   const [activeTab, setActiveTab] = useState<'chat' | 'attachments' | 'timeline'>('chat');
   const [waitingOpen, setWaitingOpen] = useState(false); // Waiting-reason picker
 
+  // Everyone who can be @mentioned = Owner (creator) + In-Charge + assigned members,
+  // de-duplicated by id and excluding inactive accounts. The creator is included even
+  // when they never assigned themselves (In-Charge is always a member already).
+  const mentionables = useMemo(() => {
+    const byId = new Map<number, { id: number; name: string }>();
+    const c = task.createdBy;
+    if (c && c.id && c.active !== false) byId.set(c.id, { id: c.id, name: c.name });
+    for (const m of task.members) if (m.active !== false) byId.set(m.id, { id: m.id, name: m.name });
+    return [...byId.values()];
+  }, [task.createdBy, task.members]);
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col h-full">
       {/* Header */}
@@ -528,7 +567,7 @@ function DetailsPanel({
             <div className="flex-1 bg-white relative min-h-[340px]">
               {activeTab === 'chat' && (
                 <div className="absolute inset-0">
-                  <MyTaskChat key={task.id} taskId={task.id} currentUserId={currentUserId} members={task.members} />
+                  <MyTaskChat key={task.id} taskId={task.id} currentUserId={currentUserId} members={mentionables} />
                 </div>
               )}
 
@@ -660,6 +699,7 @@ function WorkspaceInner() {
   }));
   const [inChargeFilter, setInChargeFilter] = useState<number | null>(null); // Outbox only
   const [waitingReasonFilter, setWaitingReasonFilter] = useState<Record<Bucket, string | null>>({ inbox: null, outbox: null }); // per-bucket, active only when Waiting is filtered
+  const [readFilter, setReadFilter] = useState<Record<Bucket, ReadKey>>({ inbox: 'all', outbox: 'all' }); // per-bucket (never global — it would leak across tabs)
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -748,20 +788,23 @@ function WorkspaceInner() {
   }), [data]);
   const dateSel = dateFilters[bucket];
   const statusSel = statusFilters[bucket];
+  const readSel = readFilter[bucket];
   // Both tabs filter by Date+Status (a task must match any selected date bucket AND
   // any selected status). Outbox uses the stricter Delayed (excludes completed) and
   // adds the Task In-Charge filter. All client-side over already-fetched data.
   const inboxFiltered = useMemo(
     () => lists.inbox.filter((t) => matchDateStatus(t, dateFilters.inbox, statusFilters.inbox, false)
-      && matchWaitingReason(t, waitingReasonFilter.inbox)),
-    [lists.inbox, dateFilters.inbox, statusFilters.inbox, waitingReasonFilter.inbox],
+      && matchWaitingReason(t, waitingReasonFilter.inbox)
+      && matchRead(t, readFilter.inbox)),
+    [lists.inbox, dateFilters.inbox, statusFilters.inbox, waitingReasonFilter.inbox, readFilter.inbox],
   );
   const outboxFiltered = useMemo(
     () => lists.outbox.filter((t) =>
       matchDateStatus(t, dateFilters.outbox, statusFilters.outbox, true)
       && matchWaitingReason(t, waitingReasonFilter.outbox)
+      && matchRead(t, readFilter.outbox)
       && (inChargeFilter == null || t.inChargeId === inChargeFilter)),
-    [lists.outbox, dateFilters.outbox, statusFilters.outbox, inChargeFilter, waitingReasonFilter.outbox],
+    [lists.outbox, dateFilters.outbox, statusFilters.outbox, inChargeFilter, waitingReasonFilter.outbox, readFilter.outbox],
   );
   const currentList = bucket === 'inbox' ? inboxFiltered : outboxFiltered;
 
@@ -805,6 +848,7 @@ function WorkspaceInner() {
     setDateFilters((prev) => ({ ...prev, [bucket]: new Set(DEFAULT_DATE_BY_BUCKET[bucket]) }));
     setStatusFilters((prev) => ({ ...prev, [bucket]: new Set<string>() }));
     setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: null }));
+    setReadFilter((prev) => ({ ...prev, [bucket]: 'all' }));
     if (bucket === 'outbox') setInChargeFilter(null);
   };
   const defDates = DEFAULT_DATE_BY_BUCKET[bucket];
@@ -812,7 +856,8 @@ function WorkspaceInner() {
     || dateSel.size !== defDates.length
     || !defDates.every((d) => dateSel.has(d))
     || (bucket === 'outbox' && inChargeFilter !== null)
-    || (statusSel.has('waiting') && waitingReasonFilter[bucket] !== null);
+    || (statusSel.has('waiting') && waitingReasonFilter[bucket] !== null)
+    || readFilter[bucket] !== 'all';
 
   const selectedTask = useMemo(() => {
     if (selectedId == null || !data) return null;
@@ -823,10 +868,12 @@ function WorkspaceInner() {
     setSelectedId(task.id);
     // Opening a task marks it read (backend read fires from MyTaskChat on mount);
     // clear the unread flag + message count locally so the indicator vanishes at once.
-    if (task.unreadCount > 0 || task.unread) {
+    if (task.unreadCount > 0 || task.unread || task.unreadMentions > 0) {
       setData((prev) => {
         if (!prev) return prev;
-        const clr = (arr: MyTask[]) => arr.map((t) => (t.id === task.id ? { ...t, unreadCount: 0, unread: false } : t));
+        const clr = (arr: MyTask[]) => arr.map((t) => (
+          t.id === task.id ? { ...t, unreadCount: 0, unread: false, unreadMentions: 0 } : t
+        ));
         return { ...prev, inbox: clr(prev.inbox), outbox: clr(prev.outbox) };
       });
     }
@@ -942,6 +989,17 @@ function WorkspaceInner() {
                   Clear
                 </button>
               )}
+            </div>
+            {/* Read state — filters on the existing per-user unread flag. */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Read</span>
+              {READ_FILTERS.map((f) => (
+                <button key={f.key} type="button" onClick={() => setReadFilter((prev) => ({ ...prev, [bucket]: f.key }))}
+                  className={classNames('rounded-full px-2.5 py-1 text-[11px] font-semibold transition',
+                    readSel === f.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                  {f.label}
+                </button>
+              ))}
             </div>
             {statusSel.has('waiting') && waitingReasonOptions.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">

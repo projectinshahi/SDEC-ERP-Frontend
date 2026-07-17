@@ -10,10 +10,14 @@ import {
   useMasterResource, ModuleLoading, StatCard, ChartCard, DonutChart, LineTrend,
   CategoryBars, ChartEmpty, CHART_COLORS,
 } from '@/components/master/MasterKit';
+import { ExportPdfButton } from '@/components/master/ExportPdfButton';
+import { captureRechartsImages, type DashboardReport, type ReportKpi, type ReportTable, type ReportFilter } from '@/lib/pdf/dashboardPdf';
 import {
-  fetchMyTaskDashboard,
+  fetchMyTaskDashboard, fetchMyTaskDashboardReport,
   type MyTaskDashboardData, type MyTaskDashboardEmployee, type MyTaskBottleneckRow,
 } from '@/lib/api/myTasks';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { classNames } from '@/lib/utils';
 
 /**
@@ -42,6 +46,29 @@ type SortKey = typeof SORTS[number]['key'];
 
 const PRIORITIES = ['urgent', 'high', 'medium', 'low'];
 
+/**
+ * The ONLY charts allowed into the PDF report, matched on their ChartCard heading.
+ *
+ * A WHITELIST (not a blacklist) is deliberate: the report is an executive snapshot,
+ * and anything not named here is excluded by construction — the two trend charts
+ * ("Task Trend" / "Overdue Work"), and any chart the capture helper could not title
+ * (those export as "Chart 3", "Chart 4", … numbered by on-screen position, so they
+ * can never be targeted reliably by name). Nothing unnamed can ever reach the PDF.
+ *
+ * The dashboard itself is untouched — this governs the report only.
+ */
+/** Subtitle shown on the Status Distribution card AND reproduced in the PDF. */
+const STATUS_CHART_SUBTITLE = 'Across the filtered task set';
+
+const REPORT_CHARTS = new Set([
+  'Status Distribution',
+  'Priority Breakdown',
+  'Department Comparison',
+  'Open Workload by Department',
+  'Workload · By Department',
+  'Workload · By Employee',
+]);
+
 const TABS = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
   { key: 'employees', label: 'Employees', icon: Users },
@@ -52,6 +79,12 @@ type TabKey = typeof TABS[number]['key'];
 
 function initials(name: string) {
   return (name || '?').trim().split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase() || '?';
+}
+
+/** Avg completion time — hours under a day, else days. Shared by the table + PDF. */
+function fmtAvgHours(h: number | null): string {
+  if (h == null) return '—';
+  return h >= 24 ? `${(h / 24).toFixed(1)}d` : `${h}h`;
 }
 
 /** Completion badge — mirrors the ERP badge language used elsewhere. */
@@ -153,6 +186,139 @@ export function TaskDashboard() {
   );
 
   const res = useMasterResource<MyTaskDashboardData>(fetcher, { pollMs: 30_000 });
+
+  const { user } = useAuth();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const canExport = isSuperAdmin || hasPermission('mytasks.dashboard.export');
+
+  /**
+   * Builds the branded PDF report from the SAME filtered dataset the dashboard is
+   * showing. Reuses the shared founder-dashboard report service (lib/pdf/dashboardPdf
+   * via ExportPdfButton) — charts are auto-captured from the live recharts SVGs, and
+   * every analytic is ALSO emitted as a real table so the PDF is structured text,
+   * never a screenshot. One extra API call, made only on download.
+   */
+  const buildReport = useCallback(async (): Promise<DashboardReport> => {
+    const full = await fetchMyTaskDashboardReport({
+      employeeId: employeeId ? Number(employeeId) : null,
+      department: department || null,
+      projectId: projectId || null,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      status: status || null,
+      priority: priority || null,
+      inChargeId: inChargeId ? Number(inChargeId) : null,
+    });
+    const o = full.filterOptions;
+    const userName = (id: string) => o.employees.find((e) => String(e.id) === id)?.name ?? id;
+    const s = full.summary;
+
+    const kpis: ReportKpi[] = [
+      { label: 'Total Tasks', value: s.total },
+      { label: 'Active Tasks', value: s.active },
+      { label: 'To Do', value: s.todo },
+      { label: 'In Progress', value: s.inProgress },
+      { label: 'Waiting', value: s.waiting },
+      { label: 'Done', value: s.done },
+      { label: 'Approved', value: s.approved },
+      { label: 'Delayed Tasks', value: s.delayed },
+      { label: 'Tasks Due Today', value: s.dueToday },
+      { label: 'Completion Rate', value: `${full.companyProgress.completionPct}%` },
+    ];
+
+    const rf: ReportFilter[] = [];
+    if (employeeId) rf.push({ label: 'Employee', value: userName(employeeId) });
+    if (department) rf.push({ label: 'Department', value: department });
+    if (projectId) rf.push({ label: 'Project', value: o.projects.find((p) => p.id === projectId)?.name ?? projectId });
+    if (inChargeId) rf.push({ label: 'Task In-Charge', value: userName(inChargeId) });
+    if (status) rf.push({ label: 'Status', value: o.statuses.find((x) => x.value === status)?.label ?? status });
+    if (priority) rf.push({ label: 'Priority', value: priority });
+    if (startDate || endDate) rf.push({ label: 'Date Range', value: `${startDate || 'Any'} → ${endDate || 'Any'}` });
+    if (!rf.length) rf.push({ label: 'Filters', value: 'None — all tasks' });
+
+    const tasks = full.tasks ?? [];
+    const tables: ReportTable[] = [
+      { title: 'Task Status Distribution', columns: ['Status', 'Tasks'], rows: full.statusDistribution.map((d) => [d.label, d.value]) },
+      { title: 'Priority Breakdown', columns: ['Priority', 'Tasks'], rows: full.priorityDistribution.map((d) => [d.label, d.value]) },
+      {
+        title: 'Department Performance',
+        columns: ['Department', 'People', 'Total', 'Completed', 'Pending', 'Waiting', 'Delayed', 'Completion %'],
+        rows: full.departments.map((d) => [d.department, d.people, d.total, d.completed, d.pending, d.waiting, d.delayed, `${d.completionPct}%`]),
+      },
+      {
+        title: 'Employee Performance',
+        columns: ['Employee', 'Department', 'Total', 'Completed', 'Pending', 'Waiting', 'Delayed', 'Completion %', 'Avg Completion Time'],
+        rows: full.employees.map((e) => [e.name, e.department, e.total, e.completed, e.pending, e.waiting, e.delayed, `${e.completionPct}%`, fmtAvgHours(e.avgCompletionHours)]),
+      },
+      { title: 'Workload Distribution — by Department', columns: ['Department', 'Open Tasks'], rows: full.workload.byDepartment.map((d) => [d.label, d.value]) },
+      { title: 'Workload Distribution — by Employee', columns: ['Employee', 'Open Tasks'], rows: full.workload.byEmployee.map((d) => [d.label, d.value]) },
+      // NOTE: the "Task Completion Trend" and "Delayed Task Trend" sections are
+      // intentionally NOT part of this report (see REPORT_EXCLUDED_CHARTS). Their
+      // dashboard charts + calculations are unchanged — only the PDF omits them.
+      {
+        title: 'Recently Completed', columns: ['Task', 'Completed By', 'Completed At'],
+        rows: full.recentlyCompleted.map((r) => [r.title, r.completedBy ?? '—', new Date(r.completedAt).toLocaleString()]),
+      },
+      {
+        title: 'Upcoming Deadlines', columns: ['Task', 'In-Charge', 'Due', 'Status', 'Priority'],
+        rows: full.upcomingDeadlines.map((u) => [u.title, u.inCharge ?? '—', `${u.dueDate ?? '—'}${u.dueTime ? ` ${u.dueTime}` : ''}`, u.status, u.priority]),
+      },
+    ];
+    if (full.bottlenecks.highestPending.length) {
+      tables.push({
+        title: 'Bottlenecks — Highest Pending', columns: ['Employee', 'Department', 'Pending', 'Total'],
+        rows: full.bottlenecks.highestPending.map((b) => [b.name, b.department, b.pending, b.total]),
+      });
+    }
+    if (full.bottlenecks.highestDelayed.length) {
+      tables.push({
+        title: 'Bottlenecks — Highest Delayed', columns: ['Employee', 'Department', 'Delayed', 'Total'],
+        rows: full.bottlenecks.highestDelayed.map((b) => [b.name, b.department, b.delayed, b.total]),
+      });
+    }
+    tables.push({
+      title: `Detailed Task Report — ${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`,
+      columns: ['Task', 'Status', 'Priority', 'Owner', 'In-Charge', 'Assigned Members', 'Due Date & Time', 'Created', 'Department', 'Project'],
+      rows: tasks.map((t) => [
+        t.title, t.status, t.priority, t.owner, t.inCharge ?? '—',
+        t.members.filter(Boolean).join(', ') || '—',
+        `${t.dueDate ?? '—'}${t.dueTime ? ` ${t.dueTime}` : ''}`,
+        new Date(t.createdAt).toLocaleDateString(),
+        t.department, t.project ?? '—',
+      ]),
+      note: 'Complete task list for the filters applied at generation time.',
+    });
+
+    // Chart selection is EXPLICIT (ExportPdfButton's auto-capture is off): only the
+    // whitelisted charts are exported, so the trend charts and any untitled
+    // "Chart N" captures can never appear, and no placeholder is left behind.
+    //
+    // DonutChart's legend is an HTML sibling of its <svg>, so the captured image is
+    // the donut ALONE. Re-attach the legend from the SAME array the chart was given
+    // (`statusDistribution`), sliced and coloured EXACTLY as DonutChart does
+    // (`slice(0,6)` + `CHART_COLORS[i % len]`) — one source of truth, no recalculation.
+    const charts = (await captureRechartsImages(document))
+      .filter((c) => REPORT_CHARTS.has(c.title))
+      .map((c) => (c.title === 'Status Distribution'
+        ? {
+          ...c,
+          subtitle: STATUS_CHART_SUBTITLE,
+          legend: full.statusDistribution.slice(0, 6).map((d, i) => ({
+            label: d.label, value: d.value, color: CHART_COLORS[i % CHART_COLORS.length],
+          })),
+        }
+        : c));
+
+    return {
+      dashboardName: 'Task Analytics Report',
+      fileBase: 'Task_Analytics_Report',
+      generatedBy: user?.name || 'Unknown',
+      filters: rf,
+      kpis,
+      charts,
+      tables,
+    };
+  }, [employeeId, department, projectId, startDate, endDate, status, priority, inChargeId, user?.name]);
 
   // Instant nudge for tasks the viewer is part of (org-wide freshness = polling).
   const refreshRef = useRef(res.refresh);
@@ -280,6 +446,16 @@ export function TaskDashboard() {
                 <X className="h-3 w-3" /> Clear filters
               </button>
             )}
+            {/* Shared founder-dashboard PDF export (same component/design as Projects,
+                Sales, Developers & HR). Gated by mytasks.dashboard.export. */}
+            {canExport && (
+              <ExportPdfButton
+                build={buildReport}
+                autoCaptureCharts={false}
+                label="Download Report"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              />
+            )}
             <button type="button" onClick={res.refresh} title="Refresh now"
               className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600">
               <RefreshCw className={classNames('h-3.5 w-3.5', res.isRefreshing && 'animate-spin')} />
@@ -328,7 +504,7 @@ export function TaskDashboard() {
       {/* ── Overview ───────────────────────────────────────────────────────── */}
       {tab === 'overview' && (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ChartCard title="Status Distribution" subtitle="Across the filtered task set">
+        <ChartCard title="Status Distribution" subtitle={STATUS_CHART_SUBTITLE}>
           <DonutChart data={data.statusDistribution} />
         </ChartCard>
         <ChartCard title="Priority Breakdown" subtitle="Tasks by priority">
@@ -414,9 +590,7 @@ export function TaskDashboard() {
                       <td className="px-2 py-2.5 text-xs font-medium text-slate-500">
                         {e.avgCompletionHours == null
                           ? <span className="text-slate-300">—</span>
-                          : e.avgCompletionHours >= 24
-                            ? `${(e.avgCompletionHours / 24).toFixed(1)}d`
-                            : `${e.avgCompletionHours}h`}
+                          : fmtAvgHours(e.avgCompletionHours)}
                       </td>
                       <td className="px-2 py-2.5">
                         <span className={classNames('inline-flex whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[10px] font-semibold', badge.tone)}>

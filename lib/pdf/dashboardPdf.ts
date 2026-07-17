@@ -20,7 +20,19 @@
 
 export interface ReportKpi { label: string; value: string | number }
 export interface ReportTable { title: string; columns: string[]; rows: (string | number)[][]; note?: string }
-export interface ReportChartImage { title: string; dataUrl: string }
+export interface ReportChartImage {
+  title: string;
+  dataUrl: string;
+  /** Optional caption under the title (mirrors the dashboard card's subtitle). */
+  subtitle?: string;
+  /**
+   * Optional legend. Recharts legends in this app are HTML siblings of the <svg>,
+   * so they are NOT part of the captured image — pass the same data/colours the
+   * chart was given and it is re-rendered here as crisp text (chart left, legend
+   * right). Charts without a legend render exactly as before.
+   */
+  legend?: { label: string; value: string | number; color: string }[];
+}
 export interface ReportFilter { label: string; value: string }
 
 export interface DashboardReport {
@@ -160,7 +172,17 @@ function buildReportHtml(report: DashboardReport, filename: string): string {
 
   const chartsHtml = report.charts && report.charts.length
     ? `<h2 class="section">Analytics &amp; Charts</h2><div class="charts">${report.charts
-        .map((c) => `<div class="chart"><h3>${escapeHtml(c.title)}</h3><img src="${c.dataUrl}" alt="${escapeHtml(c.title)}" /></div>`)
+        .map((c) => {
+          const sub = c.subtitle ? `<p class="csub">${escapeHtml(c.subtitle)}</p>` : '';
+          const img = `<img src="${c.dataUrl}" alt="${escapeHtml(c.title)}" />`;
+          if (!c.legend || !c.legend.length) {
+            return `<div class="chart"><h3>${escapeHtml(c.title)}</h3>${sub}${img}</div>`;
+          }
+          const items = c.legend
+            .map((l) => `<li><span class="k"><i style="background:${escapeHtml(l.color)}"></i>${escapeHtml(l.label)}</span><b>${escapeHtml(l.value)}</b></li>`)
+            .join('');
+          return `<div class="chart chart--wide"><h3>${escapeHtml(c.title)}</h3>${sub}<div class="chart-row">${img}<ul class="legend">${items}</ul></div></div>`;
+        })
         .join('')}</div>`
     : '';
 
@@ -205,6 +227,19 @@ function buildReportHtml(report: DashboardReport, filename: string): string {
   .chart { flex: 0 1 calc(50% - 9px); max-width: calc(50% - 9px); border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; background: #fff; page-break-inside: avoid; }
   .chart h3 { margin: 0 0 10px; font-size: 11px; font-weight: 700; color: #334155; }
   .chart img { display: block; margin: 0 auto; max-width: 100%; max-height: 200px; width: auto; height: auto; }
+  .chart .csub { margin: -6px 0 10px; font-size: 9px; color: #64748b; }
+  /* A chart that carries a legend reproduces its dashboard card: full-width row,
+     larger graph on the left, legend on the right, vertically centred. Declared
+     after the .chart img rule above so the taller cap wins (same specificity). */
+  .chart--wide { flex: 1 1 100%; max-width: 100%; }
+  .chart--wide .chart-row { display: flex; align-items: center; justify-content: center; gap: 30px; }
+  .chart--wide img { margin: 0; max-height: 260px; }
+  .legend { list-style: none; margin: 0; padding: 0; min-width: 200px; }
+  .legend li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 5px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px; color: #334155; }
+  .legend li:last-child { border-bottom: 0; }
+  .legend .k { display: flex; align-items: center; gap: 8px; text-transform: capitalize; }
+  .legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+  .legend b { color: #0f172a; font-weight: 700; }
   table { width: 100%; border-collapse: collapse; }
   thead { display: table-header-group; }
   th { background: #f1f5f9; color: #334155; font-size: 9px; text-transform: uppercase; letter-spacing: .4px; text-align: left; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; }
