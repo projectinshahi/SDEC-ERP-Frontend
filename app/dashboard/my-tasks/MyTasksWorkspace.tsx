@@ -376,11 +376,16 @@ function WaitingReasonModal({
 }
 
 function DetailsPanel({
-  task, collapsed, onToggle, canEdit, canDelete, onEdit, onDelete, onStatus, currentUserId,
+  task, collapsed, onToggle, canEdit, canDelete, onEdit, onDelete, onStatus,
+  canExecute, canApprove, currentUserId,
 }: {
   task: MyTask; collapsed: boolean; onToggle: () => void;
   canEdit: boolean; canDelete: boolean;
   onEdit: () => void; onDelete: () => void; onStatus: (s: string, waitingReason?: string) => void;
+  /** Execution rights: change status / waiting reason (creator, In-Charge, admin). */
+  canExecute: boolean;
+  /** Owner rights: approve the task (creator / admin only). */
+  canApprove: boolean;
   currentUserId?: number;
 }) {
   const prio = priorityMeta(task.priority);
@@ -445,7 +450,7 @@ function DetailsPanel({
               <div className="grid grid-cols-2 gap-4">
                 <DetailRow icon={Flag} label="Priority"><span className={prio.text}>{prio.label}</span></DetailRow>
                 <DetailRow icon={ListTodo} label="Status">
-                  {canEdit ? (
+                  {canExecute ? (
                     <select
                       value={task.status}
                       onChange={(e) => {
@@ -457,7 +462,12 @@ function DetailsPanel({
                       }}
                       className="rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 transition"
                     >
-                      {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {/* Approve is the owner's verification step — hidden from the
+                          In-Charge. Kept when it IS the current status, otherwise a
+                          controlled <select> would render blank on an approved task. */}
+                      {STATUS_OPTIONS
+                        .filter((o) => o.value !== 'approved' || canApprove || task.status === 'approved')
+                        .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   ) : st.label}
                 </DetailRow>
@@ -471,7 +481,7 @@ function DetailsPanel({
                     <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                       {task.waitingReason || '—'}
                     </span>
-                    {canEdit && (
+                    {canExecute && (
                       <button type="button" onClick={() => setWaitingOpen(true)} className="text-xs font-medium text-indigo-600 hover:underline">
                         Edit
                       </button>
@@ -682,6 +692,11 @@ function WorkspaceInner() {
   const canAssign = isSuperAdmin || hasPermission('mytasks.assign');
   // Org-wide Task Dashboard (Founder/CEO/HR/Leads/Managers) — toggled in-place.
   const canViewDashboard = isSuperAdmin || hasPermission('mytasks.dashboard.view');
+  // Per-task roles — mirror the backend (utils/myTaskAccess.ts) so the UI never
+  // offers an action the server will reject. The coarse mytasks.* permission still
+  // applies on top; these only narrow it further.
+  const isOwnerOf = (t: MyTask) => t.createdByMe || isSuperAdmin;
+  const isInChargeOf = (t: MyTask) => currentUserId != null && t.inChargeId === currentUserId;
   const [view, setView] = useState<'workspace' | 'dashboard'>('workspace');
 
   const [data, setData] = useState<MyTaskWorkspaceData | null>(null);
@@ -1055,8 +1070,10 @@ function WorkspaceInner() {
                 task={selectedTask}
                 collapsed={collapsed}
                 onToggle={toggleCollapsed}
-                canEdit={canEdit}
-                canDelete={canDelete && (selectedTask.createdByMe || isSuperAdmin)}
+                canEdit={canEdit && isOwnerOf(selectedTask)}
+                canDelete={canDelete && isOwnerOf(selectedTask)}
+                canExecute={canEdit && (isOwnerOf(selectedTask) || isInChargeOf(selectedTask))}
+                canApprove={canEdit && isOwnerOf(selectedTask)}
                 onEdit={() => { setEditing(selectedTask); setModalOpen(true); }}
                 onDelete={() => handleDelete(selectedTask)}
                 onStatus={(s, wr) => handleStatus(selectedTask.id, s, wr)}
