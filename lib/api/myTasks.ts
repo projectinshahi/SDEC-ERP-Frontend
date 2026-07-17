@@ -9,6 +9,8 @@ export interface MyTaskMember {
   id: number;
   name: string;
   email: string | null;
+  /** False when the user account is inactive — such users are not mentionable. */
+  active?: boolean;
 }
 
 export interface MyTaskAttachment {
@@ -38,7 +40,7 @@ export interface MyTask {
   dueTime: string | null;
   createdAt: string;
   updatedAt: string;
-  createdBy: { id: number; name: string; email: string | null };
+  createdBy: { id: number; name: string; email: string | null; active?: boolean };
   inChargeId?: number | null;
   /** Dependency reason shown while status === 'waiting' (null otherwise). */
   waitingReason?: string | null;
@@ -52,6 +54,8 @@ export interface MyTask {
   unreadCount: number;
   /** Per-user unread flag: never opened, changed since last open, or new chat msgs. */
   unread: boolean;
+  /** Per-user unread @mentions (subset of unreadCount) — drives the card's @ badge. */
+  unreadMentions: number;
   attachments: MyTaskAttachment[];
   activities: MyTaskActivity[];
 }
@@ -135,7 +139,25 @@ export interface MyTaskBottleneckRow {
   completionPct: number;
 }
 
+export interface MyTaskReportTask {
+  id: number;
+  title: string;
+  status: string;
+  priority: string;
+  owner: string;
+  inCharge: string | null;
+  members: (string | null)[];
+  dueDate: string | null;
+  dueTime: string | null;
+  createdAt: string;
+  department: string;
+  project: string | null;
+  waitingReason: string | null;
+}
+
 export interface MyTaskDashboardData {
+  /** Detailed filtered task list — ONLY present on the report payload. */
+  tasks?: MyTaskReportTask[];
   summary: {
     total: number; active: number; todo: number; inProgress: number;
     waiting: number; done: number; approved: number; delayed: number; dueToday: number;
@@ -173,7 +195,8 @@ export interface MyTaskDashboardData {
   generatedAt: string;
 }
 
-export async function fetchMyTaskDashboard(f: MyTaskDashboardFilters = {}): Promise<MyTaskDashboardData> {
+/** Shared query-string builder so the dashboard and its report always agree on filters. */
+function dashboardQuery(f: MyTaskDashboardFilters): string {
   const p = new URLSearchParams();
   if (f.employeeId) p.set('employeeId', String(f.employeeId));
   if (f.department) p.set('department', f.department);
@@ -184,7 +207,21 @@ export async function fetchMyTaskDashboard(f: MyTaskDashboardFilters = {}): Prom
   if (f.priority) p.set('priority', f.priority);
   if (f.inChargeId) p.set('inChargeId', String(f.inChargeId));
   const qs = p.toString();
-  const r = await apiClient.get<MyTaskDashboardData>(`/my-tasks/dashboard${qs ? `?${qs}` : ''}`);
+  return qs ? `?${qs}` : '';
+}
+
+export async function fetchMyTaskDashboard(f: MyTaskDashboardFilters = {}): Promise<MyTaskDashboardData> {
+  const r = await apiClient.get<MyTaskDashboardData>(`/my-tasks/dashboard${dashboardQuery(f)}`);
+  return r.data;
+}
+
+/**
+ * Report payload = the same aggregation + the detailed filtered task list.
+ * Gated server-side by `mytasks.dashboard.export`. Called ONLY when the user
+ * actually downloads a report, so normal dashboard loads stay lean.
+ */
+export async function fetchMyTaskDashboardReport(f: MyTaskDashboardFilters = {}): Promise<MyTaskDashboardData> {
+  const r = await apiClient.get<MyTaskDashboardData>(`/my-tasks/dashboard/report${dashboardQuery(f)}`);
   return r.data;
 }
 
