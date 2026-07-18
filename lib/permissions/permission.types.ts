@@ -37,6 +37,11 @@ export type PermissionKey =
   | 'mytasks.chat.send'
   | 'mytasks.dashboard.view'
   | 'mytasks.dashboard.export'
+  // Notice — standalone top-level module
+  | 'notice.view'
+  | 'notice.create'
+  | 'notice.manage'
+  | 'notice.categories.manage'
   // Role Management
   | 'role.create'
   | 'role.read'
@@ -184,7 +189,7 @@ export type PermissionKey =
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'mytasks' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr' | 'finance';
+export type ModuleName = 'user' | 'task' | 'mytasks' | 'notice' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr' | 'finance';
 
 /**
  * A single permission definition with metadata for UI rendering.

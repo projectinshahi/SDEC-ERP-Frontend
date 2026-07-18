@@ -173,7 +173,7 @@ export function primaryModule(access: Record<TopModule, boolean>): TopModule | n
 }
 
 /** Routes that are shared across modules and must NOT be module-gated. */
-const SHARED_PREFIXES = ['/dashboard/profile', '/change-password', '/dashboard/my-tasks'];
+const SHARED_PREFIXES = ['/dashboard/profile', '/change-password', '/dashboard/my-tasks', '/dashboard/notice'];
 export function isSharedPath(pathname: string): boolean {
   return SHARED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
