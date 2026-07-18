@@ -491,6 +491,20 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: null,
     global: true,
   },
+  {
+    // Notice — a STANDALONE top-level module, peer of My Tasks (NOT nested in it or
+    // any other module). Same `global` pattern so it shows at the bottom of every
+    // module's sidebar; unlike My Tasks it IS permission-gated (`notice.view`), so
+    // isItemVisible hides it from users who lack the permission (SuperAdmin bypasses).
+    // Route is registered in SHARED_PREFIXES (moduleAccess.ts) so the module-isolation
+    // guard never bounces a user whose primary module differs.
+    label: 'Notice',
+    href: '/dashboard/notice',
+    icon: 'FileText',
+    module: null,
+    global: true,
+    permission: 'notice.view',
+  },
 ];
 
 /** Normalises an item's `permission` field to an array (empty = no specific gate). */
