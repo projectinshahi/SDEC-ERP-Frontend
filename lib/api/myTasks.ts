@@ -20,6 +20,8 @@ export interface MyTaskAttachment {
   file_size: number;
   uploaded_by: number;
   uploader?: { id: number; name: string } | null;
+  /** Upload timestamp (from my_task_attachments.uploaded_at) — used by the Task PDF. */
+  uploaded_at?: string | null;
 }
 
 export interface MyTaskActivity {
