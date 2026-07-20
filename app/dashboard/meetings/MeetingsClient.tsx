@@ -360,7 +360,7 @@ export default function MeetingsClient() {
       {/* Analytics cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {statCards.map(({ label, value, icon: Icon, iconBg, iconColor }) => (
-          <Card key={label} className="!bg-white !bg-none border !border-gray-200 shadow-sm">
+          <Card key={label} className="!bg-white dark:!bg-gray-900 !bg-none border !border-gray-200 dark:!border-gray-800 shadow-sm">
             <div className="flex items-center justify-between p-5">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 truncate">{label}</p>
@@ -375,7 +375,7 @@ export default function MeetingsClient() {
       </div>
 
       {/* Meeting type analytics */}
-      <Card className="!bg-white border !border-gray-200 shadow-sm mb-8">
+      <Card className="!bg-white dark:!bg-gray-900 border !border-gray-200 dark:!border-gray-800 shadow-sm mb-8">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
           <ListTodo size={16} className="text-blue-500" />
           <h2 className="text-sm font-bold text-gray-800">Meetings by Type</h2>
@@ -450,7 +450,7 @@ export default function MeetingsClient() {
       </section>
 
       {/* Meetings table */}
-      <Card variant="outlined" className="overflow-hidden mb-8 !bg-white !border-gray-200">
+      <Card variant="outlined" className="overflow-hidden mb-8 !bg-white dark:!bg-gray-900 !border-gray-200 dark:!border-gray-800">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
           <CalendarDays size={17} className="text-blue-500" />
           <h2 className="text-sm font-bold text-gray-800">Meetings</h2>
