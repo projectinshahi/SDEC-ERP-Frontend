@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useProject } from '@/lib/context/ProjectContext';
-import { LogOut, Menu, FolderDot, ChevronDown, Search, HelpCircle } from 'lucide-react';
+import { useTheme } from '@/lib/hooks/useTheme';
+import { LogOut, Menu, FolderDot, ChevronDown, Search, HelpCircle, Sun, Moon } from 'lucide-react';
 import { NotificationBell } from './notifications/NotificationBell';
 
 interface NavbarProps {
@@ -17,6 +18,7 @@ interface NavbarProps {
 export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const { user, logout } = useAuth();
   const { projects, activeProject, setActiveProjectId, isLoading } = useProject();
+  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -52,6 +54,16 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
 
         {/* Right: User Info and Actions */}
         <div className="flex items-center gap-2 sm:gap-3.5 ml-auto">
+          {/* Theme toggle — light / dark */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label="Toggle dark mode"
+          >
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+
           {/* Help Icon */}
           <button
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"

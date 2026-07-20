@@ -268,14 +268,15 @@ function buildReportHtml(report: DashboardReport, filename: string): string {
 }
 
 /**
- * Render `report` and open the browser print dialog (Save as PDF). The iframe
- * title is the descriptive filename, so the saved file defaults to
- * `<fileBase>_<YYYY-MM-DD>.pdf`. The iframe is removed after printing.
+ * Shared print core (single source of truth for every report type — dashboard AND
+ * task): write the report HTML into a hidden iframe, wait for the document + all
+ * embedded images to be ready, open the browser print dialog (Save as PDF), then
+ * remove the iframe. The saved filename defaults to the HTML `<title>`. Keeping
+ * this in ONE place is why a task report reuses the exact print engine without
+ * duplicating any iframe/print logic.
  */
-export async function exportDashboardPdf(report: DashboardReport): Promise<void> {
+async function printHtmlToPdf(html: string): Promise<void> {
   if (typeof window === 'undefined') return;
-  const filename = `${report.fileBase}_${reportDateStamp()}`;
-  const html = buildReportHtml(report, filename);
 
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
@@ -298,8 +299,7 @@ export async function exportDashboardPdf(report: DashboardReport): Promise<void>
   doc.write(html);
   doc.close();
 
-  // Wait for the document + every embedded chart image to be ready so nothing
-  // prints blank.
+  // Wait for the document + every embedded image to be ready so nothing prints blank.
   await new Promise<void>((resolve) => {
     if (doc.readyState === 'complete') resolve();
     else win.addEventListener('load', () => resolve(), { once: true });
@@ -326,4 +326,222 @@ export async function exportDashboardPdf(report: DashboardReport): Promise<void>
 
   win.focus();
   win.print();
+}
+
+/**
+ * Render `report` and open the browser print dialog (Save as PDF). The iframe
+ * title is the descriptive filename, so the saved file defaults to
+ * `<fileBase>_<YYYY-MM-DD>.pdf`. The iframe is removed after printing.
+ */
+export async function exportDashboardPdf(report: DashboardReport): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const filename = `${report.fileBase}_${reportDateStamp()}`;
+  await printHtmlToPdf(buildReportHtml(report, filename));
+}
+
+/* ═══════════════════════ Task Report (Global My Tasks) ══════════════════════════
+ * A DOCUMENT-shaped report (not a dashboard grid): branded header, labelled info
+ * sections, an attachments table, the full chat thread and activity timeline, a
+ * completion record and metadata. Reuses the SAME print engine (printHtmlToPdf),
+ * the SAME branding + escapeHtml + reportDateStamp helpers, and the same
+ * page-break-avoid / page-number / footer conventions as the dashboard report —
+ * only the section HTML/CSS differs (a task is a document, not a chart grid). It
+ * paginates automatically for long descriptions, hundreds of messages and large
+ * timelines (every message / row / timeline item is `page-break-inside: avoid`).
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export interface TaskReportField { label: string; value: string }
+export interface TaskReportMember { name: string; role?: string }
+export interface TaskReportAttachment {
+  fileName: string; fileType: string; fileSize: string;
+  uploadedBy: string; uploadedDate: string; url?: string;
+}
+export interface TaskReportMessage {
+  sender: string; date: string; time: string; body: string; mentions?: string;
+}
+export interface TaskReportActivity { user: string; action: string; timestamp: string }
+
+export interface TaskReport {
+  /** Filename stem, e.g. "Task_123" → Task_123_2026-07-20.pdf */
+  fileBase: string;
+  generatedBy: string;
+  taskId: string | number;
+  /** Internal reference shown in the header + metadata, e.g. "MT-123". */
+  taskRef: string;
+  title: string;
+  /** Free-text task description (line breaks / bullets preserved via pre-wrap). */
+  description: string;
+  /** Basic info rows: Status, Priority, Due Date/Time, Created, Updated, Waiting Reason. */
+  basic: TaskReportField[];
+  /** Responsibility rows: Created By, In-Charge, Project, Department (where available). */
+  responsibility: TaskReportField[];
+  /** Assigned members, rendered as initial-avatar chips (the app has no avatar images). */
+  members: TaskReportMember[];
+  attachments: TaskReportAttachment[];
+  chat: TaskReportMessage[];
+  activities: TaskReportActivity[];
+  /** Completion / approval rows — empty ⇒ the section is hidden. */
+  completion: TaskReportField[];
+  /** Read status, timestamps, internal reference. */
+  metadata: TaskReportField[];
+}
+
+const initials = (name: string): string =>
+  (name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?';
+
+function fieldGrid(fields: TaskReportField[]): string {
+  if (!fields.length) return '';
+  return `<div class="grid">${fields
+    .map((f) => `<div class="cell"><div class="l">${escapeHtml(f.label)}</div><div class="v">${escapeHtml(f.value) || '—'}</div></div>`)
+    .join('')}</div>`;
+}
+
+function labelledBlock(label: string, inner: string): string {
+  return `<div class="block"><div class="l">${escapeHtml(label)}</div>${inner}</div>`;
+}
+
+function buildTaskReportHtml(report: TaskReport, filename: string): string {
+  const now = new Date();
+  const exportedAt = now.toLocaleString(undefined, {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+
+  const descHtml = report.description && report.description.trim()
+    ? `<div class="prose">${escapeHtml(report.description)}</div>`
+    : `<div class="prose muted">No description provided.</div>`;
+
+  const membersHtml = report.members.length
+    ? `<div class="members">${report.members
+        .map((m) => `<span class="chip"><span class="ava">${escapeHtml(initials(m.name))}</span><span>${escapeHtml(m.name)}${m.role ? ` <em>· ${escapeHtml(m.role)}</em>` : ''}</span></span>`)
+        .join('')}</div>`
+    : '<p class="muted small">No members assigned.</p>';
+
+  const attachmentsHtml = report.attachments.length
+    ? `<div class="tbl-wrap"><table><thead><tr><th>File Name</th><th>Type</th><th>Size</th><th>Uploaded By</th><th>Uploaded</th><th>Link</th></tr></thead><tbody>${report.attachments
+        .map((a) => `<tr><td>${escapeHtml(a.fileName)}</td><td>${escapeHtml(a.fileType)}</td><td>${escapeHtml(a.fileSize)}</td><td>${escapeHtml(a.uploadedBy)}</td><td>${escapeHtml(a.uploadedDate)}</td><td>${a.url ? `<a href="${escapeHtml(a.url)}">Open</a>` : '—'}</td></tr>`)
+        .join('')}</tbody></table></div>`
+    : '<p class="muted small">No attachments.</p>';
+
+  const chatHtml = report.chat.length
+    ? `<div class="thread">${report.chat
+        .map((m) => `<div class="msg"><div class="mhead"><span class="who">${escapeHtml(m.sender)}</span><span class="when">${escapeHtml(m.date)} · ${escapeHtml(m.time)}</span></div><div class="prose bare">${escapeHtml(m.body)}</div>${m.mentions ? `<div class="mentions">Mentions: ${escapeHtml(m.mentions)}</div>` : ''}</div>`)
+        .join('')}</div>`
+    : '<p class="muted small">No messages.</p>';
+
+  const timelineHtml = report.activities.length
+    ? `<ul class="timeline">${report.activities
+        .map((a) => `<li><span class="dot"></span><div class="ti"><div class="ta">${escapeHtml(a.action)}</div><div class="tm">${escapeHtml(a.user)} · ${escapeHtml(a.timestamp)}</div></div></li>`)
+        .join('')}</ul>`
+    : '<p class="muted small">No recorded activity.</p>';
+
+  const completionHtml = report.completion.length
+    ? `<h2 class="section">Completion Information</h2>${fieldGrid(report.completion)}`
+    : '';
+
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" />
+<title>${escapeHtml(filename)}</title>
+<style>
+  @page { size: A4 portrait; margin: 16mm 14mm 20mm; }
+  @page { @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 9px; color: #94a3b8; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #1e293b; font-size: 11px; line-height: 1.5; }
+  .brandbar { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #4f46e5; padding-bottom: 10px; margin-bottom: 10px; }
+  .company { font-size: 19px; font-weight: 800; letter-spacing: .5px; color: #0f172a; }
+  .company .sub { display: block; font-size: 9px; font-weight: 700; color: #6366f1; letter-spacing: 3px; margin-top: 2px; }
+  .meta { text-align: right; font-size: 10px; color: #64748b; line-height: 1.6; }
+  .meta .rt { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 2px; }
+  .meta b { color: #0f172a; }
+  .title-band { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #4f46e5; border-radius: 8px; padding: 10px 14px; margin-bottom: 4px; }
+  .title-band .t { font-size: 15px; font-weight: 800; color: #0f172a; }
+  .title-band .r { font-size: 10px; color: #64748b; margin-top: 2px; }
+  h2.section { font-size: 13px; font-weight: 700; color: #0f172a; margin: 22px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; page-break-after: avoid; }
+  .grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .cell { flex: 1 1 44%; min-width: 210px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; background: #fff; page-break-inside: avoid; }
+  .cell .l, .block > .l { font-size: 8.5px; text-transform: uppercase; letter-spacing: .5px; color: #64748b; font-weight: 700; }
+  .cell .v { font-size: 12px; font-weight: 600; color: #0f172a; margin-top: 3px; white-space: pre-wrap; word-break: break-word; }
+  .block { margin-top: 12px; }
+  .block > .l { margin-bottom: 5px; }
+  .prose { white-space: pre-wrap; word-break: break-word; font-size: 11px; color: #334155; border: 1px solid #eef2f7; background: #fff; border-radius: 8px; padding: 10px 12px; }
+  .prose.bare { border: 0; padding: 0; background: transparent; border-radius: 0; }
+  .muted { color: #94a3b8; }
+  .small { font-size: 10px; }
+  .members { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; border-radius: 999px; padding: 3px 11px 3px 3px; font-size: 10px; color: #334155; background: #fff; page-break-inside: avoid; }
+  .chip .ava { width: 20px; height: 20px; border-radius: 50%; background: #eef2ff; color: #4f46e5; font-size: 8.5px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+  .chip em { color: #94a3b8; font-style: normal; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { display: table-header-group; }
+  th { background: #f1f5f9; color: #334155; font-size: 9px; text-transform: uppercase; letter-spacing: .4px; text-align: left; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; }
+  td { padding: 5px 8px; border-bottom: 1px solid #eef2f7; font-size: 10px; color: #334155; word-break: break-word; }
+  td a { color: #4f46e5; text-decoration: none; }
+  tr { page-break-inside: avoid; }
+  .thread { display: flex; flex-direction: column; gap: 8px; }
+  .msg { border: 1px solid #eef2f7; border-left: 3px solid #c7d2fe; border-radius: 8px; padding: 8px 12px; background: #fff; page-break-inside: avoid; }
+  .msg .mhead { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 4px; align-items: baseline; }
+  .msg .who { font-weight: 700; color: #0f172a; font-size: 11px; }
+  .msg .when { font-size: 9px; color: #94a3b8; white-space: nowrap; }
+  .mentions { margin-top: 5px; font-size: 9px; color: #6366f1; }
+  .timeline { list-style: none; margin: 0; padding: 0; }
+  .timeline li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; page-break-inside: avoid; }
+  .timeline li:last-child { border-bottom: 0; }
+  .timeline .dot { width: 9px; height: 9px; margin-top: 4px; border-radius: 50%; background: #4f46e5; flex: 0 0 auto; }
+  .timeline .ta { font-size: 11px; color: #0f172a; font-weight: 600; }
+  .timeline .tm { font-size: 9px; color: #94a3b8; margin-top: 1px; }
+  .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8.5px; color: #94a3b8; padding: 4px 2px; border-top: 1px solid #e2e8f0; }
+</style></head>
+<body>
+  <div class="brandbar">
+    <div class="company">${COMPANY}<span class="sub">ENTERPRISE ERP</span></div>
+    <div class="meta">
+      <div class="rt">Task Report</div>
+      Task ID: <b>${escapeHtml(report.taskRef)}</b><br />
+      Exported: ${escapeHtml(exportedAt)}<br />
+      Generated by: ${escapeHtml(report.generatedBy)}
+    </div>
+  </div>
+  <div class="title-band">
+    <div class="t">${escapeHtml(report.title)}</div>
+    <div class="r">Reference ${escapeHtml(report.taskRef)} &nbsp;·&nbsp; Task #${escapeHtml(report.taskId)}</div>
+  </div>
+
+  <h2 class="section">Basic Information</h2>
+  ${fieldGrid(report.basic)}
+  ${labelledBlock('Description', descHtml)}
+
+  <h2 class="section">Responsibility</h2>
+  ${fieldGrid(report.responsibility)}
+  ${labelledBlock('Assigned Members', membersHtml)}
+
+  <h2 class="section">Attachments</h2>
+  ${attachmentsHtml}
+
+  <h2 class="section">Task Chat</h2>
+  ${chatHtml}
+
+  <h2 class="section">Activity Timeline</h2>
+  ${timelineHtml}
+
+  ${completionHtml}
+
+  <h2 class="section">Metadata</h2>
+  ${fieldGrid(report.metadata)}
+
+  <div class="footer">
+    <span>${COMPANY} · Task Report · ${escapeHtml(report.taskRef)}</span>
+    <span>Confidential — generated ${escapeHtml(exportedAt)}</span>
+  </div>
+</body></html>`;
+}
+
+/**
+ * Render a single task as a branded, multi-page PDF (Save as PDF). Reuses the same
+ * hidden-iframe print engine as the dashboard report; the iframe `<title>` sets the
+ * default filename `<fileBase>_<YYYY-MM-DD>.pdf`.
+ */
+export async function exportTaskPdf(report: TaskReport): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const filename = `${report.fileBase}_${reportDateStamp()}`;
+  await printHtmlToPdf(buildTaskReportHtml(report, filename));
 }

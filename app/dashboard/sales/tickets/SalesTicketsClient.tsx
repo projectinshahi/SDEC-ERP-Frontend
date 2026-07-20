@@ -159,11 +159,11 @@ export function SalesTicketsClient() {
       {/* Header */}
       <section className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight flex items-center gap-2.5">
             <TicketIcon className="text-blue-500 w-8 h-8" />
             Sales Tickets
           </h1>
-          <p className="text-gray-500 mt-1.5 text-sm max-w-xl leading-relaxed">
+          <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-sm max-w-xl leading-relaxed">
             Track customer issues, requests and follow-ups across leads, deals and accounts.
           </p>
         </div>
@@ -182,7 +182,7 @@ export function SalesTicketsClient() {
       </section>
 
       {/* Status filter tabs */}
-      <div className="mb-6 border-b border-gray-200">
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-800">
         <nav className="-mb-px flex flex-wrap gap-1" aria-label="Status filter">
           {STATUS_TABS.map((tab) => (
             <button
@@ -193,8 +193,8 @@ export function SalesTicketsClient() {
               className={classNames(
                 'px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px',
                 statusFilter === tab.key
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-700',
               )}
             >
               {tab.label}
@@ -204,11 +204,11 @@ export function SalesTicketsClient() {
       </div>
 
       {/* Tickets table */}
-      <Card variant="outlined" className="overflow-hidden mb-8 !bg-white !border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+      <Card variant="outlined" className="overflow-hidden mb-8 !bg-white dark:!bg-gray-900 !border-gray-200 dark:!border-gray-800">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
           <TicketIcon size={17} className="text-blue-500" />
-          <h2 className="text-sm font-bold text-gray-800">Tickets</h2>
-          <span className="ml-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{tickets.length}</span>
+          <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">Tickets</h2>
+          <span className="ml-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400">{tickets.length}</span>
         </div>
 
         {isLoading ? (
@@ -262,12 +262,12 @@ export function SalesTicketsClient() {
         size="sm"
       >
         <div className="flex flex-col items-center text-center p-2">
-          <div className="w-14 h-14 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-red-600 mb-4 shadow-sm animate-pulse">
+          <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-500/15 border border-red-100 dark:border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 mb-4 shadow-sm animate-pulse">
             <AlertTriangle size={28} />
           </div>
-          <h3 className="text-lg font-bold text-gray-900 tracking-tight mb-2">Delete Ticket?</h3>
-          <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-            Are you sure you want to permanently delete ticket <span className="font-semibold text-gray-800">"{ticketToDelete?.title}"</span>? This action cannot be undone.
+          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 tracking-tight mb-2">Delete Ticket?</h3>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 leading-relaxed">
+            Are you sure you want to permanently delete ticket <span className="font-semibold text-gray-800 dark:text-gray-100">"{ticketToDelete?.title}"</span>? This action cannot be undone.
           </p>
           <div className="flex items-center gap-3 w-full">
             <Button variant="secondary" className="flex-1 font-semibold" onClick={() => setTicketToDelete(null)} disabled={isDeleting}>

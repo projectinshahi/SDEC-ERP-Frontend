@@ -18,6 +18,14 @@ export interface SidebarMenuItem {
    */
   global?: boolean;
   /**
+   * Render this GLOBAL item at the TOP of every module's sidebar (immediately below
+   * the module's first actionable item / Dashboard) instead of the default bottom.
+   * RENDER-ONLY: it does NOT change this array's order, so the landing-page resolver
+   * (`firstAccessibleHref`, which walks SIDEBAR_ITEMS in array order) is unaffected —
+   * a pinned item never becomes a module's default landing page.
+   */
+  pinTop?: boolean;
+  /**
    * When true, `permissionsForPath` matches this item ONLY on an exact pathname
    * (not as a prefix). Needed for "/dashboard": its href is a prefix of every
    * other dashboard route, so without this it would impose its permission on all
@@ -480,16 +488,18 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
   },
   {
     // GLOBAL & UNGATED — the standalone My Tasks workspace, a common utility for
-    // EVERY authenticated user. Placed LAST and pinned to the BOTTOM of every
-    // module's sidebar by Layout.tsx (globals are appended after the module menu),
-    // below the primary navigation, never above Dashboard. module:null +
-    // global:true + no permission → visible to everyone; task DATA stays
-    // permission-scoped (self-scoped workspace, member-only chat).
+    // EVERY authenticated user. `pinTop` renders it at the TOP of every module's
+    // sidebar (immediately below the module's Dashboard/home) via Layout.tsx. It
+    // stays LAST in THIS array on purpose: array order drives `firstAccessibleHref`
+    // (the landing page), so keeping it last guarantees opening a module lands on
+    // that module's Dashboard, never My Tasks. module:null + global:true + no
+    // permission → visible to everyone; task DATA stays permission-scoped.
     label: 'My Tasks',
     href: '/dashboard/my-tasks',
     icon: 'ListTodo',
     module: null,
     global: true,
+    pinTop: true,
   },
   {
     // Notice — a STANDALONE top-level module, peer of My Tasks (NOT nested in it or
@@ -547,6 +557,12 @@ export function firstAccessibleHref(
 ): string | null {
   for (const item of SIDEBAR_ITEMS) {
     if (item.isPartition || !item.href) continue;
+    // GLOBAL utilities (My Tasks, Notice) are cross-cutting — they belong to no
+    // module's landing sequence, so they must NEVER be a module's default landing
+    // page. Without this, a `module:null` global (which groupForModule maps into
+    // 'development') could be returned for a development-access role that has no
+    // development PAGE, dropping the user onto My Tasks instead of a dashboard.
+    if (item.global) continue;
     if (groupForModule(item.module) !== module) continue;
     const perms = itemPermissions(item);
     if (perms.length === 0 || hasAny(perms)) return item.href;

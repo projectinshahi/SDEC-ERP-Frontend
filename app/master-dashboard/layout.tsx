@@ -14,8 +14,10 @@ interface LayoutProps {
 }
 
 // Hardcoded sidebar items for the Master Dashboard.
-// Order is intentional and follows the business workflow:
-// Dashboard → Projects → Sales → HR → Tickets → Meetings → Developer Performance → Settings.
+// Order: Dashboard → My Tasks → Projects → Sales → HR → Tickets → Meetings →
+// Developer Performance → Notice → Settings. My Tasks sits at the TOP (immediately
+// below Dashboard) to match every module's main sidebar. This is nav ORDER only —
+// the Master Dashboard still lands on /master-dashboard (Dashboard), never My Tasks.
 //
 // These items are deliberately NOT per-item permission-gated: the entire Master
 // Dashboard is SuperAdmin-EXCLUSIVE (the `denied` route guard below redirects any
@@ -28,6 +30,18 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     label: 'Dashboard',
     href: '/master-dashboard',
     icon: 'LayoutDashboard',
+    module: null,
+  },
+  {
+    // GLOBAL My Tasks — standardized TOP position (immediately below Dashboard),
+    // consistent with every module's main sidebar. Renders the SAME Global My Tasks
+    // workspace IN-SHELL at /master-dashboard/my-tasks so the Founder stays inside
+    // the Master Dashboard layout. Must NOT point at /dashboard/my-tasks (that
+    // switches to the Development sidebar). Nav ORDER only — the Master Dashboard
+    // still lands on /master-dashboard (Dashboard), never My Tasks.
+    label: 'My Tasks',
+    href: '/master-dashboard/my-tasks',
+    icon: 'ListTodo',
     module: null,
   },
   {
@@ -68,17 +82,6 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
   },
   // Finance is now a standalone ERP module (/dashboard/finance), no longer a
   // Master Dashboard page — see lib/permissions/moduleAccess.ts + sidebar.config.ts.
-  {
-    // GLOBAL My Tasks — near the BOTTOM (a utility feature, like Settings). Renders
-    // the SAME independent Global My Tasks workspace IN-SHELL at
-    // /master-dashboard/my-tasks so the Founder stays inside the Master Dashboard
-    // layout (master sidebar/header stay). Must NOT point at /dashboard/my-tasks
-    // (switches to the Development sidebar) nor /dashboard/tasks (Development Kanban).
-    label: 'My Tasks',
-    href: '/master-dashboard/my-tasks',
-    icon: 'ListTodo',
-    module: null,
-  },
   {
     // GLOBAL Notice — the standalone company-announcement module, rendered IN-SHELL at
     // /master-dashboard/notice (same pattern as My Tasks above) so the Founder stays

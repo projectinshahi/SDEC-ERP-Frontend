@@ -66,3 +66,61 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ══════════════════════════════ DARK MODE ══════════════════════════════════
+ * The app is largely built with Tailwind `dark:` variants; re-enabling the `.dark`
+ * class on <html> (lib/hooks/useTheme + the pre-paint script in app/layout.tsx)
+ * themes it. These are the base page tokens the <body> reads. */
+.dark {
+  --background: #030712; /* gray-950 */
+  --foreground: #e5e7eb; /* gray-200 */
+  color-scheme: dark;
+}
+
+/* ── My Tasks dark retrofit ────────────────────────────────────────────────
+ * The My Tasks module was built WITHOUT `dark:` variants. Rather than annotate
+ * hundreds of classNames, scope a dark theme to its root (`.mytasks-scope`) so it
+ * NEVER collides with the rest of the app's own `dark:` utilities. Only structural
+ * surfaces / text / borders are remapped; coloured accent chips keep their colour.
+ * Each rule is `.dark .mytasks-scope .x` (specificity 0,3,0), so it also wins over
+ * any `dark:` utility that a nested reused component (e.g. the shared Modal) carries. */
+.dark .mytasks-scope { color-scheme: dark; }
+
+.dark .mytasks-scope .bg-white { background-color: #1f2937; }        /* gray-800 — cards, sheets */
+.dark .mytasks-scope .bg-gray-50,
+.dark .mytasks-scope .bg-gray-50\/40,
+.dark .mytasks-scope .bg-gray-50\/50,
+.dark .mytasks-scope .bg-gray-50\/60,
+.dark .mytasks-scope .bg-gray-50\/80 { background-color: #111827; } /* gray-900 — surfaces, tab bars */
+.dark .mytasks-scope .bg-gray-100 { background-color: #374151; }     /* gray-700 — inactive chips */
+.dark .mytasks-scope .bg-gray-200 { background-color: #4b5563; }     /* gray-600 — count pills */
+
+.dark .mytasks-scope .text-gray-900,
+.dark .mytasks-scope .text-gray-800 { color: #f3f4f6; }              /* gray-100 */
+.dark .mytasks-scope .text-gray-700 { color: #e5e7eb; }             /* gray-200 */
+.dark .mytasks-scope .text-gray-600 { color: #d1d5db; }             /* gray-300 */
+.dark .mytasks-scope .text-gray-500 { color: #9ca3af; }             /* gray-400 */
+.dark .mytasks-scope .text-gray-400,
+.dark .mytasks-scope .text-gray-300 { color: #6b7280; }             /* gray-500 */
+
+.dark .mytasks-scope .border-gray-100 { border-color: #1f2937; }
+.dark .mytasks-scope .border-gray-200 { border-color: #374151; }
+.dark .mytasks-scope .border-gray-300 { border-color: #4b5563; }
+.dark .mytasks-scope .divide-gray-50 > * + *,
+.dark .mytasks-scope .divide-gray-100 > * + * { border-color: #1f2937; }
+
+.dark .mytasks-scope .placeholder\:text-gray-400::placeholder { color: #6b7280; }
+.dark .mytasks-scope .hover\:bg-gray-50:hover,
+.dark .mytasks-scope .hover\:bg-gray-100:hover,
+.dark .mytasks-scope .active\:bg-gray-100:active { background-color: #374151; }
+
+/* Soften the light accent-tinted chip backgrounds so badges read on dark. */
+.dark .mytasks-scope .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.16); }
+.dark .mytasks-scope .bg-blue-50 { background-color: rgba(59, 130, 246, 0.16); }
+.dark .mytasks-scope .bg-amber-50 { background-color: rgba(245, 158, 11, 0.16); }
+.dark .mytasks-scope .bg-rose-50 { background-color: rgba(244, 63, 94, 0.16); }
+.dark .mytasks-scope .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.16); }
+.dark .mytasks-scope .bg-green-100 { background-color: rgba(34, 197, 94, 0.18); }
+.dark .mytasks-scope .bg-violet-50 { background-color: rgba(139, 92, 246, 0.16); }
+.dark .mytasks-scope .bg-slate-100 { background-color: rgba(148, 163, 184, 0.16); }
+.dark .mytasks-scope .bg-indigo-50\/60 { background-color: rgba(99, 102, 241, 0.12); }
