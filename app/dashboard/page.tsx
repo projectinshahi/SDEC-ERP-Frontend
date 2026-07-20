@@ -90,8 +90,8 @@ export default function DashboardPage() {
     <>
       {/* Page Header */}
       <section className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Global Dashboard</h1>
-        <p className="text-gray-650 mt-2">Here's an overview across all your projects.</p>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Global Dashboard</h1>
+        <p className="text-gray-650 dark:text-gray-300 mt-2">Here's an overview across all your projects.</p>
       </section>
 
       {/* Statistics Cards Grid */}
@@ -173,27 +173,27 @@ export default function DashboardPage() {
 
         {/* Quick Links Panel */}
         <div>
-          <Card className="h-full border border-gray-200 shadow-sm !bg-white !border-gray-200">
-            <CardHeader className="border-b border-gray-100 px-6 py-4">
-              <h2 className="text-lg font-bold text-gray-800">Quick Access</h2>
+          <Card className="h-full border border-gray-200 dark:border-gray-800 shadow-sm !bg-white dark:!bg-gray-900 !border-gray-200 dark:!border-gray-800">
+            <CardHeader className="border-b border-gray-100 dark:border-gray-800 px-6 py-4">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Quick Access</h2>
             </CardHeader>
             <CardBody className="p-6">
               <div className="space-y-3.5">
                 <a
                   href="/dashboard/user-management"
-                  className="block p-3.5 rounded-xl bg-blue-50/50 hover:bg-blue-100/50:bg-blue-950/35 transition-all text-blue-600 font-semibold text-sm"
+                  className="block p-3.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-100/50 dark:hover:bg-blue-900/40 transition-all text-blue-600 dark:text-blue-400 font-semibold text-sm"
                 >
                   → User Management
                 </a>
                 <a
                   href="/dashboard/tasks"
-                  className="block p-3.5 rounded-xl bg-emerald-50/50 hover:bg-emerald-100/50:bg-emerald-950/35 transition-all text-emerald-600 font-semibold text-sm"
+                  className="block p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/30 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40 transition-all text-emerald-600 dark:text-emerald-400 font-semibold text-sm"
                 >
                   → View Tasks
                 </a>
                 <a
                   href="/dashboard/user-management/roles"
-                  className="block p-3.5 rounded-xl bg-purple-50/50 hover:bg-purple-100/50:bg-purple-950/35 transition-all text-purple-600 font-semibold text-sm"
+                  className="block p-3.5 rounded-xl bg-purple-50/50 dark:bg-purple-950/30 hover:bg-purple-100/50 dark:hover:bg-purple-900/40 transition-all text-purple-600 dark:text-purple-400 font-semibold text-sm"
                 >
                   → Manage Roles
                 </a>

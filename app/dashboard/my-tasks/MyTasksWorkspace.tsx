@@ -7,6 +7,7 @@ import {
   Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
   Calendar, User, Users, Flag, Clock, Paperclip, RefreshCw, Pencil, Trash2, ShieldAlert,
   MessageCircle, Activity, Download, BarChart3, AtSign, X, ArrowLeft,
+  Star, MoreHorizontal, FileText,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -18,6 +19,7 @@ import {
   type MyTask, type MyTaskWorkspace as MyTaskWorkspaceData, type MyTaskActivity,
 } from '@/lib/api/myTasks';
 import { MyTaskChat } from '@/components/tasks/mytasks/MyTaskChat';
+import { ExportTaskPdfButton } from '@/components/tasks/mytasks/ExportTaskPdfButton';
 import { CreateMyTaskModal } from '@/components/tasks/mytasks/CreateMyTaskModal';
 import { TaskDashboard } from './TaskDashboard';
 
@@ -132,6 +134,94 @@ function todayYmd(): string {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 }
+
+/**
+ * True on phones (<768px). Drives the DEDICATED mobile UI; tablet (≥768px) and
+ * desktop keep the existing layout untouched. SSR-safe (false until mounted), so it
+ * matches the server render, then flips on the client after `matchMedia` resolves.
+ */
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+  return isMobile;
+}
+
+// Mobile filter chips = the SAME date buckets as the desktop Due filter + a
+// "Completed" preset (status done/approved). Presets over the existing filter state
+// (dateFilters/statusFilters) — the matchDateStatus engine is unchanged.
+const MOBILE_CHIPS: { key: string; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'today', label: 'Today' },
+  { key: 'delayed', label: 'Delayed' },
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'completed', label: 'Completed' },
+];
+
+// Deterministic coloured ring for the circular task-ID badge (mobile), matching the
+// reference's varied ID circles. Stable per task, so the same task keeps its colour.
+const CIRCLE_RINGS = [
+  'border-indigo-500 text-indigo-600', 'border-violet-500 text-violet-600',
+  'border-blue-500 text-blue-600', 'border-emerald-500 text-emerald-600',
+  'border-amber-500 text-amber-600', 'border-rose-500 text-rose-600',
+  'border-cyan-500 text-cyan-600', 'border-orange-500 text-orange-600',
+];
+const taskRing = (id: number) => CIRCLE_RINGS[Math.abs(id) % CIRCLE_RINGS.length];
+
+/**
+ * Mobile due line in the reference format: "Overdue • 10 Jul 2026 • 05:33 PM" (rose),
+ * "Today • …" (emerald), "Upcoming • …" (gray). Approved is neutralised (finalized,
+ * exits the overdue workflow — mirrors the shared fmtDue rule). Mobile-only formatter,
+ * so the desktop/tablet fmtDue is untouched.
+ */
+function mobileDue(task: MyTask): { text: string; tone: string } {
+  const ymd = task.dueDate;
+  if (!ymd) return { text: 'No due date', tone: 'text-gray-400' };
+  const dateStr = new Date(ymd + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = formatTime12h(task.dueTime);
+  const time = timeStr ? ` • ${timeStr}` : '';
+  const today = todayYmd();
+  if (task.status === 'approved') return { text: `Due ${dateStr}${time}`, tone: 'text-gray-500' };
+  if (ymd < today) return { text: `Overdue • ${dateStr}${time}`, tone: 'text-rose-600' };
+  if (ymd === today) return { text: `Today • ${dateStr}${time}`, tone: 'text-emerald-600' };
+  return { text: `Upcoming • ${dateStr}${time}`, tone: 'text-gray-500' };
+}
+
+/** Right-aligned "last activity" time on a mobile card: clock time if today, else date. */
+function mobileActivityTime(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  return sameDay
+    ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+}
+
+// Client-only favourites (localStorage) — a per-device star, NO API/DB change.
+const FAV_KEY = 'my-tasks-favorites';
+function readFavorites(): Set<number> {
+  if (typeof window === 'undefined') return new Set();
+  try { return new Set<number>(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')); } catch { return new Set(); }
+}
+function useFavorite(taskId: number): [boolean, () => void] {
+  const [fav, setFav] = useState(false);
+  useEffect(() => { setFav(readFavorites().has(taskId)); }, [taskId]);
+  const toggle = useCallback(() => {
+    const s = readFavorites();
+    if (s.has(taskId)) s.delete(taskId); else s.add(taskId);
+    try { localStorage.setItem(FAV_KEY, JSON.stringify([...s])); } catch { /* ignore */ }
+    setFav(s.has(taskId));
+  }, [taskId]);
+  return [fav, toggle];
+}
 function formatTime12h(time?: string | null): string {
   if (!time) return '';
   const [h, m] = time.split(':').map(Number);
@@ -141,14 +231,19 @@ function formatTime12h(time?: string | null): string {
   return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-function fmtDue(ymd?: string | null, time?: string | null): { label: string; tone: string } {
+function fmtDue(ymd?: string | null, time?: string | null, status?: string): { label: string; tone: string } {
   if (!ymd) return { label: 'No due date', tone: 'text-gray-400' };
   const today = todayYmd();
   const nice = new Date(ymd + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
   const timeStr = formatTime12h(time);
   const timeSuffix = timeStr ? ` • ${timeStr}` : '';
-  if (ymd === today) return { label: `Due today${timeSuffix}`, tone: 'text-amber-600 font-semibold' };
-  if (ymd < today) return { label: `Overdue · ${nice}${timeSuffix}`, tone: 'text-rose-600 font-semibold' };
+  // An APPROVED task is finalized — it exits the overdue workflow entirely, so its due
+  // date is shown NEUTRALLY (never "Overdue"/"Due today", never the rose/amber accent),
+  // even if it was completed after the due date. Every other status is unchanged.
+  if (status !== 'approved') {
+    if (ymd === today) return { label: `Due today${timeSuffix}`, tone: 'text-amber-600 font-semibold' };
+    if (ymd < today) return { label: `Overdue · ${nice}${timeSuffix}`, tone: 'text-rose-600 font-semibold' };
+  }
   return { label: `Due ${nice}${timeSuffix}`, tone: 'text-gray-500' };
 }
 // Which date bucket a task falls into (undated → upcoming). Drives the Inbox date filter.
@@ -166,10 +261,12 @@ function matchDateStatus(t: MyTask, dSel: Set<string>, sSel: Set<string>, strict
   let dateOk = dSel.size === 0 || dSel.has('all');
   if (!dateOk) {
     const b = dateBucketOf(t);
-    // 'waiting' is NEVER delayed (dependency is outside the assignee's control);
-    // completed (done/approved) is excluded from Delayed only on the Outbox (strict).
+    // 'waiting' and 'approved' are NEVER in the Delayed bucket anywhere: waiting =
+    // dependency outside the assignee's control; approved = finalized, so it exits the
+    // overdue workflow (even if completed after its due date). 'done' is excluded from
+    // Delayed only on the Outbox (strict) — non-approved behaviour is unchanged.
     const notDelayed = b === 'delayed'
-      && (t.status === 'waiting' || (strictDelayed && COMPLETED_STATUSES.includes(t.status)));
+      && (t.status === 'waiting' || t.status === 'approved' || (strictDelayed && COMPLETED_STATUSES.includes(t.status)));
     dateOk = dSel.has(b) && !notDelayed;
   }
   const statusOk = sSel.size === 0 || sSel.has(t.status);
@@ -209,7 +306,7 @@ function MemberAvatars({ members }: { members: { id: number; name: string }[] })
    & in-charge · member avatars. Unread tasks get a subtle red left accent + dot. */
 function TaskRow({ task, active, onClick, showDirection }: { task: MyTask; active: boolean; onClick: () => void; showDirection?: boolean }) {
   const prio = priorityMeta(task.priority);
-  const due = fmtDue(task.dueDate, task.dueTime);
+  const due = fmtDue(task.dueDate, task.dueTime, task.status);
   const st = statusMeta(task.status);
   const inChargeName = task.inChargeId ? (task.members.find((m) => m.id === task.inChargeId)?.name || '—') : '—';
   return (
@@ -465,7 +562,7 @@ function WaitingReasonModal({
 
 function DetailsPanel({
   task, collapsed, onToggle, canEdit, canDelete, onEdit, onDelete, onStatus, onBack,
-  canExecute, canApprove, currentUserId,
+  canExecute, canApprove, currentUserId, generatedBy,
 }: {
   task: MyTask; collapsed: boolean; onToggle: () => void;
   canEdit: boolean; canDelete: boolean;
@@ -477,9 +574,11 @@ function DetailsPanel({
   /** Owner rights: approve the task (creator / admin only). */
   canApprove: boolean;
   currentUserId?: number;
+  /** Exporter name for the "Generated by" line on the PDF. */
+  generatedBy: string;
 }) {
   const prio = priorityMeta(task.priority);
-  const due = fmtDue(task.dueDate, task.dueTime);
+  const due = fmtDue(task.dueDate, task.dueTime, task.status);
   const st = statusMeta(task.status);
   const [activeTab, setActiveTab] = useState<'chat' | 'attachments' | 'timeline'>('chat');
   const [waitingOpen, setWaitingOpen] = useState(false); // Waiting-reason picker
@@ -519,6 +618,9 @@ function DetailsPanel({
           <h2 className="mt-1.5 truncate text-lg font-bold text-gray-900">{task.title}</h2>
         </button>
         <div className="flex items-center gap-1 shrink-0">
+          {/* Export the whole task as a PDF — available to anyone who can view the
+              task (the panel only renders for accessible tasks; no extra gating). */}
+          <ExportTaskPdfButton task={task} generatedBy={generatedBy} />
           {canEdit && (
             <button type="button" onClick={onEdit} title="Edit task" className="rounded-lg p-2 sm:p-1.5 text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors"><Pencil className="h-4 w-4" /></button>
           )}
@@ -735,6 +837,319 @@ function DetailsPanel({
   );
 }
 
+/* ══════════════════════ MOBILE (<768px) — dedicated experience ══════════════════
+ * A phone-only PRESENTATION layer over the SAME data + handlers the desktop uses.
+ * Reuses every leaf (MyTaskChat, ActivityTimeline, UserAvatar, TaskDescription,
+ * DetailRow, WaitingReasonModal, ExportTaskPdfButton, fmtDue/statusMeta/priorityMeta,
+ * STATUS_OPTIONS) — NO new business logic, NO new API, NO duplicate of the desktop
+ * DetailsPanel behaviour. The tablet (≥768px) + desktop tree is left untouched.
+ * ─────────────────────────────────────────────────────────────────────────────── */
+
+/** Overlapping member avatars with a "+N more" chip (reuses the existing UserAvatar). */
+function MemberAvatarGroup({ members, max = 3 }: { members: { id: number; name: string }[]; max?: number }) {
+  if (!members.length) return <span className="text-sm italic text-gray-400">No members assigned</span>;
+  const shown = members.slice(0, max);
+  const extra = members.length - shown.length;
+  return (
+    <div className="flex items-center">
+      {shown.map((m, i) => (
+        <div key={m.id} title={m.name} className={classNames('rounded-full ring-2 ring-white', i > 0 && '-ml-2')}>
+          <UserAvatar name={m.name} />
+        </div>
+      ))}
+      {extra > 0 && (
+        <span className="-ml-2 flex h-7 w-7 items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-600 ring-2 ring-white">
+          +{extra}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** One item in the mobile bottom navigation (count badge overlaps the icon). */
+function BottomTab({ active, icon: Icon, label, count, onClick }: {
+  active: boolean; icon: any; label: string; count?: number; onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} aria-current={active ? 'page' : undefined}
+      className={classNames('flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold transition-colors',
+        active ? 'text-indigo-600' : 'text-gray-500')}>
+      <span className="relative">
+        <Icon className="h-5 w-5" />
+        {count != null && count > 0 && (
+          <span className="absolute -right-2.5 -top-1.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-600 px-1 text-[9px] font-bold text-white">
+            {count > 99 ? '99+' : count}
+          </span>
+        )}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+/** Reference-matched mobile task card: circular coloured ID badge · title · due line
+ *  (Overdue/Today/Upcoming • date • time) · last-activity time · unread badge. */
+function MobileTaskCard({ task, onOpen }: { task: MyTask; onOpen: () => void }) {
+  const due = mobileDue(task);
+  const unread = !!task.unread || task.unreadCount > 0;
+  const at = mobileActivityTime(task.updatedAt);
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-3 text-left shadow-sm transition active:scale-[0.99]"
+    >
+      <div className={classNames('flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 bg-white', taskRing(task.id))}>
+        <span className="text-[11px] font-bold leading-none">{task.id}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={classNames('truncate text-[15px] text-gray-900', unread ? 'font-bold' : 'font-semibold')}>{task.title}</p>
+        <p className={classNames('mt-0.5 truncate text-[12px] font-medium', due.tone)}>{due.text}</p>
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        {at && <span className="text-[11px] text-gray-400">{at}</span>}
+        <div className="flex items-center gap-1">
+          {task.unreadMentions > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-indigo-500"><AtSign className="h-3 w-3" />{task.unreadMentions}</span>
+          )}
+          {unread && (
+            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white">
+              {task.unreadCount > 0 ? task.unreadCount : '•'}
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/** Full-screen mobile Task Details sheet: collapsed-by-default header + expandable
+ *  info panel + the existing Chat / Files / Activity tabs (chat pins its own input). */
+function MyTaskMobileDetails({
+  task, onBack, canEdit, canDelete, canExecute, canApprove, onEdit, onDelete, onStatus, currentUserId, generatedBy,
+}: {
+  task: MyTask; onBack: () => void;
+  canEdit: boolean; canDelete: boolean; canExecute: boolean; canApprove: boolean;
+  onEdit: () => void; onDelete: () => void; onStatus: (s: string, waitingReason?: string) => void;
+  currentUserId?: number; generatedBy: string;
+}) {
+  const [expanded, setExpanded] = useState(false); // collapsed by default (spec)
+  const [activeTab, setActiveTab] = useState<'chat' | 'attachments' | 'timeline'>('chat');
+  const [waitingOpen, setWaitingOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [fav, toggleFav] = useFavorite(task.id);
+  const prio = priorityMeta(task.priority);
+  const st = statusMeta(task.status);
+  const due = mobileDue(task);
+  const inCharge = task.inChargeId ? task.members.find((m) => m.id === task.inChargeId) : null;
+
+  // Same mentionables set the desktop panel builds: creator + members, active only.
+  const mentionables = useMemo(() => {
+    const byId = new Map<number, { id: number; name: string }>();
+    const c = task.createdBy;
+    if (c && c.id && c.active !== false) byId.set(c.id, { id: c.id, name: c.name });
+    for (const m of task.members) if (m.active !== false) byId.set(m.id, { id: m.id, name: m.name });
+    return [...byId.values()];
+  }, [task.createdBy, task.members]);
+
+  // Lock the page behind the sheet so only the chat / list scrolls under it.
+  // Capture the original overflow ONCE and restore it only when the sheet closes…
+  const originalOverflow = useRef<string>('');
+  useEffect(() => {
+    originalOverflow.current = document.body.style.overflow;
+    return () => { document.body.style.overflow = originalOverflow.current; };
+  }, []);
+  // …but RE-ASSERT the lock on every render: a child Modal (Edit / Delete-confirm)
+  // reuses the shared Modal, which sets body.overflow='unset' on close. Opening one
+  // from inside this still-mounted sheet would otherwise leave the page unlocked.
+  useEffect(() => { document.body.style.overflow = 'hidden'; });
+
+  const TABS3 = [
+    { key: 'chat' as const, icon: MessageCircle, label: 'Chat', count: 0 },
+    { key: 'attachments' as const, icon: Paperclip, label: 'Files', count: task.attachments.length },
+    { key: 'timeline' as const, icon: Activity, label: 'Activity', count: (task.activities || []).length },
+  ];
+
+  const dueDateText = task.dueDate
+    ? `${new Date(task.dueDate + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}${formatTime12h(task.dueTime) ? ` • ${formatTime12h(task.dueTime)}` : ''}`
+    : 'No due date';
+
+  return (
+    <div className="fixed inset-0 z-40 flex flex-col bg-white">
+      {/* ── Top app bar: Back · "Task Details" · ⋯ (Export / Edit / Delete) ── */}
+      <div className="relative flex shrink-0 items-center gap-1 border-b border-gray-100 px-2 py-2.5">
+        <button type="button" onClick={onBack} aria-label="Back to task list"
+          className="shrink-0 rounded-lg p-2 text-gray-600 transition hover:bg-gray-50 active:bg-gray-100">
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h1 className="min-w-0 flex-1 truncate text-[16px] font-bold text-gray-900">Task Details</h1>
+        <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="More actions" aria-haspopup="menu"
+          className="shrink-0 rounded-lg p-2 text-gray-500 transition hover:bg-gray-50"><MoreHorizontal className="h-5 w-5" /></button>
+        {menuOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden="true" />
+            <div role="menu" className="absolute right-2 top-full z-20 mt-1 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+              <ExportTaskPdfButton task={task} generatedBy={generatedBy} label="Export PDF"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60" />
+              {canEdit && (
+                <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onEdit(); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-50"><Pencil className="h-4 w-4" /> Edit task</button>
+              )}
+              {canDelete && (
+                <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onDelete(); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"><Trash2 className="h-4 w-4" /> Delete task</button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Task summary card: circular ID badge · title · due line · expand · star ── */}
+      <div className="shrink-0 border-b border-gray-100">
+        <div className="flex items-center gap-3 px-3 py-3">
+          <div className={classNames('flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 bg-white', taskRing(task.id))}>
+            <span className="text-[11px] font-bold leading-none">{task.id}</span>
+          </div>
+          <button type="button" onClick={() => setExpanded((v) => !v)} className="min-w-0 flex-1 text-left">
+            <p className="truncate text-[15px] font-bold text-gray-900">{task.title}</p>
+            <p className={classNames('mt-0.5 truncate text-[12px] font-medium', due.tone)}>{due.text}</p>
+          </button>
+          <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse details' : 'Expand details'}
+            className="shrink-0 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-50">
+            {expanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          </button>
+          <button type="button" onClick={toggleFav} aria-pressed={fav}
+            aria-label={fav ? 'Remove from favourites' : 'Add to favourites'}
+            className="shrink-0 rounded-lg p-1.5 transition hover:bg-gray-50">
+            <Star className={classNames('h-5 w-5 transition', fav ? 'fill-amber-400 text-amber-400' : 'text-gray-300')} />
+          </button>
+        </div>
+
+        {/* ── Expanded info panel (reference field layout) ── */}
+        {expanded && (
+          <div className="max-h-[52vh] divide-y divide-gray-100 overflow-y-auto border-t border-gray-100 bg-white">
+            <div className="grid grid-cols-2 gap-3 px-4 py-3">
+              <DetailRow icon={ListTodo} label="Status">
+                {canExecute ? (
+                  <select
+                    value={task.status}
+                    onChange={(e) => { const v = e.target.value; if (v === 'waiting') setWaitingOpen(true); else onStatus(v); }}
+                    className="mt-0.5 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                  >
+                    {STATUS_OPTIONS
+                      .filter((o) => o.value !== 'approved' || canApprove || task.status === 'approved')
+                      .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                ) : <span className={classNames('mt-0.5 inline-block rounded-md border px-2 py-0.5 text-xs font-semibold', st.tone)}>{st.label}</span>}
+              </DetailRow>
+              <DetailRow icon={Flag} label="Priority"><span className={classNames('mt-0.5 inline-block rounded-md border px-2 py-0.5 text-xs font-semibold', prio.badge)}>{prio.label}</span></DetailRow>
+            </div>
+            <div className="grid grid-cols-2 gap-3 px-4 py-3">
+              <DetailRow icon={Calendar} label="Due Date"><span className={classNames('font-medium', due.tone)}>{dueDateText}</span></DetailRow>
+              <DetailRow icon={Clock} label="Created"><span className="font-medium text-gray-700">{fmtDate(task.createdAt)}</span></DetailRow>
+            </div>
+            <div className="px-4 py-3">
+              <DetailRow icon={FileText} label="Description">
+                {task.description ? <div className="mt-0.5"><TaskDescription text={task.description} /></div> : <span className="italic text-gray-400">No description</span>}
+              </DetailRow>
+            </div>
+            <div className="grid grid-cols-2 gap-3 px-4 py-3">
+              <DetailRow icon={User} label="Created By">
+                <span className="mt-0.5 inline-flex min-w-0 items-center gap-1.5"><UserAvatar name={task.createdBy?.name || '?'} /> <span className="truncate font-medium text-gray-700">{task.createdBy?.name || '—'}</span></span>
+              </DetailRow>
+              {inCharge && (
+                <DetailRow icon={User} label="Task In-Charge">
+                  <span className="mt-0.5 inline-flex min-w-0 items-center gap-1.5"><UserAvatar name={inCharge.name} /> <span className="truncate font-medium text-gray-700">{inCharge.name}</span></span>
+                </DetailRow>
+              )}
+            </div>
+            <div className="px-4 py-3">
+              <DetailRow icon={Users} label="Assigned Members">
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {task.members.length ? task.members.map((m) => (
+                    <span key={m.id} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-700"><UserAvatar name={m.name} /> {m.name}</span>
+                  )) : <span className="text-sm italic text-gray-400">No members assigned</span>}
+                </div>
+              </DetailRow>
+            </div>
+            {(task.projectName || task.projectId) && (
+              <div className="px-4 py-3"><DetailRow icon={ListTodo} label="Project / Module"><span className="font-medium text-gray-700">{task.projectName ?? String(task.projectId)}</span></DetailRow></div>
+            )}
+            <div className="px-4 py-3"><DetailRow icon={Users} label="Members"><div className="mt-1"><MemberAvatarGroup members={task.members} /></div></DetailRow></div>
+            {task.status === 'waiting' && (
+              <div className="px-4 py-3">
+                <DetailRow icon={ShieldAlert} label="Waiting Reason">
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">{task.waitingReason || '—'}</span>
+                    {canExecute && <button type="button" onClick={() => setWaitingOpen(true)} className="text-xs font-medium text-indigo-600 hover:underline">Edit</button>}
+                  </span>
+                </DetailRow>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Tabs ── */}
+      <div className="flex shrink-0 items-center border-b border-gray-100 bg-gray-50/80">
+        {TABS3.map((tab) => (
+          <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)}
+            className={classNames('flex min-w-0 flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-3 text-[13px] font-semibold transition-colors',
+              activeTab === tab.key ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500')}>
+            <tab.icon className="h-3.5 w-3.5 shrink-0" /> {tab.label}
+            {tab.count > 0 && <span className="rounded-full bg-gray-200 px-1.5 py-px text-[10px] font-bold text-gray-600">{tab.count}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tab content — fills the rest of the screen; MyTaskChat pins its own input. ── */}
+      <div className="relative min-h-0 flex-1 bg-white">
+        {activeTab === 'chat' && (
+          <div className="absolute inset-0">
+            <MyTaskChat key={task.id} taskId={task.id} currentUserId={currentUserId} members={mentionables} />
+          </div>
+        )}
+        {activeTab === 'attachments' && (
+          <div className="h-full overflow-y-auto p-4">
+            {task.attachments.length ? (
+              <div className="space-y-2.5">
+                {task.attachments.map((a) => (
+                  <a key={a.id} href={a.file_url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition active:bg-gray-50">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500"><Paperclip className="h-5 w-5" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-800">{a.file_name}</p>
+                      <p className="mt-0.5 text-[11px] text-gray-400">{(a.file_size / 1024).toFixed(1)} KB{a.uploader?.name && <> • {a.uploader.name}</>}</p>
+                    </div>
+                    <Download className="h-4 w-4 shrink-0 text-gray-300" />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 py-16 text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100"><Paperclip className="h-6 w-6 text-gray-400" /></div>
+                <h3 className="text-sm font-semibold text-gray-700">No attachments available</h3>
+                <p className="mt-1 max-w-[220px] text-xs text-gray-500">Files attached to this task will appear here.</p>
+              </div>
+            )}
+          </div>
+        )}
+        {activeTab === 'timeline' && (
+          <div className="h-full overflow-y-auto"><ActivityTimeline activities={task.activities || []} /></div>
+        )}
+      </div>
+
+      <WaitingReasonModal
+        open={waitingOpen}
+        initial={task.waitingReason || ''}
+        onCancel={() => setWaitingOpen(false)}
+        onConfirm={(reason) => { setWaitingOpen(false); onStatus('waiting', reason); }}
+      />
+    </div>
+  );
+}
+
 /* ── searchable Task In-Charge dropdown (Outbox filter) ───────────────────── */
 function InChargeFilter({
   options, value, onChange,
@@ -796,6 +1211,7 @@ function WorkspaceInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const currentUserId = user?.id && !isNaN(Number(user.id)) ? Number(user.id) : undefined;
+  const isMobile = useIsMobile(); // <768px → dedicated mobile UI; tablet+desktop unchanged
   const canCreate = isSuperAdmin || hasPermission('mytasks.create');
   const canEdit = isSuperAdmin || hasPermission('mytasks.edit');
   const canDelete = isSuperAdmin || hasPermission('mytasks.delete');
@@ -933,6 +1349,36 @@ function WorkspaceInner() {
   const dateSel = dateFilters[bucket];
   const statusSel = statusFilters[bucket];
   const readSel = readFilter[bucket];
+
+  // Mobile filter chips are single-select PRESETS over the same date/status state the
+  // desktop multi-select uses (matchDateStatus engine unchanged). "Completed" =
+  // status {done, approved} with date {all}; the others set exactly one date bucket.
+  const completedChipActive = statusSel.has('done') && statusSel.has('approved');
+  const activeMobileChip = completedChipActive ? 'completed'
+    : dateSel.has('today') ? 'today'
+    : dateSel.has('delayed') ? 'delayed'
+    : dateSel.has('upcoming') ? 'upcoming'
+    : 'all';
+  const applyMobileChip = (chip: string) => {
+    if (chip === 'completed') {
+      setDateFilters((p) => ({ ...p, [bucket]: new Set(['all']) }));
+      setStatusFilters((p) => ({ ...p, [bucket]: new Set(['done', 'approved']) }));
+    } else {
+      setDateFilters((p) => ({ ...p, [bucket]: new Set([chip]) }));
+      setStatusFilters((p) => ({ ...p, [bucket]: new Set<string>() }));
+    }
+  };
+  // Mobile exposes ONLY the chips + search. Reset the desktop-only filter dimensions
+  // (Read / Waiting-reason / In-Charge) on entering the mobile view, so a filter set at
+  // a wider width can never silently hide mobile tasks with no control to clear it.
+  // No-op on a real phone (already at defaults); a desktop-only session never runs this
+  // (isMobile stays false), so the desktop/tablet experience is unchanged.
+  useEffect(() => {
+    if (!isMobile) return;
+    setReadFilter({ inbox: 'all', outbox: 'all' });
+    setWaitingReasonFilter({ inbox: null, outbox: null });
+    setInChargeFilter(null);
+  }, [isMobile]);
   // Both tabs filter by Date+Status (a task must match any selected date bucket AND
   // any selected status). Outbox uses the stricter Delayed (excludes completed) and
   // adds the Task In-Charge filter. All client-side over already-fetched data.
@@ -1049,13 +1495,11 @@ function WorkspaceInner() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* ── Primary navigation: Inbox | Outbox | Analytics ──────────────────────
-          Replaces the old page header (title/subtitle/Analytics button) so the
-          workspace starts at the top. The active tab is DERIVED from the existing
-          `view` + `bucket` state — no new state, no duplicated routing: Analytics
-          simply renders the same <TaskDashboard /> the old button did.
-          Underline styling mirrors the DetailsPanel tabs (the module's tab language). */}
+    <div className={classNames('mytasks-scope space-y-4', isMobile && 'pb-24')}>
+      {/* ── Primary navigation: Inbox | Outbox | Analytics — DESKTOP/TABLET only.
+          On mobile (<768px) this is replaced by the fixed BOTTOM navigation below,
+          matching the reference. The active tab is DERIVED from `view` + `bucket`. */}
+      {!isMobile && (
       <div className="flex items-end justify-between gap-3 border-b border-gray-200">
         <nav className="-mb-px flex items-center gap-0.5 overflow-x-auto" aria-label="My Tasks sections">
           {TABS.filter((t) => t.key !== 'analytics' || canViewDashboard).map((t) => {
@@ -1103,12 +1547,58 @@ function WorkspaceInner() {
           )}
         </div>
       </div>
+      )}
 
-      {view === 'dashboard' ? <TaskDashboard /> : (
-      /* DESKTOP: the row is pinned to the viewport, so the PAGE never scrolls — the
-         task list and the details panel each scroll inside their own column
-         (WhatsApp/Slack-style). MOBILE: unconstrained, so the page keeps its single
-         natural scroll (no nested scrolling). */
+      {view === 'dashboard' ? <TaskDashboard /> : isMobile ? (
+        /* ── MOBILE (<768px): dedicated task list — Search + Filter chips + compact
+           cards. No split view; tapping a card opens the full-screen details sheet
+           rendered below (MyTaskMobileDetails). ── */
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search[bucket]}
+              onChange={(e) => setSearch((prev) => ({ ...prev, [bucket]: e.target.value }))}
+              placeholder="Search tasks…"
+              aria-label="Search tasks"
+              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+            />
+            {search[bucket] && (
+              <button type="button" onClick={() => setSearch((prev) => ({ ...prev, [bucket]: '' }))} aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"><X className="h-4 w-4" /></button>
+            )}
+          </div>
+          <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
+            {MOBILE_CHIPS.map((c) => (
+              <button key={c.key} type="button" onClick={() => applyMobileChip(c.key)}
+                className={classNames('shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition',
+                  activeMobileChip === c.key ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600')}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-2.5">
+            {loading ? (
+              <div className="flex items-center justify-center py-16 text-gray-300"><Loader2 className="h-6 w-6 animate-spin" /></div>
+            ) : error ? (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-6 text-center text-sm text-rose-600">{error}</div>
+            ) : currentList.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
+                <p className="text-sm font-medium text-gray-500">
+                  {bucket === 'inbox'
+                    ? (lists.inbox.length > 0 ? 'No tasks match these filters.' : 'Your inbox is empty.')
+                    : (lists.outbox.length > 0 ? 'No tasks match these filters.' : 'You have not created any tasks.')}
+                </p>
+              </div>
+            ) : (
+              currentList.map((t) => <MobileTaskCard key={t.id} task={t} onOpen={() => openTask(t)} />)
+            )}
+          </div>
+        </div>
+      ) : (
+      /* TABLET (≥768px) + DESKTOP: the row is pinned to the viewport, so the PAGE never
+         scrolls — the task list and the details panel each scroll inside their own
+         column (WhatsApp/Slack-style). Unchanged from before this mobile redesign. */
       <div className="flex flex-col gap-5 lg:h-[calc(100vh_-_160px)] lg:flex-row">
         {/* LEFT — the task list.
             MOBILE (WhatsApp-style): this is the "list screen". Once a task is opened
@@ -1251,11 +1741,49 @@ function WorkspaceInner() {
                 onStatus={(s, wr) => handleStatus(selectedTask.id, s, wr)}
                 onBack={() => setSelectedId(null)}
                 currentUserId={currentUserId}
+                generatedBy={user?.name ?? ''}
               />
             </div>
           )}
         </section>
       </div>
+      )}
+
+      {/* MOBILE (<768px): full-screen Task Details sheet — replaces the desktop split.
+          A fixed overlay above the list; reuses every desktop handler + leaf. */}
+      {isMobile && view === 'workspace' && selectedTask && (
+        <MyTaskMobileDetails
+          task={selectedTask}
+          onBack={() => setSelectedId(null)}
+          canEdit={canEdit && isOwnerOf(selectedTask)}
+          canDelete={canDelete && isOwnerOf(selectedTask)}
+          canExecute={canEdit && (isOwnerOf(selectedTask) || isInChargeOf(selectedTask))}
+          canApprove={canEdit && isOwnerOf(selectedTask)}
+          onEdit={() => { setEditing(selectedTask); setModalOpen(true); }}
+          onDelete={() => handleDelete(selectedTask)}
+          onStatus={(s, wr) => handleStatus(selectedTask.id, s, wr)}
+          currentUserId={currentUserId}
+          generatedBy={user?.name ?? ''}
+        />
+      )}
+
+      {/* MOBILE (<768px): fixed BOTTOM navigation — Inbox · Outbox · Analytics · Add
+          Task (matches the reference). The details sheet (z-40) covers it when open. */}
+      {isMobile && (
+        <nav aria-label="My Tasks" className="fixed bottom-0 left-0 right-0 z-30 flex items-stretch border-t border-gray-200 bg-white shadow-[0_-1px_4px_rgba(15,23,42,0.05)]">
+          <BottomTab active={view === 'workspace' && bucket === 'inbox'} icon={Inbox} label="Inbox" count={lists.inbox.length} onClick={() => selectTab('inbox')} />
+          <BottomTab active={view === 'workspace' && bucket === 'outbox'} icon={Send} label="Outbox" count={lists.outbox.length} onClick={() => selectTab('outbox')} />
+          {canViewDashboard && (
+            <BottomTab active={view === 'dashboard'} icon={BarChart3} label="Analytics" onClick={() => selectTab('analytics')} />
+          )}
+          {canCreate && (
+            <button type="button" onClick={() => { setEditing(null); setModalOpen(true); }}
+              className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold text-indigo-600">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm"><Plus className="h-5 w-5" /></span>
+              Add Task
+            </button>
+          )}
+        </nav>
       )}
 
       <CreateMyTaskModal

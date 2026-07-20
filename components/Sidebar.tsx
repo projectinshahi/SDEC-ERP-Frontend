@@ -120,10 +120,10 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
       {/* Mobile Toggle Button */}
       <button
         onClick={onToggle}
-        className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-lg bg-white shadow-md hover:bg-gray-50 border border-gray-100 transition-colors"
+        className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-lg bg-white dark:bg-gray-900 shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-100 dark:border-gray-800 transition-colors"
         aria-label="Toggle sidebar"
       >
-        {isOpen ? <X size={24} className="text-zinc-800" /> : <Menu size={24} className="text-zinc-800" />}
+        {isOpen ? <X size={24} className="text-zinc-800 dark:text-zinc-200" /> : <Menu size={24} className="text-zinc-800 dark:text-zinc-200" />}
       </button>
 
       {/* Overlay for mobile drawer */}

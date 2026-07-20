@@ -63,15 +63,15 @@ const TYPE_LABELS: Record<string, string> = {
   BUG_REVIEW: 'Bug Review', EMERGENCY_MEETING: 'Emergency', OTHER: 'Other',
 };
 const TYPE_COLORS: Record<string, string> = {
-  DAILY_STANDUP: 'bg-blue-100 text-blue-700',
-  SPRINT_PLANNING: 'bg-purple-100 text-purple-700',
-  SPRINT_REVIEW: 'bg-green-100 text-green-700',
-  RETROSPECTIVE: 'bg-orange-100 text-orange-700',
-  CLIENT_MEETING: 'bg-pink-100 text-pink-700',
-  INTERNAL_DISCUSSION: 'bg-cyan-100 text-cyan-700',
-  BUG_REVIEW: 'bg-red-100 text-red-700',
-  EMERGENCY_MEETING: 'bg-rose-100 text-rose-700',
-  OTHER: 'bg-gray-100 text-gray-700',
+  DAILY_STANDUP: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+  SPRINT_PLANNING: 'bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300',
+  SPRINT_REVIEW: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300',
+  RETROSPECTIVE: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+  CLIENT_MEETING: 'bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-300',
+  INTERNAL_DISCUSSION: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300',
+  BUG_REVIEW: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  EMERGENCY_MEETING: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+  OTHER: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
 };
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'default'> = {
   UPCOMING: 'info', ONGOING: 'warning', COMPLETED: 'success', CANCELLED: 'default',
@@ -81,8 +81,8 @@ const FEATURED_TYPES = ['SPRINT_PLANNING', 'RETROSPECTIVE', 'CLIENT_MEETING', 'S
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const PAGE_SIZE = 10;
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400';
-const filterCls = 'px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm cursor-pointer';
+const inputCls = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500';
+const filterCls = 'px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm cursor-pointer';
 
 const AVATAR_COLORS = ['from-blue-500 to-blue-600', 'from-purple-500 to-purple-600', 'from-green-500 to-green-600', 'from-pink-500 to-pink-600', 'from-orange-500 to-orange-600'];
 const initialsOf = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -338,17 +338,17 @@ export default function MeetingsClient() {
       {/* Header */}
       <section className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight flex items-center gap-2.5">
             <Calendar className="text-blue-500 w-8 h-8" />
             Meeting Management
           </h1>
-          <p className="text-gray-500 mt-1.5 text-sm max-w-xl leading-relaxed">
+          <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-sm max-w-xl leading-relaxed">
             Manage project meetings, attendees, schedules, and action items.
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-center">
           <button onClick={refreshAll} title="Refresh"
-            className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+            className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/15 transition-colors">
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
           </button>
           <Button variant="primary" size="lg" onClick={openCreate} title="Create a new meeting">

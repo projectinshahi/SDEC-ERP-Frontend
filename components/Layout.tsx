@@ -99,7 +99,13 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
    * items (up to the next partition) is visible.
    */
   const visibleMenuItems = useMemo((): SidebarItem[] => {
+<<<<<<< HEAD
     const inModule = SIDEBAR_ITEMS.filter((i) => groupForModule(i.module) === currentModule);
+=======
+    // Current module's items only (partition-grouped). GLOBAL items (My Tasks,
+    // Notice) are placed separately below.
+    const inModule = SIDEBAR_ITEMS.filter((i) => !i.global && groupForModule(i.module) === currentModule);
+>>>>>>> 102f107 (fsfssfsfffff)
     const result: SidebarMenuItem[] = [];
     for (let i = 0; i < inModule.length; i++) {
       const item = inModule[i];
@@ -113,6 +119,24 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
         result.push(item);
       }
     }
+<<<<<<< HEAD
+=======
+    // GLOBAL items, split by placement. `pinTop` globals (My Tasks) render right
+    // BELOW the module's first actionable item (its Dashboard/home) — a standardized
+    // TOP position across every module — while other globals (Notice) stay at the
+    // BOTTOM. This changes ONLY the render order: SIDEBAR_ITEMS array order (which
+    // drives firstAccessibleHref / the landing page) is deliberately untouched, so
+    // opening a module still lands on its Dashboard, never My Tasks.
+    const globals = SIDEBAR_ITEMS.filter((i) => i.global && isItemVisible(i));
+    const topGlobals = globals.filter((g) => g.pinTop);
+    const bottomGlobals = globals.filter((g) => !g.pinTop);
+    if (topGlobals.length) {
+      const firstActionable = result.findIndex((i) => !i.isPartition && !!i.href);
+      const insertAt = firstActionable === -1 ? result.length : firstActionable + 1;
+      result.splice(insertAt, 0, ...topGlobals);
+    }
+    result.push(...bottomGlobals);
+>>>>>>> 102f107 (fsfssfsfffff)
     return result as SidebarItem[];
   }, [currentModule, isItemVisible]);
 
@@ -120,17 +144,17 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
     <ErrorBoundary>
       <AuthGuard>
         {user && !allowed ? (
-          <div className="flex h-screen items-center justify-center bg-gray-50 text-center">
+          <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 text-center">
             <div>
               <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold">!</span>
               </div>
-              <h2 className="text-lg font-bold text-gray-800">Access restricted</h2>
-              <p className="text-sm text-gray-500 mt-1">You don’t have access to this module. Redirecting…</p>
+              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Access restricted</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">You don’t have access to this module. Redirecting…</p>
             </div>
           </div>
         ) : (
-          <div className="flex h-screen bg-gray-50">
+          <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
             <Sidebar
               items={visibleMenuItems}
               isOpen={sidebarOpen}

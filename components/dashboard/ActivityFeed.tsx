@@ -128,7 +128,7 @@ export function ActivityFeed({
     const parts = text.split(/(@[a-zA-Z0-9_]+)/g);
     return parts.map((part, i) => 
       part.startsWith('@') ? (
-        <span key={i} className="text-indigo-600 font-semibold">{part}</span>
+        <span key={i} className="text-indigo-600 dark:text-indigo-400 font-semibold">{part}</span>
       ) : (
         <span key={i}>{part}</span>
       )
@@ -136,15 +136,15 @@ export function ActivityFeed({
   };
 
   return (
-    <Card className="h-full border border-gray-200 shadow-sm !bg-white !border-gray-200">
-      <CardHeader className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+    <Card className="h-full border border-gray-200 dark:border-gray-800 shadow-sm !bg-white dark:!bg-gray-900 !border-gray-200 dark:!border-gray-800">
+      <CardHeader className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-6 py-4">
         <div className="flex items-center gap-2.5">
-          <Activity size={18} className="text-indigo-600" />
-          <h2 className="text-lg font-bold text-gray-800">Recent Activity</h2>
+          <Activity size={18} className="text-indigo-600 dark:text-indigo-400" />
+          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Recent Activity</h2>
         </div>
         {!isLoading && !isError && filteredActivities.length > 0 && (
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full shrink-0">
+            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/15 px-2.5 py-1 rounded-full shrink-0">
               {filteredActivities.length} total
             </span>
             {onClear && (
@@ -153,7 +153,7 @@ export function ActivityFeed({
                 size="sm"
                 onClick={() => setIsClearModalOpen(true)}
                 isLoading={isClearing}
-                className="text-gray-500 hover:text-rose-600:text-rose-400 px-2 h-7"
+                className="text-gray-500 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 px-2 h-7"
               >
                 Clear All
               </Button>
