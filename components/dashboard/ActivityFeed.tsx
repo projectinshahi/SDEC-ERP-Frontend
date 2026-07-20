@@ -173,13 +173,13 @@ export function ActivityFeed({
         ) : isError ? (
           /* 2. Error State */
           <div className="flex flex-col items-center justify-center min-h-[260px] text-center p-4">
-            <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mb-4 animate-bounce">
+            <div className="w-12 h-12 bg-rose-50 dark:bg-rose-500/15 rounded-full flex items-center justify-center text-rose-500 mb-4 animate-bounce">
               <AlertTriangle size={24} />
             </div>
-            <h3 className="text-sm font-bold text-gray-850">
+            <h3 className="text-sm font-bold text-gray-850 dark:text-gray-100">
               Failed to load activity feed
             </h3>
-            <p className="text-xs text-gray-500 mt-1 max-w-[200px] mx-auto">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-[200px] mx-auto">
               Please double check database connectivity or configurations
             </p>
             {onRetry && (
@@ -197,50 +197,50 @@ export function ActivityFeed({
         ) : isEmpty ? (
           /* 3. Empty State */
           <div className="flex flex-col items-center justify-center min-h-[260px] text-center p-4">
-            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-4">
+            <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-400 dark:text-gray-500 mb-4">
               <Inbox size={22} />
             </div>
-            <h3 className="text-sm font-bold text-gray-850">
+            <h3 className="text-sm font-bold text-gray-850 dark:text-gray-100">
               No recent activity
             </h3>
-            <p className="text-xs text-gray-500 mt-1.5 max-w-[200px] mx-auto">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 max-w-[200px] mx-auto">
               Operate tasks or create new users to view logs
             </p>
           </div>
         ) : (
           /* 4. Normal Activity List presentation */
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {filteredActivities.map((activity) => {
               const { label, variant } = getTypeConfig(activity.type);
-              
+
               const isSystemEvent = ['system_job', 'cleanup', 'automated_sync', 'cron'].includes(activity.type);
               const actorName = activity.actor?.name || (isSystemEvent ? 'System' : 'Unknown User');
               const avatarChar = actorName.charAt(0).toUpperCase();
-              
+
               const avatarColors = [
-                'bg-blue-100 text-blue-700',
-                'bg-emerald-100 text-emerald-700',
-                'bg-indigo-100 text-indigo-700',
-                'bg-purple-100 text-purple-700',
+                'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300',
+                'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300',
+                'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300',
+                'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300',
               ];
               const colorClass = avatarColors[actorName.length % avatarColors.length];
 
               return (
-                <div key={activity.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0 hover:bg-gray-50/50:bg-slate-800/30 transition-colors px-2 -mx-2 rounded-lg">
+                <div key={activity.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0 hover:bg-gray-50/50 dark:hover:bg-slate-800/30 transition-colors px-2 -mx-2 rounded-lg">
                   <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-4">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow-sm ${colorClass}`}>
                       {avatarChar}
                     </div>
-                    
+
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-800 text-sm">
+                      <p className="font-medium text-gray-800 dark:text-gray-100 text-sm">
                         <span className="font-semibold">{actorName}</span>{' '}
-                        <span className="text-gray-600 font-normal">
+                        <span className="text-gray-600 dark:text-gray-300 font-normal">
                           {renderDescription(activity.description)}
                         </span>
                       </p>
-                      <div className="flex items-center gap-1.5 mt-1 text-gray-500 text-xs">
-                        <Clock size={12} className="shrink-0 text-gray-400" />
+                      <div className="flex items-center gap-1.5 mt-1 text-gray-500 dark:text-gray-400 text-xs">
+                        <Clock size={12} className="shrink-0 text-gray-400 dark:text-gray-500" />
                         <span className="truncate">{formatRelativeTime(activity.created_at)}</span>
                       </div>
                     </div>
@@ -263,7 +263,7 @@ export function ActivityFeed({
         title="Clear Activity Feed"
         size="sm"
       >
-        <div className="text-gray-600 mb-6">
+        <div className="text-gray-600 dark:text-gray-300 mb-6">
           Are you sure you want to clear your activity feed? This action cannot be undone.
         </div>
         <div className="flex justify-end gap-3">
