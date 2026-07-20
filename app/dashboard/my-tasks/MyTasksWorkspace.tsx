@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense, type ChangeEvent } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import {
   Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
   Calendar, User, Users, Flag, Clock, Paperclip, RefreshCw, Pencil, Trash2, ShieldAlert,
   MessageCircle, Activity, Download, BarChart3, AtSign, X, ArrowLeft,
-  Star, MoreHorizontal, FileText,
+  Star, MoreHorizontal, FileText, SlidersHorizontal,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -15,7 +15,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
 import {
-  fetchMyTaskWorkspace, deleteMyTask, updateMyTaskStatus,
+  fetchMyTaskWorkspace, deleteMyTask, updateMyTaskStatus, uploadMyTaskAttachment,
   type MyTask, type MyTaskWorkspace as MyTaskWorkspaceData, type MyTaskActivity,
 } from '@/lib/api/myTasks';
 import { MyTaskChat } from '@/components/tasks/mytasks/MyTaskChat';
@@ -153,9 +153,12 @@ function useIsMobile(): boolean {
   return isMobile;
 }
 
-// Mobile filter chips = the SAME date buckets as the desktop Due filter + a
-// "Completed" preset (status done/approved). Presets over the existing filter state
-// (dateFilters/statusFilters) — the matchDateStatus engine is unchanged.
+// Mobile Due chips = single-select quick presets over the existing dateFilters/statusFilters.
+// All/Today/Delayed/Upcoming set the DATE bucket only (leaving Status/Read untouched);
+// "Completed" is a shortcut for the finished set (status {done, approved} of any due date),
+// reusing COMPLETED_STATUSES — the SAME set the engine already understands. Status + Read
+// are the finer axes, moved into the Filter bottom-sheet. All axes drive the SAME state +
+// the matchDateStatus / matchRead engines the desktop uses (no mobile-specific filter logic).
 const MOBILE_CHIPS: { key: string; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'today', label: 'Today' },
@@ -173,6 +176,85 @@ const CIRCLE_RINGS = [
   'border-cyan-500 text-cyan-600', 'border-orange-500 text-orange-600',
 ];
 const taskRing = (id: number) => CIRCLE_RINGS[Math.abs(id) % CIRCLE_RINGS.length];
+
+/**
+ * Mobile Filter bottom-sheet (phones only). Houses the advanced Status + Read filters
+ * that used to sit as inline dropdowns, keeping the list header clean (Search + Filter
+ * button + Due chips). It edits a local DRAFT seeded from the currently-applied filters
+ * and commits ONLY on Apply — reusing the EXACT same statusFilters/readFilter state and
+ * the matchDateStatus/matchRead engine the desktop uses (no mobile-specific filter logic).
+ * The parent conditionally mounts it, so the scroll-lock/Escape effect is leak-free.
+ * Rendered inside `.mytasks-scope`, so it inherits the My Tasks dark palette.
+ */
+function MobileFilterSheet({
+  initialStatus, initialRead, onApply, onClose,
+}: {
+  initialStatus: Set<string>;
+  initialRead: ReadKey;
+  onApply: (status: Set<string>, read: ReadKey) => void;
+  onClose: () => void;
+}) {
+  const [draftStatus, setDraftStatus] = useState<Set<string>>(() => new Set(initialStatus));
+  const [draftRead, setDraftRead] = useState<ReadKey>(() => initialRead);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+
+  const toggleStatus = (key: string) => setDraftStatus((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const pillCls = (active: boolean) => classNames(
+    'rounded-full px-3.5 py-2 text-[13px] font-semibold transition',
+    active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="Filter tasks">
+      <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] animate-fade-in" onClick={onClose} aria-hidden="true" />
+      <div className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-2xl border-t border-gray-100 bg-white shadow-2xl animate-slide-up">
+        {/* Grab handle */}
+        <div className="flex shrink-0 justify-center pt-3"><span className="h-1.5 w-10 rounded-full bg-gray-300" /></div>
+        <div className="flex shrink-0 items-center justify-between px-5 py-3">
+          <h2 className="text-base font-bold text-gray-900">Filters</h2>
+          <button type="button" onClick={onClose} aria-label="Close filters"
+            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-4">
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">Status</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setDraftStatus(new Set())} className={pillCls(draftStatus.size === 0)}>All</button>
+              {STATUS_FILTERS.map((f) => (
+                <button key={f.key} type="button" onClick={() => toggleStatus(f.key)} className={pillCls(draftStatus.has(f.key))}>{f.label}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">Read Status</p>
+            <div className="flex flex-wrap gap-2">
+              {READ_FILTERS.map((f) => (
+                <button key={f.key} type="button" onClick={() => setDraftRead(f.key)} className={pillCls(draftRead === f.key)}>{f.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-3 border-t border-gray-100 px-5 py-3">
+          <button type="button" onClick={() => { setDraftStatus(new Set()); setDraftRead('all'); }}
+            className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Reset</button>
+          <button type="button" onClick={() => { onApply(draftStatus, draftRead); onClose(); }}
+            className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">Apply</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Mobile due line in the reference format: "Overdue • 10 Jul 2026 • 05:33 PM" (rose),
@@ -560,9 +642,53 @@ function WaitingReasonModal({
   );
 }
 
+/**
+ * Attachment upload control for the details / mobile Attachments tab. Any task
+ * PARTICIPANT (creator / In-Charge / assigned member) can share files — reuses the
+ * existing uploadMyTaskAttachment API + Cloudinary + Socket.IO (the backend logs the
+ * activity and fans out `mytask_changed`, so all participants see it in real time).
+ * Rendered only inside the details panel, which non-participants can never open.
+ */
+function AttachmentUpload({ taskId, onUploaded }: { taskId: number; onUploaded: () => void }) {
+  const { toast } = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const onChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      Array.from(files).forEach((f) => fd.append('files', f));
+      await uploadMyTaskAttachment(taskId, fd);
+      onUploaded();
+      toast(files.length === 1 ? 'Attachment uploaded.' : `${files.length} attachments uploaded.`, 'success');
+    } catch {
+      toast('Failed to upload attachment(s).', 'error');
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+  return (
+    <>
+      <input ref={inputRef} type="file" multiple onChange={onChange} className="hidden" aria-hidden="true" />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-2.5 text-sm font-semibold text-gray-600 transition hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-60"
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+        {busy ? 'Uploading…' : 'Upload files'}
+      </button>
+    </>
+  );
+}
+
 function DetailsPanel({
   task, collapsed, onToggle, canEdit, canDelete, onEdit, onDelete, onStatus, onBack,
-  canExecute, canApprove, currentUserId, generatedBy,
+  canExecute, canApprove, currentUserId, generatedBy, onUploaded,
 }: {
   task: MyTask; collapsed: boolean; onToggle: () => void;
   canEdit: boolean; canDelete: boolean;
@@ -576,6 +702,8 @@ function DetailsPanel({
   currentUserId?: number;
   /** Exporter name for the "Generated by" line on the PDF. */
   generatedBy: string;
+  /** Refresh the workspace after an attachment upload (real-time also refetches). */
+  onUploaded: () => void;
 }) {
   const prio = priorityMeta(task.priority);
   const due = fmtDue(task.dueDate, task.dueTime, task.status);
@@ -794,7 +922,9 @@ function DetailsPanel({
               )}
 
               {activeTab === 'attachments' && (
-                <div className="p-5">
+                <div className="p-5 space-y-4">
+                  {/* Any participant (creator / In-Charge / member) can share files. */}
+                  <AttachmentUpload taskId={task.id} onUploaded={onUploaded} />
                   {task.attachments.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {task.attachments.map((a) => (
@@ -926,12 +1056,13 @@ function MobileTaskCard({ task, onOpen }: { task: MyTask; onOpen: () => void }) 
 /** Full-screen mobile Task Details sheet: collapsed-by-default header + expandable
  *  info panel + the existing Chat / Files / Activity tabs (chat pins its own input). */
 function MyTaskMobileDetails({
-  task, onBack, canEdit, canDelete, canExecute, canApprove, onEdit, onDelete, onStatus, currentUserId, generatedBy,
+  task, onBack, canEdit, canDelete, canExecute, canApprove, onEdit, onDelete, onStatus, currentUserId, generatedBy, onUploaded,
 }: {
   task: MyTask; onBack: () => void;
   canEdit: boolean; canDelete: boolean; canExecute: boolean; canApprove: boolean;
   onEdit: () => void; onDelete: () => void; onStatus: (s: string, waitingReason?: string) => void;
   currentUserId?: number; generatedBy: string;
+  onUploaded: () => void;
 }) {
   const [expanded, setExpanded] = useState(false); // collapsed by default (spec)
   const [activeTab, setActiveTab] = useState<'chat' | 'attachments' | 'timeline'>('chat');
@@ -1111,7 +1242,9 @@ function MyTaskMobileDetails({
           </div>
         )}
         {activeTab === 'attachments' && (
-          <div className="h-full overflow-y-auto p-4">
+          <div className="h-full space-y-3 overflow-y-auto p-4">
+            {/* Any participant (creator / In-Charge / member) can share files. */}
+            <AttachmentUpload taskId={task.id} onUploaded={onUploaded} />
             {task.attachments.length ? (
               <div className="space-y-2.5">
                 {task.attachments.map((a) => (
@@ -1251,6 +1384,7 @@ function WorkspaceInner() {
   const [inChargeFilter, setInChargeFilter] = useState<number | null>(null); // Outbox only
   const [waitingReasonFilter, setWaitingReasonFilter] = useState<Record<Bucket, string | null>>({ inbox: null, outbox: null }); // per-bucket, active only when Waiting is filtered
   const [readFilter, setReadFilter] = useState<Record<Bucket, ReadKey>>({ inbox: 'all', outbox: 'all' }); // per-bucket (never global — it would leak across tabs)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false); // mobile Filter bottom-sheet (Status + Read)
   const [search, setSearch] = useState<Record<Bucket, string>>({ inbox: '', outbox: '' }); // per-bucket, like every other filter here
   // Filter on the DEBOUNCED text (keeps typing snappy); `search` drives the input itself.
   const debouncedSearch = useDebouncedValue(search, 200);
@@ -1350,32 +1484,38 @@ function WorkspaceInner() {
   const statusSel = statusFilters[bucket];
   const readSel = readFilter[bucket];
 
-  // Mobile filter chips are single-select PRESETS over the same date/status state the
-  // desktop multi-select uses (matchDateStatus engine unchanged). "Completed" =
-  // status {done, approved} with date {all}; the others set exactly one date bucket.
-  const completedChipActive = statusSel.has('done') && statusSel.has('approved');
-  const activeMobileChip = completedChipActive ? 'completed'
+  // Mobile Due chips are single-select PRESETS over the same date/status state the desktop
+  // multi-select uses (matchDateStatus engine unchanged). "Completed" is the finished set
+  // (status {done, approved} of any due date, via COMPLETED_STATUSES); All/Today/Delayed/
+  // Upcoming set exactly one date bucket and leave Status/Read (the Filter-sheet axes) alone.
+  const isCompletedPreset = statusSel.size === 2 && statusSel.has('done') && statusSel.has('approved') && dateSel.has('all');
+  const activeMobileChip = isCompletedPreset ? 'completed'
     : dateSel.has('today') ? 'today'
     : dateSel.has('delayed') ? 'delayed'
     : dateSel.has('upcoming') ? 'upcoming'
     : 'all';
   const applyMobileChip = (chip: string) => {
     if (chip === 'completed') {
+      // Finished tasks, any due date. Reuses COMPLETED_STATUSES so it composes with the
+      // Read filter (e.g. Completed + Unread) through the unchanged engine — no new logic.
       setDateFilters((p) => ({ ...p, [bucket]: new Set(['all']) }));
-      setStatusFilters((p) => ({ ...p, [bucket]: new Set(['done', 'approved']) }));
-    } else {
-      setDateFilters((p) => ({ ...p, [bucket]: new Set([chip]) }));
-      setStatusFilters((p) => ({ ...p, [bucket]: new Set<string>() }));
+      setStatusFilters((p) => ({ ...p, [bucket]: new Set(COMPLETED_STATUSES) }));
+      return;
     }
+    setDateFilters((p) => ({ ...p, [bucket]: new Set([chip]) }));
+    // Leaving the Completed preset → drop its status set so the chip is a pure date view.
+    // A Status chosen via the Filter sheet (any other combination) is left untouched.
+    if (isCompletedPreset) setStatusFilters((p) => ({ ...p, [bucket]: new Set<string>() }));
   };
-  // Mobile exposes ONLY the chips + search. Reset the desktop-only filter dimensions
-  // (Read / Waiting-reason / In-Charge) on entering the mobile view, so a filter set at
-  // a wider width can never silently hide mobile tasks with no control to clear it.
-  // No-op on a real phone (already at defaults); a desktop-only session never runs this
-  // (isMobile stays false), so the desktop/tablet experience is unchanged.
+  // Advanced (Filter-sheet) filters currently applied: Status — unless it's the Completed
+  // preset, which the Due chip already surfaces — and Read. Drives the Filter button badge.
+  const advancedFilterCount = ((statusSel.size > 0 && !isCompletedPreset) ? 1 : 0) + (readSel !== 'all' ? 1 : 0);
+  // Mobile exposes Due (chips) + Status + Read (Filter sheet). Only the still-hidden desktop
+  // dimensions (Waiting-reason / In-Charge) are reset on entering mobile, so a value set at a
+  // wider width can't silently filter the mobile list with no control to clear it. Read is NOT
+  // reset — the Filter sheet owns it. No-op on a phone; never runs on desktop.
   useEffect(() => {
     if (!isMobile) return;
-    setReadFilter({ inbox: 'all', outbox: 'all' });
     setWaitingReasonFilter({ inbox: null, outbox: null });
     setInChargeFilter(null);
   }, [isMobile]);
@@ -1554,20 +1694,43 @@ function WorkspaceInner() {
            cards. No split view; tapping a card opens the full-screen details sheet
            rendered below (MyTaskMobileDetails). ── */
         <div className="space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search[bucket]}
-              onChange={(e) => setSearch((prev) => ({ ...prev, [bucket]: e.target.value }))}
-              placeholder="Search tasks…"
-              aria-label="Search tasks"
-              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
-            />
-            {search[bucket] && (
-              <button type="button" onClick={() => setSearch((prev) => ({ ...prev, [bucket]: '' }))} aria-label="Clear search"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"><X className="h-4 w-4" /></button>
-            )}
+          {/* Search + Filter — the advanced Status/Read filters live in the bottom-sheet
+              opened by this button, keeping the header to Search + Filter + Due chips. */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search[bucket]}
+                onChange={(e) => setSearch((prev) => ({ ...prev, [bucket]: e.target.value }))}
+                placeholder="Search tasks…"
+                aria-label="Search tasks"
+                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+              />
+              {search[bucket] && (
+                <button type="button" onClick={() => setSearch((prev) => ({ ...prev, [bucket]: '' }))} aria-label="Clear search"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"><X className="h-4 w-4" /></button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFilterSheetOpen(true)}
+              aria-label="Open filters"
+              aria-haspopup="dialog"
+              className={classNames(
+                'inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-sm font-semibold transition',
+                advancedFilterCount > 0
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
+              )}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filter
+              {advancedFilterCount > 0 && (
+                <span className="ml-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[11px] font-bold text-white">{advancedFilterCount}</span>
+              )}
+            </button>
           </div>
+          {/* Due filter — single-select date chips + the "Completed" preset. */}
           <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
             {MOBILE_CHIPS.map((c) => (
               <button key={c.key} type="button" onClick={() => applyMobileChip(c.key)}
@@ -1577,6 +1740,17 @@ function WorkspaceInner() {
               </button>
             ))}
           </div>
+          {filterSheetOpen && (
+            <MobileFilterSheet
+              initialStatus={statusSel}
+              initialRead={readSel}
+              onClose={() => setFilterSheetOpen(false)}
+              onApply={(status, read) => {
+                setStatusFilters((prev) => ({ ...prev, [bucket]: status }));
+                setReadFilter((prev) => ({ ...prev, [bucket]: read }));
+              }}
+            />
+          )}
           <div className="space-y-2.5">
             {loading ? (
               <div className="flex items-center justify-center py-16 text-gray-300"><Loader2 className="h-6 w-6 animate-spin" /></div>
@@ -1742,6 +1916,7 @@ function WorkspaceInner() {
                 onBack={() => setSelectedId(null)}
                 currentUserId={currentUserId}
                 generatedBy={user?.name ?? ''}
+                onUploaded={() => load(true)}
               />
             </div>
           )}
@@ -1764,6 +1939,7 @@ function WorkspaceInner() {
           onStatus={(s, wr) => handleStatus(selectedTask.id, s, wr)}
           currentUserId={currentUserId}
           generatedBy={user?.name ?? ''}
+          onUploaded={() => load(true)}
         />
       )}
 
