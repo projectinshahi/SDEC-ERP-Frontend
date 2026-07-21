@@ -1,4 +1,5 @@
 import { apiClient } from './api-client';
+import { notifyUnreadRefresh } from '../unreadBus';
 
 /**
  * Notice module API client — talks to /api/notices. Mirrors the myTasks.ts pattern
@@ -111,6 +112,12 @@ export async function fetchNoticeDashboard(recentLimit?: number): Promise<Notice
   return r.data;
 }
 
+/** Lightweight unread-notice count for the sidebar dot (reuses the dashboard unread rule). */
+export async function fetchNoticeUnreadCount(): Promise<number> {
+  const r = await apiClient.get<{ count: number }>('/notices/unread-count');
+  return r.data?.count ?? 0;
+}
+
 export async function createNotice(input: CreateNoticeInput): Promise<Notice> {
   const r = await apiClient.post<Notice>('/notices', input);
   return r.data;
@@ -144,6 +151,7 @@ export async function archiveNotice(id: number): Promise<Notice> {
 
 export async function markNoticeRead(id: number): Promise<{ success: boolean }> {
   const r = await apiClient.post<{ success: boolean }>(`/notices/${id}/read`);
+  notifyUnreadRefresh(); // clear the sidebar dot immediately if this was the last unread notice
   return r.data;
 }
 
