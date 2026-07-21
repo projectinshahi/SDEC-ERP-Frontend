@@ -6,6 +6,7 @@ import { ProjectProvider } from '@/lib/context/ProjectContext';
 import { ToastProvider } from '@/components/ToastProvider';
 import { ConfirmProvider } from '@/components/ConfirmDialogProvider';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { UnreadIndicatorsProvider } from '@/lib/context/UnreadContext';
 import type { ReactNode } from 'react';
 
 interface ProvidersProps {
@@ -26,7 +27,9 @@ export function Providers({ children }: ProvidersProps) {
           <ErrorBoundary>
             <ToastProvider>
               <ConfirmProvider>
-                {children}
+                <UnreadIndicatorsProvider>
+                  {children}
+                </UnreadIndicatorsProvider>
               </ConfirmProvider>
             </ToastProvider>
           </ErrorBoundary>

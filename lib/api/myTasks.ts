@@ -1,4 +1,5 @@
 import { apiClient } from './api-client';
+import { notifyUnreadRefresh } from '../unreadBus';
 
 /**
  * My Tasks module API client — talks ONLY to /api/my-tasks (its own standalone
@@ -232,6 +233,12 @@ export async function fetchMyTaskWorkspace(): Promise<MyTaskWorkspace> {
   return r.data;
 }
 
+/** Lightweight unread-task count for the sidebar dot (reuses the workspace `unread` rule). */
+export async function fetchMyTaskUnreadCount(): Promise<number> {
+  const r = await apiClient.get<{ count: number }>('/my-tasks/unread-count');
+  return r.data?.count ?? 0;
+}
+
 export async function fetchMyTask(id: number): Promise<MyTask> {
   const r = await apiClient.get<MyTask>(`/my-tasks/${id}`);
   return r.data;
@@ -287,6 +294,7 @@ export async function deleteMyTaskMessage(id: number, messageId: number): Promis
 
 export async function markMyTaskRead(id: number): Promise<{ success: boolean }> {
   const r = await apiClient.post<{ success: boolean }>(`/my-tasks/${id}/read`);
+  notifyUnreadRefresh(); // clear the sidebar dot immediately if this was the last unread task
   return r.data;
 }
 
