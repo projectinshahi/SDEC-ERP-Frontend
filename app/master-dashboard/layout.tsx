@@ -8,6 +8,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { getModuleAccess } from '@/lib/permissions/moduleAccess';
+import { assertNoDuplicateHrefs } from '@/lib/sidebar/sidebar.config';
 
 interface LayoutProps {
   children: ReactNode;
@@ -113,6 +114,10 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     module: null,
   },
 ];
+
+// Dev-time invariant: fail loud if this hardcoded array ever registers the same route
+// twice (the "two Notice items" bug). No-op in production; never hides an item.
+assertNoDuplicateHrefs(MASTER_SIDEBAR_ITEMS, 'MASTER_SIDEBAR_ITEMS');
 
 export default function MasterDashboardLayout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
