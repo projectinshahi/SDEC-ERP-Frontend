@@ -36,6 +36,21 @@ import type { ModuleName } from '@/lib/permissions/permission.types';
 import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
 import { useProject } from '@/lib/context/ProjectContext';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { useUnreadIndicators } from '@/lib/context/UnreadContext';
+
+/**
+ * Real-time unread indicator — a small red dot with a subtle pulse (animate-ping halo +
+ * solid core), placed on the top-right of a nav item's icon. The ring blends into the dark
+ * sidebar. Reused for any item that has unread activity (currently My Tasks + Notice).
+ */
+function UnreadDot() {
+  return (
+    <span className="pointer-events-none absolute -right-1 -top-1 flex h-2.5 w-2.5" aria-hidden="true">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-75" />
+      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-zinc-950" />
+    </span>
+  );
+}
 
 const iconMap = {
   LayoutDashboard,
@@ -86,6 +101,16 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
   const { user, logout } = useAuth();
   const { projects, activeProject, setActiveProjectId, isLoading } = useProject();
   const { hasPermission } = usePermissions();
+  const { hasUnreadMyTasks, hasUnreadNotice } = useUnreadIndicators();
+
+  // Which nav item carries a real-time unread dot. Matches by href suffix so it works in
+  // BOTH shells (/dashboard/* and /master-dashboard/*). Extend here for future modules.
+  const itemHasUnread = (href?: string): boolean => {
+    if (!href) return false;
+    if (href.endsWith('/my-tasks')) return hasUnreadMyTasks;
+    if (href.endsWith('/notice')) return hasUnreadNotice;
+    return false;
+  };
 
   // Desktop collapse state (persisted in localStorage)
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -280,13 +305,20 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
                     )} />
                   )}
 
-                  {Icon && <Icon
-                    size={20}
-                    className={classNames(
-                      'transition-transform duration-200 group-hover:scale-105 flex-shrink-0',
-                      active ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'
-                    )}
-                  />}
+                  {Icon && (
+                    <span className="relative flex-shrink-0">
+                      <Icon
+                        size={20}
+                        className={classNames(
+                          'transition-transform duration-200 group-hover:scale-105',
+                          active ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'
+                        )}
+                      />
+                      {/* Real-time unread dot — anchored to the icon so it shows in both the
+                          collapsed (icon-only) and expanded rails, desktop + mobile drawer. */}
+                      {itemHasUnread(item.href) && <UnreadDot />}
+                    </span>
+                  )}
 
                   {!isCollapsed && (
                     <span className="text-sm tracking-wide">{item.label}</span>
