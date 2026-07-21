@@ -517,6 +517,38 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
   },
 ];
 
+/**
+ * Dev-time invariant: no two menu items in a sidebar registry may share an href. A
+ * duplicated array entry (e.g. a bad merge that pastes the same item twice — the exact
+ * cause of the "two Notice items" bug) renders the SAME nav item more than once. This
+ * SURFACES it loudly during development/build; it is a no-op in production and never
+ * removes or hides an item, so permissions and functionality are completely untouched.
+ * Accepts any array of href-bearing items (SIDEBAR_ITEMS and the master layout's array).
+ */
+export function assertNoDuplicateHrefs(
+  items: ReadonlyArray<{ href?: string; label?: string }>,
+  source: string,
+): void {
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') return;
+  const seen = new Set<string>();
+  const dups = new Set<string>();
+  for (const it of items) {
+    if (!it.href) continue;
+    if (seen.has(it.href)) dups.add(it.href);
+    seen.add(it.href);
+  }
+  if (dups.size) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[sidebar] ${source} contains duplicate menu href(s): ${[...dups].join(', ')} — ` +
+      'a nav item is registered more than once. Remove the duplicate array entry.',
+    );
+  }
+}
+
+// Guard this registry at module load (dev only).
+assertNoDuplicateHrefs(SIDEBAR_ITEMS, 'SIDEBAR_ITEMS');
+
 /** Normalises an item's `permission` field to an array (empty = no specific gate). */
 export function itemPermissions(item: SidebarMenuItem): PermissionKey[] {
   if (!item.permission) return [];
