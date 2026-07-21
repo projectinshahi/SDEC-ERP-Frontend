@@ -96,18 +96,6 @@ const MASTER_SIDEBAR_ITEMS: SidebarItem[] = [
     module: null,
   },
   {
-    // GLOBAL Notice — the standalone company-announcement module, rendered IN-SHELL at
-    // /master-dashboard/notice (same pattern as My Tasks above) so the Founder stays
-    // inside the Master Dashboard layout. Must NOT point at /dashboard/notice (that
-    // switches to the Development sidebar). The Master Dashboard is SuperAdmin-only, so
-    // every Notice feature is reached via the existing global-admin bypass — no extra
-    // permission is required (the same bypass that unlocks every other master tab).
-    label: 'Notice',
-    href: '/master-dashboard/notice',
-    icon: 'FileText',
-    module: null,
-  },
-  {
     label: 'Settings',
     href: '/master-dashboard/settings',
     icon: 'Settings',
