@@ -19,6 +19,17 @@ export interface LeadCustomer {
   industry?: string | null;
   website?: string | null;
   address?: string | null;
+  designation?: string | null;
+  whatsapp?: string | null;
+  companyId?: number | null;
+}
+
+/** Structured payload on a `stage_changed` activity — the Stage Transition record. */
+export interface StageTransitionMeta {
+  fromStage?: string;
+  toStage?: string;
+  checklist?: string[];
+  note?: string;
 }
 
 export interface LeadActivityLog {
@@ -27,6 +38,8 @@ export interface LeadActivityLog {
   description: string;
   created_at: string;
   actor?: { id: number; name: string } | null;
+  /** Type-specific structured data (e.g. StageTransitionMeta for `stage_changed`). */
+  metadata?: StageTransitionMeta | null;
 }
 
 export interface LeadNote {
@@ -58,11 +71,14 @@ export interface Lead {
   disqualifyReason?: string | null;
   flaggedForReview: boolean;
   customerId?: number | null;
+  /** Pipeline (Opportunity) → Company link (Phase 2). Optional. */
+  companyId?: number | null;
   ownerId: number;
   createdAt: string;
   updatedAt: string;
   owner?: LeadOwner | null;
   customer?: LeadCustomer | null;
+  companyRef?: { id: number; name: string; industry?: string | null; website?: string | null; address?: string | null; gst?: string | null; notes?: string | null } | null;
 }
 
 export interface LeadDetail extends Lead {
@@ -109,6 +125,8 @@ export interface UpdateLeadPayload {
   tags?: string | null;
   ownerId?: number;
   leadValue?: number | string | null;
+  /** Pipeline (Opportunity) → Company link (Phase 2). Optional. */
+  companyId?: number | null;
   // Contact fields persisted on the linked customer.
   name?: string;
   company?: string;
@@ -117,4 +135,6 @@ export interface UpdateLeadPayload {
   website?: string;
   industry?: string;
   address?: string;
+  designation?: string;
+  whatsapp?: string;
 }

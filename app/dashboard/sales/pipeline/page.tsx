@@ -1,314 +1,779 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { Modal } from '@/components/Modal';
-import { Skeleton } from '@/components/Skeleton';
-import { EmptyState } from '@/components/EmptyState';
-import { InputField } from '@/components/ui/InputField';
-import { SelectField } from '@/components/ui/SelectField';
-import { SlidersHorizontal, Filter, TrendingUp, IndianRupee, AlertOctagon, Clock } from 'lucide-react';
+import { Badge } from '@/components/Badge';
+import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, Clock, List, Columns3, Trash2, Download, Loader2 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
-import { useAuth } from '@/lib/hooks/useAuth';
 import { useToast } from '@/lib/hooks/useToast';
-import { useConfirm } from '@/lib/hooks/useConfirm';
-import { fetchPipelineDeals, fetchStageConfig } from '@/lib/api/pipeline';
-import { fetchSavedViews, createSavedView, deleteSavedView } from '@/lib/api/savedViews';
-import { fetchAssignableUsers } from '@/lib/api/leads';
-import { PipelineFilters } from '@/components/sales-execution/PipelineFilters';
-import { PipelineDealTable } from '@/components/sales-execution/PipelineDealTable';
-import { StageConfigModal } from '@/components/sales-execution/StageConfigModal';
-import { SavedViewsBar } from '@/components/sales-execution/SavedViewsBar';
-import type { AssignableUser } from '@/lib/types/lead';
-import type {
-  PipelineFilters as PipelineFiltersType,
-  PipelineResponse,
-  DealStageConfig,
-  SavedView,
-  SavedViewScope,
-} from '@/lib/types/salesExecution';
+import { useConfirm } from '@/components/ConfirmDialogProvider';
+import { apiClient } from '@/lib/api/api-client';
+import { fetchLeadStages, fetchAssignableUsers, moveLeadStage, reorderLeadStages, deleteLead, createLeadStage, updateLeadStage, deleteLeadStage } from '@/lib/api/leads';
+import { ImportLeadsModal } from '@/components/leads/ImportLeadsModal';
+import { CreateLeadModal } from '@/components/leads/CreateLeadModal';
+import { StageTransitionDialog, type TransitionStep } from '@/components/leads/StageTransitionDialog';
+import { LeadPipelineBoard } from '@/components/leads/LeadPipelineBoard';
+import { StageFormModal } from '@/components/sales-execution/pipeline/StageFormModal';
+import { DeleteStageModal } from '@/components/sales-execution/pipeline/DeleteStageModal';
+import {
+  LEAD_SOURCES,
+  formatLeadSource,
+  leadSourceVariant,
+} from '@/lib/data/leadSources';
+import { LeadHealthBadge } from '@/components/leads/LeadHealthBadge';
+import { TEMPERATURE_OPTIONS } from '@/lib/data/leadTemperature';
+import { formatINR } from '@/lib/utils/currency';
+import { classNames } from '@/lib/utils';
+import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
+import { exportLeadReport } from '@/lib/utils/exportLeadReport';
+import type { ReportWindow } from '@/lib/api/salesReports';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
+import { InputField } from '@/components/ui/InputField';
 
-const EMPTY_FILTERS: PipelineFiltersType = {};
-const EMPTY_SUMMARY: PipelineResponse['summary'] = {
-  count: 0,
-  totalValue: 0,
-  weightedForecast: 0,
-  stalled: 0,
-  atRisk: 0,
-};
-
-function formatMoney(value: number): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(value || 0);
+interface Customer {
+  id: number;
+  name: string;
 }
 
-export default function PipelineViewsPage() {
+interface SourceAnalytics {
+  totalLeads: number;
+  totalWon: number;
+  overallConversionRate: number;
+  sources: {
+    source: string;
+    total: number;
+    won: number;
+    lost: number;
+    conversionRate: number;
+  }[];
+}
+
+// Statuses that take a lead OFF the pipeline board: it left the pipeline via an
+// ACTION — `converted` (became a Deal) or `disqualified` (dead). These are the
+// only action-driven terminal states. `won`/`lost`/`closed` are NOT here: those
+// arise solely from dragging a card into a terminal column (moveLeadStage sets
+// status = stage.toLowerCase()), so such a lead must STAY visible in that column.
+// Keying on these two statuses (never on a stage⇄status match) keeps the board
+// correct even when a column is renamed/deleted, which cascades stage but not
+// status. Off-board leads remain visible in the table, which shows every status.
+const OFF_BOARD_STATUSES = ['converted', 'disqualified'];
+
+type ViewMode = 'table' | 'pipeline';
+
+export default function SalesLeadsPage() {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [analytics, setAnalytics] = useState<SourceAnalytics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  // Single canonical Pipeline-stage filter for the table (sourced from the DB
+  // `lead_stages` via `stages` — the SAME source the Kanban board renders).
+  const [stageFilter, setStageFilter] = useState('all');
+  const [ownerFilter, setOwnerFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [temperatureFilter, setTemperatureFilter] = useState('all');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [exportDateRange, setExportDateRange] = useState<ReportWindow>({ from: '', to: '' });
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  const [stages, setStages] = useState<LeadStage[]>([]);
+  const [owners, setOwners] = useState<AssignableUser[]>([]);
+
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  // Table ↔ Pipeline view (both render the SAME live `leads` dataset). The Kanban
+  // board ('pipeline') is the DEFAULT working interface; ?view=table opts into the table.
+  const [viewMode, setViewMode] = useState<ViewMode>('pipeline');
+
+  // Stage-management modal state (Pipeline view).
+  const [stageModal, setStageModal] = useState<{ mode: 'add' | 'rename'; stage: LeadStage | null } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LeadStage | null>(null);
+
+  // Stage Transition Dialog — a pending drag/drop move awaiting checklist + notes.
+  // The card is NOT moved until the user confirms (so cancel leaves it in place).
+  const [transition, setTransition] = useState<{ lead: Lead; toStage: string } | null>(null);
+  const [isSavingTransition, setIsSavingTransition] = useState(false);
+
   const { toast } = useToast();
   const { confirm } = useConfirm();
   const { hasPermission } = usePermissions();
-  const { user } = useAuth();
-  const canConfigure = hasPermission('sales.config');
-  const currentUserId = Number(user?.id) || 0;
+  // Granular Leads keys (the coarse→granular bridge in permission.utils means a
+  // role holding the coarse sales.edit/delete/create still satisfies these).
+  const canMove = hasPermission('sales.leads.edit');
+  // Pipeline COLUMN management uses its own dedicated, independent permissions
+  // (not lead edit/delete) — mirrors the Deals pipeline.
+  const canManageStages = hasPermission('sales.leads.pipeline.manage');
+  const canDeleteStages = hasPermission('sales.leads.pipeline.delete');
+  // Lead deletion is its own permission, independent of view/create/edit. Drives
+  // BOTH the table row action and the Kanban card delete control.
+  const canDeleteLead = hasPermission('sales.leads.delete');
+  const canCreate = hasPermission('sales.leads.create');
+  // Lead Analytics is gated by its own independent permission (the Analytics
+  // nav button must respect it just like the sidebar item + page guard).
+  const canViewAnalytics = hasPermission('sales.leads.analytics');
+  const canExportReport = hasPermission('sales.leads.export');
+  
+  const [isExporting, setIsExporting] = useState(false);
 
-  const [filters, setFilters] = useState<PipelineFiltersType>(EMPTY_FILTERS);
-  const [deals, setDeals] = useState<PipelineResponse['deals']>([]);
-  const [summary, setSummary] = useState<PipelineResponse['summary']>(EMPTY_SUMMARY);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const [stages, setStages] = useState<DealStageConfig[]>([]);
-  const [owners, setOwners] = useState<AssignableUser[]>([]);
-  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
-  const [activeViewId, setActiveViewId] = useState<number | null>(null);
-
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [isSaveOpen, setIsSaveOpen] = useState(false);
-  const [newViewName, setNewViewName] = useState('');
-  const [newViewScope, setNewViewScope] = useState<SavedViewScope>('personal');
-  const [isSavingView, setIsSavingView] = useState(false);
-
-  // Load static lookups once.
+  // Initialise the view from the URL (?view=pipeline) — read on the client to
+  // avoid a useSearchParams Suspense boundary / hydration mismatch. This also
+  // lets the old /leads/pipeline route redirect straight into the board.
   useEffect(() => {
-    fetchStageConfig().then(setStages).catch(() => setStages([]));
+    if (typeof window !== 'undefined') {
+      // Kanban is the default; ?view=table opts into the table (?view=pipeline is still
+      // honoured so old /leads/pipeline redirects and shared links keep working).
+      const v = new URLSearchParams(window.location.search).get('view');
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (v === 'table') setViewMode('table');
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      else if (v === 'pipeline') setViewMode('pipeline');
+    }
+  }, []);
+
+  // Switch view + keep the URL in sync without a navigation/refetch.
+  const changeView = (v: ViewMode) => {
+    setViewMode(v);
+    // The stage filter is a Table-view concept applied CLIENT-side to `leads`; the
+    // board derives `leadsByStage` from the same `leads`, so no clearing is needed.
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      // Kanban is the default → keep the URL clean for it, tag only the table view.
+      if (v === 'table') url.searchParams.set('view', 'table');
+      else url.searchParams.delete('view');
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
+
+  const fetchLeads = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const params = new URLSearchParams();
+      if (sourceFilter !== 'all') params.set('source', sourceFilter);
+      if (ownerFilter !== 'all') params.set('ownerId', ownerFilter);
+      if (locationFilter.trim()) params.set('location', locationFilter.trim());
+      if (temperatureFilter !== 'all') params.set('temperature', temperatureFilter);
+      if (searchQuery.trim()) params.set('search', searchQuery.trim());
+      const res = await apiClient.get<Lead[]>(`/sales/leads?${params.toString()}`);
+      setLeads(res.data);
+    } catch {
+      toast('Failed to fetch leads', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sourceFilter, ownerFilter, locationFilter, temperatureFilter, searchQuery, toast]);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const res = await apiClient.get<SourceAnalytics>('/sales/leads/analytics/source');
+      setAnalytics(res.data);
+    } catch {
+      // Analytics are best-effort; don't block the page.
+    }
+  }, []);
+
+  const fetchCustomers = useCallback(async () => {
+    try {
+      const res = await apiClient.get<Customer[]>('/sales/customers');
+      setCustomers(res.data);
+    } catch {
+      // Customer linkage is optional when creating a lead.
+    }
+  }, []);
+
+  const loadStages = useCallback(async () => {
+    try {
+      setStages(await fetchLeadStages());
+    } catch {
+      setStages([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchLeads();
+  }, [fetchLeads]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAnalytics();
+    fetchCustomers();
+    loadStages();
     fetchAssignableUsers().then(setOwners).catch(() => setOwners([]));
-    fetchSavedViews('deal').then(setSavedViews).catch(() => setSavedViews([]));
-  }, []);
+  }, [fetchAnalytics, fetchCustomers, loadStages]);
 
-  const loadStages = useCallback(() => {
-    fetchStageConfig().then(setStages).catch(() => setStages([]));
-  }, []);
-
-  const reloadViews = useCallback(() => {
-    fetchSavedViews('deal').then(setSavedViews).catch(() => setSavedViews([]));
-  }, []);
-
-  // Debounced fetch whenever filters change.
+  // Keep the list live: refetch when the tab/window regains focus (e.g. after
+  // changing a lead's stage on the Details page), so the Table and Kanban board
+  // always show the latest status with no manual refresh.
   useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    const handle = window.setTimeout(() => {
-      fetchPipelineDeals(filters)
-        .then((res) => {
-          if (cancelled) return;
-          setDeals(res.deals);
-          setSummary(res.summary);
-        })
-        .catch(() => {
-          if (cancelled) return;
-          toast('Failed to load pipeline deals', 'error');
-          setDeals([]);
-          setSummary(EMPTY_SUMMARY);
-        })
-        .finally(() => {
-          if (!cancelled) setIsLoading(false);
-        });
-    }, 350);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(handle);
+    const onFocus = () => {
+      if (document.visibilityState !== 'hidden') fetchLeads();
     };
-  }, [filters, toast]);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [fetchLeads]);
 
-  const handleFilterChange = (next: PipelineFiltersType) => {
-    setFilters(next);
-    setActiveViewId(null); // editing filters detaches from any applied view
+  const refresh = () => {
+    fetchLeads();
+    fetchAnalytics();
   };
 
-  const handleClear = () => {
-    setFilters(EMPTY_FILTERS);
-    setActiveViewId(null);
+  const clearFilters = () => {
+    setSourceFilter('all'); setStageFilter('all');
+    setOwnerFilter('all'); setLocationFilter(''); setTemperatureFilter('all');
   };
 
-  const handleApplyView = (view: SavedView) => {
-    setFilters(view.filters ?? {});
-    setActiveViewId(view.id);
+  // Most filters (incl. temperature) are server-side. The stage filter is
+  // client-side and applies to the TABLE only — the Pipeline board always shows
+  // every stage (that's the point of a Kanban board), so it reads `leads`.
+  const visibleLeads = [...leads]
+    .filter((l) => stageFilter === 'all' || l.stage === stageFilter)
+    // Default TABLE order = newest created first, so a lead you just created is row 1.
+    // Deliberately applied here and NOT to the API query: that query is ordered by
+    // stage + orderIndex to render the Pipeline board's manual drag-and-drop card
+    // order, which `leadsByStage` still relies on. Sorting only this table-scoped
+    // list keeps both views correct.
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Pipeline grouping — derived from the SAME `leads` (already filtered
+  // server-side), minus inactive statuses, so a move in either view is reflected
+  // in the other instantly.
+  const leadsByStage = useMemo(() => {
+    const map: Record<string, Lead[]> = {};
+    for (const s of stages) map[s.name] = [];
+    for (const lead of leads) {
+      // Only converted/disqualified leads leave the board; everything else
+      // (including won/lost/closed reached by dropping into a terminal column)
+      // stays visible in the column named by its stage.
+      if (OFF_BOARD_STATUSES.includes((lead.status || '').toLowerCase())) continue;
+      // A lead on an unknown / renamed / deleted stage folds into the first
+      // column, so a card is never silently dropped from the board.
+      const key = map[lead.stage] ? lead.stage : stages[0]?.name;
+      if (key) map[key].push(lead);
+    }
+    return map;
+  }, [leads, stages]);
+
+  const totalPipelineValue = useMemo(() => {
+    return leads.reduce((sum, lead) => sum + (lead.leadValue ?? 0), 0);
+  }, [leads]);
+
+  // Drag/drop (or the mobile move dropdown) → OPEN the Stage Transition Dialog. The
+  // stage is NOT persisted yet and `leads` is left untouched, so the card visually
+  // returns to its original column; a Cancel therefore leaves it exactly in place.
+  const handleMove = (leadId: number, targetStage: string) => {
+    const target = leads.find((l) => l.id === leadId);
+    if (!target || target.stage === targetStage) return;
+    setTransition({ lead: target, toStage: targetStage });
   };
 
-  const handleDeleteView = async (id: number) => {
+  // Save from the dialog → persist the stage + optional checklist/description via the
+  // EXISTING moveLeadStage API (which logs the activity/history), then reconcile the
+  // shared `leads` state so the board AND table reflect the move. Pipeline stage is the
+  // single source of truth for status, so the server response drives both.
+  // One or more forward transitions committed on Finish. Applied sequentially via the EXISTING
+  // moveLeadStage API — it derives `from` from the lead's CURRENT stage, so each call chains and
+  // logs its own history entry. ponytail: sequential, not a DB transaction; a mid-sequence
+  // failure leaves earlier steps applied — we refetch to show the true state. Single endpoint
+  // reused, no batch API; add one only if partial-failure atomicity becomes a real requirement.
+  const confirmTransition = async (steps: TransitionStep[]) => {
+    if (!transition) return;
+    const { lead: target } = transition;
+    setIsSavingTransition(true);
+    try {
+      let updated;
+      for (const s of steps) updated = await moveLeadStage(target.id, s.toStage, { checklist: s.checklist, description: s.description });
+      if (updated) setLeads((prev) => prev.map((l) => (l.id === target.id ? { ...l, stage: updated!.stage, status: updated!.status } : l)));
+      toast(`Moved "${target.title}" to ${steps[steps.length - 1].toStage}`, 'success');
+      setTransition(null);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Failed to move opportunity', 'error');
+      fetchLeads(); // resync in case some steps applied before the failure
+    } finally {
+      setIsSavingTransition(false);
+    }
+  };
+
+  // Delete a lead (shared by the table row action AND the Kanban card). Confirms
+  // first, then optimistically drops it from the shared `leads` state — so the
+  // table, the pipeline board and the lead counts all update with no refetch —
+  // and refreshes the source analytics. Reverts the list on failure.
+  const handleDeleteLead = async (lead: Lead) => {
     const ok = await confirm({
-      title: 'Delete saved view',
-      message: 'This saved view will be removed for everyone it is shared with. Continue?',
+      title: 'Delete Lead',
+      message: `Are you sure you want to delete "${lead.title}"? This action cannot be undone.`,
       confirmLabel: 'Delete',
-      cancelLabel: 'Cancel',
       intent: 'danger',
     });
     if (!ok) return;
+
+    const previous = leads;
+    setLeads((prev) => prev.filter((l) => l.id !== lead.id));
     try {
-      await deleteSavedView(id);
-      toast('Saved view deleted', 'success');
-      if (activeViewId === id) setActiveViewId(null);
-      reloadViews();
-    } catch {
-      toast('Failed to delete saved view', 'error');
+      await deleteLead(lead.id);
+      toast(`Deleted "${lead.title}"`, 'success');
+      fetchAnalytics();
+    } catch (error) {
+      setLeads(previous);
+      toast(error instanceof Error ? error.message : 'Failed to delete lead', 'error');
     }
   };
 
-  const handleSaveCurrentView = async () => {
-    const name = newViewName.trim();
-    if (!name) {
-      toast('Please enter a view name', 'warning');
-      return;
-    }
+  // Reorder a stage one position left/right. Optimistic; reverts on failure.
+  const handleMoveStage = async (stage: LeadStage, dir: -1 | 1) => {
+    const ordered = [...stages].sort((a, b) => a.orderIndex - b.orderIndex);
+    const idx = ordered.findIndex((s) => s.id === stage.id);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= ordered.length) return;
+    [ordered[idx], ordered[swap]] = [ordered[swap], ordered[idx]];
+
+    const previous = stages;
+    setStages(ordered.map((s, i) => ({ ...s, orderIndex: i + 1 })));
     try {
-      setIsSavingView(true);
-      const created = await createSavedView({
-        name,
-        entity: 'deal',
-        scope: newViewScope,
-        filters,
+      const updated = await reorderLeadStages(ordered.map((s) => s.id));
+      setStages(updated);
+    } catch (error) {
+      setStages(previous);
+      toast(error instanceof Error ? error.message : 'Failed to reorder stages', 'error');
+    }
+  };
+
+  const existingStageNames = stages.map((s) => s.name);
+
+  const handleExportReport = () => {
+    setIsExportModalOpen(true);
+  };
+
+  const confirmDownloadReport = async () => {
+    setIsExporting(true);
+    try {
+      let filteredForReport = visibleLeads;
+      if (exportDateRange.from || exportDateRange.to) {
+        filteredForReport = visibleLeads.filter(l => {
+          const leadDate = new Date(l.createdAt).getTime();
+          let passes = true;
+          if (exportDateRange.from) {
+            passes = passes && leadDate >= new Date(exportDateRange.from).getTime();
+          }
+          if (exportDateRange.to) {
+            const toDate = new Date(exportDateRange.to);
+            toDate.setUTCHours(23, 59, 59, 999);
+            passes = passes && leadDate <= toDate.getTime();
+          }
+          return passes;
+        });
+      }
+
+      await exportLeadReport(filteredForReport, stages, {
+        searchQuery,
+        source: sourceFilter,
+        stage: stageFilter,
+        owner: ownerFilter,
+        location: locationFilter,
+        dateRange: exportDateRange
       });
-      toast('View saved', 'success');
-      setIsSaveOpen(false);
-      setNewViewName('');
-      setNewViewScope('personal');
-      setActiveViewId(created.id);
-      reloadViews();
-    } catch {
-      toast('Failed to save view (you may not have permission for this scope)', 'error');
+      toast('Report downloaded successfully', 'success');
+      setIsExportModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast('Failed to generate report', 'error');
     } finally {
-      setIsSavingView(false);
+      setIsExporting(false);
     }
   };
-
-  const stats = [
-    { label: 'Deals', value: String(summary.count), icon: Filter, tone: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-    { label: 'Total Value', value: formatMoney(summary.totalValue), icon: IndianRupee, tone: 'text-gray-900 dark:text-white', bg: 'bg-gray-100 dark:bg-gray-800' },
-    { label: 'Weighted Forecast', value: formatMoney(summary.weightedForecast), icon: TrendingUp, tone: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-    { label: 'Stalled', value: String(summary.stalled), icon: AlertOctagon, tone: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30' },
-    { label: 'At Risk', value: String(summary.atRisk), icon: Clock, tone: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30' },
-  ];
 
   return (
     <PermissionPageGuard module="sales">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Breadcrumb
             items={[
-              { label: 'Sales', href: '/dashboard/sales/leads' },
-              { label: 'Pipeline Views' },
+              { label: 'Dashboard', href: '/dashboard' },
+              { label: 'Sales', href: '/dashboard/sales/pipeline' },
+              { label: 'Pipeline', href: '/dashboard/sales/pipeline' },
             ]}
           />
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Pipeline Views</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Filter, save, and monitor your deal pipeline with stalled-deal insights.
-              </p>
-            </div>
-            {canConfigure && (
-              <Button variant="secondary" onClick={() => setIsConfigOpen(true)}>
-                <SlidersHorizontal className="mr-2 h-4 w-4" />
-                Configure Stalled Thresholds
+          <div className="flex gap-2 flex-wrap">
+            {canViewAnalytics && (
+              <Link href="/dashboard/sales/analytics">
+                <Button variant="secondary">
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Analytics
+                </Button>
+              </Link>
+            )}
+            {viewMode === 'pipeline' && canManageStages && (
+              <Button variant="secondary" onClick={() => setStageModal({ mode: 'add', stage: null })}>
+                <Columns3 className="w-4 h-4 mr-2" />
+                Add Stage
+              </Button>
+            )}
+            <Link href="/dashboard/sales/pipeline/aging">
+              <Button variant="secondary">
+                <Clock className="w-4 h-4 mr-2" />
+                Aging
+              </Button>
+            </Link>
+            {canExportReport && (
+              <Button variant="secondary" onClick={handleExportReport} disabled={isExporting}>
+                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                Report
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => setIsImportOpen(true)}>
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
+            {canCreate && (
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Opportunity
               </Button>
             )}
           </div>
         </div>
 
-        {/* Saved views */}
-        <SavedViewsBar
-          views={savedViews}
-          activeViewId={activeViewId}
-          onApply={handleApplyView}
-          onSaveCurrent={() => setIsSaveOpen(true)}
-          onDelete={handleDeleteView}
-          currentUserId={currentUserId}
-        />
-
-        {/* Filters */}
-        <PipelineFilters
-          filters={filters}
-          onChange={handleFilterChange}
-          onClear={handleClear}
-          stages={stages}
-          owners={owners}
-        />
-
-        {/* Summary strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {stats.map((stat) => (
-            <Card
-              key={stat.label}
-              className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl"
+        {/* View switch — Table ⇄ Pipeline (same Leads dataset, no navigation) */}
+        <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 w-fit">
+          {([
+            { key: 'table', label: 'Table View', icon: List },
+            { key: 'pipeline', label: 'Pipeline View', icon: Columns3 },
+          ] as { key: ViewMode; label: string; icon: typeof List }[]).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={viewMode === key}
+              onClick={() => changeView(key)}
+              className={classNames(
+                'inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors',
+                viewMode === key
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white',
+              )}
             >
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{stat.label}</p>
-                <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.bg} ${stat.tone}`}>
-                  <stat.icon className="h-4 w-4" />
-                </span>
-              </div>
-              <p className={`mt-2 text-xl font-bold tabular-nums ${stat.tone}`}>{stat.value}</p>
-            </Card>
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
           ))}
         </div>
 
-        {/* Results */}
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-12 w-full rounded-xl" />
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-xl" />
+        {/* Source analytics summary */}
+        {analytics && analytics.totalLeads > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Card className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Total Pipeline Value</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate" title={formatINR(totalPipelineValue)}>
+                {formatINR(totalPipelineValue)}
+              </p>
+            </Card>
+            <Card className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Total Opportunities</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.totalLeads}</p>
+              <p className="text-xs text-gray-400 mt-1">{analytics.overallConversionRate}% conversion</p>
+            </Card>
+            {analytics.sources.map((s) => (
+              <Card key={s.source} className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{formatLeadSource(s.source)}</p>
+                  <Badge variant={leadSourceVariant(s.source)}>{s.total}</Badge>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  {s.won} won · {s.conversionRate}% conv.
+                </p>
+              </Card>
             ))}
           </div>
-        ) : deals.length === 0 ? (
-          <EmptyState
-            icon={<Filter className="h-8 w-8" />}
-            title="No deals match these filters"
-            description="Try adjusting or clearing your filters to see more of your pipeline."
-            actionLabel="Clear filters"
-            onAction={handleClear}
-          />
-        ) : (
-          <PipelineDealTable deals={deals} />
+        )}
+
+        {/* Filters (apply to BOTH views — they drive the shared dataset) */}
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search name, company, email, phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              />
+            </div>
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            >
+              <option value="all">All Sources</option>
+              {LEAD_SOURCES.map((s) => (
+                <option key={s} value={s}>{formatLeadSource(s)} Opportunities</option>
+              ))}
+            </select>
+            {/* Single canonical Pipeline-STAGE filter — options come from the DB
+                `lead_stages` via `stages`, the SAME source the Kanban board renders,
+                so the two views can never diverge. Hidden in Pipeline view, which
+                already groups by stage. */}
+            {viewMode === 'table' && (
+              <select
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              >
+                <option value="all">All Stages</option>
+                {stages.map((s) => (
+                  <option key={s.id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+            )}
+            <Button variant="secondary" onClick={() => setShowAdvanced((v) => !v)}>
+              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              {showAdvanced ? 'Hide Filters' : 'More Filters'}
+            </Button>
+          </div>
+
+          {showAdvanced && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 bg-gray-50/60 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800">
+              <select
+                value={ownerFilter}
+                onChange={(e) => setOwnerFilter(e.target.value)}
+                className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+              >
+                <option value="all">All Owners</option>
+                {owners.map((o) => (
+                  <option key={o.id} value={String(o.id)}>{o.name}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Location (address)"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+              />
+              <select
+                value={temperatureFilter}
+                onChange={(e) => setTemperatureFilter(e.target.value)}
+                aria-label="Filter by temperature"
+                className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+              >
+                <option value="all">All Temperatures</option>
+                {TEMPERATURE_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <Button variant="secondary" onClick={clearFilters}>Clear Filters</Button>
+            </div>
+          )}
+        </div>
+
+        {/* TABLE VIEW */}
+        {viewMode === 'table' && (
+          <Card className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
+                  <tr>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Title</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Source</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Stage</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Priority</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Temperature</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Owner</th>
+                    {canDeleteLead && (
+                      <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400 text-right">Actions</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={canDeleteLead ? 7 : 6} className="px-6 py-8 text-center text-gray-500">Loading leads...</td>
+                    </tr>
+                  ) : visibleLeads.length === 0 ? (
+                    <tr>
+                      <td colSpan={canDeleteLead ? 7 : 6} className="px-6 py-8 text-center text-gray-500">No opportunities found</td>
+                    </tr>
+                  ) : (
+                    visibleLeads.map((lead) => (
+                      <tr key={lead.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                        <td className="px-6 py-4 font-medium">
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/dashboard/sales/pipeline/${lead.id}`}
+                              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold hover:underline"
+                            >
+                              {lead.title}
+                            </Link>
+                            {lead.flaggedForReview && (
+                              <span title="Flagged for review" className="text-amber-500">
+                                <AlertTriangle className="w-4 h-4" />
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={leadSourceVariant(lead.source)}>{formatLeadSource(lead.source)}</Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                            {lead.stage}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.priority}</td>
+                        <td className="px-6 py-4">
+                          <LeadHealthBadge temperature={lead.temperature} showLabel={false} />
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.owner?.name}</td>
+                        {canDeleteLead && (
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLead(lead)}
+                              className="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-950/30 transition-colors"
+                              aria-label={`Delete lead ${lead.title}`}
+                              title="Delete lead"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
+        {/* PIPELINE VIEW — same data, Kanban presentation (no separate route) */}
+        {viewMode === 'pipeline' && (
+          isLoading ? (
+            <Card className="p-8 text-center text-gray-500 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+              Loading pipeline…
+            </Card>
+          ) : stages.length === 0 ? (
+            <Card className="p-8 text-center text-gray-500 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+              No pipeline stages configured.
+            </Card>
+          ) : (
+            <LeadPipelineBoard
+              stages={stages}
+              leadsByStage={leadsByStage}
+              canMove={canMove}
+              canManageStages={canManageStages}
+              canDeleteStages={canDeleteStages}
+              canDeleteLead={canDeleteLead}
+              onDeleteLead={handleDeleteLead}
+              onMove={handleMove}
+              onAddStage={() => setStageModal({ mode: 'add', stage: null })}
+              onRenameStage={(stage) => setStageModal({ mode: 'rename', stage })}
+              onDeleteStage={(stage) => setDeleteTarget(stage)}
+              onMoveStage={handleMoveStage}
+            />
+          )
         )}
       </div>
 
-      {/* Stalled threshold config */}
-      <StageConfigModal
-        isOpen={isConfigOpen}
-        onClose={() => setIsConfigOpen(false)}
-        stages={stages}
-        onSaved={loadStages}
+      {/* Create lead (modal — no page navigation). Mounted only while open so
+          its form state resets on each open. */}
+      {isCreateOpen && (
+        <CreateLeadModal
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={refresh}
+        />
+      )}
+
+      {/* Import wizard (upload → preview + mapping → import) */}
+      <ImportLeadsModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onImported={refresh}
       />
 
-      {/* Save current view */}
-      <Modal isOpen={isSaveOpen} onClose={() => setIsSaveOpen(false)} title="Save current view" size="sm">
-        <div className="space-y-4">
-          <InputField
-            id="save-view-name"
-            label="View name"
-            placeholder="e.g. High-value stalled deals"
-            required
-            value={newViewName}
-            onChange={setNewViewName}
-          />
-          <SelectField
-            id="save-view-scope"
-            label="Visibility"
-            value={newViewScope}
-            onChange={(v) => setNewViewScope(v as SavedViewScope)}
-            options={[
-              { value: 'personal', label: 'Personal — only me' },
-              { value: 'team', label: 'Team — my team' },
-              { value: 'global', label: 'Global — everyone' },
-            ]}
-          />
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setIsSaveOpen(false)} disabled={isSavingView}>
+      {/* Stage management modals (Pipeline view) */}
+      {stageModal && (
+        <StageFormModal
+          isOpen
+          mode={stageModal.mode}
+          stage={stageModal.stage}
+          existingNames={existingStageNames}
+          noun="lead"
+          createStage={createLeadStage}
+          renameStage={updateLeadStage}
+          onClose={() => setStageModal(null)}
+          onSaved={loadStages}
+        />
+      )}
+      <DeleteStageModal
+        isOpen={!!deleteTarget}
+        stage={deleteTarget}
+        recordCount={deleteTarget ? leads.filter((l) => l.stage === deleteTarget.name).length : 0}
+        otherStages={stages.filter((s) => s.id !== deleteTarget?.id)}
+        noun="lead"
+        deleteStage={deleteLeadStage}
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={() => { loadStages(); fetchLeads(); }}
+      />
+
+      {/* Stage Transition Dialog — captures checklist + notes before persisting a move. */}
+      <StageTransitionDialog
+        isOpen={!!transition}
+        opportunityName={transition?.lead.title ?? ''}
+        fromStage={transition?.lead.stage ?? ''}
+        toStage={transition?.toStage ?? ''}
+        isSaving={isSavingTransition}
+        onConfirm={confirmTransition}
+        onCancel={() => setTransition(null)}
+      />
+
+      <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export Pipeline Report</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-500 mb-4">
+              Select a date range to filter the leads included in the exported report.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <InputField
+                id="export-from-date"
+                label="From Date"
+                type="date"
+                value={exportDateRange.from ?? ''}
+                onChange={(v) => setExportDateRange({ ...exportDateRange, from: v })}
+                max={exportDateRange.to || undefined}
+              />
+              <InputField
+                id="export-to-date"
+                label="To Date"
+                type="date"
+                value={exportDateRange.to ?? ''}
+                onChange={(v) => setExportDateRange({ ...exportDateRange, to: v })}
+                min={exportDateRange.from || undefined}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="secondary" onClick={() => setIsExportModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveCurrentView} isLoading={isSavingView}>
-              Save view
+            <Button onClick={confirmDownloadReport} disabled={isExporting}>
+              {isExporting ? 'Generating...' : 'Generate & Download'}
             </Button>
           </div>
-        </div>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </PermissionPageGuard>
   );
 }

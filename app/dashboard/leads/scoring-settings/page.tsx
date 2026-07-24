@@ -123,7 +123,7 @@ export default function ScoringSettingsPage() {
           <Breadcrumb
             items={[
               { label: 'Dashboard', href: '/dashboard' },
-              { label: 'Leads', href: '/dashboard/sales/leads' },
+              { label: 'Pipeline', href: '/dashboard/sales/pipeline' },
               { label: 'Scoring Settings', href: '/dashboard/leads/scoring-settings' },
             ]}
           />
@@ -132,7 +132,7 @@ export default function ScoringSettingsPage() {
               <Plus className="w-4 h-4 mr-2" />
               Add Factor
             </Button>
-            <Button variant="secondary" onClick={() => router.push('/dashboard/sales/leads')}>
+            <Button variant="secondary" onClick={() => router.push('/dashboard/sales/pipeline')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>

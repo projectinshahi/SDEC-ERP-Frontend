@@ -246,7 +246,7 @@ function SchedulerContent() {
         <Breadcrumb
           items={[
             { label: 'Dashboard', href: '/dashboard' },
-            { label: 'Sales', href: '/dashboard/sales/leads' },
+            { label: 'Sales', href: '/dashboard/sales/pipeline' },
             { label: 'Report Scheduler', href: '/dashboard/sales/reports/scheduler' },
           ]}
         />

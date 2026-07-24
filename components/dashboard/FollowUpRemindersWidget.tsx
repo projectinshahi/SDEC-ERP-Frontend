@@ -69,7 +69,7 @@ export function FollowUpRemindersWidget() {
     <div key={fu.id} className="flex items-start justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
       <div className="min-w-0">
         <Link
-          href={fu.leadId ? `/dashboard/sales/leads/${fu.leadId}` : '#'}
+          href={fu.leadId ? `/dashboard/sales/pipeline/${fu.leadId}` : '#'}
           className="text-sm font-medium text-gray-800 dark:text-gray-100 hover:text-blue-600 break-words"
         >
           {fu.title}

@@ -346,7 +346,7 @@ export default function DealDetailPage() {
                 {deal.lead ? (
                   <div className="space-y-3">
                     <Link
-                      href={`/dashboard/sales/leads/${deal.lead.id}`}
+                      href={`/dashboard/sales/pipeline/${deal.lead.id}`}
                       className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
                     >
                       {deal.lead.title}
