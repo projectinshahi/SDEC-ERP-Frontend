@@ -2,19 +2,24 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Skeleton } from '@/components/Skeleton';
 import {
   ArrowLeft, Mail, Phone, User, Building2, Globe, MapPin, Briefcase,
-  Target, AlertCircle, CalendarDays,
+  Target, AlertCircle, CalendarDays, Pencil, Trash2, MessageCircle,
 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { useToast } from '@/lib/hooks/useToast';
+import { useConfirm } from '@/lib/hooks/useConfirm';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { apiClient } from '@/lib/api/api-client';
 import { formatINR } from '@/lib/utils/currency';
 import { LeadHealthBadge } from '@/components/leads/LeadHealthBadge';
+import { ContactFormModal } from '@/components/customers/ContactFormModal';
+import { deleteContact, type Contact as ContactApi } from '@/lib/api/customers';
 
 interface ContactLead {
   id: number; title: string; status: string; stage: string; temperature: string; createdAt: string;
@@ -27,7 +32,11 @@ interface Contact {
   name: string;
   email?: string | null;
   phone?: string | null;
+  whatsapp?: string | null;
+  designation?: string | null;
   company?: string | null;
+  companyId?: number | null;
+  companyRef?: { id: number; name: string; industry?: string | null; website?: string | null; address?: string | null; gst?: string | null } | null;
   industry?: string | null;
   website?: string | null;
   address?: string | null;
@@ -53,10 +62,16 @@ export default function ContactDetailsPage() {
   const params = useParams();
   const contactId = params.id as string;
   const { toast } = useToast();
+  const { confirm } = useConfirm();
+  const router = useRouter();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const canEdit = isSuperAdmin || hasPermission('sales.contacts.edit');
+  const canDelete = isSuperAdmin || hasPermission('sales.contacts.delete');
 
   const [contact, setContact] = useState<Contact | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -77,6 +92,23 @@ export default function ContactDetailsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  const onDelete = async () => {
+    if (!contact) return;
+    const ok = await confirm({
+      title: 'Delete contact',
+      message: `Delete "${contact.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete', cancelLabel: 'Cancel', intent: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await deleteContact(contact.id);
+      toast('Contact deleted', 'success');
+      router.push('/dashboard/sales/customers');
+    } catch (e: any) {
+      toast(e?.response?.data?.error || 'Failed to delete contact', 'error');
+    }
+  };
 
   return (
     <PermissionPageGuard module="sales">
@@ -125,35 +157,46 @@ export default function ContactDetailsPage() {
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">{contact.name}</h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{contact.company || 'No company'}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    {[contact.designation, contact.companyRef?.name || contact.company].filter(Boolean).join(' · ') || 'No company'}
+                  </p>
                 </div>
               </div>
-              <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-400">
-                {contact.status || 'active'}
-              </span>
+              <div className="flex items-center gap-2">
+                {canEdit && <Button variant="secondary" size="sm" onClick={() => setModalOpen(true)}><Pencil className="w-4 h-4 mr-1.5" />Edit</Button>}
+                {canDelete && <Button variant="danger" size="sm" onClick={onDelete}><Trash2 className="w-4 h-4 mr-1.5" />Delete</Button>}
+                <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-400">
+                  {contact.status || 'active'}
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Contact Information */}
               <Section title="Contact Information" icon={User}>
+                <Field icon={Briefcase} label="Designation" value={contact.designation} />
                 <Field icon={Mail} label="Email" value={contact.email} href={contact.email ? `mailto:${contact.email}` : undefined} />
                 <Field icon={Phone} label="Phone" value={contact.phone} href={contact.phone ? `tel:${contact.phone}` : undefined} />
+                <Field icon={MessageCircle} label="WhatsApp" value={contact.whatsapp}
+                  href={contact.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, '')}` : undefined} external />
                 <Field icon={User} label="Owner" value={contact.owner?.name} />
                 <Field icon={CalendarDays} label="Added" value={fmtDate(contact.createdAt)} />
               </Section>
 
-              {/* Company Information */}
+              {/* Company Information — the normalized Company (falls back to the contact's own fields) */}
               <Section title="Company Information" icon={Building2}>
-                <Field icon={Building2} label="Company" value={contact.company} />
-                <Field icon={Briefcase} label="Industry" value={contact.industry} />
+                <Field icon={Building2} label="Company"
+                  value={contact.companyRef?.name || contact.company}
+                  href={contact.companyRef ? `/dashboard/sales/companies/${contact.companyRef.id}` : undefined} />
+                <Field icon={Briefcase} label="Industry" value={contact.companyRef?.industry || contact.industry} />
                 <Field
                   icon={Globe}
                   label="Website"
-                  value={contact.website}
-                  href={contact.website ? (contact.website.startsWith('http') ? contact.website : `https://${contact.website}`) : undefined}
+                  value={contact.companyRef?.website || contact.website}
+                  href={(() => { const w = contact.companyRef?.website || contact.website; return w ? (w.startsWith('http') ? w : `https://${w}`) : undefined; })()}
                   external
                 />
-                <Field icon={MapPin} label="Address" value={contact.address} />
+                <Field icon={MapPin} label="Address" value={contact.companyRef?.address || contact.address} />
               </Section>
             </div>
 
@@ -166,7 +209,7 @@ export default function ContactDetailsPage() {
                   <ul className="divide-y divide-gray-100 dark:divide-gray-800 -my-1">
                     {contact.leads!.map((l) => (
                       <li key={l.id} className="py-2.5">
-                        <Link href={`/dashboard/sales/leads/${l.id}`} className="group flex items-center justify-between gap-3">
+                        <Link href={`/dashboard/sales/pipeline/${l.id}`} className="group flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-gray-800 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">{l.title}</p>
                             <p className="text-xs text-gray-400">{l.stage} · {l.status}</p>
@@ -200,6 +243,13 @@ export default function ContactDetailsPage() {
           </>
         )}
       </div>
+
+      <ContactFormModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSaved={load}
+        contact={contact as unknown as ContactApi | null}
+      />
     </PermissionPageGuard>
   );
 }

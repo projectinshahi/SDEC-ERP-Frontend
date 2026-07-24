@@ -11,7 +11,6 @@ import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { useToast } from '@/lib/hooks/useToast';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { classNames } from '@/lib/utils';
-import { SELECTABLE_LEAD_SOURCES } from '@/lib/data/leadSources';
 import { TEMPERATURE_OPTIONS, type LeadTemperature } from '@/lib/data/leadTemperature';
 import {
   sanitizeText,
@@ -27,14 +26,18 @@ import {
   fetchAssignableUsers,
   type CreateLeadPayload,
 } from '@/lib/api/leads';
+import { fetchCompanyOptions, type Company } from '@/lib/api/companies';
+import { fetchContacts, type Contact } from '@/lib/api/customers';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import {
+  OpportunityCompanySection,
+  resolveCompanyId,
+  emptyCompanySection,
+  contactToFields,
+  contactToCompanySection,
+  type CompanySectionValue,
+} from './OpportunityCompanySection';
 import type { AssignableUser } from '@/lib/types/lead';
-
-interface CreateLeadModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  /** Fired after a lead is created so the parent can refresh its list. */
-  onCreated: () => void;
-}
 
 // Channels a lead may be captured through (must match the backend
 // MANUAL_LEAD_SOURCES whitelist / SELECTABLE_LEAD_SOURCES).
@@ -66,7 +69,12 @@ const ACTION_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-// Email and phone validation now delegated to @/lib/validation.
+interface CreateLeadModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  /** Fired after a lead is created so the parent can refresh its list. */
+  onCreated: () => void;
+}
 
 /** Returns tomorrow (same time) as a value for the date-time picker. */
 function tomorrowDateTimeLocal(): string {
@@ -78,12 +86,10 @@ function tomorrowDateTimeLocal(): string {
 }
 
 /**
- * Create-lead modal. Captures lead details, syncs notes to the lead's editable
- * Notes section, and can create an optional first "next action" (follow-up task)
- * together with the lead — all without leaving the Leads page.
- *
- * Mounted only while open (the parent gates rendering), so state is initialised
- * fresh on each open via useState initialisers — no reset effect needed.
+ * Create-opportunity modal — a modern CRM form in four sections: Opportunity Details,
+ * Contact Information, Company Information (with CRM Account selector), and Notes & Next
+ * Action. Reuses the existing manual-lead + companies APIs; the Company section either
+ * links an existing CRM account or auto-creates one via the Companies module on save.
  */
 export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalProps) {
   const { toast } = useToast();
@@ -91,21 +97,24 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const meId = user?.id ? String(user.id) : '';
 
   const [form, setForm] = useState({
-    name: '',
-    company: '',
-    email: '',
-    phone: '',
+    // ── Opportunity Details ──
+    title: '',
     source: '',
     ownerId: meId,
-    industry: '',
-    website: '',
-    address: '',
     leadValue: '',
     priority: 'medium',
     temperature: 'COLD',
-    notes: '',
     referralName: '',
+    // ── Contact Information ──
+    name: '',
+    designation: '',
+    phone: '',
+    whatsapp: '',
+    email: '',
+    // ── Notes ──
+    notes: '',
   });
+  const [companySec, setCompanySec] = useState<CompanySectionValue>(emptyCompanySection());
 
   const [withAction, setWithAction] = useState(false);
   const [action, setAction] = useState({
@@ -118,13 +127,33 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   });
 
   const [owners, setOwners] = useState<AssignableUser[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedContactId, setSelectedContactId] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchAssignableUsers().then(setOwners).catch(() => setOwners([]));
+    fetchCompanyOptions().then(setCompanies).catch(() => setCompanies([]));
+    fetchContacts().then(setContacts).catch(() => setContacts([]));
   }, []);
+
+  // Existing contact list for the searchable selector (reuses Contacts data).
+  const contactOptions = useMemo(() => [
+    { value: '', label: '— Enter contact manually —' },
+    ...contacts.map((c) => ({ value: String(c.id), label: c.name, sublabel: [c.email, c.company].filter(Boolean).join(' · ') || undefined })),
+  ], [contacts]);
+
+  // Auto-fill the Contact Information section + sync the linked CRM Company (single source).
+  const onSelectContact = (id: string) => {
+    setSelectedContactId(id);
+    const c = id ? contacts.find((x) => String(x.id) === id) : null;
+    if (!c) return;
+    setForm((f) => ({ ...f, ...contactToFields(c) }));
+    setCompanySec(contactToCompanySection(c, companies));
+  };
 
   // Owner / assignee options — always include the current user as a fallback.
   const ownerOptions = useMemo(() => {
@@ -140,9 +169,9 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
   };
+  const setCompany = (patch: Partial<CompanySectionValue>) => setCompanySec((c) => ({ ...c, ...patch }));
   const setAct = (key: keyof typeof action, value: string) => {
     setAction((a) => ({ ...a, [key]: value }));
-    // Clear related action errors.
     if (key === 'title') setErrors((p) => { const n = { ...p }; delete n.actionTitle; return n; });
     if (key === 'description') setErrors((p) => { const n = { ...p }; delete n.actionDescription; return n; });
   };
@@ -150,60 +179,50 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const validate = (): boolean => {
     const e: Record<string, string> = {};
 
-    // ── Lead Name (required, name-rules) ──────────────────────────────────
-    const nameErr = validateName(form.name, 'Lead Name');
-    if (nameErr) e.name = nameErr;
-
-    // ── Contact: at least email or phone ──────────────────────────────────
-    if (!form.email.trim() && !form.phone.trim()) {
-      e.contact = 'Email or phone number is required.';
+    // Opportunity Name (optional — falls back to the contact/company name server-side).
+    if (form.title.trim()) {
+      const titleErr = validateName(form.title, 'Opportunity Name', { maxLength: 200 });
+      if (titleErr) e.title = titleErr;
     }
-
-    // ── Email ─────────────────────────────────────────────────────────────
+    // Contact Name (required).
+    const nameErr = validateName(form.name, 'Contact Name');
+    if (nameErr) e.name = nameErr;
+    // Contact: at least email or phone.
+    if (!form.email.trim() && !form.phone.trim()) e.contact = 'Email or phone number is required.';
     const emailErr = validateEmail(form.email, 'Email');
     if (emailErr) e.email = emailErr;
-
-    // ── Phone ─────────────────────────────────────────────────────────────
     const phoneErr = validatePhone(form.phone, 'Phone number');
     if (phoneErr) e.phone = phoneErr;
-
-    // ── Source ────────────────────────────────────────────────────────────
+    if (form.whatsapp.trim()) {
+      const waErr = validatePhone(form.whatsapp, 'WhatsApp number');
+      if (waErr) e.whatsapp = waErr;
+    }
+    // Source.
     if (!form.source) e.source = 'Lead source is required.';
     else if (form.source === 'referral') {
       const refErr = validateName(form.referralName, 'Referral Name', { maxLength: 200 });
       if (refErr) e.referralName = refErr;
       else if (!form.referralName.trim()) e.referralName = 'Referral Name is required.';
     }
-
-    // ── Company ───────────────────────────────────────────────────────────
-    const companyErr = validateTextField(form.company, 'Company', { maxLength: 200 });
-    if (companyErr) e.company = companyErr;
-
-    // ── Industry ──────────────────────────────────────────────────────────
-    const industryErr = validateTextField(form.industry, 'Industry', { maxLength: 100 });
-    if (industryErr) e.industry = industryErr;
-
-    // ── Website ───────────────────────────────────────────────────────────
-    const websiteErr = validateTextField(form.website, 'Website', { maxLength: 500 });
-    if (websiteErr) e.website = websiteErr;
-
-    // ── Location / Address ────────────────────────────────────────────────
-    const addressErr = validateTextField(form.address, 'Location', { maxLength: 500 });
-    if (addressErr) e.address = addressErr;
-
-    // ── Lead Value ────────────────────────────────────────────────────────
-    if (!form.leadValue.trim()) {
-      e.leadValue = 'Lead Value is required.';
-    } else {
-      const valueErr = validateAmount(form.leadValue, 'Lead Value');
+    // Opportunity Value (required, existing rule).
+    if (!form.leadValue.trim()) e.leadValue = 'Opportunity Value is required.';
+    else {
+      const valueErr = validateAmount(form.leadValue, 'Opportunity Value');
       if (valueErr) e.leadValue = valueErr;
     }
-
-    // ── Notes ─────────────────────────────────────────────────────────────
+    // Company (optional — only when entering a new one). Reuse existing field rules.
+    if (!companySec.companyId && companySec.name.trim()) {
+      const cErr = validateTextField(companySec.name, 'Company Name', { maxLength: 200 });
+      if (cErr) e.companyName = cErr;
+      const indErr = validateTextField(companySec.industry, 'Industry', { maxLength: 100 });
+      if (indErr) e.companyName = e.companyName || indErr;
+      const webErr = validateTextField(companySec.website, 'Website', { maxLength: 500 });
+      if (webErr) e.companyName = e.companyName || webErr;
+    }
+    // Notes.
     const notesErr = validateLongText(form.notes, 'Notes', { maxLength: 5000 });
     if (notesErr) e.notes = notesErr;
-
-    // ── Next Action (optional section) ────────────────────────────────────
+    // Next Action (optional section).
     if (withAction) {
       const actionTitleErr = validateName(action.title, 'Action title', { maxLength: 200 });
       if (actionTitleErr) e.actionTitle = actionTitleErr;
@@ -221,41 +240,50 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     setSubmitError('');
     if (!validate()) return;
 
-    const payload: CreateLeadPayload = {
-      name: sanitizeText(form.name),
-      company: sanitizeText(form.company) || undefined,
-      email: form.email.trim().toLowerCase() || undefined,
-      phone: form.phone.trim() || undefined,
-      source: form.source,
-      ownerId: form.ownerId ? Number(form.ownerId) : undefined,
-      industry: sanitizeText(form.industry) || undefined,
-      website: form.website.trim() || undefined,
-      address: sanitizeText(form.address) || undefined,
-      leadValue: form.leadValue.trim() || undefined,
-      priority: form.priority,
-      temperature: form.temperature as LeadTemperature,
-      notes: form.notes.trim() || undefined,
-      referralName: form.source === 'referral' ? sanitizeText(form.referralName) || undefined : undefined,
-    };
-    if (withAction) {
-      payload.nextAction = {
-        type: action.type,
-        title: action.title.trim(),
-        description: action.description.trim() || undefined,
-        assignedTo: action.assignedTo ? Number(action.assignedTo) : undefined,
-        dueDate: new Date(action.dueDate).toISOString(),
-        priority: action.priority,
-      };
-    }
-
     try {
       setIsSubmitting(true);
+
+      // Resolve the CRM company: existing selection, or create a new one via the
+      // Companies module (single source — no duplicate company logic here).
+      const companyId = await resolveCompanyId(companySec, companies);
+
+      const payload: CreateLeadPayload = {
+        title: sanitizeText(form.title) || undefined,
+        name: sanitizeText(form.name),
+        company: sanitizeText(companySec.name) || undefined,
+        email: form.email.trim().toLowerCase() || undefined,
+        phone: form.phone.trim() || undefined,
+        designation: sanitizeText(form.designation) || undefined,
+        whatsapp: form.whatsapp.trim() || undefined,
+        source: form.source,
+        ownerId: form.ownerId ? Number(form.ownerId) : undefined,
+        industry: sanitizeText(companySec.industry) || undefined,
+        website: companySec.website.trim() || undefined,
+        address: sanitizeText(companySec.address) || undefined,
+        leadValue: form.leadValue.trim() || undefined,
+        companyId,
+        priority: form.priority,
+        temperature: form.temperature as LeadTemperature,
+        notes: form.notes.trim() || undefined,
+        referralName: form.source === 'referral' ? sanitizeText(form.referralName) || undefined : undefined,
+      };
+      if (withAction) {
+        payload.nextAction = {
+          type: action.type,
+          title: action.title.trim(),
+          description: action.description.trim() || undefined,
+          assignedTo: action.assignedTo ? Number(action.assignedTo) : undefined,
+          dueDate: new Date(action.dueDate).toISOString(),
+          priority: action.priority,
+        };
+      }
+
       await createManualLead(payload);
-      toast('Lead created successfully', 'success');
+      toast('Opportunity created successfully', 'success');
       onCreated();
       onClose();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create lead';
+      const message = error instanceof Error ? error.message : 'Failed to create opportunity';
       setSubmitError(message);
     } finally {
       setIsSubmitting(false);
@@ -263,18 +291,18 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="New Lead" size="lg">
-      <form onSubmit={handleSubmit} className="space-y-5 max-h-[72vh] overflow-y-auto pr-1">
+    <Modal isOpen={isOpen} onClose={onClose} title="New Opportunity" size="lg">
+      <form onSubmit={handleSubmit} className="space-y-6 max-h-[72vh] overflow-y-auto pr-1">
         {submitError && (
           <div className="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">
             {submitError}
           </div>
         )}
-        {/* Lead Information */}
-        <section className="space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">Lead Information</h3>
 
-          {/* Source — manual capture is Phone / Email */}
+        {/* ── Section 1 · Opportunity Details ── */}
+        <section className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">Opportunity Details</h3>
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
               Lead Source <span className="text-red-500 font-bold">*</span>
@@ -301,78 +329,61 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                 );
               })}
             </div>
-            {errors.source && (
-              <p className="text-red-500 text-xs font-semibold mt-1.5">{errors.source}</p>
-            )}
+            {errors.source && <p className="text-red-500 text-xs font-semibold mt-1.5">{errors.source}</p>}
           </div>
 
           <InputField
-            label="Lead Name" id="lead-name" required
-            value={form.name} onChange={(v) => set('name', v)} error={errors.name}
-            placeholder="e.g. John Doe"
+            label="Opportunity Name" id="opp-name"
+            value={form.title} onChange={(v) => set('title', v)} error={errors.title}
+            placeholder="e.g. ERP implementation — Acme"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputField label="Company" id="lead-company" value={form.company} onChange={(v) => set('company', v)} error={errors.company} placeholder="e.g. ABC Technologies" />
-            <SelectField
-              label="Owner" id="lead-owner" value={form.ownerId} onChange={(v) => set('ownerId', v)}
-              placeholder="Assign to…" options={ownerOptions}
-            />
-            <InputField
-              label="Email" id="lead-email" type="email" value={form.email}
-              onChange={(v) => set('email', v)} error={errors.email}
-              placeholder="name@company.com"
-            />
-            <InputField
-              label="Phone" id="lead-phone" value={form.phone}
-              onChange={(v) => set('phone', v)} error={errors.phone}
-              placeholder="+1 555 123 4567"
-            />
-            <InputField label="Industry" id="lead-industry" value={form.industry} onChange={(v) => set('industry', v)} error={errors.industry} />
-            <InputField label="Website" id="lead-website" value={form.website} onChange={(v) => set('website', v)} error={errors.website} placeholder="https://" />
-            <InputField label="Location" id="lead-location" value={form.address} onChange={(v) => set('address', v)} error={errors.address} placeholder="City / address" />
-            <InputField label="Lead Value" id="lead-value" required value={form.leadValue} onChange={(v) => set('leadValue', v)} error={errors.leadValue} placeholder="e.g. 5000" />
-            {/* Removed duplicate SelectField for Lead Source */}
+            <SelectField label="Owner" id="opp-owner" value={form.ownerId} onChange={(v) => set('ownerId', v)} placeholder="Assign to…" options={ownerOptions} />
+            <InputField label="Opportunity Value" id="opp-value" required value={form.leadValue} onChange={(v) => set('leadValue', v)} error={errors.leadValue} placeholder="e.g. 500000" />
             {form.source === 'referral' && (
-              <InputField
-                label="Referral Name"
-                id="referralName"
-                value={form.referralName}
-                onChange={(v) => set('referralName', v)}
-                error={errors.referralName}
-                required
-                placeholder="Name of person or organization who referred this lead"
-              />
+              <InputField label="Referral Name" id="opp-referral" required value={form.referralName} onChange={(v) => set('referralName', v)} error={errors.referralName} placeholder="Who referred this?" />
             )}
-            <SelectField
-              label="Priority" id="lead-priority" value={form.priority} onChange={(v) => set('priority', v)}
-              options={PRIORITY_OPTIONS}
-            />
-            <SelectField
-              label="Lead Temperature" id="lead-temperature" value={form.temperature} onChange={(v) => set('temperature', v)}
-              options={TEMPERATURE_OPTIONS}
-              required
-            />
+            <SelectField label="Priority" id="opp-priority" value={form.priority} onChange={(v) => set('priority', v)} options={PRIORITY_OPTIONS} />
+            <SelectField label="Lead Temperature" id="opp-temperature" value={form.temperature} onChange={(v) => set('temperature', v)} options={TEMPERATURE_OPTIONS} required />
           </div>
-          {errors.contact && (
-            <p className="text-red-500 text-xs font-semibold">{errors.contact}</p>
-          )}
+        </section>
+
+        {/* ── Section 2 · Contact Information ── */}
+        <section className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">Contact Information</h3>
+          <SearchableSelect
+            id="opp-contact-select" label="Select existing Contact (optional)"
+            value={selectedContactId} onChange={onSelectContact}
+            placeholder="— Enter contact manually —" searchPlaceholder="Search contacts…"
+            options={contactOptions}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputField label="Contact Name" id="contact-name" required value={form.name} onChange={(v) => set('name', v)} error={errors.name} placeholder="e.g. John Doe" />
+            <InputField label="Designation" id="contact-designation" value={form.designation} onChange={(v) => set('designation', v)} placeholder="e.g. Founder / CTO" />
+            <InputField label="Phone" id="contact-phone" value={form.phone} onChange={(v) => set('phone', v)} error={errors.phone} placeholder="+91 98765 43210" />
+            <InputField label="WhatsApp" id="contact-whatsapp" value={form.whatsapp} onChange={(v) => set('whatsapp', v)} error={errors.whatsapp} placeholder="+91 98765 43210" />
+            <InputField label="Email" id="contact-email" type="email" value={form.email} onChange={(v) => set('email', v)} error={errors.email} placeholder="name@company.com" />
+            <InputField label="Company" id="contact-company" value={companySec.name} onChange={() => {}} disabled placeholder="Set in Company Information below" />
+          </div>
+          {errors.contact && <p className="text-red-500 text-xs font-semibold">{errors.contact}</p>}
           <p className="text-xs text-gray-400">Provide at least an email or a phone number.</p>
         </section>
 
-        {/* Notes */}
-        <section className="space-y-2">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">Notes</h3>
+        {/* ── Section 3 · Company Information (CRM Account) ── */}
+        <OpportunityCompanySection companies={companies} value={companySec} onChange={setCompany} />
+        {errors.companyName && <p className="text-red-500 text-xs font-semibold">{errors.companyName}</p>}
+
+        {/* ── Section 4 · Notes & Next Action ── */}
+        <section className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400">Notes &amp; Next Action</h3>
           <TextareaField
-            label="Notes" id="lead-notes" rows={4}
+            label="Notes" id="opp-notes" rows={4}
             value={form.notes} onChange={(v) => set('notes', v)}
             error={errors.notes}
             maxLength={5000} showCharCount
-            placeholder="What is the lead interested in? Notes appear in the lead's Notes section and can be edited later."
+            placeholder="What is the opportunity about? Notes appear in the opportunity's Notes section and can be edited later."
           />
-        </section>
 
-        {/* Next Action (optional) */}
-        <section className="space-y-4">
           <button
             type="button"
             onClick={() => setWithAction((v) => !v)}
@@ -397,33 +408,14 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           ) : (
             <div className="space-y-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/30">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <SelectField
-                  label="Action Type" id="action-type" value={action.type}
-                  onChange={(v) => setAct('type', v)} options={ACTION_TYPES}
-                />
-                <SelectField
-                  label="Priority" id="action-priority" value={action.priority}
-                  onChange={(v) => setAct('priority', v)} options={PRIORITY_OPTIONS}
-                />
+                <SelectField label="Action Type" id="action-type" value={action.type} onChange={(v) => setAct('type', v)} options={ACTION_TYPES} />
+                <SelectField label="Priority" id="action-priority" value={action.priority} onChange={(v) => setAct('priority', v)} options={PRIORITY_OPTIONS} />
               </div>
-              <InputField
-                label="Action Title" id="action-title" required
-                value={action.title} onChange={(v) => setAct('title', v)} error={errors.actionTitle}
-                placeholder="e.g. Call client about proposal"
-              />
-              <TextareaField
-                label="Description" id="action-description" rows={2}
-                value={action.description} onChange={(v) => setAct('description', v)}
-              />
+              <InputField label="Action Title" id="action-title" required value={action.title} onChange={(v) => setAct('title', v)} error={errors.actionTitle} placeholder="e.g. Call client about proposal" />
+              <TextareaField label="Description" id="action-description" rows={2} value={action.description} onChange={(v) => setAct('description', v)} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <SelectField
-                  label="Assigned To" id="action-assignee" value={action.assignedTo}
-                  onChange={(v) => setAct('assignedTo', v)} placeholder="Assign to…" options={ownerOptions}
-                />
-                <DateTimePicker
-                  label="Due Date & Time" id="action-due" required
-                  value={action.dueDate} onChange={(v) => setAct('dueDate', v)} error={errors.actionDue}
-                />
+                <SelectField label="Assigned To" id="action-assignee" value={action.assignedTo} onChange={(v) => setAct('assignedTo', v)} placeholder="Assign to…" options={ownerOptions} />
+                <DateTimePicker label="Due Date & Time" id="action-due" required value={action.dueDate} onChange={(v) => setAct('dueDate', v)} error={errors.actionDue} />
               </div>
             </div>
           )}
@@ -431,7 +423,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={isSubmitting}>Create Lead</Button>
+          <Button type="submit" isLoading={isSubmitting}>Create Opportunity</Button>
         </div>
       </form>
     </Modal>

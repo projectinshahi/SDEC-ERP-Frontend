@@ -15,15 +15,15 @@ export default function LeadAnalyticsPage() {
           <Breadcrumb
             items={[
               { label: 'Dashboard', href: '/dashboard' },
-              { label: 'Sales', href: '/dashboard/sales/leads' },
-              { label: 'Lead Analytics', href: '/dashboard/sales/analytics' },
+              { label: 'Sales', href: '/dashboard/sales/pipeline' },
+              { label: 'Opportunity Analytics', href: '/dashboard/sales/analytics' },
             ]}
           />
           <div className="flex gap-2">
-            <Link href="/dashboard/sales/leads">
+            <Link href="/dashboard/sales/pipeline">
               <Button variant="secondary">
                 <List className="w-4 h-4 mr-2" />
-                Leads
+                Pipeline
               </Button>
             </Link>
           </div>

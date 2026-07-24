@@ -27,7 +27,7 @@ import type { SalesDashboard, SalesInsight } from '@/lib/types/salesDashboard';
  * permission array the sidebar item and the layout route-guard use — so a
  * shortcut renders ONLY when the user holds the matching "View …" permission
  * (no hardcoded permission keys, no drift from the sidebar / backend gates).
- *   View Leads → Leads · View Pipeline → Pipeline · View Deals → Deals
+ *   View Pipeline → Pipeline · Pipeline Analytics → Pipeline Analytics
  *   View Follow-ups → Follow-ups · View Analytics → Analytics · View Team → Team
  *   View Sales Tasks → Sales Tasks · View Team Tasks → Team Tasks
  *   View Targets → Targets · Approve Documents → Approvals
@@ -36,9 +36,8 @@ const OVERVIEW_SHORTCUTS: {
   href: string; label: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
 }[] = [
-  { href: '/dashboard/sales/leads', label: 'Leads', icon: Target },
-  { href: '/dashboard/sales/pipeline', label: 'Pipeline', icon: LayoutGrid },
-  { href: '/dashboard/sales/deals', label: 'Deals', icon: TrendingUp },
+  { href: '/dashboard/sales/pipeline', label: 'Pipeline', icon: Target },
+  { href: '/dashboard/sales/pipeline/analytics', label: 'Pipeline Analytics', icon: LayoutGrid },
   { href: '/dashboard/sales/follow-ups', label: 'Follow-ups', icon: Clock },
   { href: '/dashboard/sales/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dashboard/sales/team', label: 'Team', icon: Users },

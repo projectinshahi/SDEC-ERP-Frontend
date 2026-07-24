@@ -149,6 +149,9 @@ export function LeadPipelineBoard({
                     }}
                     canDelete={canDeleteLead}
                     onDelete={onDeleteLead ? () => onDeleteLead(lead) : undefined}
+                    stages={stages}
+                    canMove={canMove}
+                    onMoveStage={(stageName) => onMove(lead.id, stageName)}
                   />
                 ))
               ) : (
