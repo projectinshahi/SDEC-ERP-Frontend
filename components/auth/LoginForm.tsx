@@ -151,11 +151,10 @@ export function LoginForm() {
             onBlur={() => setIsEmailTouched(true)}
             placeholder="Enter your email"
             disabled={isLoading}
-            className={`block w-full pl-10 pr-3 py-3 border rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
-              emailError
+            className={`block w-full pl-10 pr-3 py-3 border rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${emailError
                 ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-300 dark:border-gray-700'
-            }`}
+              }`}
           />
         </div>
         {emailError && (
@@ -203,11 +202,10 @@ export function LoginForm() {
             onBlur={() => setIsPasswordTouched(true)}
             placeholder="••••••••"
             disabled={isLoading}
-            className={`block w-full pl-10 pr-10 py-3 border rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
-              passwordError
+            className={`block w-full pl-10 pr-10 py-3 border rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${passwordError
                 ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-300 dark:border-gray-700'
-            }`}
+              }`}
           />
           <button
             type="button"
@@ -258,11 +256,10 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={!isFormValid || isLoading}
-        className={`relative w-full py-3 px-4 rounded-xl text-white font-semibold text-sm shadow-md transition-all duration-200 flex items-center justify-center gap-2 ${
-          !isFormValid || isLoading
+        className={`relative w-full py-3 px-4 rounded-xl text-white font-semibold text-sm shadow-md transition-all duration-200 flex items-center justify-center gap-2 ${!isFormValid || isLoading
             ? 'bg-indigo-400/75 dark:bg-indigo-600/50 cursor-not-allowed shadow-none'
             : 'bg-indigo-600 hover:bg-indigo-500 hover:shadow-indigo-500/20 active:scale-[0.98]'
-        }`}
+          }`}
       >
         {isLoading ? (
           <>
