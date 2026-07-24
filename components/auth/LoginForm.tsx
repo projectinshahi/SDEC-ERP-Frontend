@@ -151,7 +151,7 @@ export function LoginForm() {
             onBlur={() => setIsEmailTouched(true)}
             placeholder="Enter your email"
             disabled={isLoading}
-            className={`block w-full pl-10 pr-3 py-3 border rounded-xl text-gray-900 bg-white dark:bg-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${
+            className={`block w-full pl-10 pr-3 py-3 border rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
               emailError
                 ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-300 dark:border-gray-700'
@@ -203,7 +203,7 @@ export function LoginForm() {
             onBlur={() => setIsPasswordTouched(true)}
             placeholder="••••••••"
             disabled={isLoading}
-            className={`block w-full pl-10 pr-10 py-3 border rounded-xl text-gray-900 bg-white dark:bg-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${
+            className={`block w-full pl-10 pr-10 py-3 border rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
               passwordError
                 ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 hover:border-gray-300 dark:border-gray-700'

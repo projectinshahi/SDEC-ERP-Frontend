@@ -55,14 +55,16 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
     cursorY += 60;
   }
 
-  // Calculate KPIs
+  // Canonical funnel-STAGE KPIs (stage = single source of truth, matching the board
+  // and the table filter). WON/HOLD/LOST are pipeline stages; `converted` = the
+  // opportunity left the pipeline (became a deal).
+  const stageIs = (l: Lead, name: string) => (l.stage || '').toUpperCase() === name;
   const kpis = {
     total: leads.length,
-    new: leads.filter((l) => l.status === 'new').length,
-    qualified: leads.filter((l) => l.status === 'qualified').length,
-    won: leads.filter((l) => l.status === 'won').length,
-    lost: leads.filter((l) => l.status === 'lost').length,
-    converted: leads.filter((l) => l.status === 'converted').length,
+    won: leads.filter((l) => stageIs(l, 'WON')).length,
+    hold: leads.filter((l) => stageIs(l, 'HOLD')).length,
+    lost: leads.filter((l) => stageIs(l, 'LOST')).length,
+    converted: leads.filter((l) => (l.status || '').toLowerCase() === 'converted').length,
   };
   const conversionRate = kpis.total > 0 ? ((kpis.converted / kpis.total) * 100).toFixed(1) : '0.0';
 
@@ -74,11 +76,10 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   cursorY += 20;
 
   const kpiData = [
-    ['Total Leads', kpis.total.toString()],
-    ['New Leads', kpis.new.toString()],
-    ['Qualified', kpis.qualified.toString()],
-    ['Won Leads', kpis.won.toString()],
-    ['Lost Leads', kpis.lost.toString()],
+    ['Total Opportunities', kpis.total.toString()],
+    ['Won', kpis.won.toString()],
+    ['Hold', kpis.hold.toString()],
+    ['Lost', kpis.lost.toString()],
     ['Converted', kpis.converted.toString()],
     ['Conversion Rate', `${conversionRate}%`]
   ];
@@ -194,14 +195,14 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
     l.source || '—',
     formatINR(Number(l.leadValue || 0)),
     l.owner?.name || 'Unassigned',
-    (l.status || '').toUpperCase(),
+    l.stage || '—',
     temperatureLabel(l.temperature),
     l.createdAt ? format(new Date(l.createdAt), 'dd/MM/yyyy') : '—'
   ]);
 
   autoTable(doc, {
     startY: cursorY + 20,
-    head: [['Lead Name', 'Company', 'Contact', 'Phone', 'Email', 'Source', 'Value', 'Assigned To', 'Status', 'Temperature', 'Created']],
+    head: [['Lead Name', 'Company', 'Contact', 'Phone', 'Email', 'Source', 'Value', 'Assigned To', 'Stage', 'Temperature', 'Created']],
     body: leadTableData,
     theme: 'striped',
     styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },

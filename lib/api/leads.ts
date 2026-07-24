@@ -59,9 +59,15 @@ export interface CreateLeadNextAction {
 
 export interface CreateLeadPayload {
   name: string;
+  /** Explicit Opportunity Name → lead title (falls back to name — company when omitted). */
+  title?: string;
   company?: string;
   email?: string;
   phone?: string;
+  /** Contact designation / job title. */
+  designation?: string;
+  /** Contact WhatsApp number. */
+  whatsapp?: string;
   source: string;
   referralName?: string;
   /** Owner of the new lead; defaults to the creator when omitted. */
@@ -71,6 +77,8 @@ export interface CreateLeadPayload {
   /** Maps to the customer's address (shown as Location). */
   address?: string;
   leadValue?: string;
+  /** Optional link to an existing normalized Company (CRM account). */
+  companyId?: number;
   priority?: string;
   /** Manual lead classification (COLD / WARM / HOT); defaults to COLD. */
   temperature?: LeadTemperature;
@@ -160,13 +168,22 @@ export async function fetchStageAnalytics(): Promise<StageAnalytics> {
   return res.data;
 }
 
-/** Move a lead to a target pipeline stage (drag-and-drop). */
+/**
+ * Move a lead to a target pipeline stage (drag-and-drop → Stage Transition Dialog).
+ * `checklist` (selected item labels) and `description` are OPTIONAL and recorded in the
+ * opportunity's activity/history; the backend ignores them when absent.
+ */
 export async function moveLeadStage(
   id: number | string,
   stage: string,
-  orderIndex?: number
+  opts?: { orderIndex?: number; checklist?: string[]; description?: string }
 ): Promise<Lead> {
-  const res = await apiClient.put<Lead>(`/sales/leads/${id}/stage`, { stage, orderIndex });
+  const res = await apiClient.put<Lead>(`/sales/leads/${id}/stage`, {
+    stage,
+    orderIndex: opts?.orderIndex,
+    checklist: opts?.checklist,
+    description: opts?.description,
+  });
   return res.data;
 }
 

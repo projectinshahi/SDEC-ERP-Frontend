@@ -12,7 +12,7 @@ export default function NewLeadRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/dashboard/sales/leads');
+    router.replace('/dashboard/sales/pipeline');
   }, [router]);
 
   return null;

@@ -6,5 +6,5 @@ import { redirect } from 'next/navigation';
  * — there is no separate pipeline page anymore.
  */
 export default function LeadPipelineRedirect() {
-  redirect('/dashboard/sales/leads?view=pipeline');
+  redirect('/dashboard/sales/pipeline?view=pipeline');
 }

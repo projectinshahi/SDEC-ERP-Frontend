@@ -134,7 +134,7 @@ function DailyReportContent() {
         <Breadcrumb
           items={[
             { label: 'Dashboard', href: '/dashboard' },
-            { label: 'Sales', href: '/dashboard/sales/leads' },
+            { label: 'Sales', href: '/dashboard/sales/pipeline' },
             { label: 'Daily Report', href: '/dashboard/sales/reports/daily' },
           ]}
         />

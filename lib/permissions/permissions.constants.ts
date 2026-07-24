@@ -501,6 +501,10 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'sales.contacts.create', label: 'Create Contacts', description: 'Add new contacts', module: 'sales' },
       { key: 'sales.contacts.edit', label: 'Edit Contacts', description: 'Update contact information', module: 'sales' },
       { key: 'sales.contacts.delete', label: 'Delete Contacts', description: 'Remove contacts', module: 'sales' },
+      { key: 'sales.companies.view', label: 'View Companies', description: 'View companies (CRM accounts) and company details', module: 'sales' },
+      { key: 'sales.companies.create', label: 'Create Companies', description: 'Add new companies', module: 'sales' },
+      { key: 'sales.companies.edit', label: 'Edit Companies', description: 'Update company information', module: 'sales' },
+      { key: 'sales.companies.delete', label: 'Delete Companies', description: 'Remove companies', module: 'sales' },
     ],
   },
   {

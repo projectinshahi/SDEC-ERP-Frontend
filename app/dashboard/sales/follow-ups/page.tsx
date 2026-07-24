@@ -217,7 +217,7 @@ export default function FollowUpCenterPage() {
                       {/* Action */}
                       <td className="px-6 py-3.5">
                         <Link
-                          href={fu.leadId ? `/dashboard/sales/leads/${fu.leadId}` : '#'}
+                          href={fu.leadId ? `/dashboard/sales/pipeline/${fu.leadId}` : '#'}
                           className="text-sm font-medium text-gray-800 dark:text-gray-100 hover:text-blue-600 break-words"
                         >
                           {fu.title}

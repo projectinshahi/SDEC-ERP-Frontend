@@ -150,7 +150,7 @@ export function SalesTicketsClient() {
       <div className="mb-6">
         <Breadcrumb
           items={[
-            { label: 'Sales', href: '/dashboard/sales/leads' },
+            { label: 'Sales', href: '/dashboard/sales/pipeline' },
             { label: 'Tickets' },
           ]}
         />

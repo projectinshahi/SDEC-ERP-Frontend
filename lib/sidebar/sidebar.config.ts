@@ -124,8 +124,10 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     permission: ['sales.dashboard.view'],
   },
   {
-    label: 'Leads',
-    href: '/dashboard/sales/leads',
+    // Pipeline = the renamed Leads module (opportunities). Route MOVED to /sales/pipeline
+    // (old /sales/leads* redirect to here). Backing permission stays sales.leads.view.
+    label: 'Pipeline',
+    href: '/dashboard/sales/pipeline',
     icon: 'Target',
     module: 'sales',
     permission: ['sales.leads.view'],
@@ -140,7 +142,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     permission: ['sales.followups.view'],
   },
   {
-    label: 'Lead Analytics',
+    label: 'Opportunity Analytics',
     href: '/dashboard/sales/analytics',
     icon: 'BarChart3',
     module: 'sales',
@@ -155,19 +157,14 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: 'sales',
     permission: ['sales.teams.view', 'sales.team.manage'],
   },
+  // The Deals module has been retired from the UI (Pipeline is now the single
+  // opportunity + revenue surface). Its nav item is removed; historical deal data /
+  // backend endpoints remain intact for internal use.
   {
-    label: 'Deals',
-    href: '/dashboard/sales/deals',
-    icon: 'TrendingUp',
-    module: 'sales',
-    permission: ['sales.deals.view'],
-  },
-  // Deal Pipeline merged into the Deals page as an in-page "Pipeline View"
-  // (toggle / ?view=pipeline) — no separate route/menu item. ("Pipeline Views"
-  // below is a DIFFERENT feature: saved-view pipeline analytics.)
-  {
-    label: 'Pipeline Views',
-    href: '/dashboard/sales/pipeline',
+    // Renamed from "Pipeline Views" + route moved to /sales/pipeline/analytics so the
+    // new Pipeline module can own /sales/pipeline. Still the deal-based saved-view analytics.
+    label: 'Pipeline Analytics',
+    href: '/dashboard/sales/pipeline/analytics',
     icon: 'BarChart3',
     module: 'sales',
     permission: ['sales.pipeline.view'],
@@ -243,6 +240,14 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'BarChart3',
     module: 'sales',
     permission: SALES_REPORTS,
+  },
+  {
+    // Companies = normalized CRM accounts (one company → many contacts + pipeline).
+    label: 'Companies',
+    href: '/dashboard/sales/companies',
+    icon: 'Briefcase',
+    module: 'sales',
+    permission: ['sales.companies.view'],
   },
   {
     // UI label is "Contacts"; route + API (/sales/customers) unchanged.
