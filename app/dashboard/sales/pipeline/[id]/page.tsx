@@ -47,7 +47,9 @@ export default function LeadDetailPage() {
   // Bumped after edits/interactions/assignment to refresh score + interactions.
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const canEdit = hasPermission('sales.edit');
+  // Granular key (owners incl. BDE hold sales.leads.edit; coarse sales.edit was removed from
+  // BDE in the RBAC lockdown). Matches the board's canMove + the backend edit endpoint.
+  const canEdit = hasPermission('sales.leads.edit');
   const canAssign = hasPermission('sales.assign');
 
   const isConverted = lead?.status === 'converted';
