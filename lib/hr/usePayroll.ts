@@ -14,19 +14,38 @@ import {
 import { fetchEmployees, ApiEmployee } from '../api/hr';
 
 export function adaptPayrollRecord(p: ApiPayrollRecord): PayrollRecord {
+  const num = (v: number | undefined | null) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
   return {
     id: String(p.id),
     employeeId: p.employee_id,
     employeeCode: p.employee_code ?? '',
     name: p.name ?? '',
     role: p.designation ?? '',
-    basicSalary: p.basic_salary,
-    bonus: p.bonus,
-    deduction: p.deduction,
-    netSalary: p.net_salary,
+    basicSalary: num(p.basic_salary),
+    bonus: num(p.bonus),
+    deduction: num(p.deduction),
+    netSalary: num(p.net_salary),
     month: p.month,
     status: p.status === 'Paid' ? 'Paid' : 'Pending',
     createdAt: p.created_at,
+    // Snapshot fields — default 0 so legacy rows render gracefully.
+    da: num(p.da),
+    calendarDays: num(p.calendar_days),
+    officeWorkingDays: num(p.office_working_days),
+    workedDays: num(p.worked_days),
+    lop: num(p.lop),
+    paidLeaveDays: num(p.paid_leave_days),
+    unpaidLeaveDays: num(p.unpaid_leave_days),
+    payableBasic: num(p.payable_basic),
+    payableDa: num(p.payable_da),
+    gross: num(p.gross),
+    esi: num(p.esi),
+    fine: num(p.fine),
+    specialAllowance: num(p.special_allowance),
+    pf: num(p.pf),
+    incentive: num(p.incentive),
+    arrears: num(p.arrears),
+    totalDeductions: num(p.total_deductions),
   };
 }
 
