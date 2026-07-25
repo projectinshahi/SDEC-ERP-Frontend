@@ -275,17 +275,38 @@ function buildReportHtml(report: DashboardReport, filename: string): string {
  * this in ONE place is why a task report reuses the exact print engine without
  * duplicating any iframe/print logic.
  */
+// iOS/iPadOS + iOS Chrome (all WebKit). iPadOS ≥13 reports "Macintosh", so pair the
+// Mac UA with a touch check. WebKit ignores print() on a HIDDEN iframe, so those devices
+// need a visible, laid-out print frame instead of the desktop 0×0 one.
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /iP(hone|od|ad)/.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+}
+
 async function printHtmlToPdf(html: string): Promise<void> {
   if (typeof window === 'undefined') return;
+  const ios = isIOS();
 
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
   iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
   iframe.style.border = '0';
+  if (ios) {
+    // Real on-screen layout so WebKit renders + prints THIS frame (a 0×0 iframe prints blank
+    // or grabs the parent page on iOS). Covered while the iOS print/share sheet is up; removed
+    // on cleanup below.
+    iframe.style.inset = '0';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.background = '#fff';
+    iframe.style.zIndex = '2147483647';
+  } else {
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+  }
   document.body.appendChild(iframe);
 
   const win = iframe.contentWindow;
@@ -321,8 +342,11 @@ async function printHtmlToPdf(html: string): Promise<void> {
     setTimeout(() => iframe.remove(), 500);
   };
   win.addEventListener('afterprint', cleanup, { once: true });
+  // iOS often skips afterprint — also remove the visible frame when the user returns from
+  // the print/share sheet (parent window regains focus), so the overlay never lingers.
+  if (ios) window.addEventListener('focus', cleanup, { once: true });
   // Fallback cleanup in case afterprint never fires (some browsers).
-  setTimeout(cleanup, 60000);
+  setTimeout(cleanup, ios ? 8000 : 60000);
 
   win.focus();
   win.print();
