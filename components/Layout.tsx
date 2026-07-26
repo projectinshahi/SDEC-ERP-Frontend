@@ -99,13 +99,9 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
    * items (up to the next partition) is visible.
    */
   const visibleMenuItems = useMemo((): SidebarItem[] => {
-<<<<<<< HEAD
-    const inModule = SIDEBAR_ITEMS.filter((i) => groupForModule(i.module) === currentModule);
-=======
     // Current module's items only (partition-grouped). GLOBAL items (My Tasks,
     // Notice) are placed separately below.
     const inModule = SIDEBAR_ITEMS.filter((i) => !i.global && groupForModule(i.module) === currentModule);
->>>>>>> 102f107 (fsfssfsfffff)
     const result: SidebarMenuItem[] = [];
     for (let i = 0; i < inModule.length; i++) {
       const item = inModule[i];
@@ -119,8 +115,6 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
         result.push(item);
       }
     }
-<<<<<<< HEAD
-=======
     // GLOBAL items, split by placement. `pinTop` globals (My Tasks) render right
     // BELOW the module's first actionable item (its Dashboard/home) — a standardized
     // TOP position across every module — while other globals (Notice) stay at the
@@ -136,7 +130,6 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
       result.splice(insertAt, 0, ...topGlobals);
     }
     result.push(...bottomGlobals);
->>>>>>> 102f107 (fsfssfsfffff)
     return result as SidebarItem[];
   }, [currentModule, isItemVisible]);
 
