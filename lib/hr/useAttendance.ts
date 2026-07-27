@@ -11,7 +11,9 @@ import {
   fetchAttendance,
   saveAttendance,
   deleteAttendance,
+  fetchApprovedLeaves,
   ApiAttendanceRecord,
+  ApiApprovedLeave,
 } from '@/lib/api/hr-attendance';
 import { fetchEmployees, ApiEmployee } from '@/lib/api/hr';
 import { AttendanceFormValues } from '@/components/hr/attendance/AttendanceActionPanel';
@@ -62,6 +64,54 @@ function adaptRecord(r: ApiAttendanceRecord): AttendanceRecord {
   };
 }
 
+/**
+ * DERIVED-ATTENDANCE overlay: apply an approved leave (covering the selected
+ * date) onto a base record. `leaves` stays the source of truth — nothing is
+ * written back. Full-day leave takes precedence over any punch (display work
+ * hours = 0); half-day leave PRESERVES the working-half punches + actual hours.
+ */
+function applyLeaveOverlay(base: AttendanceRecord, leaves: ApiApprovedLeave[]): AttendanceRecord {
+  // Resolve possibly-overlapping / duplicate approved leaves DETERMINISTICALLY
+  // (independent of row order), defending against legacy bad data:
+  //   • any full-day leave, OR both halves present → Full Day Leave
+  //   • only first_half → First Half Leave; only second_half → Second Half Leave
+  //   • a legacy half with no session → generic half (leaveHalf = null; no guess)
+  //   • duplicate identical rows collapse naturally (boolean OR)
+  const isHalf = (lv: ApiApprovedLeave) =>
+    lv.half_period != null ||
+    (typeof lv.leave_type === 'string' && lv.leave_type.includes('(Half Day)'));
+
+  const anyFull = leaves.some((lv) => !isHalf(lv));
+  const hasFirst = leaves.some((lv) => lv.half_period === 'first_half');
+  const hasSecond = leaves.some((lv) => lv.half_period === 'second_half');
+
+  if (anyFull || (hasFirst && hasSecond)) {
+    return {
+      ...base,
+      status: 'Full Day Leave',
+      leaveType: 'full_day',
+      leaveHalf: null,
+      isDerivedLeave: true,
+      totalHours: null, // full-day leave → derived work hours = 0
+    };
+  }
+
+  const leaveHalf: 'first_half' | 'second_half' | null = hasFirst
+    ? 'first_half'
+    : hasSecond
+      ? 'second_half'
+      : null; // legacy/unknown session (do not guess)
+
+  return {
+    ...base,
+    status: 'Half Day Leave',
+    leaveType: 'half_day',
+    leaveHalf,
+    isDerivedLeave: true,
+    // Working-half punches + actual work hours are preserved from `base`.
+  };
+}
+
 /** "09:30" (24h) → "09:30 AM" / "14:15" → "02:15 PM" */
 function to12h(val: string): string {
   if (!val) return '';
@@ -80,6 +130,12 @@ export function useAttendance() {
   /* ── Remote data ─────────────────────────────────────────────────────────── */
   const [rawRecords, setRawRecords] = useState<ApiAttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<ApiEmployee[]>([]);
+  // Date-tagged so the overlay only ever applies leave fetched for the CURRENT
+  // selected date (prevents a stale previous-date result flashing during a rapid
+  // date switch, even for a single render).
+  const [approvedLeaves, setApprovedLeaves] = useState<{ date: string; items: ApiApprovedLeave[] }>(
+    { date: '', items: [] },
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,6 +175,18 @@ export function useAttendance() {
 
   useEffect(() => { loadAttendance(); }, [loadAttendance]);
 
+  /* ── Approved-leave overlay for the SELECTED date (derived attendance) ─────── */
+  // Re-fetches whenever the selected date changes, so approved leave reflects the
+  // chosen date (incl. future dates) and any approve/reject/delete shows up live.
+  useEffect(() => {
+    let cancelled = false;
+    const forDate = selectedDate;
+    fetchApprovedLeaves(forDate)
+      .then((data) => { if (!cancelled) setApprovedLeaves({ date: forDate, items: data }); })
+      .catch(() => { if (!cancelled) setApprovedLeaves({ date: forDate, items: [] }); });
+    return () => { cancelled = true; };
+  }, [selectedDate]);
+
   /* ── Auto-dismiss success message after 3s ───────────────────────────────── */
   useEffect(() => {
     if (!successMsg) return;
@@ -129,16 +197,28 @@ export function useAttendance() {
   /* ── Adapted records & Option B Merging ──────────────────────────────────── */
   const adaptedRecords = useMemo(() => rawRecords.map(adaptRecord), [rawRecords]);
 
+  /* Approved leaves covering the selected date, GROUPED by employee id (an
+   * employee may have >1 overlapping approved leave in legacy data). Only applied
+   * when the fetched data belongs to the current selectedDate (stale-guard). */
+  const leaveByEmployee = useMemo(() => {
+    const m = new Map<number, ApiApprovedLeave[]>();
+    if (approvedLeaves.date !== selectedDate) return m;
+    for (const lv of approvedLeaves.items) {
+      const arr = m.get(lv.employee_id);
+      if (arr) arr.push(lv);
+      else m.set(lv.employee_id, [lv]);
+    }
+    return m;
+  }, [approvedLeaves, selectedDate]);
+
   const records = useMemo(() => {
     return employees.map((emp) => {
-      // Find if a real attendance record exists for this employee on the selected date
+      // Real attendance record for this employee on the selected date, if any.
       const realRecord = adaptedRecords.find(
         (r) => r.employeeId === emp.employee_code && r.date === selectedDate
       );
-      if (realRecord) return realRecord;
-
-      // Otherwise, generate a virtual "Absent" row for this employee
-      return {
+      // Base = the real record, else a virtual "Absent" row.
+      const base: AttendanceRecord = realRecord ?? {
         id: `virtual-${emp.id}`,
         employeeId: emp.employee_code ?? '',
         name: emp.name ?? '',
@@ -150,13 +230,16 @@ export function useAttendance() {
         lunchIn: null,
         checkOut: null,
         totalHours: null,
-        status: 'Absent' as const,
+        status: 'Absent',
         overtime: null,
         note: undefined,
         leaveType: null,
       };
+      // Approved leave covering the selected date takes precedence over Absent.
+      const leaves = leaveByEmployee.get(emp.id);
+      return leaves && leaves.length ? applyLeaveOverlay(base, leaves) : base;
     });
-  }, [employees, adaptedRecords, selectedDate]);
+  }, [employees, adaptedRecords, selectedDate, leaveByEmployee]);
 
   /* ── Modal helpers ────────────────────────────────────────────────────────── */
   const openEntryModal = () => {

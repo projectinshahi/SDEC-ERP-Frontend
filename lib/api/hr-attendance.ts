@@ -31,6 +31,15 @@ export interface ApiAttendanceSummary {
   absent: number;
 }
 
+/** Approved leave covering a selected date (derived-attendance overlay). */
+export interface ApiApprovedLeave {
+  employee_id: number;
+  leave_type: string;
+  half_period: 'first_half' | 'second_half' | null;
+  start_date: string;
+  end_date: string;
+}
+
 export interface SaveAttendancePayload {
   employee_id: number;
   date: string;
@@ -73,6 +82,18 @@ export async function saveAttendance(payload: SaveAttendancePayload): Promise<{ 
     payload,
   );
   return { workHours: res.data?.workHours ?? 0, status: res.data?.status ?? 'absent' };
+}
+
+/**
+ * GET /hr/attendance/leaves?date=YYYY-MM-DD
+ * Approved leaves covering the selected date (server-filtered, not the whole
+ * history). Used to derive On-Leave status on the Daily Attendance page.
+ */
+export async function fetchApprovedLeaves(date: string): Promise<ApiApprovedLeave[]> {
+  const res = await apiClient.get<{ success: boolean; data: ApiApprovedLeave[] }>(
+    `/hr/attendance/leaves?date=${encodeURIComponent(date)}`,
+  );
+  return res.data?.data ?? [];
 }
 
 /* ── High-level action helpers ──────────────────────────────────────────────── */

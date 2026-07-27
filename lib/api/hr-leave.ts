@@ -1,5 +1,7 @@
 import { apiClient } from './api-client';
 
+export type HalfPeriod = 'first_half' | 'second_half';
+
 export interface ApiLeaveRecord {
   id: number;
   employee_id: number;
@@ -9,6 +11,8 @@ export interface ApiLeaveRecord {
   days: number;
   reason: string | null;
   status: 'pending' | 'approved' | 'rejected';
+  /** Half-day session (separate from leave_type category). null = full day. */
+  half_period: HalfPeriod | null;
   created_at: string;
   updated_at: string;
   employee_code?: string;
@@ -29,6 +33,8 @@ export interface CreateLeavePayload {
   start_date: string;
   end_date: string;
   reason: string;
+  /** 'first_half' | 'second_half' for half-day leave; null/omitted = full day. */
+  half_period?: HalfPeriod | null;
 }
 
 /**

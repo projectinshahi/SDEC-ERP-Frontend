@@ -1,4 +1,5 @@
 import { AttendanceRecord, AttendanceStats } from './attendance.types';
+import { hasWorkingHalfPunch, isMorningLateArrival } from './attendanceStatus';
 
 // Today's date string (used as the default date for the page)
 export const TODAY = new Date().toISOString().split('T')[0]; // "2026-06-24"
@@ -296,21 +297,28 @@ export function computeAttendanceStats(
 ): AttendanceStats {
   const todayRecords = records.filter(r => r.date === selectedDate);
 
-  const present = todayRecords.filter(r =>
-    r.status === 'Present' ||
-    r.status === 'Late' ||
-    r.status === 'Late After Lunch'
-  ).length;
+  // Leave-aware, OVERLAPPING dimensions (cards intentionally do not sum to Total):
+  //  • On Leave  = any approved leave (full or half day)
+  //  • Present   = worked a normal day OR worked the working-half of a half-day leave
+  //  • Absent    = neither on leave nor present (fully absent)
+  //  • Late      = morning arrival after 10:00 AM (full-day/first-half leave excluded)
+  const LEAVE_STATUSES = new Set(['Full Day Leave', 'Half Day Leave', 'On Leave', 'Half Day']);
+  const PRESENT_WORKING = new Set(['Present', 'Late', 'Late After Lunch']);
+  const HALF_LEAVE_STATUSES = new Set(['Half Day Leave', 'Half Day']);
 
-  const onLeave = todayRecords.filter(r =>
-    r.status === 'Full Day Leave' ||
-    r.status === 'Half Day Leave' ||
-    r.status === 'On Leave' ||
-    r.status === 'Half Day'
-  ).length;
-
-  const absent = Math.max(0, totalEmployees - present - onLeave);
-  const late = todayRecords.filter(r => r.status === 'Late' || r.status === 'Late After Lunch').length;
+  let present = 0;
+  let onLeave = 0;
+  let absent = 0;
+  let late = 0;
+  for (const r of todayRecords) {
+    const isLeave = LEAVE_STATUSES.has(r.status);
+    const isPresentWorking = PRESENT_WORKING.has(r.status);
+    const isHalfLeaveWorked = HALF_LEAVE_STATUSES.has(r.status) && hasWorkingHalfPunch(r);
+    if (isLeave) onLeave++;
+    if (isPresentWorking || isHalfLeaveWorked) present++;
+    if (!isLeave && !isPresentWorking) absent++;
+    if (isMorningLateArrival(r)) late++;
+  }
 
   // Compute average hours from records that have totalHours on selectedDate
   const hours = todayRecords

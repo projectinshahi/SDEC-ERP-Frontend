@@ -5,6 +5,8 @@ import { AttendanceStatus } from '@/lib/hr/attendance.types';
 
 interface AttendanceStatusBadgeProps {
   status: AttendanceStatus;
+  /** Overrides the displayed text while keeping the status-based colour. */
+  label?: string;
 }
 
 const BADGE_MAP: Record<
@@ -61,14 +63,14 @@ const BADGE_MAP: Record<
   },
 };
 
-export function AttendanceStatusBadge({ status }: AttendanceStatusBadgeProps) {
+export function AttendanceStatusBadge({ status, label }: AttendanceStatusBadgeProps) {
   const styles = BADGE_MAP[status];
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${styles.bg} ${styles.text} ${styles.border}`}
     >
       <span className={`w-1.5 h-1.5 rounded-full ${styles.dot} shrink-0`} />
-      {status}
+      {label ?? status}
     </span>
   );
 }

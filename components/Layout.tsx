@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { ReactNode, useState, useMemo, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Sidebar, type SidebarItem } from '@/components/Sidebar';
@@ -13,7 +13,7 @@ import {
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
 import {
-  getModuleAccess, moduleForPath, groupForModule, isSharedPath, MODULE_LABELS, type TopModule,
+  getModuleAccess, moduleForPath, groupForModule, isSharedPath, primaryModule, MODULE_LABELS,
 } from '@/lib/permissions/moduleAccess';
 
 interface LayoutProps {
@@ -35,41 +35,29 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
 
   const access = useMemo(() => getModuleAccess(user), [user]);
   const shared = isSharedPath(pathname);
-  const moduleOfPath = moduleForPath(pathname);
-
-  // Remember the last REAL (non-shared) module the user was in, so a GLOBAL/shared
-  // page (My Tasks, Profile) KEEPS that module's sidebar instead of resetting.
-  // Never 'master' — its menu lives in the separate Master Dashboard layout, so
-  // choosing it here would leave THIS sidebar with only global items (the bug where
-  // a Founder's whole module menu vanished on /dashboard/my-tasks). The ref persists
-  // because app/dashboard/layout.tsx keeps this layout mounted across navigations.
-  const lastModuleRef = useRef<TopModule>('development');
-  useEffect(() => {
-    if (!shared && moduleOfPath !== 'master') lastModuleRef.current = moduleOfPath;
-  }, [shared, moduleOfPath]);
-
-  // On a shared/global route: keep the module the user came from (if it's a
-  // menu-bearing module they can access); else fall back to their first non-master
-  // module, then development. On a normal route: the module that owns the path.
-  const currentModule = useMemo<TopModule>(() => {
-    if (!shared) return moduleOfPath;
-    const DASH_MODULES: TopModule[] = ['development', 'sales', 'user', 'hr', 'finance'];
-    const last = lastModuleRef.current;
-    if (last !== 'master' && access[last]) return last;
-    return DASH_MODULES.find((m) => access[m]) ?? 'development';
-  }, [shared, access, moduleOfPath]);
+  // On shared routes (profile, change-password) fall back to the user's primary
+  // module so the sidebar still shows a coherent, single-module menu.
+  const currentModule = useMemo(
+    () => (shared ? (primaryModule(access) ?? 'development') : moduleForPath(pathname)),
+    [shared, access, pathname],
+  );
 
   // Route guard (UI layer; APIs are independently permission-checked) — purely
   // permission-driven, no module-specific special-casing:
   //   1. module isolation — user must have access to the module that owns the route, AND
   //   2. STRICT per-page permission — user must hold the page's required permission.
-  const isSelfService = useMemo(() => {
-    return hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']);
-  }, [hasAnyPermission]);
-
+  const moduleOfPath = moduleForPath(pathname);
   const requiredPerms = permissionsForPath(pathname);
   const permitted = requiredPerms.length === 0 || isSuperAdmin || hasAnyPermission(requiredPerms);
   const allowed = shared || (access[moduleOfPath] && permitted);
+
+  // Leave-only SELF-SERVICE employee: holds hr.leave.self but NOT hr.view /
+  // hr.dashboard.view. Their HR sidebar is trimmed to just "Leave" (applied
+  // per-item in isItemVisible). Memoised once and reused — never recomputed inline.
+  const isSelfService = useMemo(
+    () => hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']),
+    [hasAnyPermission],
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -87,8 +75,10 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
   // A single sidebar item is visible when: correct module + module access + the
   // item's specific permission (SuperAdmin/Admin bypass via usePermissions).
   const isItemVisible = useCallback((item: SidebarMenuItem): boolean => {
-    const isUserSelfService = hasAnyPermission(['hr.leave.self']) && !hasAnyPermission(['hr.view', 'hr.dashboard.view']);
-    if (isUserSelfService) {
+    // Leave-only self-service employees see ONLY the HR "Leave" item — and only
+    // while inside the HR module, so this restriction can never blank out another
+    // module's sidebar (defence-in-depth; getModuleAccess already confines them to HR).
+    if (isSelfService && currentModule === 'hr') {
       return item.href === '/dashboard/hr/leave';
     }
     // Global items (e.g. My Tasks) skip module-access but STILL honor their own
@@ -101,7 +91,7 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
     if (!canAccessModule(item.module)) return false;
     const perms = itemPermissions(item);
     return perms.length === 0 || hasAnyPermission(perms);
-  }, [canAccessModule, hasAnyPermission]);
+  }, [canAccessModule, hasAnyPermission, isSelfService, currentModule]);
 
   /**
    * Sidebar items = items of the CURRENT module only, permission-filtered. A

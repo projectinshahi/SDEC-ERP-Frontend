@@ -3,6 +3,7 @@
 import React from 'react';
 import { Pencil, Trash2, CheckCircle2, Inbox, FileText } from 'lucide-react';
 import { PayrollRecord } from '@/lib/hr/payroll.types';
+import { money, dayFmt } from '@/lib/hr/payrollFormat';
 
 interface PayrollTableProps {
   records: PayrollRecord[];
@@ -38,9 +39,9 @@ export function PayrollTable({
               <th className="px-6 py-4">Employee</th>
               <th className="px-6 py-4">Designation</th>
               <th className="px-6 py-4">Month</th>
-              <th className="px-6 py-4 text-right">Basic Salary</th>
-              <th className="px-6 py-4 text-right">Bonus</th>
-              <th className="px-6 py-4 text-right">Deduction</th>
+              <th className="px-6 py-4 text-center">Worked / Working Days</th>
+              <th className="px-6 py-4 text-right">Gross Salary</th>
+              <th className="px-6 py-4 text-right">Total Deductions</th>
               <th className="px-6 py-4 text-right font-black">Net Salary</th>
               <th className="px-6 py-4 text-center">Status</th>
               <th className="px-6 py-4 text-center">Actions</th>
@@ -70,24 +71,26 @@ export function PayrollTable({
                   {record.month}
                 </td>
 
-                {/* Basic Salary */}
+                {/* Worked / Office Working Days (legacy rows have no snapshot) */}
+                <td className="px-6 py-4.5 text-center font-mono tabular-nums text-gray-550 dark:text-gray-400">
+                  {record.officeWorkingDays > 0
+                    ? `${dayFmt(record.workedDays)} / ${dayFmt(record.officeWorkingDays)}`
+                    : '—'}
+                </td>
+
+                {/* Gross Salary */}
                 <td className="px-6 py-4.5 text-right font-mono tabular-nums text-gray-550 dark:text-gray-400">
-                  ₹{record.basicSalary.toLocaleString('en-IN')}
+                  {record.officeWorkingDays > 0 ? money(record.gross) : '—'}
                 </td>
 
-                {/* Bonus */}
-                <td className="px-6 py-4.5 text-right font-mono tabular-nums text-emerald-650 dark:text-emerald-400">
-                  {record.bonus > 0 ? `+₹${record.bonus.toLocaleString('en-IN')}` : '—'}
-                </td>
-
-                {/* Deduction */}
+                {/* Total Deductions (fall back to legacy flat deduction) */}
                 <td className="px-6 py-4.5 text-right font-mono tabular-nums text-rose-650 dark:text-rose-400">
-                  {record.deduction > 0 ? `-₹${record.deduction.toLocaleString('en-IN')}` : '—'}
+                  {money(record.officeWorkingDays > 0 ? record.totalDeductions : record.deduction)}
                 </td>
 
                 {/* Net Salary */}
                 <td className="px-6 py-4.5 text-right font-bold font-mono tabular-nums text-gray-905 dark:text-white">
-                  ₹{record.netSalary.toLocaleString('en-IN')}
+                  {money(record.netSalary)}
                 </td>
 
                 {/* Status Badge */}
@@ -129,14 +132,26 @@ export function PayrollTable({
                       <FileText size={13.5} />
                     </button>
 
-                    {/* Edit Action */}
-                    <button
-                      onClick={() => onEdit(record)}
-                      title="Edit record"
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                    >
-                      <Pencil size={13} />
-                    </button>
+                    {/* Edit Action — disabled for legacy rows (no attendance snapshot):
+                        editing would recompute Gross/Net against 0 working days and
+                        corrupt the record. Delete + regenerate instead. */}
+                    {record.officeWorkingDays > 0 ? (
+                      <button
+                        onClick={() => onEdit(record)}
+                        title="Edit record"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        title="Legacy record — delete and regenerate to edit under the attendance-based model"
+                        className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 cursor-not-allowed"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    )}
 
                     {/* Delete Action */}
                     <button

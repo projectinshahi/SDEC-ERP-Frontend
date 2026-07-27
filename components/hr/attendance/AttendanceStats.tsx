@@ -58,7 +58,7 @@ export function AttendanceStatsRow({ stats }: AttendanceStatsProps) {
     {
       label: 'Late Arrivals',
       value: stats.lateArrivals,
-      subtitle: 'After 9:15 AM',
+      subtitle: 'After 10:00 AM',
       icon: Clock,
       colorClass: 'amber',
       bgClass: 'bg-amber-50 dark:bg-amber-950/20',

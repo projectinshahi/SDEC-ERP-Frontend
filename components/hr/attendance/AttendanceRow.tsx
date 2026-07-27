@@ -3,6 +3,7 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
 import { AttendanceRecord } from '@/lib/hr/attendance.types';
+import { attendanceBadges } from '@/lib/hr/attendanceStatus';
 import { AttendanceStatusBadge } from './AttendanceStatusBadge';
 
 // ── Internal punch time cell ─────────────────────────────────────────────────
@@ -110,9 +111,14 @@ export function AttendanceRow({ record, isSelected, onSelect, actionMenu }: Atte
         )}
       </td>
 
-      {/* Status */}
+      {/* Status — leave/absent keep a single badge; a working day may show
+          morning lateness and/or late-after-lunch (both when both apply). */}
       <td className="py-4 px-4">
-        <AttendanceStatusBadge status={record.status} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          {attendanceBadges(record).map((b, i) => (
+            <AttendanceStatusBadge key={i} status={b.status} label={b.label} />
+          ))}
+        </div>
       </td>
 
       {/* HR Note */}

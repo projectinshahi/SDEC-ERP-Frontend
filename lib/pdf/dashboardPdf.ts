@@ -19,7 +19,14 @@
  */
 
 export interface ReportKpi { label: string; value: string | number }
-export interface ReportTable { title: string; columns: string[]; rows: (string | number)[][]; note?: string }
+export interface ReportTable {
+  title: string;
+  columns: string[];
+  rows: (string | number)[][];
+  note?: string;
+  /** Optional per-column alignment (index-matched to `columns`); omit ⇒ left. */
+  align?: ('left' | 'right')[];
+}
 export interface ReportChartImage {
   title: string;
   dataUrl: string;
@@ -189,9 +196,10 @@ function buildReportHtml(report: DashboardReport, filename: string): string {
   const tablesHtml = (report.tables || [])
     .filter((t) => t.rows.length > 0)
     .map((t) => {
-      const head = t.columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('');
+      const alignCls = (i: number) => (t.align?.[i] === 'right' ? ' class="r"' : '');
+      const head = t.columns.map((c, i) => `<th${alignCls(i)}>${escapeHtml(c)}</th>`).join('');
       const body = t.rows
-        .map((r) => `<tr>${r.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
+        .map((r) => `<tr>${r.map((cell, i) => `<td${alignCls(i)}>${escapeHtml(cell)}</td>`).join('')}</tr>`)
         .join('');
       return `<h2 class="section">${escapeHtml(t.title)}</h2>${t.note ? `<p class="note">${escapeHtml(t.note)}</p>` : ''}<div class="tbl-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
     })
@@ -244,6 +252,7 @@ function buildReportHtml(report: DashboardReport, filename: string): string {
   thead { display: table-header-group; }
   th { background: #f1f5f9; color: #334155; font-size: 9px; text-transform: uppercase; letter-spacing: .4px; text-align: left; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; }
   td { padding: 5px 8px; border-bottom: 1px solid #eef2f7; font-size: 10px; color: #334155; }
+  th.r, td.r { text-align: right; }
   tr { page-break-inside: avoid; }
   .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8.5px; color: #94a3b8; padding: 4px 2px; border-top: 1px solid #e2e8f0; }
 </style></head>

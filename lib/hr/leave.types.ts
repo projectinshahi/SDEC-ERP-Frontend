@@ -6,6 +6,9 @@ export type LeaveType = 'Casual Leave' | 'Sick Leave' | 'Paid Leave' | 'Emergenc
 
 export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
 
+/** Half-day session (separate from the leave category). null = full day. */
+export type HalfPeriod = 'first_half' | 'second_half';
+
 export interface LeaveRequest {
   id: string;
   employeeId: string;
@@ -17,6 +20,10 @@ export interface LeaveRequest {
   days: number;
   reason: string;
   status: LeaveStatus;
+  /** Half-day session; null/undefined = full day (or legacy unknown half). */
+  halfPeriod?: HalfPeriod | null;
+  /** True when the record is a half-day leave (structured or legacy suffix). */
+  isHalfDay?: boolean;
   appliedDate: string; // "2026-06-20"
   attachmentName?: string;
   approvedBy?: string;

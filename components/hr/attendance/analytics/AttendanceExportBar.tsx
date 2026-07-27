@@ -39,8 +39,9 @@ export function AttendanceExportBar({
   filters: AnalyticsBaseFilters;
   reportQuery: ReportQuery;
   /** Client-side dashboard PDF (reuses ExportPdfButton + dashboardPdf). Omitted
-   *  while the dashboard data hasn't loaded, so the PDF is never empty. */
-  buildPdfReport?: () => DashboardReport;
+   *  while the dashboard data hasn't loaded, so the PDF is never empty. May be
+   *  async (it fetches the full employee report across all pages). */
+  buildPdfReport?: () => DashboardReport | Promise<DashboardReport>;
 }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState<null | 'xlsx' | ExportTableType>(null);

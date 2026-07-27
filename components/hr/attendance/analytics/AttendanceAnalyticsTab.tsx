@@ -9,6 +9,7 @@ import {
   fetchStatusDistribution,
   fetchAttendanceTrend,
   fetchDepartmentRanking,
+  fetchEmployeeReport,
   type AnalyticsBaseFilters,
 } from '@/lib/api/hrAnalytics';
 import type {
@@ -105,9 +106,11 @@ export function AttendanceAnalyticsTab({ employees }: { employees: EmployeeOptio
     load();
   }, [load]);
 
-  // Client-side dashboard PDF from in-memory data. Charts (Trend / Status
-  // Distribution / Department Ranking) are auto-captured by ExportPdfButton.
-  const buildPdfReport = useCallback((): DashboardReport => {
+  // Client-side dashboard PDF from in-memory data + the full Employee Report.
+  // Charts (Trend / Status Distribution / Department Ranking) are auto-captured
+  // by ExportPdfButton; the employee table is fetched across ALL pages so nothing
+  // is truncated, using the table's live filters + sort + search.
+  const buildPdfReport = useCallback(async (): Promise<DashboardReport> => {
     const deptLabel = department !== 'all' ? department : 'All Departments';
     const empLabel =
       employeeId !== 'all'
@@ -119,6 +122,7 @@ export function AttendanceAnalyticsTab({ employees }: { employees: EmployeeOptio
       { label: 'Department', value: deptLabel },
       { label: 'Employee', value: empLabel },
     ];
+    if (compare) filters.push({ label: 'Compare Period', value: 'Previous period' });
 
     const kpis: ReportKpi[] = summary
       ? [
@@ -129,6 +133,7 @@ export function AttendanceAnalyticsTab({ employees }: { employees: EmployeeOptio
           { label: 'Half Day Leave', value: summary.halfDay },
           { label: 'Full Day Leave', value: summary.fullDayLeave },
           { label: 'Attendance %', value: `${summary.attendancePct}%` },
+          { label: 'Working Days', value: summary.workingDays },
         ]
       : [];
 
@@ -153,6 +158,49 @@ export function AttendanceAnalyticsTab({ employees }: { employees: EmployeeOptio
       });
     }
 
+    // Section 3 — full Employee Attendance Report (every page). Server-paginated,
+    // so page through totalPages; matches the on-screen table's sort/search/filters.
+    const REQ_PAGE = 500;
+    const first = await fetchEmployeeReport({
+      ...baseFilters, page: 1, pageSize: REQ_PAGE,
+      sort: reportQuery.sort, order: reportQuery.order,
+      search: reportQuery.search || undefined,
+    });
+    const empRows = [...first.rows];
+    const effPageSize = first.pagination.pageSize || REQ_PAGE;
+    for (let p = 2; p <= first.pagination.totalPages; p++) {
+      const next = await fetchEmployeeReport({
+        ...baseFilters, page: p, pageSize: effPageSize,
+        sort: reportQuery.sort, order: reportQuery.order,
+        search: reportQuery.search || undefined,
+      });
+      empRows.push(...next.rows);
+    }
+    if (empRows.length) {
+      const rows: (string | number)[][] = empRows.map((r) => [
+        `${r.name} (${r.employeeCode})`,
+        r.department,
+        r.workingDays, r.present, r.absent, r.late, r.halfDay, r.fullDayLeave,
+        `${r.attendancePct}%`, `${r.absenteeismPct}%`, `${r.punctualityPct}%`,
+        r.lopDays, r.payableDays,
+        r.perfectAttendance ? 'Perfect' : r.atRisk ? 'At Risk' : '—',
+      ]);
+      const t = first.totals;
+      rows.push([
+        `Totals (${t.employees})`, '',
+        t.workingDays, t.present, t.absent, t.late, t.halfDay, t.fullDayLeave,
+        `${t.attendancePct}%`, `${t.absenteeismPct}%`, `${t.punctualityPct}%`,
+        t.lopDays, t.payableDays, '',
+      ]);
+      tables.push({
+        title: 'Employee Attendance Report',
+        columns: ['Employee', 'Department', 'Working Days', 'Present', 'Absent', 'Late', 'Half Day', 'Full Leave', 'Attendance %', 'Absent %', 'Punctual %', 'LOP', 'Payable Days', 'Flag'],
+        align: ['left', 'left', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'left'],
+        rows,
+        note: '*LOP / Payable — Estimated for Payroll Reference',
+      });
+    }
+
     return {
       dashboardName: 'Attendance Analytics',
       fileBase: 'Attendance_Analytics',
@@ -161,7 +209,7 @@ export function AttendanceAnalyticsTab({ employees }: { employees: EmployeeOptio
       kpis,
       tables,
     };
-  }, [summary, distribution, dept, department, employeeId, employees, dateRange, user]);
+  }, [summary, distribution, dept, department, employeeId, employees, dateRange, user, baseFilters, reportQuery, compare]);
 
   return (
     <div className="space-y-6">

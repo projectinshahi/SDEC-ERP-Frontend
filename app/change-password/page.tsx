@@ -9,6 +9,7 @@ import { Button } from '@/components/Button';
 import { Lock, Eye, EyeOff, Loader2, KeyRound } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+
 function getPasswordStrength(password: string): { score: number; label: string; color: string } {
   if (!password) return { score: 0, label: '', color: '' };
   let score = 0;

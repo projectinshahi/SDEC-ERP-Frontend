@@ -1,157 +1,161 @@
 import { jsPDF } from 'jspdf';
 import ExcelJS from 'exceljs';
 import { PayrollRecord } from './payroll.types';
+import { amount, round2, dayFmt } from './payrollFormat';
 
 /**
- * Generate a formal computer-generated PDF Payslip.
+ * Generate a formal computer-generated PDF Payslip with the full snapshot
+ * breakdown. Legacy records (no attendance snapshot) fall back to the simple view.
  */
 export function generatePayslipPdf(record: PayrollRecord) {
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const isLegacy = record.officeWorkingDays <= 0;
 
-  // Top header color block
-  doc.setFillColor(79, 70, 229); // Indigo
+  // Header block
+  doc.setFillColor(79, 70, 229);
   doc.rect(0, 0, 210, 36, 'F');
-
-  // Title
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.text('Shahi Solutions Pvt Ltd', 15, 16);
-
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text('HR & Payroll Department — Employee Payslip', 15, 24);
-  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 155, 16);
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 150, 16);
 
-  // Profile Details Header
-  doc.setTextColor(31, 41, 55); // Dark Slate
+  // Profile
+  doc.setTextColor(31, 41, 55);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('EMPLOYEE PROFILE & STATEMENT', 15, 52);
+  doc.text('EMPLOYEE PROFILE & STATEMENT', 15, 50);
+  doc.setDrawColor(229, 231, 235);
+  doc.line(15, 53, 195, 53);
 
-  doc.setDrawColor(229, 231, 235); // Gray-200
-  doc.line(15, 55, 195, 55);
-
-  // Profile metadata fields
-  doc.setFont('helvetica', 'normal');
+  const profile: [string, string][] = [
+    ['Employee Code:', record.employeeCode],
+    ['Employee Name:', record.name],
+    ['Designation:', record.role],
+    ['Salary Month:', record.month],
+    ['Payment Status:', record.status],
+  ];
   doc.setFontSize(9.5);
-  
-  doc.text('Employee Code:', 15, 64);
-  doc.setFont('helvetica', 'bold');
-  doc.text(record.employeeCode, 52, 64);
+  let y = 61;
+  profile.forEach(([k, v]) => {
+    doc.setFont('helvetica', 'normal');
+    doc.text(k, 15, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(v), 52, y);
+    y += 7;
+  });
 
-  doc.setFont('helvetica', 'normal');
-  doc.text('Employee Name:', 15, 72);
-  doc.setFont('helvetica', 'bold');
-  doc.text(record.name, 52, 72);
+  // Line renderer for the computation section
+  const section = (title: string) => {
+    y += 3;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(31, 41, 55);
+    doc.text(title, 15, y);
+    doc.setDrawColor(229, 231, 235);
+    doc.line(15, y + 2, 195, y + 2);
+    y += 8;
+  };
+  const row = (label: string, value: string, bold = false) => {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(bold ? 31 : 55, bold ? 41 : 65, bold ? 55 : 81);
+    doc.text(label, 20, y);
+    doc.text(value, 150, y);
+    y += 7;
+  };
 
-  doc.setFont('helvetica', 'normal');
-  doc.text('Designation:', 15, 80);
-  doc.setFont('helvetica', 'bold');
-  doc.text(record.role, 52, 80);
-
-  doc.setFont('helvetica', 'normal');
-  doc.text('Salary Month:', 15, 88);
-  doc.setFont('helvetica', 'bold');
-  doc.text(record.month, 52, 88);
-
-  doc.setFont('helvetica', 'normal');
-  doc.text('Payment Status:', 15, 96);
-  doc.setFont('helvetica', 'bold');
-  if (record.status === 'Paid') {
-    doc.setTextColor(16, 185, 129); // Emerald-500
+  if (isLegacy) {
+    section('SALARY COMPUTATION');
+    row('Basic Salary', `Rs. ${amount(record.basicSalary)}`);
+    row('Bonus & Allowances', `+ Rs. ${amount(record.bonus)}`);
+    row('Deductions', `- Rs. ${amount(record.deduction)}`);
   } else {
-    doc.setTextColor(245, 158, 11); // Amber-500
+    section('ATTENDANCE');
+    row('Calendar Days', dayFmt(record.calendarDays));
+    row('Office Working Days', dayFmt(record.officeWorkingDays));
+    row('Employee Worked Days', dayFmt(record.workedDays));
+    row('Loss Of Pay', dayFmt(record.lop));
+    row('Paid Leave Days / Unpaid Leave Days', `${dayFmt(record.paidLeaveDays)} / ${dayFmt(record.unpaidLeaveDays)}`);
+
+    section('EARNINGS');
+    row('Basic Salary', `Rs. ${amount(record.basicSalary)}`);
+    row('Dearness Allowance', `Rs. ${amount(record.da)}`);
+    row('Payable Basic Salary', `Rs. ${amount(record.payableBasic)}`);
+    row('Payable Dearness Allowance', `Rs. ${amount(record.payableDa)}`);
+    row('Gross Salary', `Rs. ${amount(record.gross)}`, true);
+
+    section('DEDUCTIONS');
+    row('Fine', `- Rs. ${amount(record.fine)}`);
+    row('Special Allowance', `- Rs. ${amount(record.specialAllowance)}`);
+    row('Employee State Insurance', `- Rs. ${amount(record.esi)}`);
+    row('Provident Fund', `- Rs. ${amount(record.pf)}`);
+    row('Total Deductions', `- Rs. ${amount(record.totalDeductions)}`, true);
+
+    section('ADDITIONS');
+    row('Bonus', `+ Rs. ${amount(record.bonus)}`);
+    row('Incentive', `+ Rs. ${amount(record.incentive)}`);
+    row('Arrears', `+ Rs. ${amount(record.arrears)}`);
   }
-  doc.text(record.status, 52, 96);
 
-  // Table Details
-  doc.setTextColor(31, 41, 55);
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SALARY COMPUTATION DETAILS', 15, 114);
-  doc.line(15, 117, 195, 117);
-
-  // Headers
-  doc.setFillColor(249, 250, 251); // Gray-50
-  doc.rect(15, 122, 180, 8, 'F');
-  
-  doc.setFontSize(9);
-  doc.setTextColor(107, 114, 128); // Gray-500
-  doc.text('Earnings / Deductions Description', 20, 127);
-  doc.text('Amount (INR)', 155, 127);
-
-  // Values
-  doc.setTextColor(31, 41, 55);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-
-  doc.text('Basic Salary (Standard Base)', 20, 138);
-  doc.text(`Rs. ${record.basicSalary.toLocaleString('en-IN')}`, 155, 138);
-
-  doc.text('Bonus & Allowances', 20, 146);
-  doc.text(`+ Rs. ${record.bonus.toLocaleString('en-IN')}`, 155, 146);
-
-  doc.text('Deductions & Losses', 20, 154);
-  doc.text(`- Rs. ${record.deduction.toLocaleString('en-IN')}`, 155, 154);
-
+  // Net
+  y += 2;
   doc.setDrawColor(243, 244, 246);
-  doc.line(15, 160, 195, 160);
-
-  // Net Salary
+  doc.line(15, y, 195, y);
+  y += 7;
   doc.setFont('helvetica', 'bold');
-  doc.text('Net Take-Home Salary', 20, 168);
-  doc.setTextColor(79, 70, 229); // Indigo
-  doc.setFontSize(10.5);
-  doc.text(`Rs. ${record.netSalary.toLocaleString('en-IN')}`, 155, 168);
+  doc.setFontSize(11);
+  doc.setTextColor(31, 41, 55);
+  doc.text('Net Take-Home Salary', 20, y);
+  doc.setTextColor(79, 70, 229);
+  doc.text(`Rs. ${amount(record.netSalary)}`, 150, y);
 
-  // Bottom note
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7.5);
-  doc.setTextColor(156, 163, 175); // Gray-400
-  doc.text('Note: This is a system-generated electronic payslip record and does not require a signature.', 15, 255);
+  doc.setTextColor(156, 163, 175);
+  doc.text('Note: This is a system-generated electronic payslip record and does not require a signature.', 15, 285);
 
   doc.save(`payslip_${record.employeeCode}_${record.month.replace(' ', '_')}.pdf`);
 }
 
-/**
- * Export records as CSV document.
- */
+/** Full snapshot columns shared by CSV + Excel. */
+const FULL_COLUMNS: { header: string; get: (r: PayrollRecord) => string | number }[] = [
+  { header: 'Employee Code', get: (r) => r.employeeCode },
+  { header: 'Name', get: (r) => r.name },
+  { header: 'Designation', get: (r) => r.role },
+  { header: 'Month', get: (r) => r.month },
+  { header: 'Office Working Days', get: (r) => r.officeWorkingDays },
+  { header: 'Worked Days', get: (r) => r.workedDays },
+  { header: 'Loss Of Pay', get: (r) => r.lop },
+  { header: 'Basic Salary', get: (r) => round2(r.basicSalary) },
+  { header: 'Dearness Allowance', get: (r) => round2(r.da) },
+  { header: 'Payable Basic', get: (r) => round2(r.payableBasic) },
+  { header: 'Payable DA', get: (r) => round2(r.payableDa) },
+  { header: 'Gross Salary', get: (r) => round2(r.gross) },
+  { header: 'Fine', get: (r) => round2(r.fine) },
+  { header: 'Special Allowance', get: (r) => round2(r.specialAllowance) },
+  { header: 'ESI', get: (r) => round2(r.esi) },
+  { header: 'Provident Fund', get: (r) => round2(r.pf) },
+  { header: 'Total Deductions', get: (r) => round2(r.officeWorkingDays > 0 ? r.totalDeductions : r.deduction) },
+  { header: 'Bonus', get: (r) => round2(r.bonus) },
+  { header: 'Incentive', get: (r) => round2(r.incentive) },
+  { header: 'Arrears', get: (r) => round2(r.arrears) },
+  { header: 'Net Salary', get: (r) => round2(r.netSalary) },
+  { header: 'Status', get: (r) => r.status },
+];
+
+/** Export records as CSV. */
 export function exportToCsv(records: PayrollRecord[]) {
   if (records.length === 0) return;
-
-  const headers = [
-    'Employee Code',
-    'Name',
-    'Designation',
-    'Month',
-    'Basic Salary',
-    'Bonus',
-    'Deduction',
-    'Net Salary',
-    'Status',
+  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const rows = [
+    FULL_COLUMNS.map((c) => c.header).join(','),
+    ...records.map((r) => FULL_COLUMNS.map((c) => esc(c.get(r))).join(',')),
   ];
-
-  const csvRows = [
-    headers.join(','),
-    ...records.map(r => [
-      `"${r.employeeCode}"`,
-      `"${r.name.replace(/"/g, '""')}"`,
-      `"${r.role.replace(/"/g, '""')}"`,
-      `"${r.month}"`,
-      r.basicSalary,
-      r.bonus,
-      r.deduction,
-      r.netSalary,
-      `"${r.status}"`,
-    ].join(',')),
-  ];
-
-  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
@@ -162,30 +166,17 @@ export function exportToCsv(records: PayrollRecord[]) {
   document.body.removeChild(link);
 }
 
-/**
- * Export records as Excel document using exceljs.
- */
+/** Export records as Excel via exceljs. */
 export async function exportToExcel(records: PayrollRecord[]) {
   if (records.length === 0) return;
-
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Payroll List');
-
-  worksheet.columns = [
-    { header: 'Employee Code', key: 'employeeCode', width: 15 },
-    { header: 'Name', key: 'name', width: 25 },
-    { header: 'Designation', key: 'role', width: 25 },
-    { header: 'Month', key: 'month', width: 15 },
-    { header: 'Basic Salary', key: 'basicSalary', width: 15 },
-    { header: 'Bonus', key: 'bonus', width: 12 },
-    { header: 'Deduction', key: 'deduction', width: 12 },
-    { header: 'Net Salary', key: 'netSalary', width: 15 },
-    { header: 'Status', key: 'status', width: 12 },
-  ];
-
-  records.forEach(r => worksheet.addRow(r));
-
-  // Style header row
+  worksheet.columns = FULL_COLUMNS.map((c) => ({ header: c.header, key: c.header, width: 16 }));
+  records.forEach((r) => {
+    const row: Record<string, string | number> = {};
+    FULL_COLUMNS.forEach((c) => { row[c.header] = c.get(r); });
+    worksheet.addRow(row);
+  });
   worksheet.getRow(1).font = { bold: true };
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -198,17 +189,10 @@ export async function exportToExcel(records: PayrollRecord[]) {
   window.URL.revokeObjectURL(url);
 }
 
-/**
- * Export records tabular report as PDF using jsPDF.
- */
+/** Export a compact tabular PDF report (high-value columns; full detail lives in payslips/Excel). */
 export function exportToPdf(records: PayrollRecord[]) {
   if (records.length === 0) return;
-
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: 'a4',
-  });
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
@@ -217,51 +201,35 @@ export function exportToPdf(records: PayrollRecord[]) {
   doc.setFontSize(8.5);
   doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 15, 20);
 
-  // Table Headers
-  doc.setFillColor(243, 244, 246);
-  doc.rect(15, 25, 267, 8, 'F');
-  
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 110, 120);
-  doc.text('Emp Code', 20, 30.5);
-  doc.text('Name', 45, 30.5);
-  doc.text('Designation', 95, 30.5);
-  doc.text('Month', 150, 30.5);
-  doc.text('Basic (INR)', 180, 30.5);
-  doc.text('Bonus (INR)', 210, 30.5);
-  doc.text('Deduction', 235, 30.5);
-  doc.text('Net Salary', 260, 30.5);
+  const cols: [string, number][] = [
+    ['Emp Code', 20], ['Name', 45], ['Month', 95], ['Worked/OWD', 130],
+    ['Gross', 165], ['Deductions', 205], ['Net Salary', 245], ['Status', 280],
+  ];
+  const header = () => {
+    doc.setFillColor(243, 244, 246);
+    doc.rect(15, 25, 267, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 110, 120);
+    cols.forEach(([label, x]) => doc.text(label, x, 30.5));
+    doc.setTextColor(30, 40, 50);
+    doc.setFont('helvetica', 'normal');
+  };
+  header();
 
-  doc.setTextColor(30, 40, 50);
-  doc.setFont('helvetica', 'normal');
   let y = 39;
-  records.forEach(r => {
-    if (y > 185) {
-      doc.addPage();
-      // Draw headers again
-      doc.setFillColor(243, 244, 246);
-      doc.rect(15, 25, 267, 8, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.text('Emp Code', 20, 30.5);
-      doc.text('Name', 45, 30.5);
-      doc.text('Designation', 95, 30.5);
-      doc.text('Month', 150, 30.5);
-      doc.text('Basic (INR)', 180, 30.5);
-      doc.text('Bonus (INR)', 210, 30.5);
-      doc.text('Deduction', 235, 30.5);
-      doc.text('Net Salary', 260, 30.5);
-      doc.setFont('helvetica', 'normal');
-      y = 39;
-    }
+  records.forEach((r) => {
+    if (y > 185) { doc.addPage(); header(); y = 39; }
+    const ded = r.officeWorkingDays > 0 ? r.totalDeductions : r.deduction;
+    const worked = r.officeWorkingDays > 0 ? `${dayFmt(r.workedDays)}/${dayFmt(r.officeWorkingDays)}` : '—';
     doc.text(r.employeeCode, 20, y);
-    doc.text(r.name.substring(0, 22), 45, y);
-    doc.text(r.role.substring(0, 22), 95, y);
-    doc.text(r.month, 150, y);
-    doc.text(r.basicSalary.toLocaleString('en-IN'), 180, y);
-    doc.text(r.bonus.toLocaleString('en-IN'), 210, y);
-    doc.text(r.deduction.toLocaleString('en-IN'), 235, y);
-    doc.text(r.netSalary.toLocaleString('en-IN'), 260, y);
+    doc.text(r.name.substring(0, 24), 45, y);
+    doc.text(r.month, 95, y);
+    doc.text(worked, 130, y);
+    doc.text(r.officeWorkingDays > 0 ? amount(r.gross) : '—', 165, y);
+    doc.text(amount(ded), 205, y);
+    doc.text(amount(r.netSalary), 245, y);
+    doc.text(r.status, 280, y);
     y += 8.5;
   });
 

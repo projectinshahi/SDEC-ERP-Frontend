@@ -8,6 +8,7 @@ import {
 import { Card, CardHeader, CardBody } from '@/components/Card';
 import { ApiEmployee } from '@/lib/api/hr';
 import { ApiAttendanceRecord } from '@/lib/api/hr-attendance';
+import { AttendanceTimePicker } from './AttendanceTimePicker';
 
 /* ── Time format helpers ──────────────────────────────────────────────────── */
 
@@ -93,6 +94,19 @@ const TIME_FIELDS = [
 
 const TODAY = new Date().toISOString().split('T')[0];
 
+/**
+ * Standard office schedule, in the 24h "HH:MM" form-state format. Pre-filled
+ * ONLY when ADDING a brand-new attendance entry (no existing record for the
+ * employee+date); every field stays fully editable. Never applied in edit mode.
+ * to12h() later converts these to "10:00 AM" / "01:00 PM" / "02:00 PM" / "05:30 PM".
+ */
+const DEFAULT_OFFICE_TIMES = {
+  checkIn: '10:00',
+  lunchOut: '13:00',
+  lunchIn: '14:00',
+  checkOut: '17:30',
+} as const;
+
 /* ── Component ───────────────────────────────────────────────────────────── */
 
 export function AttendanceFormPanel({
@@ -145,11 +159,22 @@ export function AttendanceFormPanel({
     const existing = allRecords.find(
       r => r.employee_id === employeeId && r.date?.split('T')[0] === date
     );
-    setCheckIn(to24h(existing?.check_in));
-    setLunchOut(to24h(existing?.lunch_out));
-    setLunchIn(to24h(existing?.lunch_in));
-    setCheckOut(to24h(existing?.check_out));
-    setNotes(existing?.notes ?? '');
+    if (existing) {
+      // Employee already has a record for this date — show the real punches so
+      // the Add form never silently overwrites saved data with office defaults.
+      setCheckIn(to24h(existing.check_in));
+      setLunchOut(to24h(existing.lunch_out));
+      setLunchIn(to24h(existing.lunch_in));
+      setCheckOut(to24h(existing.check_out));
+      setNotes(existing.notes ?? '');
+    } else {
+      // Brand-new entry → pre-fill the standard office schedule (editable).
+      setCheckIn(DEFAULT_OFFICE_TIMES.checkIn);
+      setLunchOut(DEFAULT_OFFICE_TIMES.lunchOut);
+      setLunchIn(DEFAULT_OFFICE_TIMES.lunchIn);
+      setCheckOut(DEFAULT_OFFICE_TIMES.checkOut);
+      setNotes('');
+    }
   }, [employeeId, date, allRecords, editRecord]);
 
   /* Seed first employee once list loads */
@@ -222,12 +247,10 @@ export function AttendanceFormPanel({
                   {values[key] && !isTimeDisabled ? `→ ${to12hDisplay(values[key])}` : ''}
                 </span>
               </label>
-              <input
-                type="time"
+              <AttendanceTimePicker
                 value={values[key]}
-                onChange={e => setters[key](e.target.value)}
+                onChange={val => setters[key](val)}
                 disabled={isTimeDisabled}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-800/60 disabled:cursor-not-allowed transition"
               />
             </div>
           ))}
