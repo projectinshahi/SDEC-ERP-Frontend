@@ -131,6 +131,11 @@ export default function SalesLeadsPage() {
   // nav button must respect it just like the sidebar item + page guard).
   const canViewAnalytics = hasPermission('sales.leads.analytics');
   const canExportReport = hasPermission('sales.leads.export');
+  // Seeing OTHER owners' opportunities is its own permission. Without it the
+  // All/My toggle is hidden, the Owner filter disappears from the panel, and the
+  // scope is pinned to self — the backend enforces the same rule, so this is
+  // affordance-hiding, not the security boundary.
+  const canViewAllLeads = hasPermission('sales.leads.view_all');
   
   const [isExporting, setIsExporting] = useState(false);
 
@@ -166,10 +171,12 @@ export default function SalesLeadsPage() {
       options?: { value: string; label: string }[]; placeholder?: string;
     }[];
   }[] = [
-    {
+    // Owner is only offered to users allowed to look beyond their own pipeline;
+    // for everyone else the whole group would be a one-option no-op.
+    ...(canViewAllLeads ? [{
       title: 'Ownership',
       fields: [{ label: 'Owner', value: ownerFilter, set: setOwnerFilter, options: ownerOptions }],
-    },
+    }] : []),
     {
       title: 'Pipeline',
       fields: [
@@ -271,9 +278,10 @@ export default function SalesLeadsPage() {
       }
       // Owner has no "unset" state: an explicit ?owner wins, otherwise the Pipeline
       // opens on MY Opportunities. Falls back to 'all' only if the user is unknown,
-      // where the backend's RBAC scoping still applies.
+      // where the backend's RBAC scoping still applies. Without view-all the ?owner
+      // param is ignored outright, so a hand-edited URL can't widen the scope.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOwnerFilter(p.get('owner') ?? (meId || 'all'));
+      setOwnerFilter(canViewAllLeads ? (p.get('owner') ?? (meId || 'all')) : (meId || 'all'));
       // Seed the applied term from the url so the restored search fetches ONCE.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setAppliedSearch(p.get('search') ?? '');
@@ -284,7 +292,7 @@ export default function SalesLeadsPage() {
     setRestored(true);
     // `persisted` closes over the current setters, which are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restored, authLoading, meId]);
+  }, [restored, authLoading, meId, canViewAllLeads]);
 
   // Mirror the live filter state back into the URL, so a refresh (or a shared link)
   // reproduces exactly this view. Defaults are removed, so Clear Filters cleans the
@@ -737,9 +745,10 @@ export default function SalesLeadsPage() {
             </div>
             {/* Scope switch — the Pipeline's most-used control, so it sits in the
                 toolbar rather than inside the panel. */}
-            {/* Only meaningful once we know who "my" is — otherwise both options
-                would carry the same value and light up together. */}
-            <div className={classNames('flex rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5', !meId && 'hidden')}>
+            {/* Gated on sales.leads.view_all — without it there is nothing to switch
+                to. Also needs to know who "my" is, else both options would carry the
+                same value and light up together. */}
+            <div className={classNames('flex rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5', (!meId || !canViewAllLeads) && 'hidden')}>
               {[
                 { value: meId, label: 'My Leads' },
                 { value: 'all', label: 'All Leads' },
