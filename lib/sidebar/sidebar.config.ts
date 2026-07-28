@@ -26,14 +26,6 @@ export interface SidebarMenuItem {
    */
   pinTop?: boolean;
   /**
-   * Modules whose sidebar should NOT show this GLOBAL item, because that module
-   * owns an equivalent workspace of its own. Without it two entries share a label
-   * and the module-specific one loses (CR-16: "My Tasks" inside Sales opened the
-   * standalone workspace instead of the user's Sales tasks).
-   * RENDER-ONLY — the route stays reachable from every other module and by URL.
-   */
-  hideInModules?: string[];
-  /**
    * When true, `permissionsForPath` matches this item ONLY on an exact pathname
    * (not as a prefix). Needed for "/dashboard": its href is a prefix of every
    * other dashboard route, so without this it would impose its permission on all
@@ -178,9 +170,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     permission: ['sales.pipeline.view'],
   },
   {
-    // Named "My Tasks" because the page opens on the user's OWN tasks (scope='mine');
-    // Team Tasks below is the team-wide view. Inside Sales this is THE My Tasks entry.
-    label: 'My Tasks',
+    label: 'Sales Tasks',
     href: '/dashboard/sales/tasks',
     icon: 'CheckSquare',
     module: 'sales',
@@ -515,10 +505,6 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: null,
     global: true,
     pinTop: true,
-    // Sales owns "My Tasks" (its Sales Tasks workspace already opens on the user's
-    // own tasks), so this cross-cutting one would duplicate the label there and
-    // pull the user out of the Sales shell. Still reachable everywhere else.
-    hideInModules: ['sales'],
   },
   {
     // Notice — a STANDALONE top-level module, peer of My Tasks (NOT nested in it or

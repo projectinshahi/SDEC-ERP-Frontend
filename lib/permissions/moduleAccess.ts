@@ -30,6 +30,21 @@ export const MODULE_LABELS: Record<TopModule, string> = {
   finance: 'Finance',
 };
 
+/**
+ * Each module's own dashboard — where "Dashboard"/"Home" navigation inside that
+ * module must land. `/dashboard` is the DEVELOPMENT dashboard, so linking to it
+ * from a Sales page drops the user into another module (the bug this fixes).
+ * Pair with `moduleForPath` to resolve it from the current route.
+ */
+export const MODULE_HOME: Record<TopModule, string> = {
+  development: '/dashboard',
+  sales: '/dashboard/sales',
+  user: '/dashboard/user-management',
+  master: '/master-dashboard',
+  hr: '/dashboard/hr',
+  finance: '/dashboard/finance',
+};
+
 /** Lower-cases and strips spaces/underscores/hyphens so "Super Admin" === "superadmin". */
 export function normalizeRole(value?: string | null): string {
   return (value || '').toLowerCase().replace(/[\s_-]/g, '');
