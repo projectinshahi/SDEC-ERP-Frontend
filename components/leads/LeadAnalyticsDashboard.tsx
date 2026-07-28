@@ -133,7 +133,7 @@ export function LeadAnalyticsDashboard() {
 
       {/* Lead temperature distribution */}
       <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Lead Temperature Distribution</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Lead Status Distribution</h3>
         {isLoading ? (
           <p className="text-sm text-gray-500">Loading…</p>
         ) : temperatureData.length === 0 ? (

@@ -80,6 +80,8 @@ export interface CreateLeadPayload {
   /** Optional link to an existing normalized Company (CRM account). */
   companyId?: number;
   priority?: string;
+  /** Customer district (CR-01) — optional. */
+  district?: string;
   /** Manual lead classification (COLD / WARM / HOT); defaults to COLD. */
   temperature?: LeadTemperature;
   /** Free-text notes — stored as an editable lead note. */

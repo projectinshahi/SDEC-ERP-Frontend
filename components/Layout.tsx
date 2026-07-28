@@ -131,7 +131,11 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
     // BOTTOM. This changes ONLY the render order: SIDEBAR_ITEMS array order (which
     // drives firstAccessibleHref / the landing page) is deliberately untouched, so
     // opening a module still lands on its Dashboard, never My Tasks.
-    const globals = SIDEBAR_ITEMS.filter((i) => i.global && isItemVisible(i));
+    // A module that owns an equivalent workspace opts out via `hideInModules`, so
+    // its own entry isn't shadowed by a same-named global.
+    const globals = SIDEBAR_ITEMS.filter(
+      (i) => i.global && isItemVisible(i) && !(currentModule && i.hideInModules?.includes(currentModule)),
+    );
     const topGlobals = globals.filter((g) => g.pinTop);
     const bottomGlobals = globals.filter((g) => !g.pinTop);
     if (topGlobals.length) {

@@ -12,6 +12,7 @@ import { useToast } from '@/lib/hooks/useToast';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { classNames } from '@/lib/utils';
 import { TEMPERATURE_OPTIONS, type LeadTemperature } from '@/lib/data/leadTemperature';
+import { DISTRICT_OPTIONS } from '@/lib/data/districts';
 import {
   sanitizeText,
   validateName,
@@ -20,6 +21,7 @@ import {
   validateEmail,
   validatePhone,
   validateAmount,
+  focusFirstInvalid,
 } from '@/lib/validation';
 import {
   createManualLead,
@@ -104,6 +106,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     leadValue: '',
     priority: 'medium',
     temperature: 'COLD',
+    district: '',
     referralName: '',
     // ── Contact Information ──
     name: '',
@@ -238,7 +241,12 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setSubmitError('');
-    if (!validate()) return;
+    // Blocked submits used to bail silently — in a form this long the offending
+    // field is usually scrolled out of sight. Take the user to it.
+    if (!validate()) {
+      focusFirstInvalid(ev.currentTarget as HTMLElement);
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -264,6 +272,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
         companyId,
         priority: form.priority,
         temperature: form.temperature as LeadTemperature,
+        district: form.district || undefined,
         notes: form.notes.trim() || undefined,
         referralName: form.source === 'referral' ? sanitizeText(form.referralName) || undefined : undefined,
       };
@@ -307,7 +316,13 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
               Lead Source <span className="text-red-500 font-bold">*</span>
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {/* aria-invalid + tabIndex let focusFirstInvalid() find and scroll to this
+                hand-rolled tile group, exactly like the shared field components. */}
+            <div
+              className="grid grid-cols-2 sm:grid-cols-3 gap-3"
+              aria-invalid={errors.source ? 'true' : 'false'}
+              tabIndex={-1}
+            >
               {SOURCE_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const active = form.source === opt.value;
@@ -344,7 +359,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               <InputField label="Referral Name" id="opp-referral" required value={form.referralName} onChange={(v) => set('referralName', v)} error={errors.referralName} placeholder="Who referred this?" />
             )}
             <SelectField label="Priority" id="opp-priority" value={form.priority} onChange={(v) => set('priority', v)} options={PRIORITY_OPTIONS} />
-            <SelectField label="Lead Temperature" id="opp-temperature" value={form.temperature} onChange={(v) => set('temperature', v)} options={TEMPERATURE_OPTIONS} required />
+            <SelectField label="Lead Status" id="opp-temperature" value={form.temperature} onChange={(v) => set('temperature', v)} options={TEMPERATURE_OPTIONS} required />
+            <SelectField label="District" id="opp-district" value={form.district} onChange={(v) => set('district', v)} placeholder="Select District" options={DISTRICT_OPTIONS} />
           </div>
         </section>
 
@@ -360,18 +376,22 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField label="Contact Name" id="contact-name" required value={form.name} onChange={(v) => set('name', v)} error={errors.name} placeholder="e.g. John Doe" />
             <InputField label="Designation" id="contact-designation" value={form.designation} onChange={(v) => set('designation', v)} placeholder="e.g. Founder / CTO" />
-            <InputField label="Phone" id="contact-phone" value={form.phone} onChange={(v) => set('phone', v)} error={errors.phone} placeholder="+91 98765 43210" />
+            {/* "Email or phone is required" is a rule about the PAIR — surface it on both
+                fields so each shows the red border + message, instead of only as a note
+                under the grid that scroll-to-first-invalid could never reach. */}
+            <InputField label="Phone" id="contact-phone" value={form.phone} onChange={(v) => set('phone', v)} error={errors.phone || errors.contact} placeholder="+91 98765 43210" />
             <InputField label="WhatsApp" id="contact-whatsapp" value={form.whatsapp} onChange={(v) => set('whatsapp', v)} error={errors.whatsapp} placeholder="+91 98765 43210" />
-            <InputField label="Email" id="contact-email" type="email" value={form.email} onChange={(v) => set('email', v)} error={errors.email} placeholder="name@company.com" />
+            <InputField label="Email" id="contact-email" type="email" value={form.email} onChange={(v) => set('email', v)} error={errors.email || errors.contact} placeholder="name@company.com" />
             <InputField label="Company" id="contact-company" value={companySec.name} onChange={() => {}} disabled placeholder="Set in Company Information below" />
           </div>
-          {errors.contact && <p className="text-red-500 text-xs font-semibold">{errors.contact}</p>}
           <p className="text-xs text-gray-400">Provide at least an email or a phone number.</p>
         </section>
 
         {/* ── Section 3 · Company Information (CRM Account) ── */}
-        <OpportunityCompanySection companies={companies} value={companySec} onChange={setCompany} />
-        {errors.companyName && <p className="text-red-500 text-xs font-semibold">{errors.companyName}</p>}
+        <div aria-invalid={errors.companyName ? 'true' : 'false'} tabIndex={-1}>
+          <OpportunityCompanySection companies={companies} value={companySec} onChange={setCompany} />
+          {errors.companyName && <p className="text-red-500 text-xs font-semibold mt-1.5">{errors.companyName}</p>}
+        </div>
 
         {/* ── Section 4 · Notes & Next Action ── */}
         <section className="space-y-4">
@@ -412,7 +432,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                 <SelectField label="Priority" id="action-priority" value={action.priority} onChange={(v) => setAct('priority', v)} options={PRIORITY_OPTIONS} />
               </div>
               <InputField label="Action Title" id="action-title" required value={action.title} onChange={(v) => setAct('title', v)} error={errors.actionTitle} placeholder="e.g. Call client about proposal" />
-              <TextareaField label="Description" id="action-description" rows={2} value={action.description} onChange={(v) => setAct('description', v)} />
+              <TextareaField label="Description" id="action-description" rows={2} value={action.description} onChange={(v) => setAct('description', v)} error={errors.actionDescription} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <SelectField label="Assigned To" id="action-assignee" value={action.assignedTo} onChange={(v) => setAct('assignedTo', v)} placeholder="Assign to…" options={ownerOptions} />
                 <DateTimePicker label="Due Date & Time" id="action-due" required value={action.dueDate} onChange={(v) => setAct('dueDate', v)} error={errors.actionDue} />

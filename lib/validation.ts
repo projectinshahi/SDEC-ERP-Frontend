@@ -170,3 +170,27 @@ export function validateAmount(
   }
   return undefined;
 }
+
+/**
+ * Scroll to + focus the first field the form just marked invalid.
+ *
+ * Reads the DOM rather than taking an error-key→element-id map: the shared
+ * InputField / SelectField / TextareaField already set `aria-invalid` from their
+ * `error` prop, so any field added later is covered with no extra wiring.
+ *
+ * Call it right after `setErrors(...)` when validation fails — the rAF waits for
+ * React to paint the error state before querying.
+ *
+ * `container` scopes the search to one form, so a modal never steals focus from
+ * an invalid field on the page behind it.
+ */
+export function focusFirstInvalid(container?: HTMLElement | null): void {
+  requestAnimationFrame(() => {
+    const root: ParentNode = container ?? document;
+    const el = root.querySelector<HTMLElement>('[aria-invalid="true"]');
+    if (!el) return;
+    // Centre it, then focus without letting the browser re-scroll (jumpy on iOS).
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.focus({ preventScroll: true });
+  });
+}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/ui/InputField';
+import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { TextareaField } from '@/components/ui/TextareaField';
 import { useToast } from '@/lib/hooks/useToast';
 import { createManualFollowUp } from '@/lib/api/leadQualification';
@@ -15,19 +16,25 @@ interface AddReminderModalProps {
   onSaved: () => void;
 }
 
-/** Returns tomorrow as a YYYY-MM-DD value for <input type="date">. */
-function tomorrowDate(): string {
+/**
+ * Tomorrow 09:00 as the picker's LOCAL `yyyy-MM-ddTHH:mm` value. A reminder now
+ * carries a time of day, so it needs a sensible default hour rather than the
+ * midnight a date-only field produced (which is why reminders fired at the start
+ * of the day instead of when the user meant).
+ */
+function tomorrowDateTime(): string {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  const off = d.getTimezoneOffset();
-  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+  d.setHours(9, 0, 0, 0);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /** Manually schedule a follow-up reminder for a lead. */
 export function AddReminderModal({ isOpen, onClose, leadId, onSaved }: AddReminderModalProps) {
   const { toast } = useToast();
   const [title, setTitle] = useState('');
-  const [dueDate, setDueDate] = useState(tomorrowDate());
+  const [dueDate, setDueDate] = useState(tomorrowDateTime());
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<{ title?: string; dueDate?: string }>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -35,7 +42,7 @@ export function AddReminderModal({ isOpen, onClose, leadId, onSaved }: AddRemind
   useEffect(() => {
     if (isOpen) {
       setTitle('');
-      setDueDate(tomorrowDate());
+      setDueDate(tomorrowDateTime());
       setNotes('');
       setErrors({});
     }
@@ -45,7 +52,7 @@ export function AddReminderModal({ isOpen, onClose, leadId, onSaved }: AddRemind
     e.preventDefault();
     const next: { title?: string; dueDate?: string } = {};
     if (!title.trim()) next.title = 'A reminder title is required.';
-    if (!dueDate) next.dueDate = 'A due date is required.';
+    if (!dueDate) next.dueDate = 'A due date & time is required.';
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -74,8 +81,10 @@ export function AddReminderModal({ isOpen, onClose, leadId, onSaved }: AddRemind
           value={title} onChange={setTitle} error={errors.title}
           placeholder="e.g. Call client about proposal"
         />
-        <InputField
-          label="Due Date" id="reminder-date" type="date" required
+        {/* Date AND time — `new Date('yyyy-MM-ddTHH:mm')` parses as LOCAL, so the
+            ISO sent to the API is the exact instant the user picked. */}
+        <DateTimePicker
+          label="Due Date & Time" id="reminder-date" required
           value={dueDate} onChange={setDueDate} error={errors.dueDate}
         />
         <TextareaField

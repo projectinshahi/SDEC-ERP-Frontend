@@ -98,6 +98,9 @@ export const NotificationBell = () => {
       router.push(`/dashboard/bugs?bugId=${notif.entity_id}`);
     } else if (notif.entity_type === 'my_task') {
       router.push(`/dashboard/my-tasks?taskId=${notif.entity_id}`);
+    } else if (notif.entity_type === 'lead' && notif.entity_id) {
+      // Reminder / lead notifications open the Opportunity they belong to.
+      router.push(`/dashboard/sales/pipeline/${notif.entity_id}`);
     }
   };
 
