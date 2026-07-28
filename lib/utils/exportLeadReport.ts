@@ -11,10 +11,14 @@ interface ReportFilters {
   status?: string;
   stage?: string;
   owner?: string;
+  /** Resolved owner display name (falls back to `owner` id, then "All Owners"). */
+  ownerName?: string;
+  temperature?: string;
   location?: string;
   dateRange?: { from?: string; to?: string };
 }
 
+const fmtD = (s: string) => format(new Date(s), 'dd MMM yyyy');
 
 export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filters: ReportFilters) {
   const doc = new jsPDF('p', 'pt', 'a4');
@@ -24,36 +28,31 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   // Header
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('Sales Leads Report', 40, cursorY);
+  doc.text('Pipeline Report', 40, cursorY);
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100);
-  doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`, 40, cursorY + 15);
-  doc.text(`Total Records: ${leads.length}`, 40, cursorY + 30);
 
-  // Applied Filters
-  let filterText = [];
-  if (filters.dateRange && filters.dateRange.from && filters.dateRange.to) {
-    if (filters.dateRange.from === filters.dateRange.to) {
-      filterText.push(`Date Range: ${format(new Date(filters.dateRange.from), 'dd MMM yyyy')}`);
-    } else {
-      filterText.push(`Date Range: ${format(new Date(filters.dateRange.from), 'dd MMM yyyy')} - ${format(new Date(filters.dateRange.to), 'dd MMM yyyy')}`);
-    }
-  }
-  if (filters.searchQuery) filterText.push(`Search: "${filters.searchQuery}"`);
-  if (filters.source && filters.source !== 'all') filterText.push(`Source: ${filters.source}`);
-  if (filters.status && filters.status !== 'all') filterText.push(`Status: ${filters.status}`);
-  if (filters.stage && filters.stage !== 'all') filterText.push(`Stage: ${filters.stage}`);
-  if (filters.owner && filters.owner !== 'all') filterText.push(`Owner ID: ${filters.owner}`);
-  if (filters.location) filterText.push(`Location: ${filters.location}`);
+  // Applied Filters — Owner + Date Range always shown (with defaults); the rest only when set.
+  const dr = filters.dateRange;
+  const dateStr = dr && (dr.from || dr.to)
+    ? (dr.from && dr.to && dr.from === dr.to ? fmtD(dr.from) : `${dr.from ? fmtD(dr.from) : '…'} – ${dr.to ? fmtD(dr.to) : '…'}`)
+    : 'All Dates';
+  const f: string[] = [`Owner: ${filters.ownerName || (filters.owner && filters.owner !== 'all' ? filters.owner : 'All Owners')}`];
+  if (filters.stage && filters.stage !== 'all') f.push(`Stage: ${filters.stage}`);
+  if (filters.temperature && filters.temperature !== 'all') f.push(`Lead Temperature: ${temperatureLabel(filters.temperature as any)}`);
+  if (filters.source && filters.source !== 'all') f.push(`Source: ${filters.source}`);
+  if (filters.location) f.push(`Company / Location: ${filters.location}`);
+  if (filters.searchQuery) f.push(`Search: "${filters.searchQuery}"`);
+  f.push(`Date Range: ${dateStr}`);
 
-  if (filterText.length > 0) {
-    doc.text(`Active Filters: ${filterText.join(' | ')}`, 40, cursorY + 45);
-    cursorY += 75;
-  } else {
-    cursorY += 60;
-  }
+  let y = cursorY + 15;
+  doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy')}`, 40, y); y += 18;
+  doc.setFont('helvetica', 'bold'); doc.text('Applied Filters', 40, y); y += 14;
+  doc.setFont('helvetica', 'normal');
+  for (const ln of doc.splitTextToSize(f.join('   |   '), pageWidth - 80)) { doc.text(ln, 40, y); y += 13; }
+  cursorY = y + 12;
 
   // Canonical funnel-STAGE KPIs (stage = single source of truth, matching the board
   // and the table filter). WON/HOLD/LOST are pipeline stages; `converted` = the

@@ -121,20 +121,64 @@ export default function SalesLeadsPage() {
   
   const [isExporting, setIsExporting] = useState(false);
 
-  // Initialise the view from the URL (?view=pipeline) — read on the client to
-  // avoid a useSearchParams Suspense boundary / hydration mismatch. This also
-  // lets the old /leads/pipeline route redirect straight into the board.
+  // Every persisted Pipeline filter, in ONE place. Add a filter here and it is
+  // automatically written to the URL, restored on refresh, and dropped by Clear
+  // Filters — no per-filter persistence code anywhere else.
+  // `empty` = the value that means "not applied"; `advanced` = lives in the More
+  // Filters panel, so restoring it must re-open that panel.
+  const persisted = [
+    { key: 'search', value: searchQuery, set: setSearchQuery, empty: '' },
+    { key: 'source', value: sourceFilter, set: setSourceFilter, empty: 'all' },
+    { key: 'stage', value: stageFilter, set: setStageFilter, empty: 'all' },
+    { key: 'owner', value: ownerFilter, set: setOwnerFilter, empty: 'all', advanced: true },
+    { key: 'location', value: locationFilter, set: setLocationFilter, empty: '', advanced: true },
+    { key: 'temperature', value: temperatureFilter, set: setTemperatureFilter, empty: 'all', advanced: true },
+  ];
+
+  // The filters are only applied once this flips — it gates the first fetch so a
+  // refresh loads the RESTORED filters directly instead of flashing the full list.
+  const [restored, setRestored] = useState(false);
+
+  // Initialise the view + filters from the URL — read on the client to avoid a
+  // useSearchParams Suspense boundary / hydration mismatch. This also lets the old
+  // /leads/pipeline route redirect straight into the board.
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
       // Kanban is the default; ?view=table opts into the table (?view=pipeline is still
       // honoured so old /leads/pipeline redirects and shared links keep working).
-      const v = new URLSearchParams(window.location.search).get('view');
+      const v = p.get('view');
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (v === 'table') setViewMode('table');
       // eslint-disable-next-line react-hooks/set-state-in-effect
       else if (v === 'pipeline') setViewMode('pipeline');
+      for (const f of persisted) {
+        const saved = p.get(f.key);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (saved !== null) f.set(saved);
+      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (persisted.some((f) => f.advanced && p.get(f.key))) setShowAdvanced(true);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRestored(true);
+    // Mount-only: `persisted` closes over the initial setters, which are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mirror the live filter state back into the URL, so a refresh (or a shared link)
+  // reproduces exactly this view. Defaults are removed, so Clear Filters cleans the
+  // URL for free and the next refresh shows the default Pipeline again.
+  useEffect(() => {
+    if (!restored || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    for (const f of persisted) {
+      if (f.value && f.value !== f.empty) url.searchParams.set(f.key, f.value);
+      else url.searchParams.delete(f.key);
+    }
+    window.history.replaceState(null, '', url.toString());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restored, searchQuery, sourceFilter, stageFilter, ownerFilter, locationFilter, temperatureFilter]);
 
   // Switch view + keep the URL in sync without a navigation/refetch.
   const changeView = (v: ViewMode) => {
@@ -195,9 +239,11 @@ export default function SalesLeadsPage() {
   }, []);
 
   useEffect(() => {
+    // Wait for the URL-persisted filters, so the first request already carries them.
+    if (!restored) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLeads();
-  }, [fetchLeads]);
+  }, [fetchLeads, restored]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -227,10 +273,9 @@ export default function SalesLeadsPage() {
     fetchAnalytics();
   };
 
-  const clearFilters = () => {
-    setSourceFilter('all'); setStageFilter('all');
-    setOwnerFilter('all'); setLocationFilter(''); setTemperatureFilter('all');
-  };
+  // Resets every persisted filter to its "not applied" value; the URL-sync effect
+  // then strips them, so the next refresh shows the default Pipeline again.
+  const clearFilters = () => persisted.forEach((f) => f.set(f.empty));
 
   // Most filters (incl. temperature) are server-side. The stage filter is
   // client-side and applies to the TABLE only — the Pipeline board always shows
@@ -356,30 +401,40 @@ export default function SalesLeadsPage() {
   const confirmDownloadReport = async () => {
     setIsExporting(true);
     try {
-      let filteredForReport = visibleLeads;
+      // SINGLE SOURCE OF TRUTH: the report contains exactly what is on screen. Both views
+      // render the same server-filtered `leads` (owner/source/location/temperature/search
+      // are applied by the backend), but they SHOW different subsets — the table shows
+      // `visibleLeads` (stage filter applied), the Kanban board shows `leadsByStage`
+      // (every stage, minus off-board statuses). Reporting the table set while the user
+      // is on the board is what made counts/stages/listing disagree with the UI.
+      const shown = viewMode === 'table' ? visibleLeads : Object.values(leadsByStage).flat();
+
+      // Date range narrows that SAME dataset. Parse the YYYY-MM-DD inputs as LOCAL day
+      // boundaries — new Date('2026-07-23') is UTC midnight, which wrongly drops leads
+      // created earlier the same local day (the "report shows 0" bug).
+      const dayStart = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 0, 0, 0, 0).getTime(); };
+      const dayEnd = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 23, 59, 59, 999).getTime(); };
+      let filteredForReport = shown;
       if (exportDateRange.from || exportDateRange.to) {
-        filteredForReport = visibleLeads.filter(l => {
+        filteredForReport = shown.filter(l => {
           const leadDate = new Date(l.createdAt).getTime();
-          let passes = true;
-          if (exportDateRange.from) {
-            passes = passes && leadDate >= new Date(exportDateRange.from).getTime();
-          }
-          if (exportDateRange.to) {
-            const toDate = new Date(exportDateRange.to);
-            toDate.setUTCHours(23, 59, 59, 999);
-            passes = passes && leadDate <= toDate.getTime();
-          }
-          return passes;
+          if (exportDateRange.from && leadDate < dayStart(exportDateRange.from)) return false;
+          if (exportDateRange.to && leadDate > dayEnd(exportDateRange.to)) return false;
+          return true;
         });
       }
 
       await exportLeadReport(filteredForReport, stages, {
         searchQuery,
         source: sourceFilter,
-        stage: stageFilter,
+        // Stage is a TABLE-only filter (the board deliberately shows every stage), so
+        // only report it as applied when it actually narrowed the exported set.
+        stage: viewMode === 'table' ? stageFilter : 'all',
         owner: ownerFilter,
+        ownerName: ownerFilter !== 'all' ? owners.find((o) => String(o.id) === ownerFilter)?.name : undefined,
+        temperature: temperatureFilter,
         location: locationFilter,
-        dateRange: exportDateRange
+        dateRange: exportDateRange,
       });
       toast('Report downloaded successfully', 'success');
       setIsExportModalOpen(false);
