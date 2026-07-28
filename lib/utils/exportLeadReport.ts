@@ -15,10 +15,79 @@ interface ReportFilters {
   ownerName?: string;
   temperature?: string;
   location?: string;
+  district?: string;
   dateRange?: { from?: string; to?: string };
 }
 
 const fmtD = (s: string) => format(new Date(s), 'dd MMM yyyy');
+
+/* ── Shared report formatting ────────────────────────────────────────────────
+ * ONE definition of the lead listing and the applied-filter summary, consumed by
+ * BOTH the PDF and the Excel export. A new column or filter is added here once
+ * and appears, formatted identically, in every format — future report templates
+ * reuse the same helpers rather than restating the columns.
+ */
+
+/** Dates: one format everywhere. Never `toLocaleDateString`, which varies by machine. */
+export const reportDate = (v?: string | null): string =>
+  v && !Number.isNaN(new Date(v).getTime()) ? format(new Date(v), 'dd MMM yyyy') : '—';
+
+const dash = (v?: string | null) => (v && String(v).trim() ? String(v) : '—');
+
+export interface LeadColumn {
+  header: string;
+  /** Display value — already formatted (used verbatim by the PDF). */
+  text: (l: Lead) => string;
+  /** Raw value for Excel, so numbers/dates stay sortable cells, not strings. */
+  raw?: (l: Lead) => string | number | Date | null;
+  align?: 'left' | 'right';
+  /** Relative width hint, in characters (Excel column width / PDF cell width). */
+  width: number;
+}
+
+export const LEAD_COLUMNS: LeadColumn[] = [
+  { header: 'Lead Name', text: (l) => dash(l.title), width: 26 },
+  { header: 'Company', text: (l) => dash(l.customer?.company), width: 22 },
+  { header: 'District', text: (l) => dash(l.district), width: 16 },
+  { header: 'Contact', text: (l) => dash(l.customer?.name), width: 18 },
+  { header: 'Phone', text: (l) => dash(l.customer?.phone), width: 16 },
+  { header: 'Email', text: (l) => dash(l.customer?.email), width: 26 },
+  { header: 'Source', text: (l) => dash(l.source), width: 14 },
+  {
+    header: 'Value',
+    text: (l) => formatINR(Number(l.leadValue || 0)),
+    // A real number in Excel: it sums, sorts and formats as currency there.
+    raw: (l) => Number(l.leadValue || 0),
+    align: 'right',
+    width: 14,
+  },
+  { header: 'Assigned To', text: (l) => l.owner?.name || 'Unassigned', width: 18 },
+  { header: 'Stage', text: (l) => dash(l.stage), width: 12 },
+  { header: 'Lead Status', text: (l) => temperatureLabel(l.temperature), width: 13 },
+  {
+    header: 'Created',
+    text: (l) => reportDate(l.createdAt),
+    raw: (l) => (l.createdAt ? new Date(l.createdAt) : null),
+    width: 14,
+  },
+];
+
+/** The applied-filter summary — identical wording in every export format. */
+export function buildFilterLines(filters: ReportFilters): string[] {
+  const dr = filters.dateRange;
+  const dateStr = dr && (dr.from || dr.to)
+    ? (dr.from && dr.to && dr.from === dr.to ? fmtD(dr.from) : `${dr.from ? fmtD(dr.from) : '…'} – ${dr.to ? fmtD(dr.to) : '…'}`)
+    : 'All Dates';
+  const f: string[] = [`Owner: ${filters.ownerName || (filters.owner && filters.owner !== 'all' ? filters.owner : 'All Owners')}`];
+  if (filters.stage && filters.stage !== 'all') f.push(`Stage: ${filters.stage}`);
+  if (filters.temperature && filters.temperature !== 'all') f.push(`Lead Status: ${temperatureLabel(filters.temperature as any)}`);
+  if (filters.source && filters.source !== 'all') f.push(`Source: ${filters.source}`);
+  if (filters.district && filters.district !== 'all') f.push(`District: ${filters.district}`);
+  if (filters.location) f.push(`Company / Location: ${filters.location}`);
+  if (filters.searchQuery) f.push(`Search: "${filters.searchQuery}"`);
+  f.push(`Date Range: ${dateStr}`);
+  return f;
+}
 
 export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filters: ReportFilters) {
   const doc = new jsPDF('p', 'pt', 'a4');
@@ -34,18 +103,8 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100);
 
-  // Applied Filters — Owner + Date Range always shown (with defaults); the rest only when set.
-  const dr = filters.dateRange;
-  const dateStr = dr && (dr.from || dr.to)
-    ? (dr.from && dr.to && dr.from === dr.to ? fmtD(dr.from) : `${dr.from ? fmtD(dr.from) : '…'} – ${dr.to ? fmtD(dr.to) : '…'}`)
-    : 'All Dates';
-  const f: string[] = [`Owner: ${filters.ownerName || (filters.owner && filters.owner !== 'all' ? filters.owner : 'All Owners')}`];
-  if (filters.stage && filters.stage !== 'all') f.push(`Stage: ${filters.stage}`);
-  if (filters.temperature && filters.temperature !== 'all') f.push(`Lead Temperature: ${temperatureLabel(filters.temperature as any)}`);
-  if (filters.source && filters.source !== 'all') f.push(`Source: ${filters.source}`);
-  if (filters.location) f.push(`Company / Location: ${filters.location}`);
-  if (filters.searchQuery) f.push(`Search: "${filters.searchQuery}"`);
-  f.push(`Date Range: ${dateStr}`);
+  // Applied Filters — shared with the Excel export so both state them identically.
+  const f = buildFilterLines(filters);
 
   let y = cursorY + 15;
   doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy')}`, 40, y); y += 18;
@@ -185,27 +244,27 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   doc.setFont('helvetica', 'bold');
   doc.text('Detailed Lead Listing', 40, cursorY);
 
-  const leadTableData = leads.map(l => [
-    l.title || '—',
-    l.customer?.company || '—',
-    l.customer?.name || '—',
-    l.customer?.phone || '—',
-    l.customer?.email || '—',
-    l.source || '—',
-    formatINR(Number(l.leadValue || 0)),
-    l.owner?.name || 'Unassigned',
-    l.stage || '—',
-    temperatureLabel(l.temperature),
-    l.createdAt ? format(new Date(l.createdAt), 'dd/MM/yyyy') : '—'
-  ]);
+  // Rows + column geometry both come from LEAD_COLUMNS, so the header, the cell
+  // order and the widths can never drift apart (that mismatch is what shifted
+  // values into the wrong column and looked like "broken cells").
+  const leadTableData = leads.map((l) => LEAD_COLUMNS.map((c) => c.text(l)));
+  const totalWidth = LEAD_COLUMNS.reduce((sum, c) => sum + c.width, 0);
+  const usable = pageWidth - 80;
+  const columnStyles = Object.fromEntries(
+    LEAD_COLUMNS.map((c, i) => [i, {
+      cellWidth: (c.width / totalWidth) * usable,
+      halign: c.align ?? 'left',
+    }]),
+  );
 
   autoTable(doc, {
     startY: cursorY + 20,
-    head: [['Lead Name', 'Company', 'Contact', 'Phone', 'Email', 'Source', 'Value', 'Assigned To', 'Stage', 'Temperature', 'Created']],
+    head: [LEAD_COLUMNS.map((c) => c.header)],
     body: leadTableData,
     theme: 'striped',
-    styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
-    headStyles: { fillColor: [55, 65, 81] }, // gray-800
+    styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', valign: 'middle' },
+    headStyles: { fillColor: [55, 65, 81], halign: 'left', fontStyle: 'bold' },
+    columnStyles: columnStyles as any,
     margin: { left: 40, right: 40, bottom: 40 },
     didDrawPage: function (data: any) {
       // Add Page number to footer
@@ -219,4 +278,73 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   });
 
   doc.save(`Sales_Leads_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
+}
+
+/**
+ * Excel export — the SAME filtered dataset, columns and filter summary as the PDF.
+ * Callers pass exactly what they passed to `exportLeadReport`, so the two formats
+ * cannot disagree about what was exported.
+ *
+ * exceljs is imported dynamically: it is large, and nothing should pay for it
+ * until someone actually asks for a spreadsheet.
+ */
+export async function exportLeadWorkbook(leads: Lead[], filters: ReportFilters) {
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
+  wb.created = new Date();
+  const ws = wb.addWorksheet('Pipeline', {
+    views: [{ state: 'frozen', ySplit: 4 }], // header rows stay put while scrolling
+  });
+
+  // ── Report header: title, generated date, applied filters ────────────────
+  ws.mergeCells(1, 1, 1, LEAD_COLUMNS.length);
+  const title = ws.getCell('A1');
+  title.value = 'Pipeline Report';
+  title.font = { size: 16, bold: true };
+  title.alignment = { vertical: 'middle' };
+  ws.getRow(1).height = 24;
+
+  ws.mergeCells(2, 1, 2, LEAD_COLUMNS.length);
+  ws.getCell('A2').value = `Generated on: ${reportDate(new Date().toISOString())}`;
+  ws.getCell('A2').font = { size: 10, color: { argb: 'FF6B7280' } };
+
+  ws.mergeCells(3, 1, 3, LEAD_COLUMNS.length);
+  ws.getCell('A3').value = `Applied Filters — ${buildFilterLines(filters).join('   |   ')}`;
+  ws.getCell('A3').font = { size: 10, color: { argb: 'FF6B7280' } };
+  ws.getCell('A3').alignment = { wrapText: true, vertical: 'top' };
+
+  // ── Column headers ───────────────────────────────────────────────────────
+  const headerRow = ws.getRow(4);
+  LEAD_COLUMNS.forEach((c, i) => {
+    const cell = headerRow.getCell(i + 1);
+    cell.value = c.header;
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF374151' } };
+    cell.alignment = { horizontal: c.align ?? 'left', vertical: 'middle' };
+  });
+  headerRow.height = 20;
+
+  // ── Rows. `raw` keeps numbers and dates as real cells so Excel can sum,
+  //    sort and filter them; everything else uses the shared display text. ──
+  for (const l of leads) {
+    const row = ws.addRow(LEAD_COLUMNS.map((c) => (c.raw ? c.raw(l) : c.text(l))));
+    LEAD_COLUMNS.forEach((c, i) => {
+      const cell = row.getCell(i + 1);
+      cell.alignment = { horizontal: c.align ?? 'left', vertical: 'middle' };
+      if (c.header === 'Value') cell.numFmt = '₹#,##0';
+      if (c.header === 'Created') cell.numFmt = 'dd mmm yyyy';
+    });
+  }
+
+  LEAD_COLUMNS.forEach((c, i) => { ws.getColumn(i + 1).width = c.width; });
+  // Native column filters over the data range — no merged cells in it, so they work.
+  ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: LEAD_COLUMNS.length } };
+
+  const buf = await wb.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Sales_Leads_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
 }

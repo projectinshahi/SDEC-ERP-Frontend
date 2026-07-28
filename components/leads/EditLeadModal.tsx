@@ -13,6 +13,7 @@ import { fetchCompanyOptions, type Company } from '@/lib/api/companies';
 import { fetchContacts, type Contact } from '@/lib/api/customers';
 import { SELECTABLE_LEAD_SOURCES, formatLeadSource } from '@/lib/data/leadSources';
 import { TEMPERATURE_OPTIONS, type LeadTemperature } from '@/lib/data/leadTemperature';
+import { DISTRICT_OPTIONS } from '@/lib/data/districts';
 import {
   OpportunityCompanySection,
   resolveCompanyId,
@@ -22,6 +23,7 @@ import {
   contactToCompanySection,
   type CompanySectionValue,
 } from './OpportunityCompanySection';
+import { focusFirstInvalid } from '@/lib/validation';
 import type { LeadDetail, LeadStage, AssignableUser, UpdateLeadPayload } from '@/lib/types/lead';
 
 interface EditLeadModalProps {
@@ -65,6 +67,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
     source: 'manual',
     priority: 'medium',
     temperature: 'COLD',
+    district: '',
     stage: 'NQL',
     tags: '',
     ownerId: '',
@@ -88,6 +91,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
       source: lead.source || 'manual',
       priority: lead.priority || 'medium',
       temperature: lead.temperature || 'COLD',
+      district: lead.district || '',
       stage: lead.stage || 'NQL',
       tags: lead.tags || '',
       ownerId: lead.ownerId ? String(lead.ownerId) : '',
@@ -154,7 +158,11 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
 
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (!validate()) return;
+    // Don't bail silently — scroll + focus the first field that blocked the save.
+    if (!validate()) {
+      focusFirstInvalid(ev.currentTarget as HTMLElement);
+      return;
+    }
 
     try {
       setIsSaving(true);
@@ -166,6 +174,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
         source: form.source,
         priority: form.priority,
         temperature: form.temperature as LeadTemperature,
+        district: form.district || null,
         stage: form.stage,
         tags: form.tags.trim() || null,
         name: form.name.trim(),
@@ -210,7 +219,8 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
             <SelectField label="Stage" id="edit-stage" value={form.stage} onChange={(v) => set('stage', v)} options={stages.map((s) => ({ value: s.name, label: s.name }))} />
             <InputField label="Opportunity Value" id="edit-value" required value={form.leadValue} onChange={(v) => set('leadValue', v)} error={errors.leadValue} placeholder="e.g. 500000" />
             <SelectField label="Priority" id="edit-priority" value={form.priority} onChange={(v) => set('priority', v)} options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))} />
-            <SelectField label="Lead Temperature" id="edit-temperature" value={form.temperature} onChange={(v) => set('temperature', v)} options={TEMPERATURE_OPTIONS} required />
+            <SelectField label="Lead Status" id="edit-temperature" value={form.temperature} onChange={(v) => set('temperature', v)} options={TEMPERATURE_OPTIONS} required />
+            <SelectField label="District" id="edit-district" value={form.district} onChange={(v) => set('district', v)} placeholder="Select District" options={DISTRICT_OPTIONS} />
             <InputField label="Tags (comma separated)" id="edit-tags" value={form.tags} onChange={(v) => set('tags', v)} placeholder="enterprise, hot, referral" />
           </div>
         </section>

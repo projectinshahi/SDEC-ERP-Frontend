@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
-import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, Clock, List, Columns3, Trash2, Download, Loader2 } from 'lucide-react';
+import { Search, Plus, Upload, AlertTriangle, BarChart3, SlidersHorizontal, Clock, List, Columns3, Trash2, Download, Loader2, X } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/components/ConfirmDialogProvider';
 import { apiClient } from '@/lib/api/api-client';
@@ -26,10 +27,12 @@ import {
 } from '@/lib/data/leadSources';
 import { LeadHealthBadge } from '@/components/leads/LeadHealthBadge';
 import { TEMPERATURE_OPTIONS } from '@/lib/data/leadTemperature';
+import { DISTRICTS } from '@/lib/data/districts';
+import { savePipelineState, readPipelineState } from '@/lib/utils/pipelineState';
 import { formatINR } from '@/lib/utils/currency';
 import { classNames } from '@/lib/utils';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
-import { exportLeadReport } from '@/lib/utils/exportLeadReport';
+import { exportLeadReport, exportLeadWorkbook } from '@/lib/utils/exportLeadReport';
 import type { ReportWindow } from '@/lib/api/salesReports';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { InputField } from '@/components/ui/InputField';
@@ -69,14 +72,21 @@ export default function SalesLeadsPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [analytics, setAnalytics] = useState<SourceAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Background refetch (search / filter change) — results stay on screen.
+  const [isFetching, setIsFetching] = useState(false);
+  const hasLoadedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
   // Single canonical Pipeline-stage filter for the table (sourced from the DB
   // `lead_stages` via `stages` — the SAME source the Kanban board renders).
   const [stageFilter, setStageFilter] = useState('all');
-  const [ownerFilter, setOwnerFilter] = useState('all');
+  // '' = not yet resolved. The Pipeline defaults to the SIGNED-IN user's own
+  // Opportunities (CR-08/09), so this is seeded from auth (or the URL) once auth
+  // settles — never rendered or fetched with an unresolved value.
+  const [ownerFilter, setOwnerFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [temperatureFilter, setTemperatureFilter] = useState('all');
+  const [districtFilter, setDistrictFilter] = useState('all');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [exportDateRange, setExportDateRange] = useState<ReportWindow>({ from: '', to: '' });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -103,6 +113,9 @@ export default function SalesLeadsPage() {
   const { toast } = useToast();
   const { confirm } = useConfirm();
   const { hasPermission } = usePermissions();
+  const { user, isLoading: authLoading } = useAuth();
+  // The signed-in user — the DEFAULT owner scope for the Pipeline.
+  const meId = user?.id ? String(user.id) : '';
   // Granular Leads keys (the coarse→granular bridge in permission.utils means a
   // role holding the coarse sales.edit/delete/create still satisfies these).
   const canMove = hasPermission('sales.leads.edit');
@@ -130,21 +143,120 @@ export default function SalesLeadsPage() {
     { key: 'search', value: searchQuery, set: setSearchQuery, empty: '' },
     { key: 'source', value: sourceFilter, set: setSourceFilter, empty: 'all' },
     { key: 'stage', value: stageFilter, set: setStageFilter, empty: 'all' },
-    { key: 'owner', value: ownerFilter, set: setOwnerFilter, empty: 'all', advanced: true },
+    // `empty` is MY id, not 'all': my own Opportunities are the Pipeline's resting
+    // state, so Clear All returns here and only an explicit "All Owners" (or another
+    // user) is written to the URL as a deliberate deviation.
+    { key: 'owner', value: ownerFilter, set: setOwnerFilter, empty: meId || 'all', advanced: true },
     { key: 'location', value: locationFilter, set: setLocationFilter, empty: '', advanced: true },
     { key: 'temperature', value: temperatureFilter, set: setTemperatureFilter, empty: 'all', advanced: true },
+    { key: 'district', value: districtFilter, set: setDistrictFilter, empty: 'all', advanced: true },
+  ];
+
+  // Filter panel layout — grouped so a new filter slots into an existing section
+  // instead of extending a flat row. Presentation only: every field reads/writes
+  // the SAME state the queries already use, so the filtering engine is untouched.
+  const ownerOptions = [
+    { value: 'all', label: 'All Owners' },
+    ...owners.map((o) => ({ value: String(o.id), label: String(o.id) === meId ? `${o.name} (me)` : o.name })),
+  ];
+  const FILTER_GROUPS: {
+    title: string;
+    fields: {
+      label: string; value: string; set: (v: string) => void;
+      options?: { value: string; label: string }[]; placeholder?: string;
+    }[];
+  }[] = [
+    {
+      title: 'Ownership',
+      fields: [{ label: 'Owner', value: ownerFilter, set: setOwnerFilter, options: ownerOptions }],
+    },
+    {
+      title: 'Pipeline',
+      fields: [
+        // Stage narrows the TABLE only — the board groups by stage by design.
+        ...(viewMode === 'table' ? [{
+          label: 'Stage', value: stageFilter, set: setStageFilter,
+          options: [{ value: 'all', label: 'All Stages' }, ...stages.map((s) => ({ value: s.name, label: s.name }))],
+        }] : []),
+        {
+          label: 'Lead Status', value: temperatureFilter, set: setTemperatureFilter,
+          options: [{ value: 'all', label: 'All Lead Statuses' }, ...TEMPERATURE_OPTIONS],
+        },
+        {
+          label: 'Source', value: sourceFilter, set: setSourceFilter,
+          options: [{ value: 'all', label: 'All Sources' }, ...LEAD_SOURCES.map((s) => ({ value: s, label: formatLeadSource(s) }))],
+        },
+      ],
+    },
+    {
+      title: 'Organization',
+      fields: [
+        {
+          label: 'District', value: districtFilter, set: setDistrictFilter,
+          options: [{ value: 'all', label: 'All Districts' }, ...DISTRICTS.map((d) => ({ value: d, label: d }))],
+        },
+        { label: 'Company / Location', value: locationFilter, set: setLocationFilter, placeholder: 'e.g. Kochi' },
+      ],
+    },
+  ];
+
+  // Applied filters, as removable chips. Derived from the same state — nothing to
+  // keep in sync. Owner only counts as "applied" when it deviates from my own
+  // Opportunities, which is the Pipeline's resting state.
+  const activeFilters: { key: string; label: string; display: string; clear: () => void }[] = [
+    ...(searchQuery.trim() ? [{ key: 'search', label: 'Search', display: `"${searchQuery.trim()}"`, clear: () => setSearchQuery('') }] : []),
+    ...(ownerFilter && ownerFilter !== (meId || 'all')
+      ? [{
+          key: 'owner', label: 'Owner',
+          display: ownerFilter === 'all' ? 'All Owners' : (owners.find((o) => String(o.id) === ownerFilter)?.name ?? ownerFilter),
+          clear: () => setOwnerFilter(meId || 'all'),
+        }] : []),
+    ...(viewMode === 'table' && stageFilter !== 'all' ? [{ key: 'stage', label: 'Stage', display: stageFilter, clear: () => setStageFilter('all') }] : []),
+    ...(temperatureFilter !== 'all'
+      ? [{ key: 'temperature', label: 'Lead Status', display: TEMPERATURE_OPTIONS.find((t) => t.value === temperatureFilter)?.label ?? temperatureFilter, clear: () => setTemperatureFilter('all') }] : []),
+    ...(sourceFilter !== 'all' ? [{ key: 'source', label: 'Source', display: formatLeadSource(sourceFilter), clear: () => setSourceFilter('all') }] : []),
+    ...(districtFilter !== 'all' ? [{ key: 'district', label: 'District', display: districtFilter, clear: () => setDistrictFilter('all') }] : []),
+    ...(locationFilter.trim() ? [{ key: 'location', label: 'Location', display: locationFilter.trim(), clear: () => setLocationFilter('') }] : []),
   ];
 
   // The filters are only applied once this flips — it gates the first fetch so a
   // refresh loads the RESTORED filters directly instead of flashing the full list.
   const [restored, setRestored] = useState(false);
 
+  // `searchQuery` is what the box shows (instant, never laggy); `appliedSearch` is
+  // what the QUERY uses. Typing settles for 450 ms before it becomes a request, so
+  // a 12-character search costs one fetch instead of twelve.
+  const [appliedSearch, setAppliedSearch] = useState('');
+  useEffect(() => {
+    if (!restored) return;
+    if (searchQuery === appliedSearch) return;
+    const t = setTimeout(() => setAppliedSearch(searchQuery), 450);
+    return () => clearTimeout(t);
+  }, [searchQuery, appliedSearch, restored]);
+  // Enter skips the wait.
+  const submitSearch = () => setAppliedSearch(searchQuery);
+
   // Initialise the view + filters from the URL — read on the client to avoid a
   // useSearchParams Suspense boundary / hydration mismatch. This also lets the old
   // /leads/pipeline route redirect straight into the board.
   useEffect(() => {
+    // Wait for auth: the owner default IS the signed-in user, so restoring before
+    // it settles would fetch everyone's Opportunities and then re-fetch.
+    if (restored || authLoading) return;
     if (typeof window !== 'undefined') {
-      const p = new URLSearchParams(window.location.search);
+      let p = new URLSearchParams(window.location.search);
+      // Re-entering the module on a BARE url (sidebar, module switcher, typed link):
+      // replay the view this tab was last working in. This is what makes the state
+      // survive leaving Sales entirely, without every nav link needing to carry it.
+      // An explicit url always wins, and Clear All stores an empty search — so a
+      // deliberately cleared Pipeline stays cleared.
+      if (Array.from(p.keys()).length === 0) {
+        const saved = readPipelineState().search;
+        if (saved) {
+          p = new URLSearchParams(saved);
+          window.history.replaceState(null, '', `${window.location.pathname}${saved}`);
+        }
+      }
       // Kanban is the default; ?view=table opts into the table (?view=pipeline is still
       // honoured so old /leads/pipeline redirects and shared links keep working).
       const v = p.get('view');
@@ -157,14 +269,22 @@ export default function SalesLeadsPage() {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         if (saved !== null) f.set(saved);
       }
+      // Owner has no "unset" state: an explicit ?owner wins, otherwise the Pipeline
+      // opens on MY Opportunities. Falls back to 'all' only if the user is unknown,
+      // where the backend's RBAC scoping still applies.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOwnerFilter(p.get('owner') ?? (meId || 'all'));
+      // Seed the applied term from the url so the restored search fetches ONCE.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAppliedSearch(p.get('search') ?? '');
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (persisted.some((f) => f.advanced && p.get(f.key))) setShowAdvanced(true);
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRestored(true);
-    // Mount-only: `persisted` closes over the initial setters, which are stable.
+    // `persisted` closes over the current setters, which are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [restored, authLoading, meId]);
 
   // Mirror the live filter state back into the URL, so a refresh (or a shared link)
   // reproduces exactly this view. Defaults are removed, so Clear Filters cleans the
@@ -178,7 +298,7 @@ export default function SalesLeadsPage() {
     }
     window.history.replaceState(null, '', url.toString());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restored, searchQuery, sourceFilter, stageFilter, ownerFilter, locationFilter, temperatureFilter]);
+  }, [restored, searchQuery, sourceFilter, stageFilter, ownerFilter, locationFilter, temperatureFilter, districtFilter]);
 
   // Switch view + keep the URL in sync without a navigation/refetch.
   const changeView = (v: ViewMode) => {
@@ -196,21 +316,30 @@ export default function SalesLeadsPage() {
 
   const fetchLeads = useCallback(async () => {
     try {
-      setIsLoading(true);
+      // Only the FIRST load blanks the results area. Every later fetch (a search, a
+      // filter change, the focus refetch) keeps the current rows on screen and shows
+      // a small inline spinner instead — that swap-to-skeleton was the "flicker".
+      if (hasLoadedRef.current) setIsFetching(true);
+      else setIsLoading(true);
       const params = new URLSearchParams();
       if (sourceFilter !== 'all') params.set('source', sourceFilter);
-      if (ownerFilter !== 'all') params.set('ownerId', ownerFilter);
+      // '' can't reach here (the fetch is gated on `restored`), but never send an
+      // empty ownerId — the backend would treat it as "no owner filter" = everyone.
+      if (ownerFilter && ownerFilter !== 'all') params.set('ownerId', ownerFilter);
       if (locationFilter.trim()) params.set('location', locationFilter.trim());
       if (temperatureFilter !== 'all') params.set('temperature', temperatureFilter);
-      if (searchQuery.trim()) params.set('search', searchQuery.trim());
+      if (districtFilter !== 'all') params.set('district', districtFilter);
+      if (appliedSearch.trim()) params.set('search', appliedSearch.trim());
       const res = await apiClient.get<Lead[]>(`/sales/leads?${params.toString()}`);
       setLeads(res.data);
     } catch {
       toast('Failed to fetch leads', 'error');
     } finally {
+      hasLoadedRef.current = true;
       setIsLoading(false);
+      setIsFetching(false);
     }
-  }, [sourceFilter, ownerFilter, locationFilter, temperatureFilter, searchQuery, toast]);
+  }, [sourceFilter, ownerFilter, locationFilter, temperatureFilter, districtFilter, appliedSearch, toast]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -308,6 +437,44 @@ export default function SalesLeadsPage() {
     return map;
   }, [leads, stages]);
 
+  // What the user is actually looking at, in display order: the table shows
+  // `visibleLeads` (stage filter + newest-first), the Kanban board shows
+  // `leadsByStage` (every stage, minus off-board statuses). Single source for the
+  // exported report AND the Details page's Previous/Next.
+  const shownLeads = viewMode === 'table' ? visibleLeads : Object.values(leadsByStage).flat();
+
+  // Remember the working context for anything that navigates AWAY from this list:
+  // the on-screen order (Details' Previous/Next) and the query string to come back
+  // to. Keyed on the id list so it re-saves when filters/view change, not on every
+  // unrelated render.
+  const shownIds = shownLeads.map((l) => l.id).join(',');
+  useEffect(() => {
+    if (!restored) return;
+    savePipelineState({
+      ids: shownIds ? shownIds.split(',').map(Number) : [],
+      search: window.location.search,
+    });
+  }, [shownIds, restored]);
+
+  // Scroll offset is captured on the way out (route change unmounts this page),
+  // then restored below once the list has rendered.
+  useEffect(() => {
+    if (!restored) return;
+    return () => savePipelineState({ scrollY: window.scrollY });
+  }, [restored]);
+
+  // Restore the scroll offset only when re-entering the SAME filtered view — a
+  // fresh visit or a different filter set must start at the top.
+  const restoredScrollRef = useRef(false);
+  useEffect(() => {
+    if (restoredScrollRef.current || isLoading || !restored || leads.length === 0) return;
+    restoredScrollRef.current = true;
+    const saved = readPipelineState();
+    if (saved.scrollY > 0 && saved.search === window.location.search) {
+      window.scrollTo({ top: saved.scrollY });
+    }
+  }, [isLoading, restored, leads.length]);
+
   const totalPipelineValue = useMemo(() => {
     return leads.reduce((sum, lead) => sum + (lead.leadValue ?? 0), 0);
   }, [leads]);
@@ -398,16 +565,13 @@ export default function SalesLeadsPage() {
     setIsExportModalOpen(true);
   };
 
-  const confirmDownloadReport = async () => {
+  // Same filtered dataset for both formats — only the writer differs.
+  const confirmDownloadReport = async (fmt: 'pdf' | 'excel' = 'pdf') => {
     setIsExporting(true);
     try {
-      // SINGLE SOURCE OF TRUTH: the report contains exactly what is on screen. Both views
-      // render the same server-filtered `leads` (owner/source/location/temperature/search
-      // are applied by the backend), but they SHOW different subsets — the table shows
-      // `visibleLeads` (stage filter applied), the Kanban board shows `leadsByStage`
-      // (every stage, minus off-board statuses). Reporting the table set while the user
-      // is on the board is what made counts/stages/listing disagree with the UI.
-      const shown = viewMode === 'table' ? visibleLeads : Object.values(leadsByStage).flat();
+      // SINGLE SOURCE OF TRUTH: the report contains exactly what is on screen —
+      // `shownLeads` is the same list the table/board renders and Details paginates.
+      const shown = shownLeads;
 
       // Date range narrows that SAME dataset. Parse the YYYY-MM-DD inputs as LOCAL day
       // boundaries — new Date('2026-07-23') is UTC midnight, which wrongly drops leads
@@ -424,7 +588,7 @@ export default function SalesLeadsPage() {
         });
       }
 
-      await exportLeadReport(filteredForReport, stages, {
+      const reportFilters = {
         searchQuery,
         source: sourceFilter,
         // Stage is a TABLE-only filter (the board deliberately shows every stage), so
@@ -433,9 +597,12 @@ export default function SalesLeadsPage() {
         owner: ownerFilter,
         ownerName: ownerFilter !== 'all' ? owners.find((o) => String(o.id) === ownerFilter)?.name : undefined,
         temperature: temperatureFilter,
+        district: districtFilter,
         location: locationFilter,
         dateRange: exportDateRange,
-      });
+      };
+      if (fmt === 'excel') await exportLeadWorkbook(filteredForReport, reportFilters);
+      else await exportLeadReport(filteredForReport, stages, reportFilters);
       toast('Report downloaded successfully', 'success');
       setIsExportModalOpen(false);
     } catch (err) {
@@ -559,72 +726,125 @@ export default function SalesLeadsPage() {
                 placeholder="Search name, company, email, phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitSearch(); } }}
+                aria-label="Search opportunities"
+                className="w-full pl-9 pr-9 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
+              {/* Inline, in the box itself — the results below never blank out. */}
+              {(isFetching || searchQuery !== appliedSearch) && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin" />
+              )}
             </div>
-            <select
-              value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value)}
-              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            >
-              <option value="all">All Sources</option>
-              {LEAD_SOURCES.map((s) => (
-                <option key={s} value={s}>{formatLeadSource(s)} Opportunities</option>
+            {/* Scope switch — the Pipeline's most-used control, so it sits in the
+                toolbar rather than inside the panel. */}
+            {/* Only meaningful once we know who "my" is — otherwise both options
+                would carry the same value and light up together. */}
+            <div className={classNames('flex rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5', !meId && 'hidden')}>
+              {[
+                { value: meId, label: 'My Leads' },
+                { value: 'all', label: 'All Leads' },
+              ].map((opt) => (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => setOwnerFilter(opt.value)}
+                  className={classNames(
+                    'px-3 py-1.5 text-sm font-medium rounded-[10px] transition-colors whitespace-nowrap',
+                    ownerFilter === opt.value
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+                  )}
+                >
+                  {opt.label}
+                </button>
               ))}
-            </select>
-            {/* Single canonical Pipeline-STAGE filter — options come from the DB
-                `lead_stages` via `stages`, the SAME source the Kanban board renders,
-                so the two views can never diverge. Hidden in Pipeline view, which
-                already groups by stage. */}
-            {viewMode === 'table' && (
-              <select
-                value={stageFilter}
-                onChange={(e) => setStageFilter(e.target.value)}
-                className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-              >
-                <option value="all">All Stages</option>
-                {stages.map((s) => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
-                ))}
-              </select>
-            )}
-            <Button variant="secondary" onClick={() => setShowAdvanced((v) => !v)}>
+            </div>
+            <Button
+              variant={showAdvanced || activeFilters.length > 0 ? 'primary' : 'secondary'}
+              onClick={() => setShowAdvanced((v) => !v)}
+              aria-expanded={showAdvanced}
+            >
               <SlidersHorizontal className="w-4 h-4 mr-2" />
-              {showAdvanced ? 'Hide Filters' : 'More Filters'}
+              Filters
+              {activeFilters.length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 rounded-full bg-white/25 text-xs font-bold tabular-nums">
+                  {activeFilters.length}
+                </span>
+              )}
             </Button>
           </div>
 
+          {/* Active filters as removable chips — what's applied, at a glance. */}
+          {activeFilters.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {activeFilters.map((f) => (
+                <span
+                  key={f.key}
+                  className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-medium border border-blue-200 dark:border-blue-900"
+                >
+                  <span className="text-blue-500/80 dark:text-blue-400/80">{f.label}:</span>
+                  {f.display}
+                  <button
+                    type="button"
+                    onClick={f.clear}
+                    aria-label={`Remove ${f.label} filter`}
+                    className="p-0.5 rounded-full hover:bg-blue-200/70 dark:hover:bg-blue-900"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-xs font-semibold text-gray-500 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 underline underline-offset-2"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+
           {showAdvanced && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 bg-gray-50/60 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800">
-              <select
-                value={ownerFilter}
-                onChange={(e) => setOwnerFilter(e.target.value)}
-                className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
-              >
-                <option value="all">All Owners</option>
-                {owners.map((o) => (
-                  <option key={o.id} value={String(o.id)}>{o.name}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder="Location (address)"
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
-              />
-              <select
-                value={temperatureFilter}
-                onChange={(e) => setTemperatureFilter(e.target.value)}
-                aria-label="Filter by temperature"
-                className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
-              >
-                <option value="all">All Temperatures</option>
-                {TEMPERATURE_OPTIONS.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-              <Button variant="secondary" onClick={clearFilters}>Clear Filters</Button>
+            <div className="p-4 space-y-5 bg-gray-50/60 dark:bg-gray-800/30 rounded-xl border border-gray-200 dark:border-gray-800">
+              {FILTER_GROUPS.map((group) => (
+                <div key={group.title}>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-2">{group.title}</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {group.fields.map((f) => (
+                      <label key={f.label} className="block">
+                        <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{f.label}</span>
+                        {f.options ? (
+                          <select
+                            value={f.value}
+                            onChange={(e) => f.set(e.target.value)}
+                            aria-label={f.label}
+                            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+                          >
+                            {f.options.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            placeholder={f.placeholder}
+                            value={f.value}
+                            onChange={(e) => f.set(e.target.value)}
+                            aria-label={f.label}
+                            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+                          />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Filters apply live, so Apply simply closes the panel. */}
+              <div className="flex justify-end gap-2 pt-1 border-t border-gray-200 dark:border-gray-700">
+                <Button variant="secondary" onClick={clearFilters}>Clear All</Button>
+                <Button onClick={() => setShowAdvanced(false)}>Apply</Button>
+              </div>
             </div>
           )}
         </div>
@@ -640,7 +860,7 @@ export default function SalesLeadsPage() {
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Source</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Stage</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Priority</th>
-                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Temperature</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Lead Status</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Owner</th>
                     {canDeleteLead && (
                       <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400 text-right">Actions</th>
@@ -823,8 +1043,11 @@ export default function SalesLeadsPage() {
             <Button variant="secondary" onClick={() => setIsExportModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={confirmDownloadReport} disabled={isExporting}>
-              {isExporting ? 'Generating...' : 'Generate & Download'}
+            <Button variant="secondary" onClick={() => confirmDownloadReport('excel')} disabled={isExporting}>
+              {isExporting ? 'Generating…' : 'Download Excel'}
+            </Button>
+            <Button onClick={() => confirmDownloadReport('pdf')} disabled={isExporting}>
+              {isExporting ? 'Generating…' : 'Download PDF'}
             </Button>
           </div>
         </DialogContent>

@@ -7,7 +7,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import {
-  ArrowLeft, AlertTriangle, Activity, Pencil, User, Building2, Mail, Phone,
+  ArrowLeft, ChevronLeft, ChevronRight, AlertTriangle, Activity, Pencil, User, Building2, Mail, Phone,
   Globe, MapPin, Target, Tag, UserPlus, BellPlus, Ban, CheckCircle2, PauseCircle,
 } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
@@ -18,6 +18,7 @@ import { formatLeadSource, leadSourceVariant } from '@/lib/data/leadSources';
 import { leadStageTheme } from '@/lib/data/leadStages';
 import { temperatureLabel, temperatureDot, temperatureTextClass } from '@/lib/data/leadTemperature';
 import { formatINR } from '@/lib/utils/currency';
+import { readPipelineState, pipelineNeighbours, pipelineListHref } from '@/lib/utils/pipelineState';
 import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel';
 import { LeadDocApprovalPanel } from '@/components/leads/LeadDocApprovalPanel';
 import { EditLeadModal } from '@/components/leads/EditLeadModal';
@@ -51,6 +52,21 @@ export default function LeadDetailPage() {
   // BDE in the RBAC lockdown). Matches the board's canMove + the backend edit endpoint.
   const canEdit = hasPermission('sales.leads.edit');
   const canAssign = hasPermission('sales.assign');
+
+  // Previous / Next through the Pipeline list the user came from — the exact
+  // filtered, sorted, view-specific order it published. Read on the client only
+  // (sessionStorage) to avoid a hydration mismatch; empty when opened by URL.
+  const [order, setOrder] = useState<number[]>([]);
+  // Where "Back" and the breadcrumbs return to. Starts as the bare path so the
+  // server and first client render agree, then upgrades to the remembered view.
+  const [listHref, setListHref] = useState('/dashboard/sales/pipeline');
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOrder(readPipelineState().ids);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setListHref(pipelineListHref());
+  }, []);
+  const { prev, next, position, total } = pipelineNeighbours(order, Number(id));
 
   const isConverted = lead?.status === 'converted';
   const isDisqualified = lead?.status === 'disqualified';
@@ -95,8 +111,10 @@ export default function LeadDetailPage() {
           <Breadcrumb
             items={[
               { label: 'Dashboard', href: '/dashboard' },
-              { label: 'Sales', href: '/dashboard/sales/pipeline' },
-              { label: 'Pipeline', href: '/dashboard/sales/pipeline' },
+              // Same remembered view as the Back button — a breadcrumb that dumped
+              // the user on an unfiltered list would undo the retention.
+              { label: 'Sales', href: listHref },
+              { label: 'Pipeline', href: listHref },
               { label: lead?.title || 'Opportunity', href: `/dashboard/sales/pipeline/${id}` },
             ]}
           />
@@ -125,7 +143,36 @@ export default function LeadDetailPage() {
                 Edit Lead
               </Button>
             )}
-            <Button variant="secondary" size="sm" onClick={() => router.push('/dashboard/sales/pipeline')}>
+            {/* Prev / Next through the filtered Pipeline list. Hidden when this lead
+                isn't in it (opened directly by URL), so nothing dangles. */}
+            {position > 0 && total > 1 && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="secondary" size="sm"
+                  disabled={prev == null}
+                  aria-label="Previous opportunity"
+                  onClick={() => prev != null && router.push(`/dashboard/sales/pipeline/${prev}`)}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-1">Previous</span>
+                </Button>
+                <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums px-1 whitespace-nowrap">
+                  {position} / {total}
+                </span>
+                <Button
+                  variant="secondary" size="sm"
+                  disabled={next == null}
+                  aria-label="Next opportunity"
+                  onClick={() => next != null && router.push(`/dashboard/sales/pipeline/${next}`)}
+                >
+                  <span className="hidden sm:inline mr-1">Next</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+            {/* Returns to the list exactly as it was left — filters, view and
+                scroll all restored from the remembered Pipeline state. */}
+            <Button variant="secondary" size="sm" onClick={() => router.push(listHref)}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
@@ -242,9 +289,10 @@ export default function LeadDetailPage() {
                     )}
                     <Detail label="Owner" value={lead.owner?.name || NOT_PROVIDED} />
                     <Detail label="Stage" value={lead.stage} />
-                    <Detail label="Temperature" value={temperatureLabel(lead.temperature)} />
+                    <Detail label="Lead Status" value={temperatureLabel(lead.temperature)} />
                     <Detail label="Status" value={lead.status} />
                     <Detail label="Priority" value={lead.priority} />
+                    <Detail label="District" value={lead.district || NOT_PROVIDED} />
                     {lead.leadValue != null && (
                       <Detail label="Opportunity Value" value={formatINR(lead.leadValue)} />
                     )}
@@ -333,9 +381,9 @@ export default function LeadDetailPage() {
 
               {/* Side column */}
               <div className="space-y-6">
-                {/* Lead Temperature — prominent classification display */}
+                {/* Lead Status (stored as `temperature`) — prominent classification display */}
                 <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Lead Temperature</h2>
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Lead Status</h2>
                   <div className="flex items-center gap-3">
                     <span className="text-3xl leading-none" aria-hidden>{temperatureDot(lead.temperature)}</span>
                     <div>

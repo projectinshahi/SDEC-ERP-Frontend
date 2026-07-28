@@ -68,6 +68,8 @@ export interface Lead {
   /** @deprecated numeric score is no longer shown in the Leads UI. */
   score?: number;
   tags?: string | null;
+  /** Customer district (CR-01) — optional; blank on Opportunities created before it existed. */
+  district?: string | null;
   disqualifyReason?: string | null;
   flaggedForReview: boolean;
   customerId?: number | null;
@@ -123,6 +125,7 @@ export interface UpdateLeadPayload {
   priority?: string;
   temperature?: LeadTemperature;
   tags?: string | null;
+  district?: string | null;
   ownerId?: number;
   leadValue?: number | string | null;
   /** Pipeline (Opportunity) → Company link (Phase 2). Optional. */

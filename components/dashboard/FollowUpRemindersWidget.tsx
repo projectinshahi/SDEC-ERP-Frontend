@@ -19,7 +19,9 @@ const BUCKETS: { key: Bucket; label: string; icon: React.ComponentType<{ classNa
 
 function dueLabel(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  // Reminders carry a time of day now, so "12 Aug" alone can't tell the owner
+  // whether it's the 10:00 or the 15:30 follow-up.
+  return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 /**
