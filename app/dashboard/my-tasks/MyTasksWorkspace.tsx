@@ -7,12 +7,13 @@ import {
   Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
   Calendar, User, Users, Flag, Clock, Paperclip, RefreshCw, Pencil, Trash2, ShieldAlert,
   MessageCircle, Activity, Download, BarChart3, AtSign, X, ArrowLeft,
-  Star, MoreHorizontal, FileText, SlidersHorizontal, Award,
+  Star, MoreHorizontal, FileText, SlidersHorizontal, Award, LayoutGrid, List,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usesTaskPoints } from '@/lib/permissions/moduleAccess';
 import { PointDistributionModal } from '@/components/tasks/mytasks/PointDistributionModal';
+import { MyTasksGrid } from '@/components/tasks/mytasks/MyTasksGrid';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
@@ -311,6 +312,9 @@ function mobileActivityTime(iso?: string | null): string {
 
 // Client-only favourites (localStorage) — a per-device star, NO API/DB change.
 const FAV_KEY = 'my-tasks-favorites';
+// List ⇄ Grid preference. Same localStorage shape as favourites, so it survives a
+// refresh, navigation inside the module and returning from Task Details.
+const LAYOUT_KEY = 'my-tasks-layout';
 function readFavorites(): Set<number> {
   if (typeof window === 'undefined') return new Set();
   try { return new Set<number>(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')); } catch { return new Set(); }
@@ -1414,6 +1418,25 @@ function WorkspaceInner() {
   const isOwnerOf = (t: MyTask) => t.createdByMe || isSuperAdmin;
   const isInChargeOf = (t: MyTask) => currentUserId != null && t.inChargeId === currentUserId;
   const [view, setView] = useState<'workspace' | 'dashboard'>('workspace');
+  // Task LAYOUT within the workspace (the Inbox/Outbox tabs are a separate axis).
+  // Read in an effect, not lazily, so the server and first client render agree.
+  const [layout, setLayout] = useState<'list' | 'grid'>('list');
+  useEffect(() => {
+    try {
+      // MOBILE always OPENS in List — the Grid is opt-in per visit, never the
+      // initial state. The toggle still works for the rest of the session.
+      // DESKTOP restores the remembered layout. Read matchMedia directly rather
+      // than the `isMobile` state, which resolves in its own effect (order-independent).
+      if (window.matchMedia?.('(max-width: 767px)').matches) return;
+      const v = localStorage.getItem(LAYOUT_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (v === 'grid' || v === 'list') setLayout(v);
+    } catch { /* private mode — fall back to list */ }
+  }, []);
+  const changeLayout = (v: 'list' | 'grid') => {
+    setLayout(v);
+    try { localStorage.setItem(LAYOUT_KEY, v); } catch { /* ignore */ }
+  };
 
   const [data, setData] = useState<MyTaskWorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1759,6 +1782,28 @@ function WorkspaceInner() {
           </nav>
           {/* Actions stay with the navigation now that the header is gone. */}
           <div className="flex shrink-0 items-center gap-2 pb-1.5">
+            {/* List ⇄ Grid. Both render the SAME filtered list, so switching is a
+                pure presentation change — no refetch. */}
+            {view === 'workspace' && (
+              <div role="group" aria-label="Task layout" className="flex rounded-lg border border-gray-200 bg-white p-0.5">
+                {([['list', List, 'List'], ['grid', LayoutGrid, 'Grid']] as const).map(([key, Icon, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => changeLayout(key)}
+                    title={`${label} view`}
+                    aria-label={`${label} view`}
+                    aria-pressed={layout === key}
+                    className={classNames(
+                      'inline-flex h-8 w-8 items-center justify-center rounded-[6px] transition',
+                      layout === key ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-50',
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
+            )}
             {view === 'workspace' && (
               <button type="button" onClick={() => load(true)} disabled={refreshing} title="Refresh"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 disabled:opacity-60">
@@ -1816,6 +1861,28 @@ function WorkspaceInner() {
                 <span className="ml-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[11px] font-bold text-white">{advancedFilterCount}</span>
               )}
             </button>
+            {/* List ⇄ Grid, beside Search + Filter. The desktop toggle lives in the
+                header row, which is `!isMobile` — so mobile needs its own control or
+                the Grid view is unreachable here. Both drive the SAME `layout` state
+                and the SAME filtered list, so switching never refetches. */}
+            <div role="group" aria-label="Task layout" className="flex shrink-0 rounded-xl border border-gray-200 bg-white p-0.5">
+              {([['list', List, 'List'], ['grid', LayoutGrid, 'Grid']] as const).map(([key, Icon, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => changeLayout(key)}
+                  aria-label={`${label} view`}
+                  aria-pressed={layout === key}
+                  className={classNames(
+                    // 40px target — comfortably tappable.
+                    'inline-flex h-10 w-10 items-center justify-center rounded-[10px] transition',
+                    layout === key ? 'bg-indigo-600 text-white' : 'text-gray-500',
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              ))}
+            </div>
           </div>
           {/* Due filter — single-select date chips. */}
           <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
@@ -1855,7 +1922,9 @@ function WorkspaceInner() {
                 </p>
               </div>
             ) : (
-              currentList.map((t) => <MobileTaskCard key={t.id} task={t} onOpen={() => openTask(t)} />)
+              layout === 'grid'
+                ? <MyTasksGrid tasks={currentList} todayYmd={todayYmd()} selectedId={selectedId} onOpen={openTask} />
+                : currentList.map((t) => <MobileTaskCard key={t.id} task={t} onOpen={() => openTask(t)} />)
             )}
           </div>
         </div>
@@ -1969,7 +2038,9 @@ function WorkspaceInner() {
                   </p>
                 </div>
               ) : (
-                currentList.map((t) => <TaskRow key={t.id} task={t} active={selectedId === t.id} onClick={() => openTask(t)} showDirection={bucket === 'inbox'} />)
+                layout === 'grid'
+                  ? <MyTasksGrid tasks={currentList} todayYmd={todayYmd()} selectedId={selectedId} onOpen={openTask} />
+                  : currentList.map((t) => <TaskRow key={t.id} task={t} active={selectedId === t.id} onClick={() => openTask(t)} showDirection={bucket === 'inbox'} />)
               )}
             </div>
           </aside>
