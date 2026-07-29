@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { usesTaskPoints } from '@/lib/permissions/moduleAccess';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { Loader2, Search, X, Check, Users, Paperclip } from 'lucide-react';
@@ -36,6 +38,9 @@ export function CreateMyTaskModal({
   canAssign?: boolean;
 }) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  // Points are a Development-side concept; Sales users never see them.
+  const showPoints = usesTaskPoints(user);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
@@ -44,6 +49,8 @@ export function CreateMyTaskModal({
   const [selected, setSelected] = useState<Map<number, string>>(new Map());
   const [inChargeId, setInChargeId] = useState<number | null>(null);
   const [projectId, setProjectId] = useState<string>('');
+  // Kept as a string so the input can be emptied; '' means 0 (the field is optional).
+  const [estimatedPoints, setEstimatedPoints] = useState('');
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [users, setUsers] = useState<UserDbResponse[]>([]);
   const [search, setSearch] = useState('');
@@ -72,6 +79,7 @@ export function CreateMyTaskModal({
       setSelected(new Map(editTask.members.map((m) => [m.id, m.name])));
       setInChargeId(editTask.inChargeId || null);
       setProjectId(editTask.projectId || '');
+      setEstimatedPoints(editTask.estimatedPoints ? String(editTask.estimatedPoints) : '');
     } else {
       setTitle('');
       setDescription('');
@@ -81,6 +89,7 @@ export function CreateMyTaskModal({
       setSelected(new Map());
       setInChargeId(null);
       setProjectId('');
+      setEstimatedPoints('');
     }
   }, [isOpen, editTask]);
 
@@ -134,7 +143,7 @@ export function CreateMyTaskModal({
     setSaving(true);
     try {
       if (editTask) {
-        await updateMyTask(editTask.id, { title: title.trim(), description, priority, dueDate: dueDate || null, dueTime: dueTime || null, inChargeId: finalInCharge, projectId: projectId || null });
+        await updateMyTask(editTask.id, { title: title.trim(), description, priority, dueDate: dueDate || null, dueTime: dueTime || null, inChargeId: finalInCharge, projectId: projectId || null, estimatedPoints: Number(estimatedPoints) || 0 });
         if (canAssign) {
           const orig = new Set(editTask.members.map((m) => m.id));
           const now = new Set(selected.keys());
@@ -161,6 +170,7 @@ export function CreateMyTaskModal({
           memberIds: Array.from(selected.keys()),
           inChargeId: finalInCharge,
           projectId: projectId || null,
+          estimatedPoints: Number(estimatedPoints) || 0,
         });
         await uploadFiles(created.id);
         toast('Task created.', 'success');
@@ -216,7 +226,7 @@ export function CreateMyTaskModal({
           </select>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
             <select
@@ -245,6 +255,27 @@ export function CreateMyTaskModal({
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
+          {/* Optional; blank = 0. Only credited to performance once the task is
+              approved, so the hint sets the expectation at entry time. Hidden for
+              users outside the points system (e.g. Sales) — they get the plain
+              task workflow. */}
+          {showPoints && (
+          <div>
+            <label htmlFor="mytask-points" className="mb-1 block text-sm font-medium text-gray-700">Estimated Points</label>
+            <input
+              id="mytask-points"
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              placeholder="0"
+              value={estimatedPoints}
+              onChange={(e) => setEstimatedPoints(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-400">Awarded after approval</p>
+          </div>
+          )}
         </div>
 
         {/* Members — hidden in EDIT mode without the Assign Members permission

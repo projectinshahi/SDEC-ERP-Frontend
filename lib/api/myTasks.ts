@@ -50,6 +50,8 @@ export interface MyTask {
   /** Optional Project link (projects.id is a string id). */
   projectId?: string | null;
   projectName?: string | null;
+  /** Manually assigned effort points; count toward performance only when approved. */
+  estimatedPoints: number;
   members: MyTaskMember[];
   memberCount: number;
   assignedToMe: boolean;
@@ -88,6 +90,8 @@ export interface CreateMyTaskInput {
   memberIds?: number[];
   inChargeId?: number | null;
   projectId?: string | null;
+  /** Manually assigned effort points; awarded to performance only once approved. */
+  estimatedPoints?: number;
 }
 
 /* ── Task Dashboard (org-wide analytics; needs mytasks.dashboard.view) ────── */
@@ -257,8 +261,23 @@ export async function updateMyTask(
   return r.data;
 }
 
-export async function updateMyTaskStatus(id: number, status: string, waitingReason?: string | null): Promise<{ success: boolean; status: string; waitingReason?: string | null }> {
-  const r = await apiClient.patch<{ success: boolean; status: string; waitingReason?: string | null }>(`/my-tasks/${id}/status`, { status, waitingReason });
+/** One member's share of a task's Estimated Points, set by the approver. */
+export interface PointAllocation {
+  userId: number;
+  points: number;
+}
+
+export async function updateMyTaskStatus(
+  id: number,
+  status: string,
+  waitingReason?: string | null,
+  /** Required when approving a multi-assignee task that carries points. */
+  pointsDistribution?: PointAllocation[],
+): Promise<{ success: boolean; status: string; waitingReason?: string | null }> {
+  const r = await apiClient.patch<{ success: boolean; status: string; waitingReason?: string | null }>(
+    `/my-tasks/${id}/status`,
+    { status, waitingReason, pointsDistribution },
+  );
   return r.data;
 }
 

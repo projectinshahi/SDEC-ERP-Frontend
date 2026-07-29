@@ -183,6 +183,17 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
 }
 
 /** The first module (in priority order) the user can access — used as a landing fallback. */
+/**
+ * Does this user take part in the effort-points system (My Task estimated points,
+ * assigned/completed points)? Points are a Development-side concept, so the answer
+ * is simply "can they reach the Development module" — reusing the existing access
+ * map rather than matching role strings, so a renamed role can't silently break it.
+ * A Sales-only user gets false and never sees points anywhere.
+ */
+export function usesTaskPoints(user: ModuleAccessUser | null | undefined): boolean {
+  return getModuleAccess(user).development;
+}
+
 export function primaryModule(access: Record<TopModule, boolean>): TopModule | null {
   return (['master', 'development', 'sales', 'user', 'hr', 'finance'] as TopModule[]).find((m) => access[m]) ?? null;
 }

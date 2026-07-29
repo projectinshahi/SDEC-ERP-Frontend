@@ -18,6 +18,14 @@ export interface DeveloperRow {
   assignedPoints: number;
   completedPoints: number;
   todayPoints: number;
+  /** Points breakdown — kept separate so the source of a score is visible.
+   *  projectTaskPoints = delivered story points; myTaskPoints = APPROVED My Tasks only. */
+  projectTaskPoints: number;
+  myTaskPoints: number;
+  totalPoints: number;
+  /** My Task points for every task in their charge (any status) + project assigned. */
+  myTaskAssignedPoints: number;
+  totalAssignedPoints: number;
   completionRate: number;
   tasksPending: number;
   bugs: number;
