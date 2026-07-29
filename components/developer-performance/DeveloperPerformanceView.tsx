@@ -219,11 +219,11 @@ export function DeveloperPerformanceView() {
     if (!data) return;
     const isPeriod = !!range;
     const headers = [
-      'Developer', 'Role', 'Active Projects', 'Assigned Points', 'Completed Points',
+      'Developer', 'Role', 'Active Projects', 'Assigned Points', 'Completed Points', 'My Task Points', 'Total Points',
       isPeriod ? 'Period Pts' : 'Today Pts', 'Completion %', 'Tasks Pending', 'Bugs', 'Utilization %', 'Status',
     ];
     const rows = filteredDevs.map((d) => [
-      d.name, d.role, d.activeProjects, d.assignedPoints, d.completedPoints,
+      d.name, d.role, d.activeProjects, d.totalAssignedPoints, d.completedPoints, d.myTaskPoints, d.totalPoints,
       d.todayPoints, d.completionRate, d.tasksPending, d.bugs, d.utilization, d.devStatus,
     ]);
     const csv = [headers, ...rows]
@@ -379,9 +379,9 @@ export function DeveloperPerformanceView() {
     tables: [
       {
         title: `Developers (${filteredDevs.length} shown)`,
-        columns: ['Developer', 'Role', 'Projects', 'Assigned', 'Completed', isPeriod ? 'Period Pts' : 'Today Pts', 'Completion %', 'Pending', 'Bugs', 'Utilization %', 'Status'],
+        columns: ['Developer', 'Role', 'Projects', 'Assigned', 'Completed', 'My Tasks', 'Total', isPeriod ? 'Period Pts' : 'Today Pts', 'Completion %', 'Pending', 'Bugs', 'Utilization %', 'Status'],
         rows: filteredDevs.map((d) => [
-          d.name, d.role, d.activeProjects, d.assignedPoints, d.completedPoints,
+          d.name, d.role, d.activeProjects, d.totalAssignedPoints, d.completedPoints, d.myTaskPoints, d.totalPoints,
           d.todayPoints, `${d.completionRate}%`, d.tasksPending, d.bugs, `${d.utilization}%`, d.devStatus,
         ]),
       },
@@ -518,6 +518,8 @@ export function DeveloperPerformanceView() {
                         <th className="px-4 py-3 text-center">Assigned</th>
                         <th className="px-4 py-3 text-center">Completed</th>
                         <th className="px-4 py-3 text-center min-w-[80px]">{isPeriod ? 'Period' : 'Today'}</th>
+                        <th className="px-4 py-3 text-center min-w-[90px]" title="Approved My Tasks only">My Tasks</th>
+                        <th className="px-4 py-3 text-center min-w-[80px]" title="Project points + approved My Task points">Total</th>
                         <th className="px-4 py-3 min-w-[140px]">Completion</th>
                         <th className="px-4 py-3 text-center">Pending</th>
                         <th className="px-4 py-3 text-center">Bugs</th>
@@ -530,7 +532,7 @@ export function DeveloperPerformanceView() {
                     <tbody className="divide-y divide-gray-50">
                       {filteredDevs.length === 0 ? (
                         <tr>
-                          <td colSpan={13} className="px-4 py-10 text-center text-sm text-gray-400">
+                          <td colSpan={15} className="px-4 py-10 text-center text-sm text-gray-400">
                             {data.developers.length === 0
                               ? 'No developer data available yet.'
                               : 'No developers match your filters.'}
@@ -557,13 +559,26 @@ export function DeveloperPerformanceView() {
                             </td>
                             <td className="px-4 py-3 text-gray-500">{d.role}</td>
                             <td className="px-4 py-3 text-center text-gray-700">{d.activeProjects}</td>
-                            <td className="px-4 py-3 text-center font-medium text-gray-700">{d.assignedPoints}</td>
+                            {/* Assigned = project + My Task points (req. 1). Title keeps
+                                the split visible; the ratio columns stay project-based. */}
+                            <td
+                              className="px-4 py-3 text-center font-medium text-gray-700"
+                              title={`Project ${d.assignedPoints} + My Tasks ${d.myTaskAssignedPoints}`}
+                            >
+                              {d.totalAssignedPoints}
+                            </td>
                             <td className="px-4 py-3 text-center font-medium text-emerald-600">{d.completedPoints}</td>
                             <td className="px-4 py-3 text-center text-gray-700">
                               {d.todayPoints > 0
                                 ? <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">+{d.todayPoints}</span>
                                 : <span className="text-gray-300">—</span>}
                             </td>
+                            {/* My Task points (approved only) and the combined total —
+                                shown beside the project figure, never merged into it. */}
+                            <td className="px-4 py-3 text-center font-medium text-indigo-600">
+                              {d.myTaskPoints > 0 ? d.myTaskPoints : <span className="text-gray-300">—</span>}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-900">{d.totalPoints}</td>
                             <td className="px-4 py-3">
                               <div className="flex flex-nowrap items-center gap-2">
                                 <div className="h-1.5 w-16 shrink-0 rounded-full bg-gray-100">

@@ -7,16 +7,19 @@ import {
   Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
   Calendar, User, Users, Flag, Clock, Paperclip, RefreshCw, Pencil, Trash2, ShieldAlert,
   MessageCircle, Activity, Download, BarChart3, AtSign, X, ArrowLeft,
-  Star, MoreHorizontal, FileText, SlidersHorizontal,
+  Star, MoreHorizontal, FileText, SlidersHorizontal, Award,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { usesTaskPoints } from '@/lib/permissions/moduleAccess';
+import { PointDistributionModal } from '@/components/tasks/mytasks/PointDistributionModal';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
 import {
   fetchMyTaskWorkspace, deleteMyTask, updateMyTaskStatus, uploadMyTaskAttachment,
   type MyTask, type MyTaskWorkspace as MyTaskWorkspaceData, type MyTaskActivity,
+  type PointAllocation,
 } from '@/lib/api/myTasks';
 import { MyTaskChat } from '@/components/tasks/mytasks/MyTaskChat';
 import { ExportTaskPdfButton } from '@/components/tasks/mytasks/ExportTaskPdfButton';
@@ -729,6 +732,9 @@ function DetailsPanel({
   const st = statusMeta(task.status);
   const [activeTab, setActiveTab] = useState<'chat' | 'attachments' | 'timeline'>('chat');
   const [waitingOpen, setWaitingOpen] = useState(false); // Waiting-reason picker
+  // Points are a Development-side concept; Sales users get the plain task view.
+  const { user: pointsUser } = useAuth();
+  const showPoints = usesTaskPoints(pointsUser);
 
   // Everyone who can be @mentioned = Owner (creator) + In-Charge + assigned members,
   // de-duplicated by id and excluding inactive accounts. The creator is included even
@@ -824,6 +830,18 @@ function DetailsPanel({
                 </DetailRow>
                 <DetailRow icon={Calendar} label="Due"><span className={due.tone}>{due.label}</span></DetailRow>
                 <DetailRow icon={Clock} label="Created">{fmtDate(task.createdAt)}</DetailRow>
+                {/* Same row as the mobile panel — Task Details must show the points
+                    on BOTH breakpoints. Hidden for users outside the points system. */}
+                {showPoints && (
+                  <DetailRow icon={Award} label="Estimated Points">
+                    <span className="font-medium text-gray-700">
+                      {task.estimatedPoints || 0}
+                      <span className="ml-1.5 text-xs font-normal text-gray-400">
+                        {task.status === 'approved' ? 'awarded' : 'awarded after approval'}
+                      </span>
+                    </span>
+                  </DetailRow>
+                )}
               </div>
 
               {task.status === 'waiting' && (
@@ -1087,6 +1105,9 @@ function MyTaskMobileDetails({
   const [activeTab, setActiveTab] = useState<'chat' | 'attachments' | 'timeline'>('chat');
   const [waitingOpen, setWaitingOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Points are a Development-side concept; Sales users get the plain task view.
+  const { user } = useAuth();
+  const showPoints = usesTaskPoints(user);
   const [fav, toggleFav] = useFavorite(task.id);
   const prio = priorityMeta(task.priority);
   const st = statusMeta(task.status);
@@ -1198,6 +1219,19 @@ function MyTaskMobileDetails({
             <div className="grid grid-cols-2 gap-3 px-4 py-3">
               <DetailRow icon={Calendar} label="Due Date"><span className={classNames('font-medium', due.tone)}>{dueDateText}</span></DetailRow>
               <DetailRow icon={Clock} label="Created"><span className="font-medium text-gray-700">{fmtDate(task.createdAt)}</span></DetailRow>
+              {/* Points count toward performance only once the task is approved,
+                  so say which state they're in rather than showing a bare number.
+                  Hidden entirely for users outside the points system (e.g. Sales). */}
+              {showPoints && (
+              <DetailRow icon={Award} label="Estimated Points">
+                <span className="font-medium text-gray-700">
+                  {task.estimatedPoints || 0}
+                  <span className="ml-1.5 text-xs font-normal text-gray-400">
+                    {task.status === 'approved' ? 'awarded' : 'awarded after approval'}
+                  </span>
+                </span>
+              </DetailRow>
+              )}
             </div>
             <div className="px-4 py-3">
               <DetailRow icon={FileText} label="Description">
@@ -1629,8 +1663,25 @@ function WorkspaceInner() {
     }
   };
 
+  // Approving a MULTI-assignee task that carries points needs the approver to say
+  // who earned them first. Intercepted here — the single place both the desktop and
+  // mobile detail panels route their status changes through.
+  const [distributeFor, setDistributeFor] = useState<MyTask | null>(null);
+  const [distributing, setDistributing] = useState(false);
+
+  const commitStatus = async (taskId: number, status: string, waitingReason?: string, pointsDistribution?: PointAllocation[]) => {
+    await updateMyTaskStatus(taskId, status, waitingReason, pointsDistribution);
+    await load(true);
+  };
+
   const handleStatus = async (taskId: number, status: string, waitingReason?: string) => {
-    try { await updateMyTaskStatus(taskId, status, waitingReason); await load(true); }
+    const task = data ? [...data.inbox, ...data.outbox].find((t) => t.id === taskId) : null;
+    // Single assignee (or a 0-point task) approves immediately, exactly as before.
+    if (status === 'approved' && task && (task.estimatedPoints || 0) > 0 && (task.members?.length || 0) > 1) {
+      setDistributeFor(task);
+      return;
+    }
+    try { await commitStatus(taskId, status, waitingReason); }
     catch { toast('Failed to update status.', 'error'); }
   };
 
@@ -1645,8 +1696,33 @@ function WorkspaceInner() {
     } catch { toast('Failed to delete task.', 'error'); }
   };
 
+  const distributionModal = (
+    <PointDistributionModal
+      isOpen={!!distributeFor}
+      task={distributeFor}
+      saving={distributing}
+      onCancel={() => setDistributeFor(null)}
+      onConfirm={async (allocations) => {
+        if (!distributeFor) return;
+        setDistributing(true);
+        try {
+          await commitStatus(distributeFor.id, 'approved', undefined, allocations);
+          toast('Task approved and points awarded.', 'success');
+          setDistributeFor(null);
+        } catch {
+          // The server re-validates the split; surface its rejection rather than
+          // closing the modal on a total that didn't add up.
+          toast('Failed to approve. Check the point distribution and try again.', 'error');
+        } finally {
+          setDistributing(false);
+        }
+      }}
+    />
+  );
+
   return (
     <div className={classNames('mytasks-scope space-y-4', isMobile && 'pb-24')}>
+      {distributionModal}
       {/* ── Primary navigation: Inbox | Outbox | Analytics — DESKTOP/TABLET only.
           On mobile (<768px) this is replaced by the fixed BOTTOM navigation below,
           matching the reference. The active tab is DERIVED from `view` + `bucket`. */}

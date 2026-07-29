@@ -34,6 +34,23 @@ export const reportDate = (v?: string | null): string =>
 
 const dash = (v?: string | null) => (v && String(v).trim() ? String(v) : '—');
 
+/**
+ * Money for the PDF. jsPDF's built-in Helvetica is WinAnsi (cp1252) and has no
+ * '₹' (U+20B9): it writes the codepoint's two bytes literally, so "₹25,00,000"
+ * lands in the file as " ¹25,00,000". Verified against the installed jsPDF.
+ *
+ * So the PDF prints "Rs." — the standard fallback in Indian business documents —
+ * while the SCREEN and the Excel export keep the real ₹ glyph, which they render
+ * correctly. Grouping and the value itself still come from formatINR, so there is
+ * one formatter and no chance of the PDF disagreeing with the UI.
+ *
+ * ponytail: swap the glyph, don't embed a font. Embedding a Unicode TTF would add
+ * a few hundred KB of base64 to the bundle — do that only if '₹' becomes a hard
+ * branding requirement in the PDF itself.
+ */
+const pdfINR = (v: number | string | null | undefined): string =>
+  formatINR(v).replace('₹', 'Rs. ');
+
 export interface LeadColumn {
   header: string;
   /** Display value — already formatted (used verbatim by the PDF). */
@@ -210,7 +227,7 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
     stg,
     stats.count.toString(),
     `${((stats.count / Math.max(kpis.total, 1)) * 100).toFixed(1)}%`,
-    formatINR(stats.value)
+    pdfINR(stats.value)
   ]);
 
   if (cursorY > doc.internal.pageSize.getHeight() - 100) {
@@ -234,48 +251,21 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   });
   cursorY = (doc as any).lastAutoTable.finalY + 30;
 
-  // Main Lead Data Table
-  if (cursorY > doc.internal.pageSize.getHeight() - 100) {
-    doc.addPage();
-    cursorY = 40;
+  // The Detailed Lead Listing was removed from the PDF: this is a management
+  // summary, and the row-level data now lives in the Excel export (same filtered
+  // dataset, via LEAD_COLUMNS). No query or calculation changed — `leads` still
+  // drives the KPIs, source analytics and the stage summary above.
+
+  // Page numbers previously rode on the listing table's didDrawPage hook, which
+  // died with it. Stamp every page here instead, so pagination survives whatever
+  // sections the report ends up with.
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`Page ${i} of ${pageCount}`, 40, doc.internal.pageSize.getHeight() - 20);
   }
-
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Detailed Lead Listing', 40, cursorY);
-
-  // Rows + column geometry both come from LEAD_COLUMNS, so the header, the cell
-  // order and the widths can never drift apart (that mismatch is what shifted
-  // values into the wrong column and looked like "broken cells").
-  const leadTableData = leads.map((l) => LEAD_COLUMNS.map((c) => c.text(l)));
-  const totalWidth = LEAD_COLUMNS.reduce((sum, c) => sum + c.width, 0);
-  const usable = pageWidth - 80;
-  const columnStyles = Object.fromEntries(
-    LEAD_COLUMNS.map((c, i) => [i, {
-      cellWidth: (c.width / totalWidth) * usable,
-      halign: c.align ?? 'left',
-    }]),
-  );
-
-  autoTable(doc, {
-    startY: cursorY + 20,
-    head: [LEAD_COLUMNS.map((c) => c.header)],
-    body: leadTableData,
-    theme: 'striped',
-    styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', valign: 'middle' },
-    headStyles: { fillColor: [55, 65, 81], halign: 'left', fontStyle: 'bold' },
-    columnStyles: columnStyles as any,
-    margin: { left: 40, right: 40, bottom: 40 },
-    didDrawPage: function (data: any) {
-      // Add Page number to footer
-      const str = `Page ${(doc as any).internal.getNumberOfPages()}`;
-      doc.setFontSize(8);
-      doc.setTextColor(150);
-      const pageSize = doc.internal.pageSize;
-      const pageHeight = pageSize.getHeight();
-      doc.text(str, data.settings.margin.left, pageHeight - 20);
-    }
-  });
 
   doc.save(`Sales_Leads_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
 }
