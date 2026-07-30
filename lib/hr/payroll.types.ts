@@ -4,6 +4,7 @@ export interface PayrollRecord {
   employeeCode: string;
   name: string;
   role: string;
+  department: string;
   basicSalary: number;
   bonus: number;
   deduction: number; // legacy: equals totalDeductions on new records
