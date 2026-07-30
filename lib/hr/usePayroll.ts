@@ -21,6 +21,7 @@ export function adaptPayrollRecord(p: ApiPayrollRecord): PayrollRecord {
     employeeCode: p.employee_code ?? '',
     name: p.name ?? '',
     role: p.designation ?? '',
+    department: '', // filled from the employees list in the records memo (below)
     basicSalary: num(p.basic_salary),
     bonus: num(p.bonus),
     deduction: num(p.deduction),
@@ -90,10 +91,21 @@ export function usePayroll() {
     loadData();
   }, [loadData]);
 
-  // Derived adapted payroll records
+  // Department is not part of the payroll snapshot; source it from the already-
+  // fetched employees list (no extra API call) via an employeeId → department map.
+  const departmentById = useMemo(() => {
+    const m = new Map<number, string>();
+    employees.forEach((e) => m.set(e.id, e.department));
+    return m;
+  }, [employees]);
+
+  // Derived adapted payroll records (enriched with department)
   const records = useMemo(() => {
-    return payrollRecords.map(adaptPayrollRecord);
-  }, [payrollRecords]);
+    return payrollRecords.map((p) => {
+      const r = adaptPayrollRecord(p);
+      return { ...r, department: departmentById.get(r.employeeId) ?? r.department };
+    });
+  }, [payrollRecords, departmentById]);
 
   // Unique list of months present in the records (for filter dropdown)
   const availableMonths = useMemo(() => {
