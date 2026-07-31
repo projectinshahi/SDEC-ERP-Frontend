@@ -143,7 +143,8 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
     const e: Record<string, string> = {};
     if (!form.title.trim()) e.title = 'Opportunity name is required.';
     if (form.email.trim() && !isValidEmail(form.email.trim())) e.email = 'Enter a valid email address.';
-    if (form.phone.trim() && !isValidPhone(form.phone.trim())) e.phone = 'Enter a valid phone number.';
+    if (!form.phone.trim()) e.phone = 'Phone number is required.';
+    else if (!isValidPhone(form.phone.trim())) e.phone = 'Enter a valid phone number.';
     if (form.whatsapp.trim() && !isValidPhone(form.whatsapp.trim())) e.whatsapp = 'Enter a valid WhatsApp number.';
     if (form.source === 'referral' && !form.referralName.trim()) e.referralName = 'Referral Name is required.';
     if (!form.leadValue.trim()) {
@@ -237,7 +238,7 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField label="Contact Name" id="edit-name" value={form.name} onChange={(v) => set('name', v)} />
             <InputField label="Designation" id="edit-designation" value={form.designation} onChange={(v) => set('designation', v)} placeholder="e.g. Founder / CTO" />
-            <InputField label="Phone" id="edit-phone" value={form.phone} onChange={(v) => set('phone', v)} error={errors.phone} />
+            <InputField label="Phone" id="edit-phone" required value={form.phone} onChange={(v) => set('phone', v)} error={errors.phone} />
             <InputField label="WhatsApp" id="edit-whatsapp" value={form.whatsapp} onChange={(v) => set('whatsapp', v)} error={errors.whatsapp} />
             <InputField label="Email" id="edit-email" type="email" value={form.email} onChange={(v) => set('email', v)} error={errors.email} />
             <InputField label="Company" id="edit-contact-company" value={companySec.name} onChange={() => {}} disabled placeholder="Set in Company Information below" />

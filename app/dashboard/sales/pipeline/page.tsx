@@ -871,6 +871,7 @@ export default function SalesLeadsPage() {
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Priority</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Lead Status</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Owner</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Created Date</th>
                     {canDeleteLead && (
                       <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400 text-right">Actions</th>
                     )}
@@ -879,11 +880,11 @@ export default function SalesLeadsPage() {
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={canDeleteLead ? 7 : 6} className="px-6 py-8 text-center text-gray-500">Loading leads...</td>
+                      <td colSpan={canDeleteLead ? 8 : 7} className="px-6 py-8 text-center text-gray-500">Loading leads...</td>
                     </tr>
                   ) : visibleLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={canDeleteLead ? 7 : 6} className="px-6 py-8 text-center text-gray-500">No opportunities found</td>
+                      <td colSpan={canDeleteLead ? 8 : 7} className="px-6 py-8 text-center text-gray-500">No opportunities found</td>
                     </tr>
                   ) : (
                     visibleLeads.map((lead) => (
@@ -916,6 +917,9 @@ export default function SalesLeadsPage() {
                           <LeadHealthBadge temperature={lead.temperature} showLabel={false} />
                         </td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{lead.owner?.name}</td>
+                        <td className="px-6 py-4 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                          {new Date(lead.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
                         {canDeleteLead && (
                           <td className="px-6 py-4 text-right">
                             <button

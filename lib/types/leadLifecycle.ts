@@ -148,7 +148,7 @@ export interface ImportResult {
 /** Target lead fields that import columns can be mapped to. */
 export type ImportFieldKey =
   | 'title' | 'name' | 'company' | 'email' | 'phone' | 'website' | 'description' | 'source' | 'status' | 'priority'
-  // CRM import template fields:
-  | 'salesperson' | 'expectedRevenue' | 'stage';
+  // CRM import template fields ('temperature' = the "Lead Status" column):
+  | 'salesperson' | 'expectedRevenue' | 'stage' | 'temperature';
 
 export type ImportMapping = Partial<Record<ImportFieldKey, string>>;

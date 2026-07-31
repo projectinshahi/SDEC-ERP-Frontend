@@ -88,7 +88,8 @@ export default function PipelineSummaryPage() {
 
   const hasData =
     !!data &&
-    (data.totals.total > 0 || data.byStage.length > 0 || data.byOwner.length > 0);
+    (data.totals.total > 0 || data.byStage.length > 0 || data.byOwner.length > 0 ||
+      (data.bdePipeline?.length ?? 0) > 0);
 
   const stageChart = (data?.byStage ?? [])
     .slice()
@@ -318,6 +319,80 @@ export default function PipelineSummaryPage() {
                 </div>
               )}
             </Card>
+
+            {/* BDE Pipeline Summary — per-BDE LEAD pipeline + checklist progress.
+                Additive section; hidden entirely when there are no leads in scope. */}
+            {(data!.bdePipeline?.length ?? 0) > 0 && (
+              <Card className="p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+                <div className="px-6 pt-6">
+                  <SectionHeader icon={Users} title="BDE Pipeline Summary" tone="indigo" />
+                  <p className="-mt-2 mb-4 text-xs text-gray-500 dark:text-gray-400">
+                    Lead pipeline &amp; checklist progress per BDE · {label}
+                  </p>
+                </div>
+                <div className="space-y-6 px-6 pb-6">
+                  {data!.bdePipeline!.map((bde) => (
+                    <div
+                      key={bde.ownerId}
+                      className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+                    >
+                      {/* BDE header + total */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50/70 dark:bg-gray-800/40 px-4 py-3">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                          BDE: {bde.name}
+                        </h3>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                          Total Leads: <span className="tabular-nums text-gray-900 dark:text-white">{bde.totalLeads}</span>
+                        </span>
+                      </div>
+
+                      {/* Stage distribution chips */}
+                      <div className="flex flex-wrap gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                        {bde.byStage.map((s) => (
+                          <span
+                            key={s.stage}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                          >
+                            {s.stage}
+                            <span className="tabular-nums font-semibold">{s.count}</span>
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Per-lead checklist table */}
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-100 bg-gray-50/40 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/30 dark:text-gray-400">
+                              <th className="px-4 py-2.5">Lead</th>
+                              <th className="px-4 py-2.5">Company</th>
+                              <th className="px-4 py-2.5">Current Stage</th>
+                              <th className="px-4 py-2.5 text-right">Checklist Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {bde.leads.map((l) => (
+                              <tr key={l.leadId} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40">
+                                <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">{l.title}</td>
+                                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">{l.company}</td>
+                                <td className="px-4 py-2.5">
+                                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                    {l.stage}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 dark:text-gray-300">
+                                  {l.checklistTotal > 0 ? `${l.checklistDone} / ${l.checklistTotal} Completed` : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             <p className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 print:hidden">
               <Filter size={12} /> Figures reflect the selected period ({label}).

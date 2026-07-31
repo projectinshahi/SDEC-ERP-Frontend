@@ -7,6 +7,7 @@ import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { useToast } from '@/lib/hooks/useToast';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { previewLeadImport, importLeads } from '@/lib/api/leadLifecycle';
 import type { ImportPreview, ImportResult, ImportMapping, ImportFieldKey } from '@/lib/types/leadLifecycle';
 
@@ -16,38 +17,39 @@ interface ImportLeadsModalProps {
   onImported: () => void;
 }
 
-// Target fields the user can map source columns onto. Order + labels mirror the
-// CRM import template exactly (Opportunity, Contact Name, Email, Salesperson,
-// Expected Revenue, Stage).
-const MAP_FIELDS: { key: ImportFieldKey; label: string }[] = [
-  { key: 'title', label: 'Opportunity' },
-  { key: 'name', label: 'Contact Name' },
-  { key: 'email', label: 'Email' },
-  { key: 'salesperson', label: 'Salesperson' },
-  { key: 'expectedRevenue', label: 'Expected Revenue' },
-  { key: 'stage', label: 'Stage' },
+// The 7 mandatory columns, in the exact spec order. MAP_FIELDS (mapping
+// dropdowns), TEMPLATE_HEADERS (download) and the required-note all derive from
+// this one list so they can never drift. Stage is omitted — imports enter at NQL.
+const REQUIRED_COLUMNS: { key: ImportFieldKey; label: string; sample: string }[] = [
+  { key: 'source', label: 'Lead Source', sample: 'outreach' },
+  { key: 'title', label: 'Opportunity Name', sample: 'Acme Website Redesign' },
+  { key: 'salesperson', label: 'Owner', sample: 'Priya Sharma' },
+  { key: 'expectedRevenue', label: 'Opportunity Value', sample: '250000' },
+  { key: 'temperature', label: 'Lead Status', sample: 'WARM' },
+  { key: 'name', label: 'Contact Name', sample: 'John Doe' },
+  { key: 'phone', label: 'Phone', sample: '+91 98765 43210' },
 ];
 
-// The downloadable sample template — exact column names and order required by
-// the CRM import format, plus one illustrative example row.
-const TEMPLATE_HEADERS = ['Opportunity', 'Contact Name', 'Email', 'Salesperson', 'Expected Revenue', 'Stage'];
-const TEMPLATE_SAMPLE = ['Acme Website Redesign', 'John Doe', 'john@acme.com', 'Priya Sharma', 250000, 'New'];
+const MAP_FIELDS: { key: ImportFieldKey; label: string }[] = REQUIRED_COLUMNS.map(({ key, label }) => ({ key, label }));
+const TEMPLATE_HEADERS = REQUIRED_COLUMNS.map((c) => c.label);
 
 /**
  * Builds + downloads the sample import template as a real .xlsx file (matching
  * the attached Excel format), generated client-side with ExcelJS. The header row
- * uses the exact column names in the exact order the importer expects.
+ * uses the exact column names in the exact order the importer expects. The Owner
+ * cell is pre-filled with the authenticated downloader's name (falls back to the
+ * placeholder when unknown) so imported leads default to that user.
  */
-async function downloadSampleTemplate() {
+async function downloadSampleTemplate(ownerName?: string) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Leads');
 
   sheet.columns = TEMPLATE_HEADERS.map((header) => ({
     header,
-    width: header === 'Opportunity' ? 28 : header === 'Email' ? 24 : 18,
+    width: header === 'Opportunity Name' ? 28 : 20,
   }));
   sheet.getRow(1).font = { bold: true };
-  sheet.addRow(TEMPLATE_SAMPLE);
+  sheet.addRow(REQUIRED_COLUMNS.map((c) => (c.key === 'salesperson' && ownerName?.trim() ? ownerName.trim() : c.sample)));
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -77,6 +79,7 @@ const validityBadge: Record<string, 'success' | 'danger' | 'warning'> = {
  */
 export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsModalProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [mapping, setMapping] = useState<ImportMapping>({});
@@ -100,7 +103,7 @@ export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsMod
 
   const handleDownloadTemplate = async () => {
     try {
-      await downloadSampleTemplate();
+      await downloadSampleTemplate(user?.name);
     } catch (error: any) {
       toast(error?.message || 'Failed to generate template', 'error');
     }
@@ -175,8 +178,7 @@ export function ImportLeadsModal({ isOpen, onClose, onImported }: ImportLeadsMod
                   ))}
                 </div>
                 <p className="mt-2 text-[11px] text-gray-500">
-                  <strong>Opportunity</strong> and <strong>Contact Name</strong> are required. Email, Salesperson,
-                  Expected Revenue and Stage are optional.
+                  All <strong>7 columns are required</strong> — rows missing any value (or with an unknown Lead Source / Owner, or a Lead Status other than COLD/WARM/HOT) are rejected with a per-row reason. Every imported lead enters the pipeline at the <strong>NQL</strong> stage.
                 </p>
               </div>
             </div>
