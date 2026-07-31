@@ -394,6 +394,109 @@ export default function PipelineSummaryPage() {
               </Card>
             )}
 
+            {/* BDE Performance Summary — daily KPI overview per BDE + checklist.
+                Additive; hidden when no leads in scope. */}
+            {(data!.bdePipeline?.length ?? 0) > 0 && (
+              <Card className="p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+                <div className="px-6 pt-6">
+                  <SectionHeader icon={LineChart} title="BDE Performance Summary" tone="emerald" />
+                  <p className="-mt-2 mb-4 text-xs text-gray-500 dark:text-gray-400">
+                    Daily pipeline &amp; activity overview per BDE
+                  </p>
+                </div>
+                <div className="space-y-6 px-6 pb-6">
+                  {data!.bdePipeline!.filter((b) => b.kpis).map((bde) => {
+                    const k = bde.kpis!;
+                    const kpiTiles: { label: string; value: string | number }[] = [
+                      { label: 'New Leads Added Yesterday', value: k.newLeadsYesterday },
+                      { label: 'NQL', value: k.nql },
+                      { label: 'MQL', value: k.mql },
+                      { label: 'Meaningful Conversations Yesterday', value: k.meaningfulConversationsYesterday },
+                      { label: 'SQL', value: k.sql },
+                      { label: 'Discovery Meetings Conducted Yesterday', value: k.discoveryMeetingsYesterday },
+                      { label: 'PQL', value: k.pql },
+                      { label: 'Proposals Sent Yesterday', value: k.proposalsSentYesterday },
+                      { label: 'Proposal Value Yesterday', value: formatINR(k.proposalValueYesterday) },
+                      { label: 'Negotiations Active Yesterday', value: k.negotiationsActiveYesterday },
+                      { label: 'SAL', value: k.sal },
+                      { label: 'WON', value: k.won },
+                      { label: 'WON Revenue Yesterday', value: formatINR(k.wonRevenueYesterday) },
+                      { label: 'HOLD', value: k.hold },
+                      { label: 'LOST', value: k.lost },
+                      { label: 'Next-Day Meetings Scheduled Today', value: k.nextDayMeetingsToday },
+                    ];
+                    return (
+                      <div key={bde.ownerId} className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                        <div className="bg-gray-50/70 dark:bg-gray-800/40 px-4 py-3 break-after-avoid">
+                          <h3 className="font-semibold text-gray-900 dark:text-white">BDE : {bde.name}</h3>
+                        </div>
+
+                        {/* KPI grid — keep together on one printed page. */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-4 border-b border-gray-100 dark:border-gray-800 break-inside-avoid">
+                          {kpiTiles.map((t) => (
+                            <div key={t.label} className="rounded-lg bg-gray-50 dark:bg-gray-800/50 px-3 py-2 break-inside-avoid">
+                              <p className="text-[11px] leading-tight text-gray-500 dark:text-gray-400">{t.label}</p>
+                              <p className="mt-1 text-lg font-bold tabular-nums text-gray-900 dark:text-white">{t.value}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pipeline Status — current stage-wise distribution for this BDE. */}
+                        <div className="overflow-x-auto print:overflow-visible border-b border-gray-100 dark:border-gray-800">
+                          <table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-100 bg-gray-50/40 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/30 dark:text-gray-400">
+                                <th className="px-4 py-2.5">Pipeline Stage</th>
+                                <th className="px-4 py-2.5 text-right">Count</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                              {bde.byStage.map((s) => (
+                                <tr key={s.stage} className="break-inside-avoid hover:bg-gray-50/70 dark:hover:bg-gray-800/40">
+                                  <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">{s.stage}</td>
+                                  <td className="px-4 py-2 text-right tabular-nums text-gray-600 dark:text-gray-300">{s.count}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Pipeline checklist for every lead owned by this BDE */}
+                        <div className="overflow-x-auto print:overflow-visible">
+                          <table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-100 bg-gray-50/40 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/30 dark:text-gray-400">
+                                <th className="px-4 py-2.5">Opportunity</th>
+                                <th className="px-4 py-2.5">Company</th>
+                                <th className="px-4 py-2.5">Current Stage</th>
+                                <th className="px-4 py-2.5 text-right">Checklist Progress</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                              {bde.leads.map((l) => (
+                                <tr key={l.leadId} className="break-inside-avoid hover:bg-gray-50/70 dark:hover:bg-gray-800/40">
+                                  <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">{l.title}</td>
+                                  <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">{l.company}</td>
+                                  <td className="px-4 py-2.5">
+                                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                      {l.stage}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 dark:text-gray-300">
+                                    {l.checklistTotal > 0 ? `${l.checklistDone} / ${l.checklistTotal} Completed` : '—'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
             <p className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 print:hidden">
               <Filter size={12} /> Figures reflect the selected period ({label}).
             </p>
