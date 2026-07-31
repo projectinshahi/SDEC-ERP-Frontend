@@ -19,11 +19,29 @@ export interface PipelineOwnerRow {
   forecast: number;
   wonValue: number;
 }
+// BDE-wise LEAD pipeline + per-lead checklist progress (Pipeline Report section).
+export interface BdePipelineLead {
+  leadId: number;
+  title: string;
+  company: string;
+  stage: string;
+  checklistDone: number;
+  checklistTotal: number;
+}
+export interface BdePipelineOwner {
+  ownerId: number;
+  name: string;
+  totalLeads: number;
+  byStage: { stage: string; count: number }[];
+  leads: BdePipelineLead[];
+}
 export interface PipelineSummary {
   totals: { total: number; open: number; won: number; lost: number };
   revenue: { pipelineValue: number; forecastRevenue: number; wonValue: number; lostValue: number; avgDealValue: number };
   byStage: PipelineStageRow[];
   byOwner: PipelineOwnerRow[];
+  /** Additive BDE-wise lead pipeline section; may be absent on older payloads. */
+  bdePipeline?: BdePipelineOwner[];
 }
 
 // ── SE-035 Win Rate ──────────────────────────────────────────────────────────

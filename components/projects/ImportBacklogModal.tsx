@@ -162,7 +162,18 @@ export function ImportBacklogModal({ isOpen, onClose, onImport, isImporting }: I
           }
           json.push(...csvRows);
         } else {
-          // XLSX path (unchanged) — parse the first worksheet via ExcelJS.
+          // XLSX path — parse the first worksheet via ExcelJS.
+          // Guard the input FIRST: an .xlsx is a ZIP (magic bytes "PK"). Handing
+          // ExcelJS a non-ZIP or corrupt file makes its internal JSZip read a
+          // bogus size and throw "Array buffer allocation failed" from an
+          // unawaited promise — which escapes this try/catch and crashes the
+          // process with an unhandledRejection. Reject bad input before load.
+          const sig = new Uint8Array(buffer.slice(0, 2));
+          if (sig[0] !== 0x50 || sig[1] !== 0x4b) {
+            setError('That file is not a valid .xlsx workbook. Please upload a real Excel file or a .csv.');
+            setParsedData(null);
+            return;
+          }
           const workbook = new ExcelJS.Workbook();
           await workbook.xlsx.load(buffer);
           const worksheet = workbook.worksheets[0];

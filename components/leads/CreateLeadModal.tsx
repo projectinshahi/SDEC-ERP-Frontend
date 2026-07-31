@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Phone, Mail, Globe, MessageCircle, Megaphone, Users, MoreHorizontal, Plus, ChevronDown, ChevronUp, Handshake } from 'lucide-react';
+import { Phone, Mail, Globe, MessageCircle, Megaphone, Users, MoreHorizontal, Plus, ChevronDown, ChevronUp, Handshake, Send } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/ui/InputField';
@@ -51,6 +51,7 @@ const SOURCE_OPTIONS = [
   { value: 'meta_ads', label: 'Meta Ads', icon: Megaphone },
   { value: 'referral', label: 'Referrals', icon: Users },
   { value: 'face_to_face', label: 'Face-to-Face', icon: Handshake },
+  { value: 'outreach', label: 'Outreach', icon: Send },
   { value: 'other', label: 'Others', icon: MoreHorizontal },
 ] as const;
 
@@ -182,20 +183,21 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const validate = (): boolean => {
     const e: Record<string, string> = {};
 
-    // Opportunity Name (optional — falls back to the contact/company name server-side).
-    if (form.title.trim()) {
-      const titleErr = validateName(form.title, 'Opportunity Name', { maxLength: 200 });
-      if (titleErr) e.title = titleErr;
-    }
+    // Opportunity Name (required).
+    const titleErr = validateName(form.title, 'Opportunity Name', { maxLength: 200 });
+    if (titleErr) e.title = titleErr;
     // Contact Name (required).
     const nameErr = validateName(form.name, 'Contact Name');
     if (nameErr) e.name = nameErr;
-    // Contact: at least email or phone.
-    if (!form.email.trim() && !form.phone.trim()) e.contact = 'Email or phone number is required.';
+    // Phone (required).
+    if (!form.phone.trim()) e.phone = 'Phone number is required.';
+    else {
+      const phoneErr = validatePhone(form.phone, 'Phone number');
+      if (phoneErr) e.phone = phoneErr;
+    }
+    // Email (optional — validated only when provided).
     const emailErr = validateEmail(form.email, 'Email');
     if (emailErr) e.email = emailErr;
-    const phoneErr = validatePhone(form.phone, 'Phone number');
-    if (phoneErr) e.phone = phoneErr;
     if (form.whatsapp.trim()) {
       const waErr = validatePhone(form.whatsapp, 'WhatsApp number');
       if (waErr) e.whatsapp = waErr;
@@ -348,7 +350,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           </div>
 
           <InputField
-            label="Opportunity Name" id="opp-name"
+            label="Opportunity Name" id="opp-name" required
             value={form.title} onChange={(v) => set('title', v)} error={errors.title}
             placeholder="e.g. ERP implementation — Acme"
           />
@@ -376,15 +378,11 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField label="Contact Name" id="contact-name" required value={form.name} onChange={(v) => set('name', v)} error={errors.name} placeholder="e.g. John Doe" />
             <InputField label="Designation" id="contact-designation" value={form.designation} onChange={(v) => set('designation', v)} placeholder="e.g. Founder / CTO" />
-            {/* "Email or phone is required" is a rule about the PAIR — surface it on both
-                fields so each shows the red border + message, instead of only as a note
-                under the grid that scroll-to-first-invalid could never reach. */}
-            <InputField label="Phone" id="contact-phone" value={form.phone} onChange={(v) => set('phone', v)} error={errors.phone || errors.contact} placeholder="+91 98765 43210" />
+            <InputField label="Phone" id="contact-phone" required value={form.phone} onChange={(v) => set('phone', v)} error={errors.phone} placeholder="+91 98765 43210" />
             <InputField label="WhatsApp" id="contact-whatsapp" value={form.whatsapp} onChange={(v) => set('whatsapp', v)} error={errors.whatsapp} placeholder="+91 98765 43210" />
-            <InputField label="Email" id="contact-email" type="email" value={form.email} onChange={(v) => set('email', v)} error={errors.email || errors.contact} placeholder="name@company.com" />
+            <InputField label="Email" id="contact-email" type="email" value={form.email} onChange={(v) => set('email', v)} error={errors.email} placeholder="name@company.com" />
             <InputField label="Company" id="contact-company" value={companySec.name} onChange={() => {}} disabled placeholder="Set in Company Information below" />
           </div>
-          <p className="text-xs text-gray-400">Provide at least an email or a phone number.</p>
         </section>
 
         {/* ── Section 3 · Company Information (CRM Account) ── */}
