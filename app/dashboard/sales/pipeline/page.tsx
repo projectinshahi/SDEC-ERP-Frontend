@@ -33,6 +33,7 @@ import { formatINR } from '@/lib/utils/currency';
 import { classNames } from '@/lib/utils';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
 import { exportLeadReport, exportLeadWorkbook } from '@/lib/utils/exportLeadReport';
+import { fetchPipelineReport } from '@/lib/api/salesReports';
 import type { ReportWindow } from '@/lib/api/salesReports';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { InputField } from '@/components/ui/InputField';
@@ -610,7 +611,18 @@ export default function SalesLeadsPage() {
         dateRange: exportDateRange,
       };
       if (fmt === 'excel') await exportLeadWorkbook(filteredForReport, reportFilters);
-      else await exportLeadReport(filteredForReport, stages, reportFilters);
+      else {
+        // Reuse the existing per-BDE computation for the appended BDE Performance
+        // Summary (fetched with the same export date range; never recomputed here).
+        let bdePipeline;
+        try {
+          bdePipeline = (await fetchPipelineReport({
+            from: exportDateRange.from || undefined,
+            to: exportDateRange.to || undefined,
+          })).bdePipeline;
+        } catch { bdePipeline = undefined; }
+        await exportLeadReport(filteredForReport, stages, reportFilters, bdePipeline);
+      }
       toast('Report downloaded successfully', 'success');
       setIsExportModalOpen(false);
     } catch (err) {

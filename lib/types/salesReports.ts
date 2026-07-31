@@ -28,12 +28,25 @@ export interface BdePipelineLead {
   checklistDone: number;
   checklistTotal: number;
 }
+export interface BdeKpis {
+  newLeadsYesterday: number;
+  nql: number; mql: number; sql: number; pql: number; sal: number; won: number; hold: number; lost: number;
+  meaningfulConversationsYesterday: number;
+  discoveryMeetingsYesterday: number;
+  proposalsSentYesterday: number;
+  proposalValueYesterday: number;
+  negotiationsActiveYesterday: number;
+  wonRevenueYesterday: number;
+  nextDayMeetingsToday: number;
+}
 export interface BdePipelineOwner {
   ownerId: number;
   name: string;
   totalLeads: number;
   byStage: { stage: string; count: number }[];
   leads: BdePipelineLead[];
+  /** Daily performance KPIs (absent on older payloads). */
+  kpis?: BdeKpis;
 }
 export interface PipelineSummary {
   totals: { total: number; open: number; won: number; lost: number };

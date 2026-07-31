@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { Lead, LeadStage } from '@/lib/types/lead';
+import type { BdePipelineOwner } from '@/lib/types/salesReports';
 import { formatINR } from '@/lib/utils/currency';
 import { temperatureLabel } from '@/lib/data/leadTemperature';
 
@@ -106,7 +107,14 @@ export function buildFilterLines(filters: ReportFilters): string[] {
   return f;
 }
 
-export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filters: ReportFilters) {
+export async function exportLeadReport(
+  leads: Lead[],
+  stages: LeadStage[],
+  filters: ReportFilters,
+  /** Existing per-BDE computation (fetchPipelineReport().bdePipeline) — reused,
+   *  not recomputed. Restricted below to the opportunities in THIS export. */
+  bdePipeline?: BdePipelineOwner[],
+) {
   const doc = new jsPDF('p', 'pt', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   let cursorY = 40;
@@ -255,6 +263,78 @@ export async function exportLeadReport(leads: Lead[], stages: LeadStage[], filte
   // summary, and the row-level data now lives in the Excel export (same filtered
   // dataset, via LEAD_COLUMNS). No query or calculation changed — `leads` still
   // drives the KPIs, source analytics and the stage summary above.
+
+  // ── BDE Performance Summary (appended) ───────────────────────────────────
+  // Reuses the existing per-BDE computation (KPIs + checklist), restricted to the
+  // opportunities in THIS filtered export. Activity/checklist data isn't on the
+  // client-side lead rows, so it comes from the already-computed `bdePipeline`.
+  // ponytail: the daily "…Yesterday" KPIs are the backend's owner/period figures
+  // (respect the report scope + export date range); only the Pipeline Status and
+  // checklist rows are re-narrowed to the board's filtered set. Fine for a daily
+  // summary; wire the board's stage/source filters through if exact parity matters.
+  if (bdePipeline && bdePipeline.length) {
+    const exportedIds = new Set(leads.map((l) => l.id));
+    const pageH = doc.internal.pageSize.getHeight();
+    const gap = (extra = 0) => { if (cursorY > pageH - 90 - extra) { doc.addPage(); cursorY = 40; } };
+
+    gap(30);
+    doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+    doc.text('BDE Performance Summary', 40, cursorY); cursorY += 22;
+
+    for (const bde of bdePipeline) {
+      const rows = bde.leads.filter((l) => exportedIds.has(l.leadId));
+      const k = bde.kpis;
+      if (rows.length === 0 || !k) continue; // only BDEs with opportunities in this export
+
+      gap();
+      doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+      doc.text(`BDE : ${bde.name}`, 40, cursorY); cursorY += 8;
+
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['Metric', 'Value']],
+        body: [
+          ['New Leads Added Yesterday', String(k.newLeadsYesterday)],
+          ['NQL', String(k.nql)], ['MQL', String(k.mql)],
+          ['Meaningful Conversations Yesterday', String(k.meaningfulConversationsYesterday)],
+          ['SQL', String(k.sql)],
+          ['Discovery Meetings Conducted Yesterday', String(k.discoveryMeetingsYesterday)],
+          ['PQL', String(k.pql)],
+          ['Proposals Sent Yesterday', String(k.proposalsSentYesterday)],
+          ['Proposal Value Yesterday', pdfINR(k.proposalValueYesterday)],
+          ['Negotiations Active Yesterday', String(k.negotiationsActiveYesterday)],
+          ['SAL', String(k.sal)], ['WON', String(k.won)],
+          ['WON Revenue Yesterday', pdfINR(k.wonRevenueYesterday)],
+          ['HOLD', String(k.hold)], ['LOST', String(k.lost)],
+          ['Next-Day Meetings Scheduled Today', String(k.nextDayMeetingsToday)],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 4 },
+        headStyles: { fillColor: [16, 185, 129] },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 240 }, 1: { cellWidth: 100, halign: 'right' } },
+        margin: { left: 40 },
+      });
+      cursorY = (doc as any).lastAutoTable.finalY + 14;
+
+      // Pipeline Status — current stage distribution, narrowed to this export.
+      const statusBody = stages
+        .map((s) => [s.name, rows.filter((r) => r.stage === s.name).length] as [string, number])
+        .filter(([, c]) => c > 0)
+        .map(([name, c]) => [name, String(c)]);
+      gap();
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['Pipeline Stage', 'Count']],
+        body: statusBody,
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 4 },
+        headStyles: { fillColor: [245, 158, 11] },
+        columnStyles: { 0: { cellWidth: 240 }, 1: { cellWidth: 100, halign: 'right' } },
+        margin: { left: 40 },
+      });
+      cursorY = (doc as any).lastAutoTable.finalY + 24;
+    }
+  }
 
   // Page numbers previously rode on the listing table's didDrawPage hook, which
   // died with it. Stamp every page here instead, so pagination survives whatever
