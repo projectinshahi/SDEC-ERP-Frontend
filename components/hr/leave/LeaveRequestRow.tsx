@@ -3,6 +3,7 @@
 import { Check, X, Eye, Trash2, Paperclip } from 'lucide-react';
 import { LeaveRequest } from '@/lib/hr/leave.types';
 import { LeaveStatusBadge } from './LeaveStatusBadge';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 interface LeaveRequestRowProps {
   request: LeaveRequest;
@@ -155,7 +156,7 @@ export function LeaveRequestRow({
 
           {/* Admin Specific Actions */}
           {userRole === 'admin' && request.status === 'Pending' && (
-            <>
+            <PermissionGuard require="hr.leave.approve">
               <button
                 onClick={() => onApprove(request.id)}
                 className="p-1.5 text-emerald-600 hover:text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 rounded-lg border border-emerald-500/10 hover:border-emerald-500 transition-all"
@@ -170,7 +171,7 @@ export function LeaveRequestRow({
               >
                 <X size={15} />
               </button>
-            </>
+            </PermissionGuard>
           )}
 
           {/* Staff Specific Actions */}

@@ -42,11 +42,34 @@ function financeGrants(permissions: string[], key: string): boolean {
 }
 
 /**
+ * HR coarse→granular bridge (mirrors the backend `hrGrants`). The `hr.view`
+ * master implies every `hr.*.view`; `hr.create/edit/delete` imply the matching
+ * granular writes; the legacy `hr.attendance` capability implies the granular
+ * attendance write keys only. Capability keys (hr.payroll.process,
+ * hr.leave.approve, hr.performance.*) stay exact-match. Keeps the seeded HR
+ * Admin / Employee roles working after HR moves to granular gating.
+ */
+function hrGrants(permissions: string[], key: string): boolean {
+  if (!key.startsWith('hr.')) return false;
+  if (key.endsWith('.view') && permissions.includes('hr.view')) return true;
+  if (key.endsWith('.create') && permissions.includes('hr.create')) return true;
+  if (key.endsWith('.edit') && permissions.includes('hr.edit')) return true;
+  if (key.endsWith('.delete') && permissions.includes('hr.delete')) return true;
+  if (
+    (key === 'hr.attendance.create' || key === 'hr.attendance.edit' || key === 'hr.attendance.delete') &&
+    permissions.includes('hr.attendance')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Check if the given permissions array grants a specific permission key
- * (exact match, or via the Sales / Finance coarse→granular bridges).
+ * (exact match, or via the Sales / Finance / HR coarse→granular bridges).
  */
 export function hasPermission(permissions: string[], key: PermissionKey): boolean {
-  return permissions.includes(key) || salesGrants(permissions, key) || financeGrants(permissions, key);
+  return permissions.includes(key) || salesGrants(permissions, key) || financeGrants(permissions, key) || hrGrants(permissions, key);
 }
 
 /**

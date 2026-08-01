@@ -154,25 +154,43 @@ export type PermissionKey =
   | 'sales.meetings.edit'
   | 'sales.meetings.delete'
   | 'sales.meetings.schedule'
-  // HR Module
+  // HR Module — coarse module-access masters (bridge to granular via hrGrants:
+  // hr.view⇒*.view, hr.create⇒*.create, hr.edit⇒*.edit, hr.delete⇒*.delete).
   | 'hr.view'
+  | 'hr.create'
+  | 'hr.edit'
+  | 'hr.delete'
+  | 'hr.attendance' // legacy coarse attendance-write capability (Employee role)
+  // HR — granular per-area permissions (1:1 with the sidebar + backend routes)
   | 'hr.dashboard.view'
   | 'hr.employees.view'
+  | 'hr.employees.create'
+  | 'hr.employees.edit'
+  | 'hr.employees.delete'
   | 'hr.attendance.view'
+  | 'hr.attendance.create'
+  | 'hr.attendance.edit'
+  | 'hr.attendance.delete'
   | 'hr.analytics.view'
   | 'hr.leave.view'
   | 'hr.leave.self'
-  // Backend HR-admin delete permission (held by the HR Admin role); used to gate
-  // the Delete Leave action. Not a catalog "view" key, so it's listed here only.
-  | 'hr.delete'
+  | 'hr.leave.approve'
   | 'hr.recruitment.view'
+  | 'hr.recruitment.create'
+  | 'hr.recruitment.edit'
+  | 'hr.recruitment.delete'
   | 'hr.payroll.view'
+  | 'hr.payroll.process'
   | 'hr.performance.view'
   | 'hr.performance.create'
   | 'hr.performance.review'
   | 'hr.performance.approve'
   | 'hr.documents.view'
+  | 'hr.documents.create'
+  | 'hr.documents.edit'
+  | 'hr.documents.delete'
   | 'hr.settings.view'
+  | 'hr.settings.edit'
   // Finance Module — independent ERP module (mirrors Sales/Development RBAC).
   // `finance.view` is the coarse module-access key; each page has its own View key;
   // Income & Expenses add create/edit/delete for full CRUD.

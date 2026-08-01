@@ -23,6 +23,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { AppraisalModal } from '@/components/hr/performance/AppraisalModal';
 import { CycleModal } from '@/components/hr/performance/CycleModal';
 import { ReviewDetailDrawer } from '@/components/hr/performance/ReviewDetailDrawer';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 export default function PerformancePage() {
   const { permissions, roleName, isSuperAdmin } = usePermissions();
@@ -107,20 +108,24 @@ export default function PerformancePage() {
         {/* Action Controls */}
         {isHR && (
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsCycleModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-850 shadow-sm transition"
-            >
-              <ClipboardList size={16} />
-              <span>Create Cycle</span>
-            </button>
-            <button
-              onClick={() => setIsAppraisalModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-sm font-semibold text-white shadow-sm transition"
-            >
-              <Plus size={16} />
-              <span>Assign Appraisal</span>
-            </button>
+            <PermissionGuard require="hr.performance.create">
+              <button
+                onClick={() => setIsCycleModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-850 shadow-sm transition"
+              >
+                <ClipboardList size={16} />
+                <span>Create Cycle</span>
+              </button>
+            </PermissionGuard>
+            <PermissionGuard require="hr.performance.create">
+              <button
+                onClick={() => setIsAppraisalModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-sm font-semibold text-white shadow-sm transition"
+              >
+                <Plus size={16} />
+                <span>Assign Appraisal</span>
+              </button>
+            </PermissionGuard>
           </div>
         )}
       </div>

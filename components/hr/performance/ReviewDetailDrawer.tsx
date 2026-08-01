@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Target, Award, Plus, Trash2, CheckCircle2, AlertCircle, TrendingUp, Save, Printer, ArrowDownToLine } from 'lucide-react';
 import { ApiAppraisal, ApiGoal } from '@/lib/hr/performance.types';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { generateAppraisalPdf } from '@/lib/hr/performanceHelper';
 
@@ -841,14 +842,16 @@ export function ReviewDetailDrawer({
                     </div>
                     {/* Allow goal adjustments if review is active and user has evaluator/HR rights */}
                     {(appraisal.status === 'draft' || appraisal.status === 'self_review' || appraisal.status === 'manager_review') && (isEvaluator || isHR) && (
-                      <button
-                        type="button"
-                        onClick={() => setIsAddingGoal(!isAddingGoal)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                      >
-                        <Plus size={13} />
-                        {isAddingGoal ? 'Cancel' : 'Add Goal'}
-                      </button>
+                      <PermissionGuard require="hr.performance.create">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingGoal(!isAddingGoal)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                        >
+                          <Plus size={13} />
+                          {isAddingGoal ? 'Cancel' : 'Add Goal'}
+                        </button>
+                      </PermissionGuard>
                     )}
                   </div>
 
@@ -1150,21 +1153,23 @@ export function ReviewDetailDrawer({
                 >
                   Save Draft
                 </button>
-                <button
-                  type="button"
-                  onClick={() => submitManager(false)}
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 dark:bg-amber-600 hover:bg-amber-600 dark:hover:bg-amber-700 text-sm font-semibold text-white transition shadow-sm flex items-center gap-1.5"
-                  disabled={isSubmitting}
-                >
-                  <CheckCircle2 size={16} />
-                  {isSubmitting ? 'Submitting...' : 'Submit Manager Review'}
-                </button>
+                <PermissionGuard require="hr.performance.review">
+                  <button
+                    type="button"
+                    onClick={() => submitManager(false)}
+                    className="px-5 py-2.5 rounded-xl bg-amber-500 dark:bg-amber-600 hover:bg-amber-600 dark:hover:bg-amber-700 text-sm font-semibold text-white transition shadow-sm flex items-center gap-1.5"
+                    disabled={isSubmitting}
+                  >
+                    <CheckCircle2 size={16} />
+                    {isSubmitting ? 'Submitting...' : 'Submit Manager Review'}
+                  </button>
+                </PermissionGuard>
               </>
             )}
 
             {/* Approve Review button */}
             {canApprove && (
-              <>
+              <PermissionGuard require="hr.performance.approve">
                 {!showRejectForm && (
                   <button
                     type="button"
@@ -1186,7 +1191,7 @@ export function ReviewDetailDrawer({
                   <CheckCircle2 size={16} />
                   {isSubmitting ? 'Approving...' : 'Approve & Sign-Off'}
                 </button>
-              </>
+              </PermissionGuard>
             )}
           </div>
         )}

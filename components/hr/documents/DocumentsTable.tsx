@@ -3,6 +3,7 @@
 import React from 'react';
 import { Eye, Download, CheckCircle, XCircle, Trash2, Inbox, Calendar, AlertTriangle } from 'lucide-react';
 import { HrDocument } from '@/lib/hr/documents.types';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 interface DocumentsTableProps {
   records: HrDocument[];
@@ -167,36 +168,38 @@ export function DocumentsTable({
                         <Download size={13.5} />
                       </button>
 
-                      {/* Verify Action */}
-                      {doc.rawStatus !== 'Verified' && (
-                        <button
-                          onClick={() => onVerify(doc.id)}
-                          title="Verify document"
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors"
-                        >
-                          <CheckCircle size={13.5} />
-                        </button>
-                      )}
-
-                      {/* Reject Action */}
-                      {doc.rawStatus !== 'Rejected' && (
-                        <button
-                          onClick={() => onReject(doc.id)}
-                          title="Reject document"
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
-                        >
-                          <XCircle size={13.5} />
-                        </button>
-                      )}
+                      {/* Verify / Reject Actions — require Update Documents */}
+                      <PermissionGuard require="hr.documents.edit">
+                        {doc.rawStatus !== 'Verified' && (
+                          <button
+                            onClick={() => onVerify(doc.id)}
+                            title="Verify document"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors"
+                          >
+                            <CheckCircle size={13.5} />
+                          </button>
+                        )}
+                        {doc.rawStatus !== 'Rejected' && (
+                          <button
+                            onClick={() => onReject(doc.id)}
+                            title="Reject document"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+                          >
+                            <XCircle size={13.5} />
+                          </button>
+                        )}
+                      </PermissionGuard>
 
                       {/* Delete Action */}
-                      <button
-                        onClick={() => onDelete(doc.id)}
-                        title="Delete document record"
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      <PermissionGuard require="hr.documents.delete">
+                        <button
+                          onClick={() => onDelete(doc.id)}
+                          title="Delete document record"
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </PermissionGuard>
                     </div>
                   </td>
                 </tr>

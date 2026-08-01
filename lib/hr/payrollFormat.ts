@@ -1,16 +1,24 @@
 /** Shared payroll formatting helpers — the single home for money/day formatting. */
 
-const to2 = (v: number) =>
-  (Number.isFinite(v) ? v : 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/**
+ * The ONE centralized money-rounding rule (mirrors backend payroll.service.roundMoney):
+ * round UP to the next whole rupee (20.01 → 21, 20.99 → 21). All payroll money is
+ * displayed through this, so new records (stored already-rounded) and legacy records
+ * (stored with decimals) render consistently as whole rupees. Data is never mutated.
+ */
+export const roundMoney = (v: number) => Math.ceil(Number.isFinite(v) ? v : 0);
 
-/** Money with the ₹ symbol, 2 decimals (UI). */
-export const money = (v: number) => `₹${to2(v)}`;
+const grouped = (v: number) =>
+  roundMoney(v).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
-/** Bare amount, 2 decimals — for PDF/CSV/Excel where the symbol is added separately. */
-export const amount = (v: number) => to2(v);
+/** Money with the ₹ symbol, whole rupees (UI). */
+export const money = (v: number) => `₹${grouped(v)}`;
+
+/** Bare amount, whole rupees — for PDF/CSV/Excel where the symbol is added separately. */
+export const amount = (v: number) => grouped(v);
 
 /** Day counts: integer as-is, halves as one decimal (e.g. 26, 0.5). */
 export const dayFmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 
-/** Round to 2 decimals (for numeric export cells). */
-export const round2 = (v: number) => Math.round((Number(v) || 0) * 100) / 100;
+/** Round a money value for numeric export cells (whole rupees, same rule as display). */
+export const round2 = (v: number) => roundMoney(v);

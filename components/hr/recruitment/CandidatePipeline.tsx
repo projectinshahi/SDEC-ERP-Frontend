@@ -8,6 +8,7 @@ import { CandidateEntryModal } from './CandidateEntryModal';
 import { CandidateDetailModal } from './CandidateDetailModal';
 import { UserPlus, Inbox } from 'lucide-react';
 import { CandidateStage } from '@/lib/hr/recruitment.types';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 const STAGES: CandidateStage[] = [
   'Applied',
@@ -51,13 +52,15 @@ export function CandidatePipeline({ state }: CandidatePipelineProps) {
           <h2 className="text-sm font-bold text-gray-850 dark:text-gray-200">Hiring Pipeline</h2>
           <p className="text-[11px] text-gray-400 dark:text-gray-550 font-medium">Manage and transition candidate stages</p>
         </div>
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
-        >
-          <UserPlus size={15} />
-          <span>Add Candidate</span>
-        </button>
+        <PermissionGuard require="hr.recruitment.create">
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
+          >
+            <UserPlus size={15} />
+            <span>Add Candidate</span>
+          </button>
+        </PermissionGuard>
       </div>
 
       <CandidateFilters

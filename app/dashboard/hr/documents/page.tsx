@@ -7,15 +7,16 @@ import { DocumentsTable } from '@/components/hr/documents/DocumentsTable';
 import { DocumentsStats } from '@/components/hr/documents/DocumentsStats';
 import { DocumentsFilters } from '@/components/hr/documents/DocumentsFilters';
 import { DocumentUploadModal } from '@/components/hr/documents/DocumentUploadModal';
-import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
+// Page ACCESS is centralized in app/dashboard/hr/layout.tsx (fromPath → hr.documents.view).
+// This page only adds BUTTON-level protection for the upload action.
 export default function DocumentsPage() {
   const state = useDocuments();
 
   return (
-    <PermissionPageGuard require="hr.view">
-      <div className="space-y-6">
-        
+    <div className="space-y-6">
+
         {/* Page Header */}
         <div className="flex items-end justify-between gap-4 flex-wrap pb-2 border-b border-gray-150 dark:border-gray-850">
           <div>
@@ -31,13 +32,15 @@ export default function DocumentsPage() {
             </p>
           </div>
 
-          <button
-            onClick={state.handleOpenUpload}
-            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
-          >
-            <Plus size={15} />
-            <span>Upload Document</span>
-          </button>
+          <PermissionGuard require="hr.documents.create">
+            <button
+              onClick={state.handleOpenUpload}
+              className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
+            >
+              <Plus size={15} />
+              <span>Upload Document</span>
+            </button>
+          </PermissionGuard>
         </div>
 
         {/* Analytics Widgets */}
@@ -96,7 +99,6 @@ export default function DocumentsPage() {
           onSave={state.handleSaveDocument}
         />
 
-      </div>
-    </PermissionPageGuard>
+    </div>
   );
 }
