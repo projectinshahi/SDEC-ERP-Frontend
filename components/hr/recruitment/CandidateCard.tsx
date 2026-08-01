@@ -4,6 +4,7 @@ import React from 'react';
 import { Pencil, Trash2, Mail, Phone, Eye, CheckCircle, FileText } from 'lucide-react';
 import { Candidate, CandidateStage } from '@/lib/hr/recruitment.types';
 import { Card } from '@/components/Card';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 interface CandidateCardProps {
   candidate: Candidate;
@@ -93,17 +94,19 @@ export function CandidateCard({
           )}
 
           {/* Inline Stage Dropdown */}
-          <select
-            value={candidate.stage}
-            onChange={(e) => onStageChange(candidate.id, e.target.value as CandidateStage)}
-            className="text-[10px] font-bold text-gray-600 dark:text-gray-350 bg-gray-50 dark:bg-gray-800 border border-gray-150 dark:border-gray-700/60 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition cursor-pointer"
-          >
-            {STAGES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <PermissionGuard require="hr.recruitment.edit">
+            <select
+              value={candidate.stage}
+              onChange={(e) => onStageChange(candidate.id, e.target.value as CandidateStage)}
+              className="text-[10px] font-bold text-gray-600 dark:text-gray-350 bg-gray-50 dark:bg-gray-800 border border-gray-150 dark:border-gray-700/60 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition cursor-pointer"
+            >
+              {STAGES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </PermissionGuard>
         </div>
 
         {/* Card Actions Panel */}
@@ -115,20 +118,24 @@ export function CandidateCard({
           >
             <Eye size={13.5} />
           </button>
-          <button
-            onClick={() => onEdit(candidate)}
-            title="Edit details"
-            className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors"
-          >
-            <Pencil size={13} />
-          </button>
-          <button
-            onClick={() => onDelete(candidate.id)}
-            title="Delete applicant"
-            className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
-          >
-            <Trash2 size={13} />
-          </button>
+          <PermissionGuard require="hr.recruitment.edit">
+            <button
+              onClick={() => onEdit(candidate)}
+              title="Edit details"
+              className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors"
+            >
+              <Pencil size={13} />
+            </button>
+          </PermissionGuard>
+          <PermissionGuard require="hr.recruitment.delete">
+            <button
+              onClick={() => onDelete(candidate.id)}
+              title="Delete applicant"
+              className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+            >
+              <Trash2 size={13} />
+            </button>
+          </PermissionGuard>
         </div>
 
       </div>

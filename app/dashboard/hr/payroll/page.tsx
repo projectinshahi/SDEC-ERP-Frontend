@@ -8,16 +8,17 @@ import { PayrollStats } from '@/components/hr/payroll/PayrollStats';
 import { PayrollFilters } from '@/components/hr/payroll/PayrollFilters';
 import { GeneratePayrollModal } from '@/components/hr/payroll/GeneratePayrollModal';
 import { PayslipPreviewModal } from '@/components/hr/payroll/PayslipPreviewModal';
-import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { exportToCsv, exportToExcel, exportToPdf } from '@/lib/hr/payrollHelper';
 
+// Page ACCESS is centralized in app/dashboard/hr/layout.tsx (fromPath → hr.payroll.view).
+// This page only adds BUTTON-level protection for the write action.
 export default function PayrollPage() {
   const state = usePayroll();
 
   return (
-    <PermissionPageGuard require="hr.view">
-      <div className="space-y-6">
-        
+    <div className="space-y-6">
+
         {/* Page Header */}
         <div className="flex items-end justify-between gap-4 flex-wrap pb-2 border-b border-gray-150 dark:border-gray-850">
           <div>
@@ -33,13 +34,15 @@ export default function PayrollPage() {
             </p>
           </div>
 
-          <button
-            onClick={state.handleOpenAdd}
-            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
-          >
-            <Plus size={15} />
-            <span>Generate Payroll</span>
-          </button>
+          <PermissionGuard require="hr.payroll.process">
+            <button
+              onClick={state.handleOpenAdd}
+              className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-850 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
+            >
+              <Plus size={15} />
+              <span>Generate Payroll</span>
+            </button>
+          </PermissionGuard>
         </div>
 
         {/* Analytics Widgets */}
@@ -111,7 +114,6 @@ export default function PayrollPage() {
           record={state.selectedPayslip}
         />
 
-      </div>
-    </PermissionPageGuard>
+    </div>
   );
 }

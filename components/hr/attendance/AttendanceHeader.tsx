@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Clock, Download, ClipboardEdit, Calendar } from 'lucide-react';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 interface AttendanceHeaderProps {
   selectedDate: string;
@@ -59,13 +60,15 @@ export function AttendanceHeader({ selectedDate, onDateChange, onOpenEntry, onEx
           <span>Export</span>
         </button>
 
-        <button
-          onClick={onOpenEntry}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold transition shadow-sm shadow-blue-500/20"
-        >
-          <ClipboardEdit size={15} />
-          <span>Attendance Entry</span>
-        </button>
+        <PermissionGuard require="hr.attendance.create">
+          <button
+            onClick={onOpenEntry}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold transition shadow-sm shadow-blue-500/20"
+          >
+            <ClipboardEdit size={15} />
+            <span>Attendance Entry</span>
+          </button>
+        </PermissionGuard>
 
       </div>
     </div>

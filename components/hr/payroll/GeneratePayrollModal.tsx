@@ -8,7 +8,7 @@ import {
   SavePayrollPayload,
   fetchPayrollAttendancePreview,
 } from '@/lib/api/hr-payroll';
-import { computePayroll } from '@/lib/hr/payrollCalc';
+import { computePayroll, PAYROLL_CALC_CONFIG } from '@/lib/hr/payrollCalc';
 import { money, dayFmt, round2 } from '@/lib/hr/payrollFormat';
 
 interface GeneratePayrollModalProps {
@@ -24,6 +24,18 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const YEARS = ['2025', '2026', '2027', '2028'];
+
+/**
+ * Default the generate form to the PREVIOUS completed month — that's the month
+ * payroll is normally run for and the month whose attendance is finalized. A
+ * hardcoded past month (e.g. "June") lands users on a month with no attendance,
+ * where worked days = 0 makes Gross/PF/ESI compute to ₹0 for no obvious reason.
+ */
+function defaultPayrollMonth(): { month: string; year: string } {
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return { month: MONTHS[prev.getMonth()], year: String(prev.getFullYear()) };
+}
 
 interface DaySnapshot {
   calendarDays: number;
@@ -78,8 +90,8 @@ export function GeneratePayrollModal({ isOpen, onClose, employees, activeRecord,
   const isEdit = !!activeRecord;
 
   const [employeeId, setEmployeeId] = useState<number | ''>('');
-  const [selectedMonth, setSelectedMonth] = useState('June');
-  const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedMonth, setSelectedMonth] = useState(() => defaultPayrollMonth().month);
+  const [selectedYear, setSelectedYear] = useState(() => defaultPayrollMonth().year);
 
   // Editable earnings + manual adjustments (strings for inputs)
   const [basicSalary, setBasicSalary] = useState('');
@@ -93,6 +105,12 @@ export function GeneratePayrollModal({ isOpen, onClose, employees, activeRecord,
 
   // Day snapshot (from Attendance Preview on CREATE, from stored record on EDIT)
   const [days, setDays] = useState<DaySnapshot>(ZERO_DAYS);
+
+  // Applied rates. pfRatePct null → PF is a manual amount (legacy record edit);
+  // non-null → PF is auto-computed (Gross × pfRatePct). esiRatePct always applies.
+  const [pfRatePct, setPfRatePct] = useState<number | null>(PAYROLL_CALC_CONFIG.providentFundRatePct);
+  const [esiRatePct, setEsiRatePct] = useState<number>(PAYROLL_CALC_CONFIG.esiRatePct);
+  const pfIsAuto = pfRatePct != null;
 
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -124,6 +142,10 @@ export function GeneratePayrollModal({ isOpen, onClose, employees, activeRecord,
       setBonus(String(activeRecord.bonus ?? 0));
       setIncentive(String(activeRecord.incentive ?? 0));
       setArrears(String(activeRecord.arrears ?? 0));
+      // Reuse the record's own rates so the preview matches how the backend will
+      // recompute it: new records (pf_pct set) → auto PF; legacy (null) → manual PF.
+      setPfRatePct(activeRecord.pf_pct ?? null);
+      setEsiRatePct(activeRecord.esi_pct ?? 0.75);
       setDays({
         calendarDays: activeRecord.calendar_days ?? 0,
         officeWorkingDays: activeRecord.office_working_days ?? 0,
@@ -136,9 +158,10 @@ export function GeneratePayrollModal({ isOpen, onClose, employees, activeRecord,
       setPreviewLoading(false);
     } else {
       // CREATE — reset; the preview effect fills day snapshot + Basic/DA.
+      const def = defaultPayrollMonth();
       setEmployeeId(employees[0]?.id ?? '');
-      setSelectedMonth('June');
-      setSelectedYear('2026');
+      setSelectedMonth(def.month);
+      setSelectedYear(def.year);
       setBasicSalary('');
       setDearnessAllowance('');
       setFine('0'); setSpecialAllowance('0'); setProvidentFund('0');
@@ -168,6 +191,8 @@ export function GeneratePayrollModal({ isOpen, onClose, employees, activeRecord,
         });
         setBasicSalary(String(round2(p.suggestedBasicSalary)));
         setDearnessAllowance(String(round2(p.suggestedDearnessAllowance)));
+        setPfRatePct(p.providentFundRatePct);
+        setEsiRatePct(p.esiRatePct);
       })
       .catch((e: any) => {
         if (!cancelled) setPreviewError(e?.response?.data?.message ?? e?.message ?? 'Failed to load attendance preview');
@@ -178,22 +203,31 @@ export function GeneratePayrollModal({ isOpen, onClose, employees, activeRecord,
 
   // Live money preview (mirror of the backend formula; backend stays authoritative).
   const calc = useMemo(
-    () => computePayroll({
-      basicSalary: Number(basicSalary) || 0,
-      dearnessAllowance: Number(dearnessAllowance) || 0,
-      officeWorkingDays: days.officeWorkingDays,
-      employeeWorkedDays: days.workedDays,
-      fine: Number(fine) || 0,
-      specialAllowance: Number(specialAllowance) || 0,
-      providentFund: Number(providentFund) || 0,
-      bonus: Number(bonus) || 0,
-      incentive: Number(incentive) || 0,
-      arrears: Number(arrears) || 0,
-    }),
-    [basicSalary, dearnessAllowance, days, fine, specialAllowance, providentFund, bonus, incentive, arrears],
+    () => computePayroll(
+      {
+        basicSalary: Number(basicSalary) || 0,
+        dearnessAllowance: Number(dearnessAllowance) || 0,
+        officeWorkingDays: days.officeWorkingDays,
+        employeeWorkedDays: days.workedDays,
+        fine: Number(fine) || 0,
+        specialAllowance: Number(specialAllowance) || 0,
+        providentFund: Number(providentFund) || 0, // used only when pfRatePct is null (legacy)
+        bonus: Number(bonus) || 0,
+        incentive: Number(incentive) || 0,
+        arrears: Number(arrears) || 0,
+      },
+      { ...PAYROLL_CALC_CONFIG, esiRatePct, providentFundRatePct: pfRatePct },
+    ),
+    [basicSalary, dearnessAllowance, days, fine, specialAllowance, providentFund, bonus, incentive, arrears, esiRatePct, pfRatePct],
   );
 
   const canSave = !isSaving && (isEdit || (!previewLoading && !previewError));
+
+  // The month has working days but the employee has zero attendance → worked days
+  // is 0, so Gross (and the PF/ESI derived from it) legitimately compute to ₹0.
+  // Surface this so an empty-month zero isn't mistaken for a broken calculation.
+  const noAttendance =
+    !isEdit && !previewLoading && !previewError && days.officeWorkingDays > 0 && days.workedDays === 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -350,6 +384,12 @@ export function GeneratePayrollModal({ isOpen, onClose, employees, activeRecord,
               <ReadonlyStat label="Payable Dearness Allow." value={money(calc.payableDearnessAllowance)} />
               <ReadonlyStat label="Gross Salary" value={money(calc.grossSalary)} strong accent="blue" />
             </div>
+            {noAttendance && (
+              <p className="flex items-start gap-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                No attendance recorded for {selectedMonth} {selectedYear}, so worked days is 0 — Gross, PF and ESI compute to ₹0. Pick a month with attendance.
+              </p>
+            )}
           </div>
 
           {/* Deductions */}
@@ -358,10 +398,14 @@ export function GeneratePayrollModal({ isOpen, onClose, employees, activeRecord,
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <MoneyInput label="Fine" value={fine} onChange={setFine} />
               <MoneyInput label="Special Allowance" value={specialAllowance} onChange={setSpecialAllowance} />
-              <MoneyInput label="Provident Fund" value={providentFund} onChange={setProvidentFund} />
+              {/* Legacy records edit PF manually; new records auto-compute it (below). */}
+              {!pfIsAuto && <MoneyInput label="Provident Fund" value={providentFund} onChange={setProvidentFund} />}
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-gray-100 dark:border-gray-850/60 bg-gray-50 dark:bg-gray-800/20 p-4">
-              <ReadonlyStat label="Employee State Insurance" value={money(calc.employeeStateInsurance)} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 rounded-xl border border-gray-100 dark:border-gray-850/60 bg-gray-50 dark:bg-gray-800/20 p-4">
+              {pfIsAuto && (
+                <ReadonlyStat label={`Provident Fund (${pfRatePct}% of Gross)`} value={money(calc.providentFund)} accent="rose" />
+              )}
+              <ReadonlyStat label={`Employee State Insurance (${esiRatePct}%)`} value={money(calc.employeeStateInsurance)} />
               <ReadonlyStat label="Total Deductions" value={money(calc.totalDeductions)} strong accent="rose" />
             </div>
           </div>

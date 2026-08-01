@@ -35,6 +35,7 @@ import {
   type ApiAvailableUser,
 } from '@/lib/api/hr';
 import { fetchRolesApi } from '@/lib/api/roles';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 /* ── Status helpers ─────────────────────────────────────────────────────── */
 
@@ -386,13 +387,15 @@ export default function EmployeesPage() {
             <Download size={16} />
             <span>Export</span>
           </button>
-          <button
-            onClick={handleOpenAddDrawer}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition shadow-sm shadow-blue-500/10"
-          >
-            <Plus size={16} />
-            <span>Add Employee</span>
-          </button>
+          <PermissionGuard require="hr.employees.create">
+            <button
+              onClick={handleOpenAddDrawer}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition shadow-sm shadow-blue-500/10"
+            >
+              <Plus size={16} />
+              <span>Add Employee</span>
+            </button>
+          </PermissionGuard>
         </div>
       </div>
 
@@ -561,20 +564,24 @@ export default function EmployeesPage() {
                           >
                             <Eye size={15} />
                           </button>
-                          <button
-                            onClick={() => handleOpenEditDrawer(emp)}
-                            title="Edit"
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition"
-                          >
-                            <Edit size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleArchive(emp)}
-                            title="Archive"
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <PermissionGuard require="hr.employees.edit">
+                            <button
+                              onClick={() => handleOpenEditDrawer(emp)}
+                              title="Edit"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition"
+                            >
+                              <Edit size={15} />
+                            </button>
+                          </PermissionGuard>
+                          <PermissionGuard require="hr.employees.delete">
+                            <button
+                              onClick={() => handleArchive(emp)}
+                              title="Archive"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </PermissionGuard>
                         </div>
                       </td>
                     </tr>
@@ -603,20 +610,24 @@ export default function EmployeesPage() {
                     >
                       <Eye size={14} />
                     </button>
-                    <button
-                      onClick={() => handleOpenEditDrawer(emp)}
-                      title="Edit"
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition"
-                    >
-                      <Edit size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleArchive(emp)}
-                      title="Archive"
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <PermissionGuard require="hr.employees.edit">
+                      <button
+                        onClick={() => handleOpenEditDrawer(emp)}
+                        title="Edit"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition"
+                      >
+                        <Edit size={14} />
+                      </button>
+                    </PermissionGuard>
+                    <PermissionGuard require="hr.employees.delete">
+                      <button
+                        onClick={() => handleArchive(emp)}
+                        title="Archive"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </PermissionGuard>
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -663,13 +674,15 @@ export default function EmployeesPage() {
                 {Math.min(filteredEmployees.length, currentPage * itemsPerPage)} of {filteredEmployees.length} entries
               </span>
               {selectedIds.length > 0 && (
-                <button
-                  onClick={handleBulkArchive}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 rounded-lg transition border border-rose-100 dark:border-rose-900/30"
-                >
-                  <Trash2 size={12} />
-                  <span>Archive Selected ({selectedIds.length})</span>
-                </button>
+                <PermissionGuard require="hr.employees.delete">
+                  <button
+                    onClick={handleBulkArchive}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 rounded-lg transition border border-rose-100 dark:border-rose-900/30"
+                  >
+                    <Trash2 size={12} />
+                    <span>Archive Selected ({selectedIds.length})</span>
+                  </button>
+                </PermissionGuard>
               )}
             </div>
 
@@ -1128,12 +1141,14 @@ export default function EmployeesPage() {
                 </div>
 
                 <div className="flex gap-3 justify-end pt-2">
-                  <button
-                    onClick={() => { handleOpenEditDrawer(selectedEmployee); setSelectedEmployee(null); }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-250 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                  >
-                    <Edit size={13} /><span>Edit Profile</span>
-                  </button>
+                  <PermissionGuard require="hr.employees.edit">
+                    <button
+                      onClick={() => { handleOpenEditDrawer(selectedEmployee); setSelectedEmployee(null); }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-250 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      <Edit size={13} /><span>Edit Profile</span>
+                    </button>
+                  </PermissionGuard>
                   <button
                     onClick={() => setSelectedEmployee(null)}
                     className="inline-flex items-center px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition"

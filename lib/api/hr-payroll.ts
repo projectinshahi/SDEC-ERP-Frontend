@@ -31,6 +31,9 @@ export interface ApiPayrollRecord {
   incentive?: number;
   arrears?: number;
   total_deductions?: number;
+  // Applied rates snapshotted per record. null/undefined = legacy row (PF was manual).
+  pf_pct?: number | null;
+  esi_pct?: number | null;
 }
 
 export interface SavePayrollPayload {
@@ -62,6 +65,38 @@ export interface ApiPayrollPreview {
   totalSalary: number;
   suggestedBasicSalary: number;
   suggestedDearnessAllowance: number;
+  /** Current HR-configured rates so the form can preview auto-computed PF & ESI. */
+  providentFundRatePct: number | null;
+  esiRatePct: number;
+}
+
+/** Configurable payroll rules (Payroll Settings). Only PF% + ESI% feed the calc today. */
+export interface ApiPayrollSettings {
+  providentFundPct: number;
+  esiPct: number;
+  professionalTax: number;
+  tdsPct: number;
+  overtimeRate: number;
+  lateDeductionRule: string;
+  halfDayRule: string;
+  lossOfPayRule: string;
+}
+
+/** Fetch current payroll settings. */
+export async function fetchPayrollSettings(): Promise<ApiPayrollSettings> {
+  const res = await apiClient.get<{ success: boolean; data: ApiPayrollSettings }>('/hr/payroll/settings');
+  return res.data.data;
+}
+
+/** Update payroll settings (applies to NEW payrolls only). */
+export async function updatePayrollSettings(
+  patch: Partial<ApiPayrollSettings>,
+): Promise<ApiPayrollSettings> {
+  const res = await apiClient.put<{ success: boolean; data: ApiPayrollSettings }>(
+    '/hr/payroll/settings',
+    patch,
+  );
+  return res.data.data;
 }
 
 /** Fetch all payroll records */

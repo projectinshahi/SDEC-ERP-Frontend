@@ -39,10 +39,10 @@ const SALES_REPORTS: PermissionKey[] = ['sales.reports.view'];
 // HR Attendance Analytics — access model (Phase 1, FINAL — audit decision F1 / Option A).
 // Attendance Analytics is intentionally NOT a standalone page or nav item: it is a TAB
 // inside the Attendance page (Attendance ├─ Daily └─ Analytics), reached via the existing
-// "Attendance" menu item below, which is gated by ['hr.attendance.view','hr.view'].
+// "Attendance" menu item below, which is gated by 'hr.attendance.view'.
 // `hr.analytics.view` is therefore an ADDITIONAL analytics capability for HR users layered
 // on top of Attendance access (it broadens the analytics *API* surface) — NOT a separate
-// entry point. This constant is the canonical reference for that permission set.
+// entry point. An `hr.view` master holder still satisfies both via the hrGrants bridge.
 export const HR_ANALYTICS: PermissionKey[] = ['hr.analytics.view', 'hr.view'];
 
 export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
@@ -347,11 +347,13 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: 'hr',
   },
   {
+    // Single granular keys (1:1 with the backend checkPermission gate). An
+    // hr.view master holder still sees every item via the hrGrants bridge.
     label: 'HR Dashboard',
     href: '/dashboard/hr',
     icon: 'LayoutDashboard',
     module: 'hr',
-    permission: ['hr.dashboard.view', 'hr.view'],
+    permission: 'hr.dashboard.view',
   },
   {
     label: 'WORKFORCE',
@@ -363,14 +365,14 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/hr/employees',
     icon: 'Users',
     module: 'hr',
-    permission: ['hr.employees.view', 'hr.view'],
+    permission: 'hr.employees.view',
   },
   {
     label: 'Attendance',
     href: '/dashboard/hr/attendance',
     icon: 'CalendarDays',
     module: 'hr',
-    permission: ['hr.attendance.view', 'hr.view'],
+    permission: 'hr.attendance.view',
   },
   {
     label: 'Leave',
@@ -378,6 +380,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'CalendarClock',
     module: 'hr',
     // Independent leave views: HR Admin (hr.leave.view) OR Staff (hr.leave.self).
+    // The one justified multi-key item — a genuinely different actor, not a bridge.
     permission: ['hr.leave.view', 'hr.leave.self'],
   },
 
@@ -391,7 +394,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/hr/recruitment',
     icon: 'Briefcase',
     module: 'hr',
-    permission: ['hr.recruitment.view', 'hr.view'],
+    permission: 'hr.recruitment.view',
   },
   {
     label: 'FINANCE',
@@ -403,7 +406,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/hr/payroll',
     icon: 'DollarSign',
     module: 'hr',
-    permission: ['hr.payroll.view', 'hr.view'],
+    permission: 'hr.payroll.view',
   },
   {
     label: 'ANALYTICS',
@@ -415,7 +418,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/hr/performance',
     icon: 'BarChart3',
     module: 'hr',
-    permission: ['hr.performance.view', 'hr.view'],
+    permission: 'hr.performance.view',
   },
   {
     label: 'FILES',
@@ -427,7 +430,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/hr/documents',
     icon: 'FileText',
     module: 'hr',
-    permission: ['hr.documents.view', 'hr.view'],
+    permission: 'hr.documents.view',
   },
   {
     label: 'SYSTEM',
@@ -439,7 +442,7 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     href: '/dashboard/hr/settings',
     icon: 'Settings',
     module: 'hr',
-    permission: ['hr.settings.view', 'hr.view'],
+    permission: 'hr.settings.view',
   },
 
   // Finance Module — independent ERP module. Each item is gated on its own

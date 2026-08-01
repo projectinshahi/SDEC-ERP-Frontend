@@ -7,6 +7,7 @@ import { AttendanceRecord, AttendanceSortKey, SortDirection } from '@/lib/hr/att
 import { AttendanceRow } from './AttendanceRow';
 import { AttendanceActionMenu } from './AttendanceActionMenu';
 import { AttendanceEmptyState } from './AttendanceEmptyState';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 interface AttendanceTableProps {
   records: AttendanceRecord[];
@@ -217,12 +218,14 @@ export function AttendanceTable({
               Showing {startEntry}–{endEntry} of {filteredTotal} records
             </span>
             {selectedIds.length > 0 && (
-              <button
-                onClick={onBulkRemove}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 rounded-lg transition border border-rose-100 dark:border-rose-900/30"
-              >
-                Remove Selected ({selectedIds.length})
-              </button>
+              <PermissionGuard require="hr.attendance.delete">
+                <button
+                  onClick={onBulkRemove}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 rounded-lg transition border border-rose-100 dark:border-rose-900/30"
+                >
+                  Remove Selected ({selectedIds.length})
+                </button>
+              </PermissionGuard>
             )}
           </div>
 

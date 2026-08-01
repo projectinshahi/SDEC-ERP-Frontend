@@ -8,11 +8,17 @@
  * backend formula or config changes, update both.
  */
 
-/** Mirror of backend PAYROLL_CONFIG (percentages: 75 = 75%, 0.75 = 0.75%). */
+/**
+ * Mirror of backend PAYROLL_CONFIG. esiRatePct and providentFundRatePct are the
+ * DEFAULTS; the live modal overrides them with the current HR-configured rates
+ * (from the attendance-preview response), so preview matches what the backend
+ * will compute and store.
+ */
 export const PAYROLL_CALC_CONFIG = {
   basicSalaryPct: 75,
   dearnessAllowancePct: 25,
   esiRatePct: 0.75,
+  providentFundRatePct: 12 as number | null,
   monthlyPaidLeaveQuota: 3,
 };
 
@@ -23,7 +29,8 @@ export interface PayrollComputeInput {
   employeeWorkedDays: number;
   fine: number;
   specialAllowance: number;
-  providentFund: number;
+  /** Manual PF fallback — used only when cfg.providentFundRatePct is null (legacy). */
+  providentFund?: number;
   bonus: number;
   incentive: number;
   arrears: number;
@@ -34,6 +41,7 @@ export interface PayrollComputeResult {
   payableDearnessAllowance: number;
   grossSalary: number;
   employeeStateInsurance: number;
+  providentFund: number;
   totalDeductions: number;
   netSalary: number;
 }
@@ -54,8 +62,13 @@ export function computePayroll(
   const payableDearnessAllowance = n(input.dearnessAllowance) * workedRatio;
   const grossSalary = payableBasicSalary + payableDearnessAllowance;
   const employeeStateInsurance = grossSalary * (cfg.esiRatePct / 100);
+  // PF = Gross × PF% (configured); manual amount for legacy (rate null).
+  const providentFund =
+    cfg.providentFundRatePct != null
+      ? grossSalary * (cfg.providentFundRatePct / 100)
+      : n(input.providentFund);
   const totalDeductions =
-    n(input.fine) + n(input.specialAllowance) + employeeStateInsurance + n(input.providentFund);
+    n(input.fine) + n(input.specialAllowance) + employeeStateInsurance + providentFund;
   const netSalary =
     grossSalary - totalDeductions + n(input.bonus) + n(input.incentive) + n(input.arrears);
 
@@ -64,6 +77,7 @@ export function computePayroll(
     payableDearnessAllowance,
     grossSalary,
     employeeStateInsurance,
+    providentFund,
     totalDeductions,
     netSalary,
   };

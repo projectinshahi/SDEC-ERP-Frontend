@@ -4,6 +4,7 @@ import React from 'react';
 import { Pencil, Trash2, CheckCircle2, Inbox, FileText } from 'lucide-react';
 import { PayrollRecord } from '@/lib/hr/payroll.types';
 import { money, dayFmt } from '@/lib/hr/payrollFormat';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 interface PayrollTableProps {
   records: PayrollRecord[];
@@ -181,19 +182,23 @@ export function PayrollTable({ records, onEdit, onDelete, onMarkPaid, onViewPays
                   {/* Action Buttons (existing) — frozen to the right edge */}
                   <td className={`whitespace-nowrap px-4 py-3.5 z-20 ${stickyRight} ${stickyBg}`}>
                     <div className="flex items-center justify-center gap-1">
-                      {record.status === 'Pending' ? (
-                        <button
-                          onClick={() => onMarkPaid(record.id)}
-                          title="Mark as Paid"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border border-blue-100 dark:border-blue-900/30 transition-colors"
-                        >
-                          <CheckCircle2 size={12} />
-                          <span>Mark Paid</span>
-                        </button>
-                      ) : (
-                        <span className="w-[78px] block text-center text-[10px] font-bold text-gray-400">Completed</span>
-                      )}
+                      {/* Mark Paid — a payroll write action */}
+                      <PermissionGuard require="hr.payroll.process">
+                        {record.status === 'Pending' ? (
+                          <button
+                            onClick={() => onMarkPaid(record.id)}
+                            title="Mark as Paid"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border border-blue-100 dark:border-blue-900/30 transition-colors"
+                          >
+                            <CheckCircle2 size={12} />
+                            <span>Mark Paid</span>
+                          </button>
+                        ) : (
+                          <span className="w-[78px] block text-center text-[10px] font-bold text-gray-400">Completed</span>
+                        )}
+                      </PermissionGuard>
 
+                      {/* View Payslip — read-only, always available on this (already gated) page */}
                       <button
                         onClick={() => onViewPayslip(record)}
                         title="View Payslip Preview"
@@ -205,31 +210,35 @@ export function PayrollTable({ records, onEdit, onDelete, onMarkPaid, onViewPays
                       {/* Edit disabled for legacy rows (no attendance snapshot): editing
                           would recompute Gross/Net against 0 working days and corrupt
                           the record. Delete + regenerate instead. */}
-                      {record.officeWorkingDays > 0 ? (
-                        <button
-                          onClick={() => onEdit(record)}
-                          title="Edit record"
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                      ) : (
-                        <button
-                          disabled
-                          title="Legacy record — delete and regenerate to edit under the attendance-based model"
-                          className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 cursor-not-allowed"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                      )}
+                      <PermissionGuard require="hr.payroll.process">
+                        {record.officeWorkingDays > 0 ? (
+                          <button
+                            onClick={() => onEdit(record)}
+                            title="Edit record"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            title="Legacy record — delete and regenerate to edit under the attendance-based model"
+                            className="p-1.5 rounded-lg text-gray-300 dark:text-gray-700 cursor-not-allowed"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                      </PermissionGuard>
 
-                      <button
-                        onClick={() => onDelete(record.id)}
-                        title="Delete record"
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      <PermissionGuard require="hr.payroll.process">
+                        <button
+                          onClick={() => onDelete(record.id)}
+                          title="Delete record"
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </PermissionGuard>
                     </div>
                   </td>
                 </tr>

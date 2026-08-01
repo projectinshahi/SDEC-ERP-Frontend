@@ -5,6 +5,7 @@ import { LeaveRequest, LeaveSortKey, SortDirection } from '@/lib/hr/leave.types'
 import { LeaveRequestRow } from './LeaveRequestRow';
 import { LeaveEmptyState } from './LeaveEmptyState';
 import { Card } from '@/components/Card';
+import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 
 interface LeaveRequestTableProps {
   requests: LeaveRequest[];
@@ -176,7 +177,7 @@ export function LeaveRequestTable({
                   </button>
                   
                   {userRole === 'admin' && req.status === 'Pending' && (
-                    <>
+                    <PermissionGuard require="hr.leave.approve">
                       <button
                         onClick={() => onApprove(req.id)}
                         className="px-2.5 py-1 text-2xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-sm transition-all"
@@ -189,7 +190,7 @@ export function LeaveRequestTable({
                       >
                         Reject
                       </button>
-                    </>
+                    </PermissionGuard>
                   )}
 
                   {userRole === 'staff' && req.status === 'Pending' && (

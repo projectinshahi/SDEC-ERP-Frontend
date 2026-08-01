@@ -602,25 +602,96 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'sales.incentive.manage', label: 'Manage Incentives', description: 'Configure per-BDE incentive slab structures', module: 'sales' },
     ],
   },
+  // ── HR — grouped by area (mirrors the Sales / Development multi-group structure).
+  //    The coarse keys (hr.view/create/edit/delete) are the module-access MASTERS:
+  //    via the hrGrants bridge, hr.view unlocks every hr.*.view, hr.create every
+  //    *.create, etc. For per-area control, leave the masters OFF and grant the
+  //    granular keys below instead.
   {
     module: 'hr',
-    label: 'HR Management',
+    label: 'HR · Dashboard',
     permissions: [
-      { key: 'hr.view', label: 'View HR Module', description: 'General access to the HR module', module: 'hr' },
       { key: 'hr.dashboard.view', label: 'View HR Dashboard', description: 'Access the HR dashboard overview', module: 'hr' },
-      { key: 'hr.employees.view', label: 'View Employees', description: 'View workforce employees directory', module: 'hr' },
+    ],
+  },
+  {
+    module: 'hr',
+    label: 'HR · Employees',
+    permissions: [
+      { key: 'hr.employees.view', label: 'View Employees', description: 'View the workforce employees directory', module: 'hr' },
+      { key: 'hr.employees.create', label: 'Create Employee', description: 'Provision and onboard new employees', module: 'hr' },
+      { key: 'hr.employees.edit', label: 'Edit Employee', description: 'Update employee records and details', module: 'hr' },
+      { key: 'hr.employees.delete', label: 'Delete Employee', description: 'Permanently remove employee records', module: 'hr' },
+    ],
+  },
+  {
+    module: 'hr',
+    label: 'HR · Attendance',
+    permissions: [
       { key: 'hr.attendance.view', label: 'View Attendance', description: 'View workforce attendance logs', module: 'hr' },
+      { key: 'hr.attendance.create', label: 'Record Attendance', description: 'Add or update daily attendance entries', module: 'hr' },
+      { key: 'hr.attendance.edit', label: 'Edit Attendance', description: 'Modify existing attendance entries', module: 'hr' },
+      { key: 'hr.attendance.delete', label: 'Delete Attendance', description: 'Remove attendance entries', module: 'hr' },
       { key: 'hr.analytics.view', label: 'View Attendance Analytics', description: 'Additional analytics capability inside the Attendance module (Attendance → Analytics tab): summary, trend, status distribution, department ranking, employee report and drill-down. Reached through Attendance for HR users — not a standalone page.', module: 'hr' },
-      { key: 'hr.leave.view', label: 'View HR Admin Leave', description: 'HR Admin leave view: see, approve/reject, filter and manage ALL employee leave requests', module: 'hr' },
+    ],
+  },
+  {
+    module: 'hr',
+    label: 'HR · Leave',
+    permissions: [
+      { key: 'hr.leave.view', label: 'View HR Admin Leave', description: 'HR Admin leave view: see, filter and manage ALL employee leave requests', module: 'hr' },
       { key: 'hr.leave.self', label: 'View Staff Leave', description: 'Staff leave view: submit and track your OWN leave requests', module: 'hr' },
+      { key: 'hr.leave.approve', label: 'Approve / Reject Leave', description: 'Approve or reject employee leave requests (HR Admin)', module: 'hr' },
+    ],
+  },
+  {
+    module: 'hr',
+    label: 'HR · Recruitment',
+    permissions: [
       { key: 'hr.recruitment.view', label: 'View Recruitment', description: 'Access hiring and recruitment pipelines', module: 'hr' },
-      { key: 'hr.payroll.view', label: 'View Payroll', description: 'View payroll and financial details', module: 'hr' },
+      { key: 'hr.recruitment.create', label: 'Create Candidate', description: 'Add candidates and upload resumes', module: 'hr' },
+      { key: 'hr.recruitment.edit', label: 'Edit Candidate', description: 'Update candidate details and move pipeline stages', module: 'hr' },
+      { key: 'hr.recruitment.delete', label: 'Delete Candidate', description: 'Remove candidates from the pipeline', module: 'hr' },
+    ],
+  },
+  {
+    module: 'hr',
+    label: 'HR · Payroll',
+    permissions: [
+      { key: 'hr.payroll.view', label: 'View Payroll', description: 'View payroll records and financial details', module: 'hr' },
+      { key: 'hr.payroll.process', label: 'Process Payroll', description: 'Generate, edit, mark paid and delete payroll records', module: 'hr' },
+    ],
+  },
+  {
+    module: 'hr',
+    label: 'HR · Performance',
+    permissions: [
       { key: 'hr.performance.view', label: 'View Performance', description: 'View employee performance reviews and cycles', module: 'hr' },
       { key: 'hr.performance.create', label: 'Create Performance Appraisal / Cycle', description: 'Create and assign performance review cycles', module: 'hr' },
       { key: 'hr.performance.review', label: 'Submit Performance Review', description: 'Evaluate and review assigned employee appraisals', module: 'hr' },
       { key: 'hr.performance.approve', label: 'Approve Performance Appraisal', description: 'Approve and finalize employee performance appraisals', module: 'hr' },
+    ],
+  },
+  {
+    module: 'hr',
+    label: 'HR · Documents & Settings',
+    permissions: [
       { key: 'hr.documents.view', label: 'View Documents', description: 'Access HR documents and files', module: 'hr' },
+      { key: 'hr.documents.create', label: 'Upload Documents', description: 'Upload and create HR documents', module: 'hr' },
+      { key: 'hr.documents.edit', label: 'Update Documents', description: 'Change document status and metadata', module: 'hr' },
+      { key: 'hr.documents.delete', label: 'Delete Documents', description: 'Remove HR documents', module: 'hr' },
       { key: 'hr.settings.view', label: 'View Settings', description: 'Access HR module settings', module: 'hr' },
+      { key: 'hr.settings.edit', label: 'Edit Settings', description: 'Modify HR module settings', module: 'hr' },
+    ],
+  },
+  {
+    module: 'hr',
+    label: 'HR · Access & Configuration',
+    permissions: [
+      { key: 'hr.view', label: 'Full HR Access (all tabs)', description: 'Master key that unlocks EVERY HR view at once. For per-tab control, leave this OFF and grant the individual "View …" permissions in the HR groups above instead.', module: 'hr' },
+      { key: 'hr.create', label: 'Create (all HR areas)', description: 'Master key granting create across all HR areas (employees, attendance, recruitment, documents).', module: 'hr' },
+      { key: 'hr.edit', label: 'Edit (all HR areas)', description: 'Master key granting edit across all HR areas.', module: 'hr' },
+      { key: 'hr.delete', label: 'Delete (all HR areas)', description: 'Master key granting delete across all HR areas.', module: 'hr' },
     ],
   },
   {

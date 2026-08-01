@@ -11,7 +11,6 @@ import { useLeave } from '@/lib/hr/useLeave';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useConfirm } from '@/components/ConfirmDialogProvider';
-import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 
 export default function HRLeavePage() {
   const { user } = useAuth();
@@ -126,7 +125,6 @@ export default function HRLeavePage() {
   };
 
   return (
-    <PermissionPageGuard requireAny={['hr.leave.view', 'hr.leave.self']}>
     <div className="space-y-6">
       {/* Header */}
       <LeaveHeader
@@ -201,6 +199,5 @@ export default function HRLeavePage() {
         onClose={() => setSelectedRequest(null)}
       />
     </div>
-    </PermissionPageGuard>
   );
 }
