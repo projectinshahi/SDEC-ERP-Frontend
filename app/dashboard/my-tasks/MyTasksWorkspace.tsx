@@ -432,8 +432,9 @@ function TaskRow({ task, active, onClick, showDirection }: { task: MyTask; activ
     >
       {/* Title + unread indicators */}
       <div className="flex items-start justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-1.5">
-          {task.unread && !active && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-rose-500" title="Unread" />}
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          {task.unread && !active && <span className="relative top-px h-2 w-2 shrink-0 rounded-full bg-rose-500" title="Unread" />}
+          <span className="shrink-0 text-xs font-medium text-gray-400">#{task.id}</span>
           <span className={classNames('truncate text-sm text-gray-800', task.unread && !active ? 'font-bold' : 'font-semibold')}>{task.title}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1">
@@ -1461,7 +1462,7 @@ function WorkspaceInner() {
   const [statusFilters, setStatusFilters] = useState<Record<Bucket, Set<string>>>(() => ({
     inbox: new Set<string>(), outbox: new Set<string>(),
   }));
-  const [inChargeFilter, setInChargeFilter] = useState<number | null>(null); // Outbox only
+  const [inChargeFilter, setInChargeFilter] = useState<Record<Bucket, number | null>>(() => ({ inbox: null, outbox: null })); // per-bucket
   const [waitingReasonFilter, setWaitingReasonFilter] = useState<Record<Bucket, string | null>>({ inbox: null, outbox: null }); // per-bucket, active only when Waiting is filtered
   const [readFilter, setReadFilter] = useState<Record<Bucket, ReadKey>>({ inbox: 'all', outbox: 'all' }); // per-bucket (never global — it would leak across tabs)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false); // mobile Filter bottom-sheet (Status + Read)
@@ -1475,6 +1476,9 @@ function WorkspaceInner() {
   // and the chat gets the space. Reuses the existing toggle + sessionStorage, so an
   // explicit "expanded" choice ('0') still wins — only the DEFAULT changed.
   const [collapsed, setCollapsed] = useState(true);
+  // Filter panel expand/collapse (desktop). Collapsed by default to save screen space.
+  const FILTER_PANEL_KEY = 'my-tasks-filters-expanded';
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MyTask | null>(null);
@@ -1482,11 +1486,20 @@ function WorkspaceInner() {
   useEffect(() => {
     // Collapsed unless the user explicitly expanded before ('0').
     try { setCollapsed(sessionStorage.getItem(COLLAPSE_KEY) !== '0'); } catch { /* ignore */ }
+    // Filter panel: expanded if previously toggled open.
+    try { setFiltersExpanded(sessionStorage.getItem(FILTER_PANEL_KEY) === '1'); } catch { /* ignore */ }
   }, []);
   const toggleCollapsed = () => {
     setCollapsed((c) => {
       const next = !c;
       try { sessionStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
+  const toggleFiltersExpanded = () => {
+    setFiltersExpanded((prev) => {
+      const next = !prev;
+      try { sessionStorage.setItem(FILTER_PANEL_KEY, next ? '1' : '0'); } catch { /* ignore */ }
       return next;
     });
   };
@@ -1574,11 +1587,11 @@ function WorkspaceInner() {
   const applyMobileChip = (chip: string) => {
     setDateFilters((p) => ({ ...p, [bucket]: new Set([chip]) }));
   };
-  // Advanced (Filter-sheet) filters currently applied: Status, Read, and (Outbox only)
+  // Advanced (Filter-sheet) filters currently applied: Status, Read, and
   // Task In-Charge. Drives the Filter button badge.
   const advancedFilterCount = (statusSel.size > 0 ? 1 : 0)
     + (readSel !== 'all' ? 1 : 0)
-    + ((bucket === 'outbox' && inChargeFilter !== null) ? 1 : 0);
+    + (inChargeFilter[bucket] !== null ? 1 : 0);
   // Mobile exposes Due (chips) + Status + Read + (Outbox) Task In-Charge — all in the Filter
   // sheet. Only the still-hidden Waiting-reason dimension is reset on entering mobile, so a
   // value set at a wider width can't silently filter the list with no control to clear it.
@@ -1594,8 +1607,9 @@ function WorkspaceInner() {
     () => lists.inbox.filter((t) => matchDateStatus(t, dateFilters.inbox, statusFilters.inbox, false)
       && matchWaitingReason(t, waitingReasonFilter.inbox)
       && matchRead(t, readFilter.inbox)
-      && matchSearch(t, searchInbox)),
-    [lists.inbox, dateFilters.inbox, statusFilters.inbox, waitingReasonFilter.inbox, readFilter.inbox, searchInbox],
+      && matchSearch(t, searchInbox)
+      && (inChargeFilter.inbox == null || t.inChargeId === inChargeFilter.inbox)),
+    [lists.inbox, dateFilters.inbox, statusFilters.inbox, inChargeFilter.inbox, waitingReasonFilter.inbox, readFilter.inbox, searchInbox],
   );
   const outboxFiltered = useMemo(
     () => lists.outbox.filter((t) =>
@@ -1603,23 +1617,23 @@ function WorkspaceInner() {
       && matchWaitingReason(t, waitingReasonFilter.outbox)
       && matchRead(t, readFilter.outbox)
       && matchSearch(t, searchOutbox)
-      && (inChargeFilter == null || t.inChargeId === inChargeFilter)),
-    [lists.outbox, dateFilters.outbox, statusFilters.outbox, inChargeFilter, waitingReasonFilter.outbox, readFilter.outbox, searchOutbox],
+      && (inChargeFilter.outbox == null || t.inChargeId === inChargeFilter.outbox)),
+    [lists.outbox, dateFilters.outbox, statusFilters.outbox, inChargeFilter.outbox, waitingReasonFilter.outbox, readFilter.outbox, searchOutbox],
   );
   const currentList = bucket === 'inbox' ? inboxFiltered : outboxFiltered;
 
-  // Task In-Charge options = distinct in-charge users across the user's own tasks
+  // Task In-Charge options = distinct in-charge users across BOTH inbox + outbox
   // (name resolved from each task's members). No duplicates; sorted by name.
   const inChargeOptions = useMemo(() => {
     const map = new Map<number, string>();
-    for (const t of lists.outbox) {
+    for (const t of [...lists.inbox, ...lists.outbox]) {
       if (t.inChargeId != null && !map.has(t.inChargeId)) {
         const name = t.members.find((m) => m.id === t.inChargeId)?.name;
         if (name) map.set(t.inChargeId, name);
       }
     }
     return [...map.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [lists.outbox]);
+  }, [lists.inbox, lists.outbox]);
 
   // Distinct Waiting reasons present in the current tab (for the optional reason filter).
   const waitingReasonOptions = useMemo(() => {
@@ -1650,13 +1664,13 @@ function WorkspaceInner() {
     setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: null }));
     setReadFilter((prev) => ({ ...prev, [bucket]: 'all' }));
     setSearch((prev) => ({ ...prev, [bucket]: '' }));
-    if (bucket === 'outbox') setInChargeFilter(null);
+    setInChargeFilter((prev) => ({ ...prev, [bucket]: null }));
   };
   const defDates = DEFAULT_DATE_BY_BUCKET[bucket];
   const filtersDirty = statusSel.size > 0
     || dateSel.size !== defDates.length
     || !defDates.every((d) => dateSel.has(d))
-    || (bucket === 'outbox' && inChargeFilter !== null)
+    || inChargeFilter[bucket] !== null
     || (statusSel.has('waiting') && waitingReasonFilter[bucket] !== null)
     || readFilter[bucket] !== 'all'
     || search[bucket].trim() !== '';
@@ -1898,13 +1912,13 @@ function WorkspaceInner() {
             <MobileFilterSheet
               initialStatus={statusSel}
               initialRead={readSel}
-              initialInCharge={inChargeFilter}
-              inChargeOptions={bucket === 'outbox' ? inChargeOptions : undefined}
+              initialInCharge={inChargeFilter[bucket]}
+              inChargeOptions={inChargeOptions}
               onClose={() => setFilterSheetOpen(false)}
               onApply={(status, read, inCharge) => {
                 setStatusFilters((prev) => ({ ...prev, [bucket]: status }));
                 setReadFilter((prev) => ({ ...prev, [bucket]: read }));
-                if (bucket === 'outbox') setInChargeFilter(inCharge);
+                setInChargeFilter((prev) => ({ ...prev, [bucket]: inCharge }));
               }}
             />
           )}
@@ -1946,81 +1960,110 @@ function WorkspaceInner() {
             {/* Filters — combinable Date + Status (both tabs), plus Task In-Charge
               on the Outbox. Instant, client-side over the already-fetched list. */}
             <div className="mb-3 space-y-2 rounded-xl border border-gray-200 bg-white p-2.5 lg:shrink-0">
-              {/* Instant search — Task Name, Creator, In-Charge, Members, Project.
-                Composes with every filter below; debounced, no API call. */}
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={search[bucket]}
-                  onChange={(e) => setSearch((prev) => ({ ...prev, [bucket]: e.target.value }))}
-                  placeholder="Search task, creator, in-charge, member or project…"
-                  aria-label="Search tasks"
-                  className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-7 text-xs text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
-                />
-                {search[bucket] && (
-                  <button type="button" onClick={() => setSearch((prev) => ({ ...prev, [bucket]: '' }))}
-                    aria-label="Clear search"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600">
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Due</span>
-                {DATE_FILTERS.map((f) => (
-                  <button key={f.key} type="button" onClick={() => toggleDate(f.key)}
-                    className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
-                      dateSel.has(f.key) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Status</span>
-                {STATUS_FILTERS.map((f) => (
-                  <button key={f.key} type="button" onClick={() => toggleStatus(f.key)}
-                    className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
-                      statusSel.has(f.key) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                    {f.label}
-                  </button>
-                ))}
-                {filtersDirty && (
-                  <button type="button" onClick={clearFilters}
-                    className="ml-auto rounded-full px-2 py-1 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50">
-                    Clear
-                  </button>
-                )}
-              </div>
-              {/* Read state — filters on the existing per-user unread flag. */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Read</span>
-                {READ_FILTERS.map((f) => (
-                  <button key={f.key} type="button" onClick={() => setReadFilter((prev) => ({ ...prev, [bucket]: f.key }))}
-                    className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
-                      readSel === f.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-              {statusSel.has('waiting') && waitingReasonOptions.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Reason</span>
-                  <button type="button" onClick={() => setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: null }))}
-                    className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
-                      waitingReasonFilter[bucket] === null ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>All</button>
-                  {waitingReasonOptions.map((r) => (
-                    <button key={r} type="button" onClick={() => setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: r }))}
-                      className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
-                        waitingReasonFilter[bucket] === r ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>{r}</button>
-                  ))}
+              {/* Always visible: Search + Filter toggle */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                  <input
+                    value={search[bucket]}
+                    onChange={(e) => setSearch((prev) => ({ ...prev, [bucket]: e.target.value }))}
+                    placeholder="Search task, creator, in-charge, member or project…"
+                    aria-label="Search tasks"
+                    className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-7 text-xs text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                  />
+                  {search[bucket] && (
+                    <button type="button" onClick={() => setSearch((prev) => ({ ...prev, [bucket]: '' }))}
+                      aria-label="Clear search"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600">
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
-              )}
-              {bucket === 'outbox' && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">In-Charge</span>
-                  <InChargeFilter options={inChargeOptions} value={inChargeFilter} onChange={setInChargeFilter} />
+                <button
+                  type="button"
+                  onClick={toggleFiltersExpanded}
+                  aria-expanded={filtersExpanded}
+                  aria-label={filtersExpanded ? 'Collapse filters' : 'Expand filters'}
+                  className={classNames(
+                    'inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition',
+                    filtersExpanded || filtersDirty
+                      ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+                  )}
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  Filter
+                  {filtersDirty && (
+                    <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-600 px-1 text-[9px] font-bold text-white">
+                      {advancedFilterCount + (dateSel.size !== defDates.length || !defDates.every((d) => dateSel.has(d)) ? 1 : 0)}
+                    </span>
+                  )}
+                  {filtersExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </button>
+              </div>
+              {/* Collapsible filter rows — smooth expand/collapse animation */}
+              <div
+                className="overflow-hidden transition-all duration-200 ease-in-out"
+                style={{ maxHeight: filtersExpanded ? '500px' : '0px', opacity: filtersExpanded ? 1 : 0 }}
+              >
+                <div className="space-y-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Due</span>
+                    {DATE_FILTERS.map((f) => (
+                      <button key={f.key} type="button" onClick={() => toggleDate(f.key)}
+                        className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
+                          dateSel.has(f.key) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Status</span>
+                    {STATUS_FILTERS.map((f) => (
+                      <button key={f.key} type="button" onClick={() => toggleStatus(f.key)}
+                        className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
+                          statusSel.has(f.key) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                        {f.label}
+                      </button>
+                    ))}
+                    {filtersDirty && (
+                      <button type="button" onClick={clearFilters}
+                        className="ml-auto rounded-full px-2 py-1 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50">
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  {/* Read state — filters on the existing per-user unread flag. */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Read</span>
+                    {READ_FILTERS.map((f) => (
+                      <button key={f.key} type="button" onClick={() => setReadFilter((prev) => ({ ...prev, [bucket]: f.key }))}
+                        className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
+                          readSel === f.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                  {statusSel.has('waiting') && waitingReasonOptions.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Reason</span>
+                      <button type="button" onClick={() => setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: null }))}
+                        className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
+                          waitingReasonFilter[bucket] === null ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>All</button>
+                      {waitingReasonOptions.map((r) => (
+                        <button key={r} type="button" onClick={() => setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: r }))}
+                          className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
+                            waitingReasonFilter[bucket] === r ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>{r}</button>
+                      ))}
+                    </div>
+                  )}
+                  {/* Task In-Charge — available on BOTH Inbox and Outbox */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">In-Charge</span>
+                    <InChargeFilter options={inChargeOptions} value={inChargeFilter[bucket]} onChange={(v) => setInChargeFilter((prev) => ({ ...prev, [bucket]: v }))} />
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* The ONLY scroller in this column on desktop — the filters above stay put. */}
