@@ -75,7 +75,7 @@ export function attendanceBadges(record: AttendanceRecord): AttendanceBadge[] {
   }
 
   // Half-day leave → suppress the leave half; evaluate the working half.
-  if (record.status === 'Half Day Leave' || record.status === 'Half Day') {
+  if (record.status === 'Half Day Leave') {
     const badges: AttendanceBadge[] = [];
     if (record.leaveHalf === 'first_half') {
       // Morning is leave → suppress Morning Late; evaluate afternoon arrival.
@@ -94,6 +94,27 @@ export function attendanceBadges(record: AttendanceRecord): AttendanceBadge[] {
     } else {
       // Legacy/unknown session → generic badge, no guessed late suppression.
       badges.push({ status: 'Half Day Leave', label: 'Half Day Leave' });
+    }
+    return badges;
+  }
+
+  // Punch-based Half Day — morning-only or afternoon-only attendance.
+  // Show the Half Day badge, plus any applicable late badge for the worked session.
+  if (record.status === 'Half Day') {
+    const badges: AttendanceBadge[] = [{ status: 'Half Day' }];
+    // Morning session: check for morning lateness
+    if (record.morningIn) {
+      const morningLateMins = lateCheckinMinutes(record.morningIn);
+      if (morningLateMins > 0) {
+        badges.push({ status: 'Late', label: `Morning Late ${formatDuration(morningLateMins)}` });
+      }
+    }
+    // Afternoon session: check for late return from lunch
+    if (record.lunchIn && !record.morningIn) {
+      const afterLunchMins = afterLunchLateMinutes(record.lunchIn);
+      if (afterLunchMins > 0) {
+        badges.push({ status: 'Late After Lunch', label: `After Lunch Late ${formatDuration(afterLunchMins)}` });
+      }
     }
     return badges;
   }

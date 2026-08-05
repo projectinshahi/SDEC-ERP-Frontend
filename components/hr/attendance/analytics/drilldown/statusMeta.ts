@@ -11,6 +11,7 @@ export const STATUS_LABEL: Record<string, string> = {
   late_after_lunch: 'Late (after lunch)',
   leave_half_day: 'Half Day Leave',
   leave_full_day: 'Full Day Leave',
+  half_day: 'Half Day',
   absent: 'Absent',
 };
 
@@ -30,6 +31,7 @@ const STATUS_CHIP: Record<string, string> = {
   late_after_lunch: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
   leave_full_day: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   leave_half_day: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300',
+  half_day: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
   absent: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
 };
 export function chipClass(status: string): string {
@@ -43,6 +45,7 @@ const STATUS_CELL: Record<string, string> = {
   late_after_lunch: 'bg-orange-500 text-white',
   leave_full_day: 'bg-blue-500 text-white',
   leave_half_day: 'bg-sky-500 text-white',
+  half_day: 'bg-violet-500 text-white',
   absent: 'bg-rose-500 text-white',
 };
 export function cellClass(status: string): string {
@@ -56,6 +59,7 @@ const STATUS_DOT: Record<string, string> = {
   late_after_lunch: 'bg-orange-500',
   leave_full_day: 'bg-blue-500',
   leave_half_day: 'bg-sky-500',
+  half_day: 'bg-violet-500',
   absent: 'bg-rose-500',
 };
 export function dotClass(status: string): string {

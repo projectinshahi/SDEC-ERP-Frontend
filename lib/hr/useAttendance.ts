@@ -37,6 +37,7 @@ function mapStatus(raw: string | null | undefined): AttendanceStatus {
     case 'late_after_lunch': return 'Late After Lunch';
     case 'leave_full_day': return 'Full Day Leave';
     case 'leave_half_day': return 'Half Day Leave';
+    case 'half_day': return 'Half Day';
     case 'absent': return 'Absent';
     default: return 'Absent';
   }
