@@ -169,15 +169,7 @@ const MOBILE_CHIPS: { key: string; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming' },
 ];
 
-// Deterministic coloured ring for the circular task-ID badge (mobile), matching the
-// reference's varied ID circles. Stable per task, so the same task keeps its colour.
-const CIRCLE_RINGS = [
-  'border-indigo-500 text-indigo-600', 'border-violet-500 text-violet-600',
-  'border-blue-500 text-blue-600', 'border-emerald-500 text-emerald-600',
-  'border-amber-500 text-amber-600', 'border-rose-500 text-rose-600',
-  'border-cyan-500 text-cyan-600', 'border-orange-500 text-orange-600',
-];
-const taskRing = (id: number) => CIRCLE_RINGS[Math.abs(id) % CIRCLE_RINGS.length];
+
 
 /**
  * Mobile Filter bottom-sheet (phones only). Houses the advanced Status + Read filters
@@ -432,9 +424,9 @@ function TaskRow({ task, active, onClick, showDirection }: { task: MyTask; activ
     >
       {/* Title + unread indicators */}
       <div className="flex items-start justify-between gap-2">
-        <span className="flex min-w-0 items-baseline gap-1.5">
-          {task.unread && !active && <span className="relative top-px h-2 w-2 shrink-0 rounded-full bg-rose-500" title="Unread" />}
-          <span className="shrink-0 text-xs font-medium text-gray-400">#{task.id}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          {task.unread && !active && <span className="shrink-0 h-2 w-2 rounded-full bg-rose-500" title="Unread" />}
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700 shadow-sm">{task.id}</span>
           <span className={classNames('truncate text-sm text-gray-800', task.unread && !active ? 'font-bold' : 'font-semibold')}>{task.title}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1">
@@ -768,6 +760,7 @@ function DetailsPanel({
         </button>
         <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left">
           <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-bold text-gray-500">#{task.id}</span>
             <span className={classNames('inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold', st.tone)}>{st.label}</span>
             <span className={classNames('inline-flex items-center gap-1 text-xs font-semibold', prio.text)}>
               <span className={classNames('h-2 w-2 rounded-full', prio.dot)} /> {prio.label}
@@ -1071,8 +1064,8 @@ function MobileTaskCard({ task, onOpen }: { task: MyTask; onOpen: () => void }) 
       onClick={onOpen}
       className="flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-3 text-left shadow-sm transition active:scale-[0.99]"
     >
-      <div className={classNames('flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 bg-white', taskRing(task.id))}>
-        <span className="text-[11px] font-bold leading-none">{task.id}</span>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[11px] font-bold text-indigo-700 shadow-sm">
+        {task.id}
       </div>
       <div className="min-w-0 flex-1">
         <p className={classNames('truncate text-[15px] text-gray-900', unread ? 'font-bold' : 'font-semibold')}>{task.title}</p>
@@ -1183,10 +1176,11 @@ function MyTaskMobileDetails({
       {/* ── Task summary card: circular ID badge · title · due line · expand · star ── */}
       <div className="shrink-0 border-b border-gray-100">
         <div className="flex items-center gap-3 px-3 py-3">
-          <div className={classNames('flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 bg-white', taskRing(task.id))}>
-            <span className="text-[11px] font-bold leading-none">{task.id}</span>
-          </div>
           <button type="button" onClick={() => setExpanded((v) => !v)} className="min-w-0 flex-1 text-left">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-[13px] font-bold text-gray-500">#{task.id}</span>
+              <span className={classNames('inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold', st.tone)}>{st.label}</span>
+            </div>
             <p className="truncate text-[15px] font-bold text-gray-900">{task.title}</p>
             <p className={classNames('mt-0.5 truncate text-[12px] font-medium', due.tone)}>{due.text}</p>
           </button>
