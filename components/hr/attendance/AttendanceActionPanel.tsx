@@ -48,6 +48,7 @@ export interface AttendanceFormValues {
   lunchIn: string;
   checkOut: string;
   notes?: string;
+  leaveType?: 'full_day' | 'half_day' | null;
 }
 
 interface AttendanceFormPanelProps {
@@ -125,6 +126,7 @@ export function AttendanceFormPanel({
   const [lunchOut, setLunchOut] = useState('');
   const [lunchIn, setLunchIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
+  const [isFullDayLeave, setIsFullDayLeave] = useState(false);
   const [notes, setNotes] = useState('');
 
   const setters = { checkIn: setCheckIn, lunchOut: setLunchOut, lunchIn: setLunchIn, checkOut: setCheckOut };
@@ -153,6 +155,7 @@ export function AttendanceFormPanel({
       setLunchOut(to24hLocal(editRecord.lunch_out));
       setLunchIn(to24hLocal(editRecord.lunch_in));
       setCheckOut(to24hLocal(editRecord.check_out));
+      setIsFullDayLeave(editRecord.leave_type === 'full_day');
       setNotes(editRecord.notes ?? '');
       return;
     }
@@ -166,6 +169,7 @@ export function AttendanceFormPanel({
       setLunchOut(to24h(existing.lunch_out));
       setLunchIn(to24h(existing.lunch_in));
       setCheckOut(to24h(existing.check_out));
+      setIsFullDayLeave(existing.leave_type === 'full_day');
       setNotes(existing.notes ?? '');
     } else {
       // Brand-new entry → pre-fill the standard office schedule (editable).
@@ -173,6 +177,7 @@ export function AttendanceFormPanel({
       setLunchOut(DEFAULT_OFFICE_TIMES.lunchOut);
       setLunchIn(DEFAULT_OFFICE_TIMES.lunchIn);
       setCheckOut(DEFAULT_OFFICE_TIMES.checkOut);
+      setIsFullDayLeave(false);
       setNotes('');
     }
   }, [employeeId, date, allRecords, editRecord]);
@@ -187,11 +192,20 @@ export function AttendanceFormPanel({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!employeeId || !date) return;
-    onSave({ employeeId, date, checkIn, lunchOut, lunchIn, checkOut, notes });
+    onSave({ 
+      employeeId, 
+      date, 
+      checkIn: isFullDayLeave ? '' : checkIn, 
+      lunchOut: isFullDayLeave ? '' : lunchOut, 
+      lunchIn: isFullDayLeave ? '' : lunchIn, 
+      checkOut: isFullDayLeave ? '' : checkOut, 
+      notes,
+      leaveType: isFullDayLeave ? 'full_day' : null
+    });
   };
 
   const labelCls = 'flex items-center gap-1.5 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider';
-  const isTimeDisabled = false;
+  const isTimeDisabled = isFullDayLeave;
 
   const formBody = (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -236,6 +250,28 @@ export function AttendanceFormPanel({
 
           {/* Divider */}
           <div className="border-t border-gray-100 dark:border-gray-850" />
+
+          {/* Full Day Leave Checkbox */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="fullDayLeave"
+              checked={isFullDayLeave}
+              onChange={(e) => {
+                setIsFullDayLeave(e.target.checked);
+                if (e.target.checked) {
+                  setCheckIn('');
+                  setLunchOut('');
+                  setLunchIn('');
+                  setCheckOut('');
+                }
+              }}
+              className="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-blue-500"
+            />
+            <label htmlFor="fullDayLeave" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+              Mark as Full Day Leave
+            </label>
+          </div>
 
           {/* Time pickers */}
           {TIME_FIELDS.map(({ key, label, Icon, color }) => (

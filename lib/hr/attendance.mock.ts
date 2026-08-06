@@ -303,7 +303,7 @@ export function computeAttendanceStats(
   //  • Absent    = neither on leave nor present (fully absent)
   //  • Late      = morning arrival after 10:00 AM (full-day/first-half leave excluded)
   const LEAVE_STATUSES = new Set(['Full Day Leave', 'Half Day Leave', 'On Leave', 'Half Day']);
-  const PRESENT_WORKING = new Set(['Present', 'Late', 'Late After Lunch']);
+  const PRESENT_WORKING = new Set(['Present', 'Late', 'Late After Lunch', 'Half Day']);
   const HALF_LEAVE_STATUSES = new Set(['Half Day Leave', 'Half Day']);
 
   let present = 0;
@@ -360,4 +360,5 @@ export const ATTENDANCE_STATUSES = [
   'Late After Lunch',
   'Full Day Leave',
   'Half Day Leave',
+  'Half Day',
 ];
