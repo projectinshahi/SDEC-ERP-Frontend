@@ -1,7 +1,9 @@
 'use client';
 
 import type { EmployeeCalendarDay, EmployeeCalendarMonth } from '@/lib/hr/attendanceAnalytics.types';
-import { cellClass, statusLabel } from './statusMeta';
+import { cellClass, cellStyle, statusLabel } from './statusMeta';
+import { useAttendanceSettings } from '@/lib/hr/useAttendanceSettings';
+import { ApiAttendanceSettings } from '@/lib/api/hr-attendance-settings';
 
 /** Monday-first weekday headers; Sunday (last) is the weekly-off column. */
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -19,7 +21,7 @@ const LEGEND: { status: string }[] = [
   { status: 'absent' },
 ];
 
-function DayCell({ day }: { day: EmployeeCalendarDay }) {
+function DayCell({ day, settings }: { day: EmployeeCalendarDay, settings: ApiAttendanceSettings | null }) {
   const dayNum = Number(day.date.slice(8, 10));
   const title = `${day.date}${day.status ? ` — ${statusLabel(day.status)}` : ''}`;
 
@@ -34,7 +36,11 @@ function DayCell({ day }: { day: EmployeeCalendarDay }) {
   // Recorded status → coloured cell.
   if (day.status) {
     return (
-      <div className={`flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold ${cellClass(day.status)}`} title={title}>
+      <div 
+        className={`flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold ${cellClass(day.status)}`} 
+        title={title}
+        style={cellStyle(day.status, settings)}
+      >
         {dayNum}
       </div>
     );
@@ -57,13 +63,17 @@ function DayCell({ day }: { day: EmployeeCalendarDay }) {
   }
   // Working day, past, no record → absence.
   return (
-    <div className={`flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold ${cellClass('absent')}`} title={`${day.date} — Absent (no record)`}>
+    <div 
+      className={`flex aspect-square items-center justify-center rounded-lg text-[11px] font-semibold ${cellClass('absent')}`} 
+      title={`${day.date} — Absent (no record)`}
+      style={cellStyle('absent', settings)}
+    >
       {dayNum}
     </div>
   );
 }
 
-function MonthGrid({ month }: { month: EmployeeCalendarMonth }) {
+function MonthGrid({ month, settings }: { month: EmployeeCalendarMonth, settings: ApiAttendanceSettings | null }) {
   const leading = month.days.length ? monIndex(month.days[0].dow) : 0;
 
   return (
@@ -79,7 +89,7 @@ function MonthGrid({ month }: { month: EmployeeCalendarMonth }) {
           <div key={`lead-${i}`} />
         ))}
         {month.days.map((day) => (
-          <DayCell key={day.date} day={day} />
+          <DayCell key={day.date} day={day} settings={settings} />
         ))}
       </div>
     </div>
@@ -87,6 +97,7 @@ function MonthGrid({ month }: { month: EmployeeCalendarMonth }) {
 }
 
 export function DrilldownCalendar({ months }: { months: EmployeeCalendarMonth[] }) {
+  const { settings } = useAttendanceSettings();
   if (months.length === 0) {
     return <div className="py-16 text-center text-sm text-gray-400">No calendar data for this period.</div>;
   }
@@ -97,7 +108,10 @@ export function DrilldownCalendar({ months }: { months: EmployeeCalendarMonth[] 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900/40">
         {LEGEND.map((l) => (
           <span key={l.status} className="inline-flex items-center gap-1.5 text-[11px] text-gray-600 dark:text-gray-300">
-            <span className={`h-3 w-3 rounded ${cellClass(l.status).split(' ')[0]}`} />
+            <span 
+              className={`h-3 w-3 rounded ${cellClass(l.status).split(' ')[0]}`} 
+              style={cellStyle(l.status, settings)}
+            />
             {statusLabel(l.status)}
           </span>
         ))}
@@ -108,7 +122,7 @@ export function DrilldownCalendar({ months }: { months: EmployeeCalendarMonth[] 
       </div>
 
       {months.map((m) => (
-        <MonthGrid key={m.month} month={m} />
+        <MonthGrid key={m.month} month={m} settings={settings} />
       ))}
     </div>
   );

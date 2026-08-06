@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { AttendanceStatus } from '@/lib/hr/attendance.types';
+import { useAttendanceSettings } from '@/lib/hr/useAttendanceSettings';
+import { getSettingColor } from './analytics/drilldown/statusMeta';
 
 interface AttendanceStatusBadgeProps {
   status: AttendanceStatus;
@@ -64,7 +66,22 @@ const BADGE_MAP: Record<
 };
 
 export function AttendanceStatusBadge({ status, label }: AttendanceStatusBadgeProps) {
-  const styles = BADGE_MAP[status];
+  const { settings } = useAttendanceSettings();
+  const styles = BADGE_MAP[status] ?? BADGE_MAP['Absent'];
+  const customColor = getSettingColor(status, settings);
+
+  if (customColor) {
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border`}
+        style={{ backgroundColor: `${customColor}20`, color: customColor, borderColor: `${customColor}30` }}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0`} style={{ backgroundColor: customColor }} />
+        {label ?? status}
+      </span>
+    );
+  }
+
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${styles.bg} ${styles.text} ${styles.border}`}

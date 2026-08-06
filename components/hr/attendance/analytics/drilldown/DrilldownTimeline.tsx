@@ -2,9 +2,11 @@
 
 import { CalendarX2 } from 'lucide-react';
 import type { EmployeeTimelineEntry } from '@/lib/hr/attendanceAnalytics.types';
-import { chipClass, dotClass, statusLabel, prettyLabel, formatDateLong } from './statusMeta';
+import { chipClass, chipStyle, dotClass, dotStyle, statusLabel, prettyLabel, formatDateLong } from './statusMeta';
+import { useAttendanceSettings } from '@/lib/hr/useAttendanceSettings';
 
 export function DrilldownTimeline({ entries }: { entries: EmployeeTimelineEntry[] }) {
+  const { settings } = useAttendanceSettings();
   if (entries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -24,11 +26,17 @@ export function DrilldownTimeline({ entries }: { entries: EmployeeTimelineEntry[
           key={e.date}
           className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3 dark:border-gray-800 dark:bg-gray-900"
         >
-          <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${dotClass(e.status)}`} />
+          <span 
+            className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${dotClass(e.status)}`}
+            style={dotStyle(e.status, settings)} 
+          />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{formatDateLong(e.date)}</span>
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${chipClass(e.status)}`}>
+              <span 
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${chipClass(e.status)}`}
+                style={chipStyle(e.status, settings)}
+              >
                 {statusLabel(e.status)}
               </span>
             </div>
