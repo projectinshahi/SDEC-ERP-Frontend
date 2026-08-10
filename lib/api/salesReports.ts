@@ -40,6 +40,54 @@ async function getReport<T>(path: string, w?: ReportWindow): Promise<T> {
   return res.data;
 }
 
+/**
+ * Sales Performance Report — the single filter-aware payload behind the Pipeline
+ * "Download Report" PDF. Accepts the SAME filter params as the leads list, so every
+ * section reflects exactly the exported dataset. Metrics the data can't support are
+ * returned as explicit null / available:false (never fabricated).
+ */
+export interface SalesPerformanceReport {
+  filters: Record<string, string | null>;
+  summary: {
+    target: number | null; targetAvailable: boolean; wonRevenue: number;
+    targetGap: number | null; achievementPercentage: number | null;
+    activePipeline: number; activeOpportunities: number; pipelineCoverage: number | null;
+    avgDealValue: number; overallConversion: number; totalOpportunities: number;
+    won: number; hold: number; lost: number; converted: number;
+  };
+  forecast: { weightedForecast: number | null; available: boolean };
+  execution: {
+    newLeads: number; meaningfulConversations: number; discoveryMeetings: number;
+    proposalsSent: number; proposalValue: number; meetingsScheduled: number;
+  };
+  funnel: { stage: string; opportunities: number; value: number; conversionToNext: number | null }[];
+  holdLost: {
+    hold: { count: number; value: number; reasons: { reason: string; count: number }[] };
+    lost: { count: number; value: number; reasons: { reason: string; count: number }[] };
+  };
+  teamPerformance: {
+    ownerId: number; name: string; opportunities: number; wonRevenue: number;
+    activePipeline: number; conversion: number; target: number | null; achievement: number | null;
+  }[];
+  trend: { bucket: 'day' | 'week' | 'month'; points: { date: string; wonRevenue: number }[] };
+  insights: { type: string; severity: 'high' | 'medium' | 'low'; message: string }[];
+  targetPeriods: string[];
+  generatedAt: string;
+}
+
+/** Build the report query from the Pipeline board's active filters. */
+export interface SalesReportQuery {
+  fromDate?: string; toDate?: string; ownerId?: string; source?: string;
+  stage?: string; status?: string; temperature?: string; district?: string; search?: string;
+}
+export async function fetchSalesPerformanceReport(q: SalesReportQuery = {}): Promise<SalesPerformanceReport> {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(q)) if (v && v !== 'all') p.set(k, v);
+  const qs = p.toString();
+  const res = await apiClient.get<SalesPerformanceReport>(`/sales/reports/sales-performance${qs ? `?${qs}` : ''}`);
+  return res.data;
+}
+
 export const fetchPipelineReport = (w?: ReportWindow) => getReport<PipelineSummary>('pipeline', w);
 export const fetchWinRateReport = (w?: ReportWindow) => getReport<WinRateReport>('win-rate', w);
 export const fetchLostDealReport = (w?: ReportWindow) => getReport<LostDealAnalysis>('lost-deals', w);

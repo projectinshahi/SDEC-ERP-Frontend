@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { Lead, LeadStage } from '@/lib/types/lead';
 import type { BdePipelineOwner } from '@/lib/types/salesReports';
+import type { SalesPerformanceReport } from '@/lib/api/salesReports';
 import { formatINR } from '@/lib/utils/currency';
 import { temperatureLabel } from '@/lib/data/leadTemperature';
 
@@ -107,14 +108,22 @@ export function buildFilterLines(filters: ReportFilters): string[] {
   return f;
 }
 
-export async function exportLeadReport(
+/**
+ * Builds the Sales Performance Report jsPDF document and returns it (no download).
+ * Split from `exportLeadReport` so the exact render can be exercised headlessly.
+ */
+export function buildLeadReportDoc(
   leads: Lead[],
   stages: LeadStage[],
   filters: ReportFilters,
   /** Existing per-BDE computation (fetchPipelineReport().bdePipeline) — reused,
    *  not recomputed. Restricted below to the opportunities in THIS export. */
   bdePipeline?: BdePipelineOwner[],
-) {
+  /** Single filter-aware payload (getSalesPerformanceReport) — the source of truth
+   *  for Target/Achievement, Forecast, Trend and Insights. Absent → those sections
+   *  are skipped (rest of the report is unaffected). */
+  report?: SalesPerformanceReport,
+): jsPDF {
   const doc = new jsPDF('p', 'pt', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   let cursorY = 40;
@@ -122,7 +131,7 @@ export async function exportLeadReport(
   // Header
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('Pipeline Report', 40, cursorY);
+  doc.text('Sales Performance Report', 40, cursorY);
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -151,20 +160,41 @@ export async function exportLeadReport(
   };
   const conversionRate = kpis.total > 0 ? ((kpis.converted / kpis.total) * 100).toFixed(1) : '0.0';
 
+  // ── Shared funnel + value aggregates over the FILTERED dataset (single source
+  //    for every section below, so Won Revenue / Active Pipeline / funnel counts
+  //    can never disagree — all derived from the same `leads`). ──────────────
+  const val = (l: Lead) => Number(l.leadValue || 0);
+  const FUNNEL = ['NQL', 'MQL', 'SQL', 'PQL', 'SAL', 'WON'];
+  const ACTIVE = ['NQL', 'MQL', 'SQL', 'PQL', 'SAL'];
+  const atStage = (name: string) => leads.filter((l) => stageIs(l, name));
+  const stageCount = (name: string) => atStage(name).length;
+  const stageValue = (name: string) => atStage(name).reduce((s, l) => s + val(l), 0);
+  const wonRevenue = stageValue('WON');
+  const holdValue = stageValue('HOLD');
+  const lostValue = stageValue('LOST');
+  const activePipeline = ACTIVE.reduce((s, st) => s + stageValue(st), 0);
+  const activeCount = ACTIVE.reduce((s, st) => s + stageCount(st), 0);
+  const totalValue = leads.reduce((s, l) => s + val(l), 0);
+  const avgDealValue = kpis.total > 0 ? Math.round(totalValue / kpis.total) : 0;
+
   // Draw KPI Section
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0);
-  doc.text('Summary KPIs', 40, cursorY);
+  doc.text('Overall Sales Performance', 40, cursorY);
   cursorY += 20;
 
   const kpiData = [
     ['Total Opportunities', kpis.total.toString()],
+    ['Won Revenue', pdfINR(wonRevenue)],
+    ['Active Pipeline Value', pdfINR(activePipeline)],
+    ['Active Opportunities', activeCount.toString()],
+    ['Average Deal Value', pdfINR(avgDealValue)],
+    ['Overall Conversion', `${conversionRate}%`],
     ['Won', kpis.won.toString()],
-    ['Hold', kpis.hold.toString()],
-    ['Lost', kpis.lost.toString()],
+    ['Hold', `${kpis.hold}  (${pdfINR(holdValue)})`],
+    ['Lost', `${kpis.lost}  (${pdfINR(lostValue)})`],
     ['Converted', kpis.converted.toString()],
-    ['Conversion Rate', `${conversionRate}%`]
   ];
 
   autoTable(doc, {
@@ -176,6 +206,55 @@ export async function exportLeadReport(
     headStyles: { fillColor: [63, 131, 248] },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 150 }, 1: { cellWidth: 100 } },
     margin: { left: 40 }
+  });
+  cursorY = (doc as any).lastAutoTable.finalY + 30;
+
+  // ── Pipeline Performance Summary — aggregate KPIs over the FILTERED dataset.
+  // `leads` IS the exported set (every board filter + the export date range already
+  // applied), so these numbers match exactly what was exported. Basis is the same
+  // "stage = single source of truth" funnel the Summary KPIs above use.
+  // ponytail: reaching a funnel stage implies its entry gate happened (MQL =
+  //   meaningful conversation, SQL = discovery meeting, PQL = proposal sent). WON
+  //   counts as passed-all; terminal HOLD/LOST count only as New Leads Added (the
+  //   client rows don't carry their furthest stage). Meetings reuses the already-
+  //   fetched follow-up counts (today's scheduled — per the CR's allowance). Join
+  //   transition history only if per-stage terminal attribution is ever needed.
+  const FUNNEL_RANK: Record<string, number> = { NQL: 0, MQL: 1, SQL: 2, PQL: 3, SAL: 4, WON: 5 };
+  const frank = (l: Lead) => FUNNEL_RANK[(l.stage || '').toUpperCase()] ?? -1;
+  const proposalLeads = leads.filter((l) => frank(l) >= 3);
+  const ownersInExport = new Set(leads.map((l) => l.ownerId));
+  const meetingsScheduled = (bdePipeline ?? [])
+    .filter((b) => ownersInExport.has(b.ownerId))
+    .reduce((s, b) => s + (b.kpis?.nextDayMeetingsToday ?? 0), 0);
+
+  const dr = filters.dateRange;
+  const periodLabel = dr && (dr.from || dr.to)
+    ? (dr.from && dr.to && dr.from === dr.to ? fmtD(dr.from) : `${dr.from ? fmtD(dr.from) : '…'} – ${dr.to ? fmtD(dr.to) : '…'}`)
+    : 'All Dates';
+
+  if (cursorY > doc.internal.pageSize.getHeight() - 150) { doc.addPage(); cursorY = 40; }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text('Pipeline Performance Summary', 40, cursorY); cursorY += 16;
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(120);
+  doc.text(`Period: ${periodLabel}`, 40, cursorY); cursorY += 12;
+  doc.setTextColor(0);
+
+  autoTable(doc, {
+    startY: cursorY,
+    head: [['Metric', 'Value']],
+    body: [
+      ['New Leads Added', String(leads.length)],
+      ['Meaningful Conversations', String(leads.filter((l) => frank(l) >= 1).length)],
+      ['Discovery Meetings Conducted', String(leads.filter((l) => frank(l) >= 2).length)],
+      ['Proposals Sent', String(proposalLeads.length)],
+      ['Proposal Value (Rs.)', pdfINR(proposalLeads.reduce((s, l) => s + Number(l.leadValue || 0), 0))],
+      ['Meetings Scheduled', String(meetingsScheduled)],
+    ],
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 6 },
+    headStyles: { fillColor: [63, 131, 248] },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 250 }, 1: { cellWidth: 100, halign: 'right' } },
+    margin: { left: 40 },
   });
   cursorY = (doc as any).lastAutoTable.finalY + 30;
 
@@ -231,11 +310,21 @@ export async function exportLeadReport(
     stageMap[stg].value += Number(l.leadValue || 0);
   });
 
+  // Cumulative funnel conversion (stage → next active stage), from the same leads.
+  const reachedFrom = (i: number) => FUNNEL.slice(i).reduce((s, st) => s + stageCount(st), 0);
+  const convForStage = (name: string) => {
+    const i = FUNNEL.indexOf(name.toUpperCase());
+    if (i < 0 || i >= FUNNEL.length - 1) return '—';
+    const cur = reachedFrom(i);
+    return cur > 0 ? `${((reachedFrom(i + 1) / cur) * 100).toFixed(1)}%` : '—';
+  };
+
   const pipelineData = Object.entries(stageMap).map(([stg, stats]) => [
     stg,
     stats.count.toString(),
+    pdfINR(stats.value),
     `${((stats.count / Math.max(kpis.total, 1)) * 100).toFixed(1)}%`,
-    pdfINR(stats.value)
+    convForStage(stg),
   ]);
 
   if (cursorY > doc.internal.pageSize.getHeight() - 100) {
@@ -245,19 +334,226 @@ export async function exportLeadReport(
 
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('Pipeline Summary', 40, cursorY);
+  doc.text('Pipeline Funnel & Stage Conversion', 40, cursorY);
   cursorY += 20;
 
   autoTable(doc, {
     startY: cursorY,
-    head: [['Stage', 'Leads', 'Pipeline %', 'Total Value']],
+    head: [['Stage', 'Opportunities', 'Value', 'Pipeline %', 'Conversion']],
     body: pipelineData,
     theme: 'grid',
     styles: { fontSize: 10, cellPadding: 6 },
     headStyles: { fillColor: [245, 158, 11] }, // amber
+    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
     margin: { left: 40 }
   });
   cursorY = (doc as any).lastAutoTable.finalY + 30;
+
+  // ── Hold & Lost Outcomes ─────────────────────────────────────────────────
+  // Reasons live in stage-transition metadata (not on the client rows), so this
+  // shows counts + value from the filtered set; disqualifyReason is surfaced when
+  // present. ponytail: wire transition-note reasons through if a reason breakdown
+  // is needed — needs the activity metadata, not available on the lead rows here.
+  const holdLostRows = [
+    ['Hold — Opportunities', stageCount('HOLD').toString()],
+    ['Hold — Value', pdfINR(holdValue)],
+    ['Lost — Opportunities', stageCount('LOST').toString()],
+    ['Lost — Value', pdfINR(lostValue)],
+  ];
+  const disqReasons = leads
+    .filter((l) => ['HOLD', 'LOST'].includes((l.stage || '').toUpperCase()) && l.disqualifyReason)
+    .reduce((m, l) => { const r = l.disqualifyReason!.trim(); m[r] = (m[r] || 0) + 1; return m; }, {} as Record<string, number>);
+  const topReasons = Object.entries(disqReasons).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  for (const [r, c] of topReasons) holdLostRows.push([`Reason: ${r}`, String(c)]);
+
+  if (cursorY > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); cursorY = 40; }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text('Hold & Lost Outcomes', 40, cursorY); cursorY += 20;
+  autoTable(doc, {
+    startY: cursorY,
+    head: [['Metric', 'Value']],
+    body: holdLostRows,
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 6 },
+    headStyles: { fillColor: [244, 63, 94] }, // rose
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 250 }, 1: { cellWidth: 120, halign: 'right' } },
+    margin: { left: 40 },
+  });
+  cursorY = (doc as any).lastAutoTable.finalY + 30;
+
+  // ── Team / BDE Performance (from the filtered leads, grouped by owner) ────
+  // Won Revenue, Active Pipeline, Conversion per BDE. ponytail: Target/Status
+  // columns omitted deliberately — no per-BDE target is available on the client
+  // rows, and the CR forbids fabricating status without a target to measure it.
+  const byOwner = new Map<string, { name: string; total: number; won: number; wonRev: number; active: number }>();
+  for (const l of leads) {
+    const key = String(l.ownerId ?? 'unassigned');
+    const o = byOwner.get(key) ?? { name: l.owner?.name || 'Unassigned', total: 0, won: 0, wonRev: 0, active: 0 };
+    o.total++;
+    const st = (l.stage || '').toUpperCase();
+    if (st === 'WON') { o.won++; o.wonRev += val(l); }
+    if (ACTIVE.includes(st)) o.active += val(l);
+    byOwner.set(key, o);
+  }
+  const teamRows = Array.from(byOwner.values())
+    .sort((a, b) => b.wonRev - a.wonRev)
+    .map((o) => [
+      o.name, o.total.toString(), pdfINR(o.wonRev), pdfINR(o.active),
+      `${o.total > 0 ? ((o.won / o.total) * 100).toFixed(1) : '0.0'}%`,
+    ]);
+  if (teamRows.length > 0) {
+    if (cursorY > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); cursorY = 40; }
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+    doc.text('Team / BDE Performance', 40, cursorY); cursorY += 20;
+    autoTable(doc, {
+      startY: cursorY,
+      head: [['BDE', 'Opportunities', 'Won Revenue', 'Active Pipeline', 'Conversion']],
+      body: teamRows,
+      theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [99, 102, 241] }, // indigo
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+      margin: { left: 40 },
+    });
+    cursorY = (doc as any).lastAutoTable.finalY + 30;
+  }
+
+  // ── Pipeline Health (derived from the funnel above — all real, filtered) ──
+  const funnelConv = ACTIVE.map((st) => ({ st, conv: reachedFrom(FUNNEL.indexOf(st) + 1) / Math.max(reachedFrom(FUNNEL.indexOf(st)), 1) }));
+  const best = funnelConv.reduce((a, b) => (b.conv > a.conv ? b : a), funnelConv[0]);
+  const weakest = funnelConv.reduce((a, b) => (b.conv < a.conv ? b : a), funnelConv[0]);
+  const healthRows = [
+    ['Active Pipeline Value', pdfINR(activePipeline)],
+    ['Active Opportunities', activeCount.toString()],
+    ['Best-Converting Stage', best ? `${best.st} (${(best.conv * 100).toFixed(1)}%)` : '—'],
+    ['Weakest-Converting Stage', weakest ? `${weakest.st} (${(weakest.conv * 100).toFixed(1)}%)` : '—'],
+    ['On Hold (stalled)', `${stageCount('HOLD')}  (${pdfINR(holdValue)})`],
+    ['Lost', `${stageCount('LOST')}  (${pdfINR(lostValue)})`],
+    ['Average Deal Value', pdfINR(avgDealValue)],
+  ];
+  if (cursorY > doc.internal.pageSize.getHeight() - 130) { doc.addPage(); cursorY = 40; }
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text('Pipeline Health', 40, cursorY); cursorY += 20;
+  autoTable(doc, {
+    startY: cursorY,
+    head: [['Metric', 'Value']],
+    body: healthRows,
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 6 },
+    headStyles: { fillColor: [13, 148, 136] }, // teal
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 250 }, 1: { cellWidth: 150, halign: 'right' } },
+    margin: { left: 40 },
+  });
+  cursorY = (doc as any).lastAutoTable.finalY + 30;
+
+  // ── Payload-driven management sections (single source of truth) ──────────
+  // Target/Achievement, Forecast, Trend and Insights come from the filter-aware
+  // backend endpoint; nothing here is computed a second time. Absent payload (e.g.
+  // the fetch failed) → these are skipped and the rest of the report is intact.
+  if (report) {
+    const pageH2 = () => doc.internal.pageSize.getHeight();
+    const brk = (extra = 0) => { if (cursorY > pageH2() - 90 - extra) { doc.addPage(); cursorY = 40; } };
+    const s = report.summary;
+
+    // Target vs Achievement — explicit N/A when no target is configured.
+    brk(40);
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+    doc.text('Target vs Achievement', 40, cursorY); cursorY += 20;
+    const tvaBody: (string | number)[][] = s.targetAvailable
+      ? [
+          ['Sales Target', pdfINR(s.target || 0)],
+          ['Won Revenue', pdfINR(s.wonRevenue)],
+          ['Achievement %', `${s.achievementPercentage ?? 0}%`],
+          ['Target Gap (Remaining)', pdfINR(s.targetGap || 0)],
+          ['Active Pipeline', pdfINR(s.activePipeline)],
+          ['Pipeline Coverage', s.pipelineCoverage != null ? `${s.pipelineCoverage}x` : 'N/A'],
+        ]
+      : [
+          ['Sales Target', 'Not Available'],
+          ['Won Revenue', pdfINR(s.wonRevenue)],
+          ['Active Pipeline', pdfINR(s.activePipeline)],
+        ];
+    autoTable(doc, {
+      startY: cursorY, head: [['Metric', 'Value']], body: tvaBody, theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 6 }, headStyles: { fillColor: [37, 99, 235] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 250 }, 1: { cellWidth: 150, halign: 'right' } },
+      margin: { left: 40 },
+    });
+    cursorY = (doc as any).lastAutoTable.finalY + 8;
+    if (!s.targetAvailable) {
+      doc.setFontSize(8); doc.setFont('helvetica', 'italic'); doc.setTextColor(120);
+      doc.text('No Sales Target is configured for the selected owner/period — not fabricated.', 40, cursorY);
+      doc.setTextColor(0); doc.setFont('helvetica', 'normal'); cursorY += 12;
+    }
+    cursorY += 18;
+
+    // Weighted Forecast — lead-based report has no probability source.
+    brk();
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+    doc.text('Weighted Forecast', 40, cursorY); cursorY += 16;
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(90);
+    doc.text(
+      report.forecast.available && report.forecast.weightedForecast != null
+        ? `Weighted Forecast: ${pdfINR(report.forecast.weightedForecast)}`
+        : 'Weighted Forecast: Not Available (no lead-level probability in the CRM).',
+      40, cursorY,
+    );
+    doc.setTextColor(0); cursorY += 26;
+
+    // Target vs Revenue Trend — compact bar chart from the returned buckets.
+    brk(120);
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+    doc.text(`Won Revenue Trend (${report.trend.bucket})`, 40, cursorY); cursorY += 16;
+    const pts = report.trend.points;
+    if (pts.length === 0) {
+      doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(120);
+      doc.text('No won revenue in the selected period.', 40, cursorY); doc.setTextColor(0); cursorY += 20;
+    } else {
+      const chartX = 40, chartW = pageWidth - 80, chartH = 90;
+      const maxV = Math.max(...pts.map((p) => p.wonRevenue), 1);
+      const n = Math.min(pts.length, 24); // cap bars so labels stay legible
+      const shown = pts.slice(-n);
+      const bw = chartW / shown.length;
+      const baseY = cursorY + chartH;
+      doc.setDrawColor(220); doc.line(chartX, baseY, chartX + chartW, baseY);
+      shown.forEach((p, i) => {
+        const h = Math.round((p.wonRevenue / maxV) * (chartH - 10));
+        const x = chartX + i * bw + 2;
+        doc.setFillColor(37, 99, 235);
+        doc.rect(x, baseY - h, Math.max(2, bw - 4), h, 'F');
+      });
+      // Sparse x labels (first, middle, last) to avoid overlap.
+      doc.setFontSize(7); doc.setTextColor(120); doc.setFont('helvetica', 'normal');
+      [0, Math.floor(shown.length / 2), shown.length - 1].forEach((i) => {
+        if (shown[i]) doc.text(shown[i].date, chartX + i * bw + 2, baseY + 10);
+      });
+      doc.setTextColor(0);
+      cursorY = baseY + 24;
+    }
+
+    // Founder / Management Action Insights — data-supported only.
+    brk();
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+    doc.text('Founder Action Insights', 40, cursorY); cursorY += 18;
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    if (report.insights.length === 0) {
+      doc.setTextColor(120);
+      doc.text('No action items surfaced from the current data.', 40, cursorY);
+      doc.setTextColor(0); cursorY += 18;
+    } else {
+      for (const ins of report.insights) {
+        brk();
+        const tag = ins.severity.toUpperCase();
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(ins.severity === 'high' ? 190 : 120, 60, 60);
+        doc.text(`[${tag}]`, 40, cursorY);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(30);
+        for (const ln of doc.splitTextToSize(ins.message, pageWidth - 120)) { doc.text(ln, 92, cursorY); cursorY += 13; }
+        cursorY += 3;
+      }
+      doc.setTextColor(0);
+    }
+    cursorY += 12;
+  }
 
   // The Detailed Lead Listing was removed from the PDF: this is a management
   // summary, and the row-level data now lives in the Excel export (same filtered
@@ -347,7 +643,19 @@ export async function exportLeadReport(
     doc.text(`Page ${i} of ${pageCount}`, 40, doc.internal.pageSize.getHeight() - 20);
   }
 
-  doc.save(`Sales_Leads_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
+  return doc;
+}
+
+/** Builds the report and triggers the browser download. */
+export async function exportLeadReport(
+  leads: Lead[],
+  stages: LeadStage[],
+  filters: ReportFilters,
+  bdePipeline?: BdePipelineOwner[],
+  report?: SalesPerformanceReport,
+) {
+  buildLeadReportDoc(leads, stages, filters, bdePipeline, report)
+    .save(`Sales_Leads_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
 }
 
 /**
