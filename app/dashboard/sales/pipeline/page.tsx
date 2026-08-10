@@ -33,7 +33,7 @@ import { formatINR } from '@/lib/utils/currency';
 import { classNames } from '@/lib/utils';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
 import { exportLeadReport, exportLeadWorkbook } from '@/lib/utils/exportLeadReport';
-import { fetchPipelineReport } from '@/lib/api/salesReports';
+import { fetchPipelineReport, fetchSalesPerformanceReport } from '@/lib/api/salesReports';
 import type { ReportWindow } from '@/lib/api/salesReports';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { InputField } from '@/components/ui/InputField';
@@ -621,7 +621,22 @@ export default function SalesLeadsPage() {
             to: exportDateRange.to || undefined,
           })).bdePipeline;
         } catch { bdePipeline = undefined; }
-        await exportLeadReport(filteredForReport, stages, reportFilters, bdePipeline);
+        // Single filter-aware payload driving Target/Achievement, Forecast, Trend
+        // and data-supported Insights — the SAME filters the board applied.
+        let report;
+        try {
+          report = await fetchSalesPerformanceReport({
+            fromDate: exportDateRange.from || undefined,
+            toDate: exportDateRange.to || undefined,
+            ownerId: ownerFilter !== 'all' ? ownerFilter : undefined,
+            source: sourceFilter !== 'all' ? sourceFilter : undefined,
+            stage: viewMode === 'table' && stageFilter !== 'all' ? stageFilter : undefined,
+            temperature: temperatureFilter !== 'all' ? temperatureFilter : undefined,
+            district: districtFilter !== 'all' ? districtFilter : undefined,
+            search: searchQuery || undefined,
+          });
+        } catch { report = undefined; }
+        await exportLeadReport(filteredForReport, stages, reportFilters, bdePipeline, report);
       }
       toast('Report downloaded successfully', 'success');
       setIsExportModalOpen(false);
