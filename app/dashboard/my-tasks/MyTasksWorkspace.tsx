@@ -27,7 +27,7 @@ import { ExportTaskPdfButton } from '@/components/tasks/mytasks/ExportTaskPdfBut
 import { CreateMyTaskModal } from '@/components/tasks/mytasks/CreateMyTaskModal';
 import { TaskDashboard } from './TaskDashboard';
 
-type Bucket = 'inbox' | 'outbox';
+type Bucket = 'inbox' | 'outbox' | 'all';
 const COLLAPSE_KEY = 'my-tasks-details-collapsed';
 
 /**
@@ -37,6 +37,7 @@ const COLLAPSE_KEY = 'my-tasks-details-collapsed';
  */
 type TabKey = Bucket | 'analytics';
 const TABS: { key: TabKey; label: string; icon: any; hint: string }[] = [
+  { key: 'all', label: 'All', icon: ListTodo, hint: 'Every task you can access' },
   { key: 'inbox', label: 'Inbox', icon: Inbox, hint: 'Tasks assigned to me' },
   { key: 'outbox', label: 'Outbox', icon: Send, hint: 'Tasks I created' },
   { key: 'analytics', label: 'Analytics', icon: BarChart3, hint: 'Organisation-wide task analytics' },
@@ -59,6 +60,43 @@ const STATUS_FILTERS: { key: string; label: string }[] = [
   { key: 'done', label: 'Done' },
   { key: 'approved', label: 'Approved' },
 ];
+// Status is now a CHECKBOX filter (selected = shown). Default = every status
+// EXCEPT Approved, so approved tasks are hidden until the user ticks Approved.
+const DEFAULT_STATUS: string[] = STATUS_FILTERS.map((f) => f.key).filter((k) => k !== 'approved');
+const isDefaultStatus = (sel: Set<string>): boolean =>
+  sel.size === DEFAULT_STATUS.length && DEFAULT_STATUS.every((k) => sel.has(k));
+
+/**
+ * Always-visible status filter — the existing status badges, multi-select. Selection
+ * is shown by a small dot on the badge (no checkbox, no extra control); dimensions +
+ * padding stay the same whether selected or not. The whole badge is the click target.
+ * Shared by every view (List/Grid/Calendar) + mobile so they can never drift.
+ */
+function StatusFilterBadges({ selected, onToggle, className }: { selected: Set<string>; onToggle: (key: string) => void; className?: string }) {
+  return (
+    <div className={classNames('flex flex-wrap items-center gap-1.5', className)} role="group" aria-label="Filter by status">
+      {STATUS_FILTERS.map((f) => {
+        const on = selected.has(f.key);
+        return (
+          <button
+            key={f.key}
+            type="button"
+            onClick={() => onToggle(f.key)}
+            aria-pressed={on}
+            className={classNames(
+              // Same pill dimensions in both states — only the dot + text weight differ.
+              'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold transition',
+              on ? 'bg-gray-100 text-gray-900' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+            )}
+          >
+            {on && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" aria-hidden="true" />}
+            {f.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 const COMPLETED_STATUSES = ['done', 'approved'];
 // Read-state filter. Reuses the EXISTING per-user `unread` flag the card badges
 // already use (server-computed: never opened OR changed since last open OR unread
@@ -105,9 +143,10 @@ function useDebouncedValue<T>(value: T, delay = 200): T {
 }
 // Per-tab date defaults: Inbox opens on actionable work (Today + Delayed);
 // Outbox opens on everything the user created.
-const DEFAULT_DATE_BY_BUCKET: Record<'inbox' | 'outbox', string[]> = {
+const DEFAULT_DATE_BY_BUCKET: Record<Bucket, string[]> = {
   inbox: DEFAULT_DATE_FILTERS,
   outbox: ['all'],
+  all: ['all'],
 };
 
 // Full standard status workflow (dropdown offers every stage, incl. Waiting & Approved).
@@ -172,26 +211,24 @@ const MOBILE_CHIPS: { key: string; label: string }[] = [
 
 
 /**
- * Mobile Filter bottom-sheet (phones only). Houses the advanced Status + Read filters
- * that used to sit as inline dropdowns, keeping the list header clean (Search + Filter
- * button + Due chips). It edits a local DRAFT seeded from the currently-applied filters
- * and commits ONLY on Apply — reusing the EXACT same statusFilters/readFilter state and
- * the matchDateStatus/matchRead engine the desktop uses (no mobile-specific filter logic).
+ * Mobile Filter bottom-sheet (phones only). Houses the advanced Read + Task In-Charge
+ * filters, keeping the list header clean (Search + Filter button + Due chips + the
+ * always-visible Status checkboxes). It edits a local DRAFT seeded from the currently-
+ * applied filters and commits ONLY on Apply — reusing the EXACT same readFilter/
+ * inChargeFilter state and match engine the desktop uses (no mobile-specific logic).
  * The parent conditionally mounts it, so the scroll-lock/Escape effect is leak-free.
  * Rendered inside `.mytasks-scope`, so it inherits the My Tasks dark palette.
  */
 function MobileFilterSheet({
-  initialStatus, initialRead, initialInCharge = null, inChargeOptions, onApply, onClose,
+  initialRead, initialInCharge = null, inChargeOptions, onApply, onClose,
 }: {
-  initialStatus: Set<string>;
   initialRead: ReadKey;
   initialInCharge?: number | null;
   /** Provided ONLY on the Outbox → renders the reused Task In-Charge searchable dropdown. */
   inChargeOptions?: { id: number; name: string }[];
-  onApply: (status: Set<string>, read: ReadKey, inCharge: number | null) => void;
+  onApply: (read: ReadKey, inCharge: number | null) => void;
   onClose: () => void;
 }) {
-  const [draftStatus, setDraftStatus] = useState<Set<string>>(() => new Set(initialStatus));
   const [draftRead, setDraftRead] = useState<ReadKey>(() => initialRead);
   const [draftInCharge, setDraftInCharge] = useState<number | null>(() => initialInCharge);
 
@@ -203,11 +240,6 @@ function MobileFilterSheet({
     return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey); };
   }, [onClose]);
 
-  const toggleStatus = (key: string) => setDraftStatus((prev) => {
-    const next = new Set(prev);
-    if (next.has(key)) next.delete(key); else next.add(key);
-    return next;
-  });
   const pillCls = (active: boolean) => classNames(
     'rounded-full px-3.5 py-2 text-[13px] font-semibold transition',
     active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
@@ -229,20 +261,9 @@ function MobileFilterSheet({
           <button type="button" onClick={onClose} aria-label="Close filters"
             className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"><X className="h-5 w-5" /></button>
         </div>
-        {/* Status + Read — scrollable when the sheet can't fit its content. overflow-y-auto
-            self-resolves this flex child's min-size to 0, so it shrinks + scrolls while the
-            footer stays pinned. It clips its OWN descendants only — the In-Charge dropdown is
-            a sibling below, so it is never clipped by this box. */}
+        {/* Read — scrollable when the sheet can't fit its content. Status now lives in
+            the always-visible checkbox row on the list screen, not here. */}
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pt-1 pb-4">
-          <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">Status</p>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setDraftStatus(new Set())} className={pillCls(draftStatus.size === 0)}>All</button>
-              {STATUS_FILTERS.map((f) => (
-                <button key={f.key} type="button" onClick={() => toggleStatus(f.key)} className={pillCls(draftStatus.has(f.key))}>{f.label}</button>
-              ))}
-            </div>
-          </div>
           <div>
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">Read Status</p>
             <div className="flex flex-wrap gap-2">
@@ -261,9 +282,9 @@ function MobileFilterSheet({
           </div>
         )}
         <div className="flex shrink-0 items-center gap-3 border-t border-gray-100 px-5 py-3">
-          <button type="button" onClick={() => { setDraftStatus(new Set()); setDraftRead('all'); setDraftInCharge(null); }}
+          <button type="button" onClick={() => { setDraftRead('all'); setDraftInCharge(null); }}
             className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Reset</button>
-          <button type="button" onClick={() => { onApply(draftStatus, draftRead, draftInCharge); onClose(); }}
+          <button type="button" onClick={() => { onApply(draftRead, draftInCharge); onClose(); }}
             className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">Apply</button>
         </div>
       </div>
@@ -369,7 +390,9 @@ function matchDateStatus(t: MyTask, dSel: Set<string>, sSel: Set<string>, strict
       && (t.status === 'waiting' || t.status === 'approved' || (strictDelayed && COMPLETED_STATUSES.includes(t.status)));
     dateOk = dSel.has(b) && !notDelayed;
   }
-  const statusOk = sSel.size === 0 || sSel.has(t.status);
+  // Multi-select semantics: only the SELECTED statuses are shown. An empty set shows
+  // nothing (→ the empty-state), rather than silently reverting to "all".
+  const statusOk = sSel.has(t.status);
   return dateOk && statusOk;
 }
 // Optional Waiting-Reason filter — only narrows Waiting tasks; a no-op (passes) when
@@ -1452,19 +1475,22 @@ function WorkspaceInner() {
   const [dateFilters, setDateFilters] = useState<Record<Bucket, Set<string>>>(() => ({
     inbox: new Set(DEFAULT_DATE_BY_BUCKET.inbox),
     outbox: new Set(DEFAULT_DATE_BY_BUCKET.outbox),
+    all: new Set(DEFAULT_DATE_BY_BUCKET.all),
   }));
-  const [statusFilters, setStatusFilters] = useState<Record<Bucket, Set<string>>>(() => ({
-    inbox: new Set<string>(), outbox: new Set<string>(),
-  }));
-  const [inChargeFilter, setInChargeFilter] = useState<Record<Bucket, number | null>>(() => ({ inbox: null, outbox: null })); // per-bucket
-  const [waitingReasonFilter, setWaitingReasonFilter] = useState<Record<Bucket, string | null>>({ inbox: null, outbox: null }); // per-bucket, active only when Waiting is filtered
-  const [readFilter, setReadFilter] = useState<Record<Bucket, ReadKey>>({ inbox: 'all', outbox: 'all' }); // per-bucket (never global — it would leak across tabs)
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false); // mobile Filter bottom-sheet (Status + Read)
-  const [search, setSearch] = useState<Record<Bucket, string>>({ inbox: '', outbox: '' }); // per-bucket, like every other filter here
+  // Status is a SINGLE shared checkbox selection across All/Inbox/Outbox (so switching
+  // tabs never resets it — requirement #7), unlike the per-bucket date/read/search/
+  // in-charge filters. Defaults to all-except-Approved.
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(() => new Set(DEFAULT_STATUS));
+  const [inChargeFilter, setInChargeFilter] = useState<Record<Bucket, number | null>>(() => ({ inbox: null, outbox: null, all: null })); // per-bucket
+  const [waitingReasonFilter, setWaitingReasonFilter] = useState<Record<Bucket, string | null>>({ inbox: null, outbox: null, all: null }); // per-bucket, active only when Waiting is filtered
+  const [readFilter, setReadFilter] = useState<Record<Bucket, ReadKey>>({ inbox: 'all', outbox: 'all', all: 'all' }); // per-bucket (never global — it would leak across tabs)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false); // mobile Filter bottom-sheet (Read + In-Charge)
+  const [search, setSearch] = useState<Record<Bucket, string>>({ inbox: '', outbox: '', all: '' }); // per-bucket, like every other filter here
   // Filter on the DEBOUNCED text (keeps typing snappy); `search` drives the input itself.
   const debouncedSearch = useDebouncedValue(search, 200);
   const searchInbox = debouncedSearch.inbox.trim().toLowerCase();
   const searchOutbox = debouncedSearch.outbox.trim().toLowerCase();
+  const searchAll = debouncedSearch.all.trim().toLowerCase();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   // Details start COLLAPSED: the header (title + status + priority) is enough to scan,
   // and the chat gets the space. Reuses the existing toggle + sessionStorage, so an
@@ -1564,11 +1590,18 @@ function WorkspaceInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, data]);
 
-  const lists = useMemo(() => ({
-    inbox: data?.inbox ?? [], outbox: data?.outbox ?? [],
-  }), [data]);
+  const lists = useMemo(() => {
+    const inbox = data?.inbox ?? [];
+    const outbox = data?.outbox ?? [];
+    // All = Inbox ∪ Outbox, de-duplicated by id (a task can be both assigned to me
+    // and created by me). Every task here is already permission-scoped server-side.
+    const seen = new Set<number>();
+    const all: MyTask[] = [];
+    for (const t of [...inbox, ...outbox]) if (!seen.has(t.id)) { seen.add(t.id); all.push(t); }
+    return { inbox, outbox, all };
+  }, [data]);
   const dateSel = dateFilters[bucket];
-  const statusSel = statusFilters[bucket];
+  const statusSel = statusFilter; // shared across tabs
   const readSel = readFilter[bucket];
 
   // Mobile Due chips are single-select PRESETS over the same date/status state the desktop
@@ -1583,7 +1616,7 @@ function WorkspaceInner() {
   };
   // Advanced (Filter-sheet) filters currently applied: Status, Read, and
   // Task In-Charge. Drives the Filter button badge.
-  const advancedFilterCount = (statusSel.size > 0 ? 1 : 0)
+  const advancedFilterCount = (!isDefaultStatus(statusSel) ? 1 : 0)
     + (readSel !== 'all' ? 1 : 0)
     + (inChargeFilter[bucket] !== null ? 1 : 0);
   // Mobile exposes Due (chips) + Status + Read + (Outbox) Task In-Charge — all in the Filter
@@ -1592,29 +1625,40 @@ function WorkspaceInner() {
   // In-Charge is NO LONGER reset — the Outbox Filter sheet owns it (full desktop parity).
   useEffect(() => {
     if (!isMobile) return;
-    setWaitingReasonFilter({ inbox: null, outbox: null });
+    setWaitingReasonFilter({ inbox: null, outbox: null, all: null });
   }, [isMobile]);
   // Both tabs filter by Date+Status (a task must match any selected date bucket AND
   // any selected status). Outbox uses the stricter Delayed (excludes completed) and
   // adds the Task In-Charge filter. All client-side over already-fetched data.
   const inboxFiltered = useMemo(
-    () => lists.inbox.filter((t) => matchDateStatus(t, dateFilters.inbox, statusFilters.inbox, false)
+    () => lists.inbox.filter((t) => matchDateStatus(t, dateFilters.inbox, statusFilter, false)
       && matchWaitingReason(t, waitingReasonFilter.inbox)
       && matchRead(t, readFilter.inbox)
       && matchSearch(t, searchInbox)
       && (inChargeFilter.inbox == null || t.inChargeId === inChargeFilter.inbox)),
-    [lists.inbox, dateFilters.inbox, statusFilters.inbox, inChargeFilter.inbox, waitingReasonFilter.inbox, readFilter.inbox, searchInbox],
+    [lists.inbox, dateFilters.inbox, statusFilter, inChargeFilter.inbox, waitingReasonFilter.inbox, readFilter.inbox, searchInbox],
   );
   const outboxFiltered = useMemo(
     () => lists.outbox.filter((t) =>
-      matchDateStatus(t, dateFilters.outbox, statusFilters.outbox, true)
+      matchDateStatus(t, dateFilters.outbox, statusFilter, true)
       && matchWaitingReason(t, waitingReasonFilter.outbox)
       && matchRead(t, readFilter.outbox)
       && matchSearch(t, searchOutbox)
       && (inChargeFilter.outbox == null || t.inChargeId === inChargeFilter.outbox)),
-    [lists.outbox, dateFilters.outbox, statusFilters.outbox, inChargeFilter.outbox, waitingReasonFilter.outbox, readFilter.outbox, searchOutbox],
+    [lists.outbox, dateFilters.outbox, statusFilter, inChargeFilter.outbox, waitingReasonFilter.outbox, readFilter.outbox, searchOutbox],
   );
-  const currentList = bucket === 'inbox' ? inboxFiltered : outboxFiltered;
+  // All = the de-duplicated union, run through the SAME filter engine. Status is the
+  // shared selection; date/read/search/in-charge are the All tab's own per-bucket state.
+  const allFiltered = useMemo(
+    () => lists.all.filter((t) =>
+      matchDateStatus(t, dateFilters.all, statusFilter, false)
+      && matchWaitingReason(t, waitingReasonFilter.all)
+      && matchRead(t, readFilter.all)
+      && matchSearch(t, searchAll)
+      && (inChargeFilter.all == null || t.inChargeId === inChargeFilter.all)),
+    [lists.all, dateFilters.all, statusFilter, inChargeFilter.all, waitingReasonFilter.all, readFilter.all, searchAll],
+  );
+  const currentList = bucket === 'all' ? allFiltered : bucket === 'inbox' ? inboxFiltered : outboxFiltered;
 
   // Task In-Charge options = distinct in-charge users across BOTH inbox + outbox
   // (name resolved from each task's members). No duplicates; sorted by name.
@@ -1644,24 +1688,26 @@ function WorkspaceInner() {
     return { ...prev, [bucket]: next };
   });
   const toggleStatus = (key: string) => {
-    setStatusFilters((prev) => {
-      const next = new Set(prev[bucket]);
+    setStatusFilter((prev) => {
+      const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
-      return { ...prev, [bucket]: next };
+      return next;
     });
     // The reason sub-filter only makes sense while Waiting is selected — reset on removal.
     if (key === 'waiting' && statusSel.has('waiting')) setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: null }));
   };
   const clearFilters = () => {
     setDateFilters((prev) => ({ ...prev, [bucket]: new Set(DEFAULT_DATE_BY_BUCKET[bucket]) }));
-    setStatusFilters((prev) => ({ ...prev, [bucket]: new Set<string>() }));
+    // Reset to the DEFAULT status selection (all-except-Approved), not empty —
+    // empty would hide everything. Status is shared, so this resets it everywhere.
+    setStatusFilter(new Set(DEFAULT_STATUS));
     setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: null }));
     setReadFilter((prev) => ({ ...prev, [bucket]: 'all' }));
     setSearch((prev) => ({ ...prev, [bucket]: '' }));
     setInChargeFilter((prev) => ({ ...prev, [bucket]: null }));
   };
   const defDates = DEFAULT_DATE_BY_BUCKET[bucket];
-  const filtersDirty = statusSel.size > 0
+  const filtersDirty = !isDefaultStatus(statusSel)
     || dateSel.size !== defDates.length
     || !defDates.every((d) => dateSel.has(d))
     || inChargeFilter[bucket] !== null
@@ -1902,15 +1948,17 @@ function WorkspaceInner() {
               </button>
             ))}
           </div>
+          {/* Status — always-visible checkbox filters (default: all except Approved). */}
+          <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
+            <StatusFilterBadges selected={statusSel} onToggle={toggleStatus} className="flex-nowrap" />
+          </div>
           {filterSheetOpen && (
             <MobileFilterSheet
-              initialStatus={statusSel}
               initialRead={readSel}
               initialInCharge={inChargeFilter[bucket]}
               inChargeOptions={inChargeOptions}
               onClose={() => setFilterSheetOpen(false)}
-              onApply={(status, read, inCharge) => {
-                setStatusFilters((prev) => ({ ...prev, [bucket]: status }));
+              onApply={(read, inCharge) => {
                 setReadFilter((prev) => ({ ...prev, [bucket]: read }));
                 setInChargeFilter((prev) => ({ ...prev, [bucket]: inCharge }));
               }}
@@ -1924,9 +1972,11 @@ function WorkspaceInner() {
             ) : currentList.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
                 <p className="text-sm font-medium text-gray-500">
-                  {bucket === 'inbox'
-                    ? (lists.inbox.length > 0 ? 'No tasks match these filters.' : 'Your inbox is empty.')
-                    : (lists.outbox.length > 0 ? 'No tasks match these filters.' : 'You have not created any tasks.')}
+                  {bucket === 'all'
+                    ? (lists.all.length > 0 ? 'No tasks match these filters.' : 'You have no tasks yet.')
+                    : bucket === 'inbox'
+                      ? (lists.inbox.length > 0 ? 'No tasks match these filters.' : 'Your inbox is empty.')
+                      : (lists.outbox.length > 0 ? 'No tasks match these filters.' : 'You have not created any tasks.')}
                 </p>
               </div>
             ) : (
@@ -2010,16 +2060,6 @@ function WorkspaceInner() {
                         {f.label}
                       </button>
                     ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Status</span>
-                    {STATUS_FILTERS.map((f) => (
-                      <button key={f.key} type="button" onClick={() => toggleStatus(f.key)}
-                        className={classNames('rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:px-2.5 sm:py-1',
-                          statusSel.has(f.key) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                        {f.label}
-                      </button>
-                    ))}
                     {filtersDirty && (
                       <button type="button" onClick={clearFilters}
                         className="ml-auto rounded-full px-2 py-1 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50">
@@ -2027,6 +2067,8 @@ function WorkspaceInner() {
                       </button>
                     )}
                   </div>
+                  {/* Status moved OUT of this panel into the always-visible checkbox
+                      row below the search/filter box. */}
                   {/* Read state — filters on the existing per-user unread flag. */}
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Read</span>
@@ -2060,6 +2102,11 @@ function WorkspaceInner() {
               </div>
             </div>
 
+            {/* Status — always-visible checkbox filters (default: all except Approved). */}
+            <div className="mb-3 lg:shrink-0">
+              <StatusFilterBadges selected={statusSel} onToggle={toggleStatus} />
+            </div>
+
             {/* The ONLY scroller in this column on desktop — the filters above stay put. */}
             <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
               {loading ? (
@@ -2069,15 +2116,17 @@ function WorkspaceInner() {
               ) : currentList.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-12 text-center">
                   <p className="text-sm font-medium text-gray-500">
-                    {bucket === 'inbox'
-                      ? (lists.inbox.length > 0 ? 'No tasks match these filters.' : 'Your inbox is empty.')
-                      : (lists.outbox.length > 0 ? 'No tasks match these filters.' : 'You have not created any tasks.')}
+                    {bucket === 'all'
+                      ? (lists.all.length > 0 ? 'No tasks match these filters.' : 'You have no tasks yet.')
+                      : bucket === 'inbox'
+                        ? (lists.inbox.length > 0 ? 'No tasks match these filters.' : 'Your inbox is empty.')
+                        : (lists.outbox.length > 0 ? 'No tasks match these filters.' : 'You have not created any tasks.')}
                   </p>
                 </div>
               ) : (
                 layout === 'grid'
                   ? <MyTasksGrid tasks={currentList} todayYmd={todayYmd()} selectedId={selectedId} onOpen={openTask} />
-                  : currentList.map((t) => <TaskRow key={t.id} task={t} active={selectedId === t.id} onClick={() => openTask(t)} showDirection={bucket === 'inbox'} />)
+                  : currentList.map((t) => <TaskRow key={t.id} task={t} active={selectedId === t.id} onClick={() => openTask(t)} showDirection={bucket !== 'outbox'} />)
               )}
             </div>
           </aside>
@@ -2145,6 +2194,7 @@ function WorkspaceInner() {
           Task (matches the reference). The details sheet (z-40) covers it when open. */}
       {isMobile && (
         <nav aria-label="My Tasks" className="fixed bottom-0 left-0 right-0 z-30 flex items-stretch border-t border-gray-200 bg-white shadow-[0_-1px_4px_rgba(15,23,42,0.05)]">
+          <BottomTab active={view === 'workspace' && bucket === 'all'} icon={ListTodo} label="All" count={lists.all.length} onClick={() => selectTab('all')} />
           <BottomTab active={view === 'workspace' && bucket === 'inbox'} icon={Inbox} label="Inbox" count={lists.inbox.length} onClick={() => selectTab('inbox')} />
           <BottomTab active={view === 'workspace' && bucket === 'outbox'} icon={Send} label="Outbox" count={lists.outbox.length} onClick={() => selectTab('outbox')} />
           {canViewDashboard && (
