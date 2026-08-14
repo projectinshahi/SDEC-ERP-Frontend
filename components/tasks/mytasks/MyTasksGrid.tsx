@@ -35,7 +35,7 @@ export function gridStatusOf(task: MyTask, todayYmd: string): GridTone {
 /** Colour + a screen-reader/legend label. Colour is never the ONLY signal: every
  *  tile carries the status in its aria-label and title (hover/screen reader),
  *  and the legend below names every colour — without putting text on the tile. */
-const TONE: Record<GridTone, { bg: string; border: string; text: string; label: string }> = {
+export const TONE: Record<GridTone, { bg: string; border: string; text: string; label: string }> = {
   approved: { bg: 'bg-green-100 dark:bg-green-950/40',   border: 'border-green-300 dark:border-green-800',   text: 'text-green-700 dark:text-green-300',   label: 'Approved' },
   done:     { bg: 'bg-violet-100 dark:bg-violet-950/40', border: 'border-violet-300 dark:border-violet-800', text: 'text-violet-700 dark:text-violet-300', label: 'Done' },
   overdue:  { bg: 'bg-rose-100 dark:bg-rose-950/40',     border: 'border-rose-300 dark:border-rose-800',     text: 'text-rose-700 dark:text-rose-300',     label: 'Delayed' },
@@ -44,7 +44,10 @@ const TONE: Record<GridTone, { bg: string; border: string; text: string; label: 
   todo:     { bg: 'bg-slate-100 dark:bg-slate-800/60',   border: 'border-slate-300 dark:border-slate-700',   text: 'text-slate-600 dark:text-slate-300',   label: 'To Do' },
 };
 
-export const GRID_LEGEND: GridTone[] = ['approved', 'done', 'active', 'waiting', 'overdue', 'todo'];
+// Status-filter display order: To Do → In Progress → Waiting → Done → Delayed →
+// Approved (Approved last). Delayed (overdue) is the only tone that isn't one of the
+// 5 raw statuses; it stays in the list so overdue tasks remain filterable.
+export const GRID_LEGEND: GridTone[] = ['todo', 'active', 'waiting', 'done', 'overdue', 'approved'];
 
 export function MyTasksGrid({
   tasks, todayYmd, selectedId, onOpen,
@@ -64,17 +67,9 @@ export function MyTasksGrid({
 
   return (
     <div className="space-y-4">
-      {/* Legend — the only text in the view. It explains the colours WITHOUT putting
-          any detail on the tiles, which keeps them number-only as specified while
-          the status still has a written meaning somewhere. */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-gray-500 dark:text-gray-400">
-        {GRID_LEGEND.map((t) => (
-          <span key={t} className="inline-flex items-center gap-1.5">
-            <span className={classNames('h-2.5 w-2.5 rounded-full border', TONE[t].bg, TONE[t].border)} />
-            {TONE[t].label}
-          </span>
-        ))}
-      </div>
+      {/* The status legend now lives in the shared toolbar as the clickable status
+          FILTER (StatusFilterBadges), so it applies to List/Grid/Calendar alike —
+          a second copy here would duplicate it. Tiles keep the SAME tone colours. */}
 
       {/* auto-fill keeps the circles a fixed comfortable size and simply fits more
           per row as the screen widens — one rule for phone through large monitor,

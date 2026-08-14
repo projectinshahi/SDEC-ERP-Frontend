@@ -13,7 +13,7 @@ import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usesTaskPoints } from '@/lib/permissions/moduleAccess';
 import { PointDistributionModal } from '@/components/tasks/mytasks/PointDistributionModal';
-import { MyTasksGrid } from '@/components/tasks/mytasks/MyTasksGrid';
+import { MyTasksGrid, TONE, GRID_LEGEND, gridStatusOf, type GridTone } from '@/components/tasks/mytasks/MyTasksGrid';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
@@ -53,44 +53,43 @@ const DATE_FILTERS: { key: DateKey | 'all'; label: string }[] = [
 ];
 // Default Inbox view = all tasks, as requested by user.
 const DEFAULT_DATE_FILTERS: (DateKey | 'all')[] = ['all'];
-const STATUS_FILTERS: { key: string; label: string }[] = [
-  { key: 'todo', label: 'To Do' },
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'waiting', label: 'Waiting' },
-  { key: 'done', label: 'Done' },
-  { key: 'approved', label: 'Approved' },
-];
-// Status is now a CHECKBOX filter (selected = shown). Default = every status
-// EXCEPT Approved, so approved tasks are hidden until the user ticks Approved.
-const DEFAULT_STATUS: string[] = STATUS_FILTERS.map((f) => f.key).filter((k) => k !== 'approved');
+// The status filter is the EXISTING grid legend (tile TONES): Approved · Done ·
+// In Progress · Waiting · Delayed · To Do. Selection is by tone (exactly what the
+// tiles are coloured by), multi-select. Default = every tone EXCEPT Approved, so
+// approved tasks are hidden until the user selects Approved.
+const DEFAULT_STATUS: string[] = GRID_LEGEND.filter((t) => t !== 'approved');
 const isDefaultStatus = (sel: Set<string>): boolean =>
   sel.size === DEFAULT_STATUS.length && DEFAULT_STATUS.every((k) => sel.has(k));
 
 /**
- * Always-visible status filter — the existing status badges, multi-select. Selection
- * is shown by a small dot on the badge (no checkbox, no extra control); dimensions +
- * padding stay the same whether selected or not. The whole badge is the click target.
- * Shared by every view (List/Grid/Calendar) + mobile so they can never drift.
+ * Status filter = the EXISTING grid legend badges, made clickable (multi-select).
+ * Same design as the legend — the coloured status dot + label, unchanged. Active
+ * badges are full-strength; toggled-off badges dim (opacity). No checkbox, no new
+ * control, no new colours. Shared by every view (List/Grid/Calendar) + mobile.
  */
-function StatusFilterBadges({ selected, onToggle, className }: { selected: Set<string>; onToggle: (key: string) => void; className?: string }) {
+function StatusFilterBadges({ selected, onToggle, className }: { selected: Set<string>; onToggle: (key: GridTone) => void; className?: string }) {
   return (
-    <div className={classNames('flex flex-wrap items-center gap-1.5', className)} role="group" aria-label="Filter by status">
-      {STATUS_FILTERS.map((f) => {
-        const on = selected.has(f.key);
+    <div className={classNames('flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-gray-500 dark:text-gray-400', className)} role="group" aria-label="Filter by status">
+      {GRID_LEGEND.map((t) => {
+        const on = selected.has(t);
         return (
           <button
-            key={f.key}
+            key={t}
             type="button"
-            onClick={() => onToggle(f.key)}
+            onClick={() => onToggle(t)}
             aria-pressed={on}
+            title={`${on ? 'Hide' : 'Show'} ${TONE[t].label}`}
+            // Same status-colour family throughout; state is shown ONLY by intensity —
+            // dimmed when off, a touch stronger on hover, full + slightly bolder when
+            // selected. No size/padding/colour change; the dot is unchanged.
             className={classNames(
-              // Same pill dimensions in both states — only the dot + text weight differ.
-              'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold transition',
-              on ? 'bg-gray-100 text-gray-900' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+              'inline-flex items-center gap-1.5 transition',
+              TONE[t].text,
+              on ? 'font-medium opacity-100' : 'opacity-50 hover:opacity-80',
             )}
           >
-            {on && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" aria-hidden="true" />}
-            {f.label}
+            <span className={classNames('h-2.5 w-2.5 rounded-full border', TONE[t].bg, TONE[t].border)} />
+            {TONE[t].label}
           </button>
         );
       })}
@@ -390,9 +389,10 @@ function matchDateStatus(t: MyTask, dSel: Set<string>, sSel: Set<string>, strict
       && (t.status === 'waiting' || t.status === 'approved' || (strictDelayed && COMPLETED_STATUSES.includes(t.status)));
     dateOk = dSel.has(b) && !notDelayed;
   }
-  // Multi-select semantics: only the SELECTED statuses are shown. An empty set shows
-  // nothing (→ the empty-state), rather than silently reverting to "all".
-  const statusOk = sSel.has(t.status);
+  // Status filter operates on the legend TONE (gridStatusOf) — the exact bucket the
+  // grid tiles are coloured by, so the legend badges filter what you see. Multi-select:
+  // only the SELECTED tones are shown; an empty set shows nothing (→ the empty-state).
+  const statusOk = sSel.has(gridStatusOf(t, todayYmd()));
   return dateOk && statusOk;
 }
 // Optional Waiting-Reason filter — only narrows Waiting tasks; a no-op (passes) when
@@ -810,7 +810,7 @@ function DetailsPanel({
       {/* The 55% cap + inner scroll only make sense in the fixed-height desktop
           pane; on mobile the details simply flow above the chat (one page scroll). */}
       {!collapsed && (
-        <div className="shrink-0 lg:max-h-[55%] lg:overflow-y-auto">
+        <div className="shrink-0 lg:max-h-[55%] lg:overflow-y-auto scrollbar-hide">
           {/* ── SECTION 1 & 2: Basic Info + Responsibility side-by-side ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
             {/* Section 1: Basic Information */}
@@ -971,8 +971,12 @@ function DetailsPanel({
           ))}
         </div>
 
-        {/* Tab content */}
-        <div className="flex-1 bg-white relative min-h-[340px]">
+        {/* Tab content — on desktop this is the Details panel's OWN scroll area
+            (min-h-0 lets it shrink inside the fixed-height pane; overflow-y-auto
+            keeps long attachments/activity inside the panel, never the page).
+            scrollbar-hide keeps the scroll invisible but fully functional. Chat
+            manages its own message scroll, so it stays absolutely positioned. */}
+        <div className="flex-1 bg-white relative min-h-[340px] lg:min-h-0 lg:overflow-y-auto scrollbar-hide">
           {activeTab === 'chat' && (
             <div className="absolute inset-0">
               <MyTaskChat key={task.id} taskId={task.id} currentUserId={currentUserId} members={mentionables} />
@@ -1015,9 +1019,8 @@ function DetailsPanel({
           )}
 
           {activeTab === 'timeline' && (
-            <div className="h-full overflow-y-auto">
-              <ActivityTimeline activities={task.activities || []} />
-            </div>
+            // Flows inside the tab-content scroller above (no nested scrollbar).
+            <ActivityTimeline activities={task.activities || []} />
           )}
         </div>
       </div>
@@ -1221,7 +1224,7 @@ function MyTaskMobileDetails({
 
         {/* ── Expanded info panel (reference field layout) ── */}
         {expanded && (
-          <div className="max-h-[52vh] divide-y divide-gray-100 overflow-y-auto border-t border-gray-100 bg-white">
+          <div className="max-h-[52vh] divide-y divide-gray-100 overflow-y-auto scrollbar-hide border-t border-gray-100 bg-white">
             <div className="grid grid-cols-2 gap-3 px-4 py-3">
               <DetailRow icon={ListTodo} label="Status">
                 {canExecute ? (
@@ -1317,7 +1320,7 @@ function MyTaskMobileDetails({
           </div>
         )}
         {activeTab === 'attachments' && (
-          <div className="h-full space-y-3 overflow-y-auto p-4">
+          <div className="h-full space-y-3 overflow-y-auto scrollbar-hide p-4">
             {/* Any participant (creator / In-Charge / member) can share files. */}
             <AttachmentUpload taskId={task.id} onUploaded={onUploaded} />
             {task.attachments.length ? (
@@ -1344,7 +1347,7 @@ function MyTaskMobileDetails({
           </div>
         )}
         {activeTab === 'timeline' && (
-          <div className="h-full overflow-y-auto"><ActivityTimeline activities={task.activities || []} /></div>
+          <div className="h-full overflow-y-auto scrollbar-hide"><ActivityTimeline activities={task.activities || []} /></div>
         )}
       </div>
 
@@ -1388,25 +1391,30 @@ function InChargeFilter({
         <User className="h-3 w-3" /> {selected ? selected.name : 'Any In-Charge'} <ChevronDown className="h-3 w-3" />
       </button>
       {open && (
-        <div className={classNames('absolute left-0 z-30 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg',
-          openUp ? 'bottom-full mb-1' : 'mt-1')}>
-          <div className="flex items-center gap-1.5 border-b border-gray-100 px-2.5 py-2">
-            <Search className="h-3.5 w-3.5 text-gray-400" />
+        <div className={classNames('absolute left-0 z-30 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg',
+          openUp ? 'bottom-full mb-1.5' : 'mt-1.5')}>
+          {/* Search — roomier row so the field + icon aren't cramped. */}
+          <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2.5">
+            <Search className="h-4 w-4 shrink-0 text-gray-400" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name…" autoFocus
-              className="w-full text-xs text-gray-700 placeholder-gray-400 focus:outline-none" />
+              className="w-full bg-transparent text-xs text-gray-700 placeholder-gray-400 focus:outline-none" />
           </div>
-          <div className="max-h-56 overflow-y-auto py-1">
+          {/* Options — comfortable spacing, rounded rows, a real scroll area whose
+              padding keeps the scrollbar clear of the option text. */}
+          <div className="max-h-64 overflow-y-auto overscroll-contain p-1.5">
             <button type="button" onClick={() => { onChange(null); setOpen(false); setQ(''); }}
-              className={classNames('block w-full px-3 py-1.5 text-left text-xs', value == null ? 'font-semibold text-indigo-600' : 'text-gray-600 hover:bg-gray-50')}>
+              className={classNames('flex w-full items-center rounded-md px-3 py-2 text-left text-xs transition',
+                value == null ? 'bg-indigo-50 font-semibold text-indigo-700' : 'text-gray-600 hover:bg-gray-50')}>
               Any In-Charge
             </button>
             {filtered.map((o) => (
               <button key={o.id} type="button" onClick={() => { onChange(o.id); setOpen(false); setQ(''); }}
-                className={classNames('block w-full truncate px-3 py-1.5 text-left text-xs', value === o.id ? 'font-semibold text-indigo-600' : 'text-gray-700 hover:bg-gray-50')}>
-                {o.name}
+                className={classNames('mt-0.5 flex w-full items-center rounded-md px-3 py-2 text-left text-xs transition',
+                  value === o.id ? 'bg-indigo-50 font-semibold text-indigo-700' : 'text-gray-700 hover:bg-gray-50')}>
+                <span className="truncate">{o.name}</span>
               </button>
             ))}
-            {filtered.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">No matches.</p>}
+            {filtered.length === 0 && <p className="px-3 py-3 text-center text-xs text-gray-400">No matches.</p>}
           </div>
         </div>
       )}
@@ -1948,7 +1956,7 @@ function WorkspaceInner() {
               </button>
             ))}
           </div>
-          {/* Status — always-visible checkbox filters (default: all except Approved). */}
+          {/* Status — the clickable legend badges (default: all tones except Approved). */}
           <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
             <StatusFilterBadges selected={statusSel} onToggle={toggleStatus} className="flex-nowrap" />
           </div>
@@ -2102,13 +2110,13 @@ function WorkspaceInner() {
               </div>
             </div>
 
-            {/* Status — always-visible checkbox filters (default: all except Approved). */}
+            {/* Status — the clickable legend badges (default: all tones except Approved). */}
             <div className="mb-3 lg:shrink-0">
               <StatusFilterBadges selected={statusSel} onToggle={toggleStatus} />
             </div>
 
             {/* The ONLY scroller in this column on desktop — the filters above stay put. */}
-            <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+            <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1 scrollbar-hide">
               {loading ? (
                 <div className="flex items-center justify-center py-16 text-gray-300"><Loader2 className="h-6 w-6 animate-spin" /></div>
               ) : error ? (
