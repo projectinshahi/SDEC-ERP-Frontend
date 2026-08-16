@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usesTaskPoints } from '@/lib/permissions/moduleAccess';
 import { Modal } from '@/components/Modal';
@@ -11,10 +11,43 @@ import { fetchAllUsers, type UserDbResponse } from '@/lib/api/users';
 import { fetchProjects } from '@/lib/api/projects';
 import {
   createMyTask, updateMyTask, addMyTaskMembers, removeMyTaskMember, fetchMyTask,
-  uploadMyTaskAttachment, type MyTask,
+  uploadMyTaskAttachment, fetchPriorityRules, DEFAULT_PRIORITY_RULES,
+  type MyTask, type PriorityRules,
 } from '@/lib/api/myTasks';
 
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+const DEFAULT_PRIORITY = 'low'; // new tasks default to LOW
+
+/** Compute a task's default due date + time from a priority's configured rule,
+ *  relative to `now` (defaults to the current instant). LOCAL date/time throughout
+ *  (matches the app's date-string handling).
+ *   - 'calendar' → now + `days` calendar days, at `time` (e.g. High = next day 10:00).
+ *   - 'duration' → now + (days*24h + hours) as a DURATION; then, if `time` is set,
+ *     roll FORWARD to the next occurrence of that clock time (so "after 1 day at
+ *     10:00" = 24h later → the following 10:00). No `time` → the exact offset (Urgent). */
+function dueForPriority(p: string, rules: PriorityRules, now: Date = new Date()): { date: string; time: string } | null {
+  const rule = rules[p];
+  if (!rule) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const hm = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+  if (rule.basis === 'calendar') {
+    const d = new Date(now);
+    d.setDate(d.getDate() + (rule.days || 0));
+    return { date: ymd(d), time: rule.time || hm(d) };
+  }
+
+  // 'duration'
+  const base = new Date(now.getTime() + ((rule.days || 0) * 86400 + (rule.hours || 0) * 3600) * 1000);
+  if (!rule.time) return { date: ymd(base), time: hm(base) };
+  const [h, m] = rule.time.split(':').map(Number);
+  const target = new Date(base);
+  target.setHours(h, m, 0, 0);
+  // If that clock time already passed at the duration mark, roll to the next day.
+  if (target.getTime() < base.getTime()) target.setDate(target.getDate() + 1);
+  return { date: ymd(target), time: rule.time };
+}
 
 /** Initials for the option avatar (no avatar image field exists on users). */
 function initials(name: string) {
@@ -43,9 +76,14 @@ export function CreateMyTaskModal({
   const showPoints = usesTaskPoints(user);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState('medium');
+  const [priority, setPriority] = useState(DEFAULT_PRIORITY);
   const [dueDate, setDueDate] = useState('');
   const [dueTime, setDueTime] = useState('');
+  // Configurable priority → due-time rules (defaults until the config loads).
+  const [priorityRules, setPriorityRules] = useState<PriorityRules>(DEFAULT_PRIORITY_RULES);
+  // True once the user hand-edits the due date/time, so the priority auto-fill
+  // (create mode) never silently overwrites their manual choice.
+  const dueTouched = useRef(false);
   const [selected, setSelected] = useState<Map<number, string>>(new Map());
   const [inChargeId, setInChargeId] = useState<number | null>(null);
   const [projectId, setProjectId] = useState<string>('');
@@ -68,12 +106,24 @@ export function CreateMyTaskModal({
     fetchProjects()
       .then((ps) => setProjects((ps || []).map((p: any) => ({ id: String(p.id), name: p.name }))))
       .catch(() => {});
+    // Load the configured priority rules; refine the default (LOW) due once they
+    // arrive (create mode only, and only if the user hasn't touched the due yet).
+    fetchPriorityRules()
+      .then((rules) => {
+        setPriorityRules(rules);
+        if (!editTask && !dueTouched.current) {
+          const due = dueForPriority(DEFAULT_PRIORITY, rules);
+          if (due) { setDueDate(due.date); setDueTime(due.time); }
+        }
+      })
+      .catch(() => {});
     setSearch('');
     setPendingFiles([]);
+    dueTouched.current = false;
     if (editTask) {
       setTitle(editTask.title);
       setDescription(editTask.description || '');
-      setPriority(editTask.priority || 'medium');
+      setPriority(editTask.priority || DEFAULT_PRIORITY);
       setDueDate(editTask.dueDate || '');
       setDueTime(editTask.dueTime || '');
       setSelected(new Map(editTask.members.map((m) => [m.id, m.name])));
@@ -83,15 +133,17 @@ export function CreateMyTaskModal({
     } else {
       setTitle('');
       setDescription('');
-      setPriority('medium');
-      setDueDate('');
-      setDueTime('');
+      setPriority(DEFAULT_PRIORITY);
+      // Immediate default due from the current rules (refined when the fetch resolves).
+      const due = dueForPriority(DEFAULT_PRIORITY, priorityRules);
+      setDueDate(due?.date || '');
+      setDueTime(due?.time || '');
       setSelected(new Map());
       setInChargeId(null);
       setProjectId('');
       setEstimatedPoints('');
     }
-  }, [isOpen, editTask]);
+  }, [isOpen, editTask]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -231,7 +283,18 @@ export function CreateMyTaskModal({
             <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
             <select
               value={priority}
-              onChange={(e) => setPriority(e.target.value)}
+              onChange={(e) => {
+                const p = e.target.value;
+                setPriority(p);
+                // An EXPLICIT priority change always recomputes the due from that
+                // priority's rule (create mode). This resets any earlier manual due
+                // edit — the priority now owns the due again (dueTouched cleared).
+                if (!editTask) {
+                  dueTouched.current = false;
+                  const due = dueForPriority(p, priorityRules);
+                  if (due) { setDueDate(due.date); setDueTime(due.time); }
+                }
+              }}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm capitalize focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               {PRIORITIES.map((p) => <option key={p} value={p} className="capitalize">{p}</option>)}
@@ -242,7 +305,7 @@ export function CreateMyTaskModal({
             <input
               type="date"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={(e) => { dueTouched.current = true; setDueDate(e.target.value); }}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -251,7 +314,7 @@ export function CreateMyTaskModal({
             <input
               type="time"
               value={dueTime}
-              onChange={(e) => setDueTime(e.target.value)}
+              onChange={(e) => { dueTouched.current = true; setDueTime(e.target.value); }}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -262,18 +325,20 @@ export function CreateMyTaskModal({
           {showPoints && (
           <div>
             <label htmlFor="mytask-points" className="mb-1 block text-sm font-medium text-gray-700">Estimated Points</label>
+            {/* Decimals allowed (1.5, 3.75, …); step="any" + hidden native spinner
+                arrows make it a clean numeric input. */}
             <input
               id="mytask-points"
               type="number"
               min={0}
-              step={1}
-              inputMode="numeric"
+              step="any"
+              inputMode="decimal"
               placeholder="0"
               value={estimatedPoints}
               onChange={(e) => setEstimatedPoints(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
-            <p className="mt-1 text-xs text-gray-400">Awarded after approval</p>
+            <p className="mt-1 text-xs text-gray-400">Awarded after approval · decimals allowed</p>
           </div>
           )}
         </div>
