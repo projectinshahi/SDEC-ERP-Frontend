@@ -237,6 +237,31 @@ export async function fetchMyTaskWorkspace(): Promise<MyTaskWorkspace> {
   return r.data;
 }
 
+/**
+ * Configurable priority → due-time rule.
+ *  - basis 'duration' → add (days*24h + hours) as a DURATION from creation, then
+ *    (if `time` set) roll forward to that next clock time. "After 1 day at 10:00" =
+ *    24h later, then the next 10:00.
+ *  - basis 'calendar' → add `days` CALENDAR days, set the clock to `time`
+ *    (e.g. High = "next day at 10:00").
+ *  - `time` null → a pure offset (e.g. Urgent = now + hours).
+ */
+export interface PriorityRule { days: number; hours: number; time: string | null; basis: 'duration' | 'calendar' }
+export type PriorityRules = Record<string, PriorityRule>;
+
+/** Built-in defaults — used if the config endpoint is unreachable so the form still works. */
+export const DEFAULT_PRIORITY_RULES: PriorityRules = {
+  low: { days: 3, hours: 0, time: '10:00', basis: 'duration' },
+  medium: { days: 1, hours: 0, time: '10:00', basis: 'duration' },
+  high: { days: 1, hours: 0, time: '10:00', basis: 'calendar' },
+  urgent: { days: 0, hours: 2, time: null, basis: 'duration' },
+};
+
+export async function fetchPriorityRules(): Promise<PriorityRules> {
+  const r = await apiClient.get<PriorityRules>('/my-tasks/priority-rules');
+  return r.data && Object.keys(r.data).length ? r.data : DEFAULT_PRIORITY_RULES;
+}
+
 /** Lightweight unread-task count for the sidebar dot (reuses the workspace `unread` rule). */
 export async function fetchMyTaskUnreadCount(): Promise<number> {
   const r = await apiClient.get<{ count: number }>('/my-tasks/unread-count');

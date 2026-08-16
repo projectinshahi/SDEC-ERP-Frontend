@@ -16,6 +16,17 @@ import type { MyTask, PointAllocation } from '@/lib/api/myTasks';
  * The same total rule is re-checked server-side, so this is guidance, not the
  * enforcement point.
  */
+
+/** Even split of `pts` (decimals allowed) across ids to 2 dp; the first member
+ *  absorbs the rounding remainder so the allocations always sum EXACTLY to `pts`. */
+function evenSplit(ids: number[], pts: number): Record<number, string> {
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const base = r2(pts / ids.length);
+  const first = r2(pts - base * (ids.length - 1));
+  const next: Record<number, string> = {};
+  ids.forEach((id, i) => { next[id] = String(i === 0 ? first : base); });
+  return next;
+}
 export function PointDistributionModal({
   isOpen, task, saving, onCancel, onConfirm,
 }: {
@@ -38,15 +49,13 @@ export function PointDistributionModal({
     const ids = (task.members ?? []).map((m) => m.id);
     const pts = task.estimatedPoints || 0;
     if (!ids.length || !pts) { setAlloc({}); return; }
-    const base = Math.floor(pts / ids.length);
-    const next: Record<number, string> = {};
-    ids.forEach((id, i) => { next[id] = String(base + (i === 0 ? pts - base * ids.length : 0)); });
-    setAlloc(next);
+    setAlloc(evenSplit(ids, pts));
   }, [isOpen, task]);
 
   const selected = Object.entries(alloc).filter(([, v]) => v !== '');
-  const allocated = selected.reduce((s, [, v]) => s + (Number(v) || 0), 0);
-  const balanced = allocated === total && selected.some(([, v]) => Number(v) > 0);
+  const allocated = Math.round(selected.reduce((s, [, v]) => s + (Number(v) || 0), 0) * 100) / 100;
+  // Decimals allowed → compare with a small tolerance (mirrors the server check).
+  const balanced = Math.abs(allocated - total) < 0.001 && selected.some(([, v]) => Number(v) > 0);
 
   const toggle = (id: number) => {
     setAlloc((prev) => {
@@ -60,10 +69,7 @@ export function PointDistributionModal({
   const splitEvenly = () => {
     const ids = selected.length ? selected.map(([k]) => Number(k)) : members.map((m) => m.id);
     if (!ids.length) return;
-    const base = Math.floor(total / ids.length);
-    const next: Record<number, string> = {};
-    ids.forEach((id, i) => { next[id] = String(base + (i === 0 ? total - base * ids.length : 0)); });
-    setAlloc(next);
+    setAlloc(evenSplit(ids, total));
   };
 
   if (!isOpen || !task) return null;
@@ -109,13 +115,13 @@ export function PointDistributionModal({
                 <input
                   type="number"
                   min={0}
-                  step={1}
-                  inputMode="numeric"
+                  step="any"
+                  inputMode="decimal"
                   disabled={!on}
                   value={on ? alloc[m.id] : ''}
                   onChange={(e) => setAlloc((p) => ({ ...p, [m.id]: e.target.value }))}
                   aria-label={`Points for ${m.name}`}
-                  className="w-20 rounded-lg border border-gray-200 px-2 py-1.5 text-right text-sm disabled:bg-gray-50 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                  className="w-20 rounded-lg border border-gray-200 px-2 py-1.5 text-right text-sm disabled:bg-gray-50 disabled:text-gray-300 dark:border-gray-700 dark:bg-gray-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
               </div>
             );
