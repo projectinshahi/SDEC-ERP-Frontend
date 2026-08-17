@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState, useMemo, useEffect, useCallback } from 'react';
+import { ReactNode, Suspense, useState, useMemo, useEffect, useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Sidebar, type SidebarItem } from '@/components/Sidebar';
@@ -25,8 +25,14 @@ interface LayoutProps {
  * shows only the menu items of the module the user is currently inside
  * (Development / Sales / User Management), and a user who lacks access to the
  * current module is redirected away — navigation, routes and menus never overlap.
+ *
+ * The shell reads the `?module=` context via useSearchParams, which Next.js requires
+ * to sit under a Suspense boundary or static prerendering throws. DashboardLayout
+ * therefore wraps the shell in its OWN Suspense (below) — self-contained, so it works
+ * wherever it is mounted, and that single boundary also covers every child page's own
+ * useSearchParams. See `DashboardShell` for the actual implementation.
  */
-export const DashboardLayout = ({ children }: LayoutProps) => {
+const DashboardShell = ({ children }: LayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { canAccessModule, hasAnyPermission, isSuperAdmin } = usePermissions();
   const { user } = useAuth();
@@ -177,3 +183,19 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
     </ErrorBoundary>
   );
 };
+
+/** Full-height neutral placeholder shown only while the shell resolves its search
+ *  params during prerender/streaming (never on client navigation). Matches the app
+ *  background so there is no flash before the real sidebar/navbar hydrate. */
+const ShellFallback = () => <div className="h-screen bg-gray-50 dark:bg-gray-950" />;
+
+/**
+ * Public shell wrapper — keeps the useSearchParams-driven shell under a Suspense
+ * boundary so `next build` can prerender every route that mounts it without the
+ * "useSearchParams() should be wrapped in a suspense boundary" error.
+ */
+export const DashboardLayout = ({ children }: LayoutProps) => (
+  <Suspense fallback={<ShellFallback />}>
+    <DashboardShell>{children}</DashboardShell>
+  </Suspense>
+);

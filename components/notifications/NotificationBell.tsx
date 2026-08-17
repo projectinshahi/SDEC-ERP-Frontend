@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Circle, AlertCircle, MessageSquare, Paperclip, UserPlus, FileText } from 'lucide-react';
 import { useNotificationsApi, type Notification as AppNotification } from '@/lib/api/notifications';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { getModuleAccess, resolveModule, withModuleContext } from '@/lib/permissions/moduleAccess';
 import { formatDistanceToNow } from 'date-fns';
 import { io, Socket } from 'socket.io-client';
@@ -20,8 +20,6 @@ export const NotificationBell = () => {
   const { fetchNotifications, markAsRead, markAllAsRead } = useNotificationsApi();
   const { user } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -101,7 +99,9 @@ export const NotificationBell = () => {
       router.push(`/dashboard/bugs?bugId=${notif.entity_id}`);
     } else if (notif.entity_type === 'my_task') {
       // Keep the shared My Tasks page in the module the user is currently viewing.
-      const mod = resolveModule(pathname || '', searchParams.get('module'), getModuleAccess(user));
+      // Read the location in the handler (client-only) so this component needs no
+      // useSearchParams — which would otherwise force a Suspense boundary at build.
+      const mod = resolveModule(window.location.pathname, new URLSearchParams(window.location.search).get('module'), getModuleAccess(user));
       router.push(withModuleContext(`/dashboard/my-tasks?taskId=${notif.entity_id}`, mod));
     } else if (notif.entity_type === 'lead' && notif.entity_id) {
       // Reminder / lead notifications open the Opportunity they belong to.
