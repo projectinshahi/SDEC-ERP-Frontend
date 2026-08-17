@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { isSharedPath, withModuleContext, type TopModule } from '@/lib/permissions/moduleAccess';
 import {
   LayoutDashboard,
   Users,
@@ -88,6 +89,9 @@ interface SidebarProps {
   onToggle: () => void;
   /** Label of the module the user is currently inside (Development / Sales / …). */
   moduleLabel?: string;
+  /** The module the user is currently inside — carried into shared-route links
+   *  (My Tasks, Notice) via `?module=` so they stay in this module's context. */
+  currentModule?: TopModule;
   /** Whether to show the project picker (Development module only). */
   showProjectPicker?: boolean;
 }
@@ -96,8 +100,14 @@ interface SidebarProps {
  * Sidebar component with collapsible desktop menu and responsive mobile drawer.
  * Items are pre-filtered by the parent (Layout) based on permissions before being passed in.
  */
-export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicker = true }: SidebarProps) => {
+export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, currentModule, showProjectPicker = true }: SidebarProps) => {
   const pathname = usePathname();
+  // Nav target for a menu item. Shared routes (My Tasks, Notice) carry the current
+  // module in `?module=` so clicking them keeps this module's shell active instead
+  // of bouncing to the user's primary module. Matching (active/unread) still keys on
+  // the clean href below, so the query string never breaks highlight or the unread dot.
+  const navHref = (href?: string): string =>
+    href && currentModule && isSharedPath(href) ? withModuleContext(href, currentModule) : (href ?? '');
   const { user, logout } = useAuth();
   const { projects, activeProject, setActiveProjectId, isLoading } = useProject();
   const { hasPermission } = usePermissions();
@@ -283,7 +293,7 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, showProjectPicke
             return (
               <div key={item.label} className="relative group">
                 <Link
-                  href={item.href!}
+                  href={navHref(item.href)}
                   className={classNames(
                     'flex items-center rounded-xl py-3 relative transition-all duration-200',
                     isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : 'gap-3 px-4 mx-2',

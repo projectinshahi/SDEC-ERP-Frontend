@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ReactNode, useState } from 'react';
 import { classNames } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
-import { moduleForPath, MODULE_HOME } from '@/lib/permissions/moduleAccess';
+import { getModuleAccess, resolveModule, MODULE_HOME } from '@/lib/permissions/moduleAccess';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 interface BreadcrumbItem {
   label: string;
@@ -21,12 +22,14 @@ interface BreadcrumbProps {
  */
 export const Breadcrumb = ({ items }: BreadcrumbProps) => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
   // Keep breadcrumbs inside the module the user is actually in. `/dashboard` is the
   // DEVELOPMENT dashboard, so both the built-in Home link and the "Dashboard" crumb
   // that ~21 pages hard-code were ejecting Sales/HR/Finance users into another
-  // module. Resolved from the route via the existing moduleForPath, so every page
-  // is fixed at once and a new module only needs a MODULE_HOME entry.
-  const moduleHome = MODULE_HOME[moduleForPath(pathname || '')] ?? ROUTES.DASHBOARD;
+  // module. `resolveModule` honors the `?module=` context on shared pages (My Tasks,
+  // Notice) so those crumbs point home to the module the user came from, not Dev.
+  const moduleHome = MODULE_HOME[resolveModule(pathname || '', searchParams.get('module'), getModuleAccess(user))] ?? ROUTES.DASHBOARD;
 
   return (
     <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">

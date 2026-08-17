@@ -222,3 +222,32 @@ export function groupForModule(module?: ModuleName | null): TopModule {
   if (module === 'finance') return 'finance';
   return 'development';
 }
+
+/**
+ * The module context a route should render in — used by the layout shell, sidebar
+ * and breadcrumb. A SHARED page (My Tasks, Notice) belongs to no module by its path,
+ * so without help it always defaulted to the user's PRIMARY module — which is why
+ * clicking "My Tasks" from Sales dropped a dev-primary user into Development. The
+ * origin module now travels in the `?module=` query param (added by the links that
+ * navigate to shared pages); we honor it only when the user genuinely has access to
+ * that module, else fall back to their primary module. Non-shared routes still
+ * resolve purely by path prefix.
+ */
+export function resolveModule(
+  pathname: string,
+  moduleParam: string | null | undefined,
+  access: Record<TopModule, boolean>,
+): TopModule {
+  if (isSharedPath(pathname)) {
+    if (moduleParam && Object.prototype.hasOwnProperty.call(MODULE_LABELS, moduleParam) && access[moduleParam as TopModule]) {
+      return moduleParam as TopModule;
+    }
+    return primaryModule(access) ?? 'development';
+  }
+  return moduleForPath(pathname);
+}
+
+/** Append the origin module to a shared-route href so navigation preserves context. */
+export function withModuleContext(href: string, module: TopModule): string {
+  return `${href}${href.includes('?') ? '&' : '?'}module=${module}`;
+}

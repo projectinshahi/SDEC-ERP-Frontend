@@ -52,7 +52,7 @@ export interface SalesPerformanceReport {
     target: number | null; targetAvailable: boolean; wonRevenue: number;
     targetGap: number | null; achievementPercentage: number | null;
     activePipeline: number; activeOpportunities: number; pipelineCoverage: number | null;
-    avgDealValue: number; overallConversion: number; totalOpportunities: number;
+    avgDealValue: number; overallConversion: number; totalOpportunities: number; totalValue: number;
     won: number; hold: number; lost: number; converted: number;
   };
   forecast: { weightedForecast: number | null; available: boolean };
@@ -69,7 +69,7 @@ export interface SalesPerformanceReport {
     ownerId: number; name: string; opportunities: number; wonRevenue: number;
     activePipeline: number; conversion: number; target: number | null; achievement: number | null;
   }[];
-  trend: { bucket: 'day' | 'week' | 'month'; points: { date: string; wonRevenue: number }[] };
+  trend: { bucket: 'day' | 'week' | 'month'; points: { date: string; wonRevenue: number; target: number | null }[] };
   insights: { type: string; severity: 'high' | 'medium' | 'low'; message: string }[];
   targetPeriods: string[];
   generatedAt: string;

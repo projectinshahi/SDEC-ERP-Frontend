@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useState, useMemo, useEffect, useCallback } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Sidebar, type SidebarItem } from '@/components/Sidebar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -13,7 +13,7 @@ import {
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
 import {
-  getModuleAccess, moduleForPath, groupForModule, isSharedPath, primaryModule, MODULE_LABELS,
+  getModuleAccess, moduleForPath, groupForModule, isSharedPath, resolveModule, MODULE_LABELS,
 } from '@/lib/permissions/moduleAccess';
 
 interface LayoutProps {
@@ -31,15 +31,20 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
   const { canAccessModule, hasAnyPermission, isSuperAdmin } = usePermissions();
   const { user } = useAuth();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
 
   const access = useMemo(() => getModuleAccess(user), [user]);
   const shared = isSharedPath(pathname);
-  // On shared routes (profile, change-password) fall back to the user's primary
-  // module so the sidebar still shows a coherent, single-module menu.
+  // On shared routes (My Tasks, Notice, profile) the module context travels in the
+  // `?module=` param set by the link that navigated here, so the sidebar stays in the
+  // module the user came FROM (Sales stays Sales) — falling back to their primary
+  // module only when no valid/accessible param is present. Survives refresh and
+  // back/forward because the context lives in the URL, not in transient state.
+  const moduleParam = searchParams.get('module');
   const currentModule = useMemo(
-    () => (shared ? (primaryModule(access) ?? 'development') : moduleForPath(pathname)),
-    [shared, access, pathname],
+    () => resolveModule(pathname, moduleParam, access),
+    [pathname, moduleParam, access],
   );
 
   // Route guard (UI layer; APIs are independently permission-checked) — purely
@@ -153,6 +158,7 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
               isOpen={sidebarOpen}
               onToggle={() => setSidebarOpen(!sidebarOpen)}
               moduleLabel={MODULE_LABELS[currentModule]}
+              currentModule={currentModule}
               showProjectPicker={currentModule === 'development'}
             />
 

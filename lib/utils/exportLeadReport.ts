@@ -286,11 +286,21 @@ export function buildLeadReportDoc(
   y += 2;
 
   // ── 4 · Pipeline Funnel & Stage Conversion (horizontal bars) ───────────────
+  // Full pipeline order NQL→WON (from the backend funnel) + HOLD/LOST outcomes, then
+  // an ALL total row. Counts/values/conversions come straight from the filtered
+  // payload — HOLD/LOST/ALL are terminal, so they show "—" for conversion.
   sectionTitle('Pipeline Funnel & Stage Conversion', C.amber);
+  const hlF = report.holdLost;
+  const funnelRows: { stage: string; opportunities: number; value: number; conversionToNext: number | null }[] = [
+    ...report.funnel,
+    { stage: 'HOLD', opportunities: hlF.hold.count, value: hlF.hold.value, conversionToNext: null },
+    { stage: 'LOST', opportunities: hlF.lost.count, value: hlF.lost.value, conversionToNext: null },
+  ];
   const stageColors: Record<string, [number, number, number]> = {
     NQL: [99, 102, 241], MQL: [59, 130, 246], SQL: [14, 165, 233], PQL: [6, 182, 212], SAL: [20, 184, 166], WON: [16, 185, 129],
+    HOLD: C.amber, LOST: C.red,
   };
-  const maxOpp = Math.max(...report.funnel.map((fst: any) => fst.opportunities), 1);
+  const maxOpp = Math.max(...funnelRows.map((fst) => fst.opportunities), 1);
   const barX = M + 46;
   const barMax = 210;
   const numX = barX + barMax + 12;
@@ -298,7 +308,7 @@ export function buildLeadReportDoc(
   ink(C.sub); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
   doc.text('STAGE', M, y); doc.text('OPPS', numX, y); doc.text('VALUE', numX + 70, y); doc.text('CONV →', numX + 150, y);
   y += 10;
-  for (const fst of report.funnel) {
+  for (const fst of funnelRows) {
     brk(20);
     const col = stageColors[fst.stage] || C.primary;
     ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
@@ -313,7 +323,15 @@ export function buildLeadReportDoc(
     doc.text(fst.conversionToNext != null ? `${fst.conversionToNext}%` : '—', numX + 150, y + 12);
     y += 19;
   }
-  y += 8;
+  // ALL / total row — reconciles to the filtered dataset (summary totals).
+  brk(24);
+  stroke(C.line); doc.setLineWidth(0.8); doc.line(M, y + 1, M + W, y + 1); y += 6;
+  ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+  doc.text('ALL', M, y + 10);
+  doc.text(String(s.totalOpportunities), numX, y + 10);
+  doc.text(inrC(s.totalValue), numX + 70, y + 10);
+  ink(C.sub); doc.setFont('helvetica', 'normal'); doc.text('total', numX + 150, y + 10);
+  y += 22;
 
   // ── 5 · Hold & Lost blocks (two distinct colored containers) ───────────────
   sectionTitle('Hold & Lost Outcomes', C.red);
@@ -373,33 +391,62 @@ export function buildLeadReportDoc(
     y = (doc as any).lastAutoTable.finalY + 22;
   }
 
-  // ── 7 · Target vs Revenue Trend (bar chart from returned buckets) ──────────
-  sectionTitle(`Won Revenue Trend (${report.trend.bucket})`, C.green);
+  // ── 7 · WON Revenue Trend — Target vs WON across the selected range ─────────
+  // Time-series over EVERY bucket the backend returned (day/week/month, 0-filled):
+  // WON revenue as bars, the per-bucket Target run-rate as an overlaid line. Target
+  // is shown ONLY where real SalesTarget data exists (else "Not Available" — never
+  // fabricated). Values reconcile with the summary WON revenue + SalesTarget totals.
+  sectionTitle(`WON Revenue Trend (by ${report.trend.bucket})`, C.green);
   const pts = report.trend.points;
+  const anyTarget = pts.some((p) => p.target != null);
   if (pts.length === 0) {
     ink(C.sub); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-    doc.text('No won revenue in the selected period.', M, y + 4); y += 20;
+    doc.text('No data in the selected period.', M, y + 4); y += 20;
   } else {
-    brk(120);
-    const chartH = 96;
-    const maxV = Math.max(...pts.map((p: any) => p.wonRevenue), 1);
-    const shown = pts.slice(-24);
+    brk(150);
+    // Legend
+    ink(C.sub); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+    fill(C.green); doc.rect(M, y - 6, 8, 8, 'F'); doc.text('WON REVENUE', M + 12, y);
+    if (anyTarget) {
+      stroke(C.amber); doc.setLineWidth(1.4); doc.line(M + 96, y - 3, M + 114, y - 3);
+      fill(C.amber); doc.circle(M + 105, y - 3, 1.6, 'F');
+      ink(C.sub); doc.text('TARGET', M + 118, y);
+    } else {
+      ink(C.amber); doc.text('TARGET: NOT AVAILABLE', M + 96, y);
+    }
+    y += 10;
+    const chartH = 100;
+    // Ranges cap at ~31 buckets (day ≤ 31 / week / month), so every bucket fits.
+    const shown = pts.slice(-31);
+    const maxV = Math.max(...shown.map((p) => Math.max(p.wonRevenue, p.target ?? 0)), 1);
     const bw = W / shown.length;
     const baseY = y + chartH;
+    // Baseline + top-of-scale label
     stroke(C.line); doc.setLineWidth(0.7); doc.line(M, baseY, M + W, baseY);
-    // reference line: average target/bucket when a target exists.
-    if (s.targetAvailable && report.targetPeriods.length) {
-      const perBucket = (s.target || 0) / Math.max(report.targetPeriods.length, 1);
-      const ly = baseY - Math.min(chartH - 10, (perBucket / maxV) * (chartH - 10));
-      stroke(C.amber); doc.setLineWidth(0.9); doc.setLineDashPattern([3, 2], 0); doc.line(M, ly, M + W, ly); doc.setLineDashPattern([], 0);
-      ink(C.amber); doc.setFontSize(6.5); doc.text('avg target / bucket', M + 2, ly - 2);
-    }
-    shown.forEach((p: any, i: number) => {
-      const h = Math.round((p.wonRevenue / maxV) * (chartH - 10));
-      fill(C.green); doc.roundedRect(M + i * bw + 2, baseY - h, Math.max(2, bw - 4), h, 1.5, 1.5, 'F');
+    ink(C.sub); doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5);
+    doc.text(inrC(maxV), M, y - 1);
+    // WON bars
+    shown.forEach((p, i) => {
+      const h = Math.round((p.wonRevenue / maxV) * (chartH - 12));
+      fill(C.green); doc.roundedRect(M + i * bw + Math.max(1, bw * 0.2), baseY - h, Math.max(2, bw * 0.6), h, 1.5, 1.5, 'F');
     });
-    ink(C.sub); doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
-    [0, Math.floor(shown.length / 2), shown.length - 1].forEach((i) => { if (shown[i]) doc.text(shown[i].date, M + i * bw + 2, baseY + 9); });
+    // Target line (connected markers), where available
+    if (anyTarget) {
+      stroke(C.amber); doc.setLineWidth(1.4);
+      let prev: [number, number] | null = null;
+      shown.forEach((p, i) => {
+        if (p.target == null) { prev = null; return; }
+        const cx = M + i * bw + bw / 2;
+        const cy = baseY - Math.round((p.target / maxV) * (chartH - 12));
+        if (prev) doc.line(prev[0], prev[1], cx, cy);
+        fill(C.amber); doc.circle(cx, cy, 1.4, 'F');
+        prev = [cx, cy];
+      });
+    }
+    // X labels (first / mid / last to avoid crowding; MM-DD from the bucket key)
+    ink(C.sub); doc.setFontSize(6.5);
+    const lblIdx = shown.length <= 6 ? shown.map((_, i) => i) : [0, Math.floor(shown.length / 2), shown.length - 1];
+    lblIdx.forEach((i) => { if (shown[i]) doc.text(shown[i].date.slice(5), M + i * bw + 2, baseY + 9); });
     y = baseY + 22;
   }
 
