@@ -7,7 +7,7 @@ import {
   Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
   Calendar, User, Users, Flag, Clock, Paperclip, RefreshCw, Pencil, Trash2, ShieldAlert,
   MessageCircle, Activity, Download, BarChart3, AtSign, X, ArrowLeft,
-  Star, MoreHorizontal, FileText, SlidersHorizontal, Award, LayoutGrid, List,
+  Star, MoreHorizontal, FileText, SlidersHorizontal, Award, LayoutGrid, List, Check,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -88,7 +88,15 @@ function StatusFilterBadges({ selected, onToggle, className }: { selected: Set<s
               on ? 'font-medium opacity-100' : 'opacity-50 hover:opacity-80',
             )}
           >
-            <span className={classNames('h-2.5 w-2.5 rounded-full border', TONE[t].bg, TONE[t].border)} />
+            {/* Filled circle + white tick when selected, empty outlined circle when not.
+                The circle uses the status's own colour (currentColor = TONE[t].text), so
+                no new colours are introduced; only the tick is white. */}
+            <span className={classNames(
+              'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-current',
+              on ? 'bg-current' : 'bg-transparent',
+            )}>
+              {on && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3.5} />}
+            </span>
             {TONE[t].label}
           </button>
         );
