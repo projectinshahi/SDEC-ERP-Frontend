@@ -61,6 +61,13 @@ export interface SalesPerformanceReport {
     proposalsSent: number; proposalValue: number; meetingsScheduled: number;
   };
   funnel: { stage: string; opportunities: number; value: number; conversionToNext: number | null }[];
+  /** Value-range funnel: the same funnel math over ALL leads and over the ≥threshold
+   *  (₹2L+) subset. `all.funnel` equals the top-level `funnel` (same dataset). */
+  funnelValueRange: {
+    threshold: number;
+    all: { funnel: { stage: string; opportunities: number; value: number; conversionToNext: number | null }[]; totalOpportunities: number; totalValue: number };
+    highValue: { funnel: { stage: string; opportunities: number; value: number; conversionToNext: number | null }[]; totalOpportunities: number; totalValue: number };
+  };
   holdLost: {
     hold: { count: number; value: number; reasons: { reason: string; count: number }[] };
     lost: { count: number; value: number; reasons: { reason: string; count: number }[] };

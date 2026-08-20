@@ -1,8 +1,14 @@
 import { AttendanceRecord, AttendanceStats } from './attendance.types';
 import { hasWorkingHalfPunch, isMorningLateArrival } from './attendanceStatus';
 
-// Today's date string (used as the default date for the page)
-export const TODAY = new Date().toISOString().split('T')[0]; // "2026-06-24"
+// Today's date string (used as the default date for the page). Use the LOCAL
+// calendar date, NOT toISOString() (which is the UTC date and can be the previous
+// day for early-morning local times) — so the default matches the date picker and
+// the day the user is actually viewing.
+export const TODAY = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+})(); // e.g. "2026-08-16"
 
 // ─── Mock Records ─────────────────────────────────────────────────────────────
 
