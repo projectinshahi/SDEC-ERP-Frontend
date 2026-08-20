@@ -168,8 +168,14 @@ export function buildLeadReportDoc(
   };
   const pctS = (v: number | null | undefined) => (v == null ? 'N/A' : `${v}%`);
 
-  const sectionTitle = (text: string, accent: [number, number, number] = C.primary) => {
-    brk(34);
+  // Consistent vertical rhythm: ONE place owns the gap above every section, and the
+  // heading reserves `reserve` px so it never lands alone at a page foot (a break
+  // here carries the whole section forward). Sections end at their content bottom and
+  // let SECTION_GAP do the spacing — so the inter-section rhythm is uniform.
+  const SECTION_GAP = 18;
+  const sectionTitle = (text: string, accent: [number, number, number] = C.primary, reserve = 62) => {
+    y += SECTION_GAP;
+    brk(reserve);
     fill(accent); doc.roundedRect(M, y - 1, 4, 15, 1.5, 1.5, 'F');
     ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5);
     doc.text(text, M + 12, y + 11);
@@ -196,7 +202,9 @@ export function buildLeadReportDoc(
           doc.text(it.sub, x + 11, rowY + 48, { maxWidth: cw - 16 });
         }
       }
-      y = rowY + cardH + 9;
+      // Gap BETWEEN card rows only; the last row ends at the true content bottom so
+      // SECTION_GAP (not a baked-in trailing) sets the space to the next section.
+      y = rowY + cardH + (i + cols < items.length ? 9 : 0);
     }
   };
 
@@ -212,7 +220,7 @@ export function buildLeadReportDoc(
   ink(C.slate); doc.setFontSize(8.5);
   for (const ln of filterLines) { doc.text(ln, M, y); y += 11; }
   y += 6;
-  stroke(C.line); doc.setLineWidth(0.7); doc.line(M, y, M + W, y); y += 16;
+  stroke(C.line); doc.setLineWidth(0.7); doc.line(M, y, M + W, y);
 
   if (!report) {
     // Degraded fallback (backend report unreachable): still give a real snapshot
@@ -232,7 +240,7 @@ export function buildLeadReportDoc(
   const s = report.summary;
 
   // ── 1 · Overall Performance KPI cards ──────────────────────────────────────
-  sectionTitle('Overall Performance', C.primary);
+  sectionTitle('Overall Performance', C.primary, 92); // keep heading with the first card row
   cardGrid([
     { label: 'Sales Target', value: s.targetAvailable ? inrC(s.target) : 'N/A', tone: C.indigo },
     { label: 'WON Revenue', value: inrC(s.wonRevenue), sub: s.achievementPercentage != null ? `${s.achievementPercentage}% achieved` : undefined, subTone: C.green, tone: C.green },
@@ -243,7 +251,6 @@ export function buildLeadReportDoc(
     { label: 'Overall Conversion', value: `${s.overallConversion}%`, sub: `${s.converted} converted`, tone: C.indigo },
     { label: 'Average Deal Value', value: inrC(s.avgDealValue), sub: `${s.totalOpportunities} in scope`, tone: C.slate },
   ], 4, 58);
-  y += 2;
 
   // ── 2 · Founder Action & Alerts ────────────────────────────────────────────
   sectionTitle('Founder Action & Alerts', C.red);
@@ -253,27 +260,27 @@ export function buildLeadReportDoc(
     doc.roundedRect(M, y, W, 24, 5, 5, 'FD');
     ink(C.green); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
     doc.text('All clear — no action items surfaced from the current data.', M + 12, y + 15);
-    y += 34;
+    y += 24;
   } else {
-    for (const insn of report.insights) {
+    report.insights.forEach((insn, idx) => {
       const dot = insn.severity === 'high' ? C.red : insn.severity === 'medium' ? C.amber : C.slate;
       const lines = doc.splitTextToSize(insn.message, W - 40);
       const h = 12 + lines.length * 11;
-      brk(h + 6);
+      if (idx > 0) y += 6; // gap BETWEEN alert boxes only — none after the last
+      brk(h);
       fill([249, 250, 251]); stroke(C.line); doc.setLineWidth(0.7);
       doc.roundedRect(M, y, W, h, 5, 5, 'FD');
       fill(dot); doc.circle(M + 12, y + h / 2, 3, 'F');
       ink(C.ink); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
       let ty = y + 15;
       for (const ln of lines) { doc.text(ln, M + 24, ty); ty += 11; }
-      y += h + 6;
-    }
+      y += h;
+    });
   }
-  y += 2;
 
   // ── 3 · Selected-Period Execution ──────────────────────────────────────────
   const ex = report.execution;
-  sectionTitle('Selected Period Execution', C.teal);
+  sectionTitle('Selected Period Execution', C.teal, 92); // keep heading with the first card row
   cardGrid([
     { label: 'New Leads Added', value: String(ex.newLeads), tone: C.teal },
     { label: 'Meaningful Conversations', value: String(ex.meaningfulConversations), tone: C.teal },
@@ -283,22 +290,16 @@ export function buildLeadReportDoc(
     { label: 'Meetings Scheduled', value: String(ex.meetingsScheduled), tone: C.teal },
     { label: 'WON Revenue', value: inrC(s.wonRevenue), tone: C.green },
   ], 4, 50);
-  y += 2;
 
   // ── 4 · Pipeline Funnel & Stage Conversion (horizontal bars) ───────────────
-  // Full pipeline order NQL→WON (from the backend funnel) + HOLD/LOST outcomes, then
-  // an ALL total row. Counts/values/conversions come straight from the filtered
-  // payload — HOLD/LOST/ALL are terminal, so they show "—" for conversion.
-  sectionTitle('Pipeline Funnel & Stage Conversion', C.amber);
-  const hlF = report.holdLost;
-  const funnelRows: { stage: string; opportunities: number; value: number; conversionToNext: number | null }[] = [
-    ...report.funnel,
-    { stage: 'HOLD', opportunities: hlF.hold.count, value: hlF.hold.value, conversionToNext: null },
-    { stage: 'LOST', opportunities: hlF.lost.count, value: hlF.lost.value, conversionToNext: null },
-  ];
+  // The conversion funnel = the NQL→WON progression only (HOLD/LOST are terminal
+  // outcomes, detailed in the "Hold & Lost Outcomes" section below — not funnel
+  // stages). An ALL total row closes it. Counts/values/conversions come straight
+  // from the filtered payload; ALL is terminal so it shows no conversion.
+  sectionTitle('Pipeline Funnel & Stage Conversion', C.amber, 120); // keep heading with the funnel start
+  const funnelRows = report.funnel;
   const stageColors: Record<string, [number, number, number]> = {
     NQL: [99, 102, 241], MQL: [59, 130, 246], SQL: [14, 165, 233], PQL: [6, 182, 212], SAL: [20, 184, 166], WON: [16, 185, 129],
-    HOLD: C.amber, LOST: C.red,
   };
   const maxOpp = Math.max(...funnelRows.map((fst) => fst.opportunities), 1);
   const barX = M + 46;
@@ -331,10 +332,10 @@ export function buildLeadReportDoc(
   doc.text(String(s.totalOpportunities), numX, y + 10);
   doc.text(inrC(s.totalValue), numX + 70, y + 10);
   ink(C.sub); doc.setFont('helvetica', 'normal'); doc.text('total', numX + 150, y + 10);
-  y += 22;
+  y += 14;
 
   // ── 5 · Hold & Lost blocks (two distinct colored containers) ───────────────
-  sectionTitle('Hold & Lost Outcomes', C.red);
+  sectionTitle('Hold & Lost Outcomes', C.red, 150); // keep the two blocks with the heading
   const blockW = (W - 12) / 2;
   const hl = report.holdLost;
   const rate = (n: number) => (s.totalOpportunities > 0 ? `${Math.round((n / s.totalOpportunities) * 1000) / 10}%` : '0%');
@@ -362,11 +363,62 @@ export function buildLeadReportDoc(
   brk(120);
   const hHold = drawHL(M, 'ON HOLD', [255, 251, 235], C.amber, hl.hold);
   const hLost = drawHL(M + blockW + 12, 'LOST', [254, 242, 242], C.red, hl.lost);
-  y += Math.max(hHold, hLost) + 12;
+  y += Math.max(hHold, hLost);
+
+  // ── 4b · Pipeline Funnel – Value Range (ALL vs ₹2L+) ───────────────────────
+  // SEPARATE section (the funnel above is untouched). Two views of the SAME
+  // filtered dataset: every opportunity (ALL) and only those worth ≥ the backend's
+  // configurable threshold (₹2L+), whose funnel is RECOMPUTED server-side over that
+  // subset — never the all-funnel relabelled. Same compact row + bar style as above.
+  sectionTitle('Pipeline Funnel – Value Range', C.violet, 120); // keep heading with the first view
+  const vr = report.funnelValueRange;
+  const drawSubFunnel = (
+    label: string,
+    view: { funnel: { stage: string; opportunities: number; value: number; conversionToNext: number | null }[]; totalOpportunities: number; totalValue: number },
+  ) => {
+    brk(30);
+    // View sub-header (ALL / ₹2L+) with its own totals.
+    fill(C.violet); doc.roundedRect(M, y, 3.5, 13, 1.5, 1.5, 'F');
+    ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.text(label, M + 9, y + 10);
+    ink(C.sub); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+    doc.text(`${view.totalOpportunities} opportunities  ·  ${inrC(view.totalValue)}`, M + 70, y + 10);
+    y += 18;
+    // Column headers.
+    ink(C.sub); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+    doc.text('STAGE', M, y); doc.text('OPPS', numX, y); doc.text('VALUE', numX + 70, y); doc.text('CONV →', numX + 150, y);
+    y += 10;
+    const maxO = Math.max(...view.funnel.map((f) => f.opportunities), 1);
+    for (const fst of view.funnel) {
+      brk(20);
+      const col = stageColors[fst.stage] || C.primary;
+      ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text(fst.stage, M, y + 11);
+      fill(C.line); doc.roundedRect(barX, y + 3, barMax, 12, 3, 3, 'F');
+      const bw = Math.max(3, (fst.opportunities / maxO) * barMax);
+      fill(col); doc.roundedRect(barX, y + 3, bw, 12, 3, 3, 'F');
+      ink(C.ink); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+      doc.text(String(fst.opportunities), numX, y + 12);
+      doc.text(inrC(fst.value), numX + 70, y + 12);
+      ink(fst.conversionToNext != null ? C.green : C.sub);
+      doc.text(fst.conversionToNext != null ? `${fst.conversionToNext}%` : '—', numX + 150, y + 12);
+      y += 19;
+    }
+    // Per-view total row.
+    brk(22);
+    stroke(C.line); doc.setLineWidth(0.8); doc.line(M, y + 1, M + W, y + 1); y += 6;
+    ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('TOTAL', M, y + 10);
+    doc.text(String(view.totalOpportunities), numX, y + 10);
+    doc.text(inrC(view.totalValue), numX + 70, y + 10);
+    ink(C.sub); doc.setFont('helvetica', 'normal'); doc.text('—', numX + 150, y + 10);
+    y += 20;
+  };
+  drawSubFunnel('ALL', vr.all);
+  y += 8;
+  drawSubFunnel(`Rs. 2L+  (>= ${inrC(vr.threshold)})`, vr.highValue);
 
   // ── 6 · Team / BDE Performance (table; totals reconcile to summary) ─────────
   if (report.teamPerformance.length) {
-    sectionTitle('Team / BDE Performance', C.indigo);
+    sectionTitle('Team / BDE Performance', C.indigo, 100); // keep heading with the table head + first rows
     const statusFor = (t: any) => {
       if (t.achievement == null) return 'N/A';
       return t.achievement >= 80 ? 'On Track' : t.achievement >= 50 ? 'Watch' : 'At Risk';
@@ -388,7 +440,7 @@ export function buildLeadReportDoc(
       didParseCell: (d: any) => { if (d.row.index === teamBody.length - 1) d.cell.styles.fontStyle = 'bold'; },
       margin: { left: M }, tableWidth: W,
     });
-    y = (doc as any).lastAutoTable.finalY + 22;
+    y = (doc as any).lastAutoTable.finalY;
   }
 
   // ── 7 · WON Revenue Trend — Target vs WON across the selected range ─────────
@@ -396,12 +448,12 @@ export function buildLeadReportDoc(
   // WON revenue as bars, the per-bucket Target run-rate as an overlaid line. Target
   // is shown ONLY where real SalesTarget data exists (else "Not Available" — never
   // fabricated). Values reconcile with the summary WON revenue + SalesTarget totals.
-  sectionTitle(`WON Revenue Trend (by ${report.trend.bucket})`, C.green);
+  sectionTitle(`WON Revenue Trend (by ${report.trend.bucket})`, C.green, 180); // keep the chart with its heading
   const pts = report.trend.points;
   const anyTarget = pts.some((p) => p.target != null);
   if (pts.length === 0) {
     ink(C.sub); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-    doc.text('No data in the selected period.', M, y + 4); y += 20;
+    doc.text('No data in the selected period.', M, y + 4); y += 8;
   } else {
     brk(150);
     // Legend
@@ -447,11 +499,11 @@ export function buildLeadReportDoc(
     ink(C.sub); doc.setFontSize(6.5);
     const lblIdx = shown.length <= 6 ? shown.map((_, i) => i) : [0, Math.floor(shown.length / 2), shown.length - 1];
     lblIdx.forEach((i) => { if (shown[i]) doc.text(shown[i].date.slice(5), M + i * bw + 2, baseY + 9); });
-    y = baseY + 22;
+    y = baseY + 12;
   }
 
   // ── 8 · Additional Analysis — Lead Source Performance (from filtered leads) ─
-  sectionTitle('Additional Analysis — Lead Source Performance', C.slate);
+  sectionTitle('Additional Analysis — Lead Source Performance', C.slate, 100); // keep heading with the table head + first rows
   const srcMap: Record<string, { total: number; converted: number; value: number }> = {};
   for (const l of leads) {
     const src = l.source || 'Other';
@@ -471,13 +523,13 @@ export function buildLeadReportDoc(
     columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
     margin: { left: M }, tableWidth: W,
   });
-  y = (doc as any).lastAutoTable.finalY + 20;
+  y = (doc as any).lastAutoTable.finalY;
 
   // ── 8b · Pipeline Health mini-cards ────────────────────────────────────────
   const fConv = report.funnel.filter((fst: any) => fst.conversionToNext != null);
   const best = fConv.length ? fConv.reduce((a: any, b: any) => (b.conversionToNext > a.conversionToNext ? b : a)) : null;
   const weak = fConv.length ? fConv.reduce((a: any, b: any) => (b.conversionToNext < a.conversionToNext ? b : a)) : null;
-  sectionTitle('Pipeline Health', C.teal);
+  sectionTitle('Pipeline Health', C.teal, 92); // keep heading with the first card row
   cardGrid([
     { label: 'Active Pipeline', value: inrC(s.activePipeline), sub: `${s.activeOpportunities} opportunities`, tone: C.primary },
     { label: 'Best-Converting Stage', value: best ? `${best.stage} ${best.conversionToNext}%` : 'N/A', tone: C.green },

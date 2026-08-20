@@ -98,7 +98,13 @@ export async function fetchApprovedLeaves(date: string): Promise<ApiApprovedLeav
 
 /* ── High-level action helpers ──────────────────────────────────────────────── */
 
-const TODAY = () => new Date().toISOString().split('T')[0];
+// LOCAL calendar date 'YYYY-MM-DD'. toISOString() would give the UTC date, which is
+// the PREVIOUS day for early-morning local times (e.g. 1 AM IST) — that would store a
+// punch under the wrong day and mismatch the date picker (which yields the local date).
+const TODAY = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 function nowTime(): string {
   return new Date().toLocaleTimeString('en-US', {
