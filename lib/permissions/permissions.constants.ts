@@ -24,6 +24,7 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   sales: 'sales.',
   hr: 'hr.',
   finance: 'finance.',
+  marketing: 'marketing.',
 } as const;
 
 /**
@@ -711,6 +712,172 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'finance.transactions.view', label: 'View Transactions', description: 'View the unified income + expense feed', module: 'finance' },
       { key: 'finance.reports.view', label: 'View Reports', description: 'View financial summaries and reports', module: 'finance' },
       { key: 'finance.settings.view', label: 'View Settings', description: 'Access Finance module settings', module: 'finance' },
+    ],
+  },
+
+  // ── Marketing Module ───────────────────────────────────────────────────────
+  // Top-level ERP module. Grouped by section so Role Management renders one block
+  // per area. Financial keys are isolated so a role can run campaigns/content without
+  // seeing budget/spend/revenue. Roles (Marketing Manager/Executive/Content/Analyst/
+  // Intern) are built from these keys in Role Management — never hardcoded.
+  {
+    module: 'marketing',
+    label: 'Marketing · Dashboard',
+    permissions: [
+      { key: 'marketing.dashboard.view', label: 'View Marketing Dashboard', description: 'Access the Marketing dashboard overview', module: 'marketing' },
+      { key: 'marketing.dashboard.financials', label: 'View Dashboard Financial Data', description: 'See spend, budget, revenue, CPL/CPA and ROI on the dashboard', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Campaigns',
+    permissions: [
+      { key: 'marketing.campaigns.view', label: 'View Campaigns', description: 'View campaigns and campaign details', module: 'marketing' },
+      { key: 'marketing.campaigns.create', label: 'Create Campaign', description: 'Create new marketing campaigns', module: 'marketing' },
+      { key: 'marketing.campaigns.edit', label: 'Edit Campaign', description: 'Edit campaign details', module: 'marketing' },
+      { key: 'marketing.campaigns.delete', label: 'Delete Campaign', description: 'Permanently delete campaigns', module: 'marketing' },
+      { key: 'marketing.campaigns.archive', label: 'Archive Campaign', description: 'Archive/close campaigns', module: 'marketing' },
+      { key: 'marketing.campaigns.members.manage', label: 'Manage Campaign Members', description: 'Add or remove members on a campaign', module: 'marketing' },
+      { key: 'marketing.campaigns.financials.view', label: 'View Campaign Financial Data', description: 'See a campaign’s budget, spend and revenue', module: 'marketing' },
+      { key: 'marketing.campaigns.budget.manage', label: 'Manage Campaign Budget', description: 'Set and adjust campaign budgets', module: 'marketing' },
+      { key: 'marketing.campaigns.performance.view', label: 'View Campaign Performance', description: 'View campaign performance metrics', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Leads',
+    permissions: [
+      { key: 'marketing.leads.view', label: 'View Marketing Leads', description: 'View marketing leads', module: 'marketing' },
+      { key: 'marketing.leads.view_all', label: 'View All Leads', description: 'See all marketing leads (not just own/team)', module: 'marketing' },
+      { key: 'marketing.leads.create', label: 'Create Lead', description: 'Create new marketing leads', module: 'marketing' },
+      { key: 'marketing.leads.edit', label: 'Edit Lead', description: 'Edit marketing lead details', module: 'marketing' },
+      { key: 'marketing.leads.delete', label: 'Delete Lead', description: 'Delete marketing leads', module: 'marketing' },
+      { key: 'marketing.leads.import', label: 'Import Leads', description: 'Bulk-import marketing leads', module: 'marketing' },
+      { key: 'marketing.leads.export', label: 'Export Leads', description: 'Export marketing leads', module: 'marketing' },
+      { key: 'marketing.leads.assign', label: 'Assign / Reassign Leads', description: 'Assign or reassign marketing leads', module: 'marketing' },
+      { key: 'marketing.leads.status.change', label: 'Change Lead Status', description: 'Update a lead’s status', module: 'marketing' },
+      { key: 'marketing.leads.qualify', label: 'Qualify Lead (NQL/MQL/SQL)', description: 'Advance a lead through the qualification stages', module: 'marketing' },
+      { key: 'marketing.leads.handoff', label: 'Handoff Lead to Sales', description: 'Hand a qualified lead over to the Sales pipeline', module: 'marketing' },
+      { key: 'marketing.leads.history.view', label: 'View Lead History', description: 'View a lead’s qualification/activity history', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Lead Sources',
+    permissions: [
+      { key: 'marketing.sources.view', label: 'View Lead Sources', description: 'View lead sources and their performance', module: 'marketing' },
+      { key: 'marketing.sources.create', label: 'Create Source', description: 'Create new lead sources', module: 'marketing' },
+      { key: 'marketing.sources.edit', label: 'Edit Source', description: 'Edit lead sources', module: 'marketing' },
+      { key: 'marketing.sources.delete', label: 'Delete / Deactivate Source', description: 'Delete or deactivate lead sources', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Content',
+    permissions: [
+      { key: 'marketing.content.view', label: 'View Content', description: 'View content items', module: 'marketing' },
+      { key: 'marketing.content.create', label: 'Create Content', description: 'Create content items', module: 'marketing' },
+      { key: 'marketing.content.edit', label: 'Edit Content', description: 'Edit content items', module: 'marketing' },
+      { key: 'marketing.content.delete', label: 'Delete Content', description: 'Delete content items', module: 'marketing' },
+      { key: 'marketing.content.approve', label: 'Approve Content', description: 'Approve content for scheduling/publishing', module: 'marketing' },
+      { key: 'marketing.content.publish', label: 'Publish Content', description: 'Publish content', module: 'marketing' },
+      { key: 'marketing.content.schedule', label: 'Schedule Content', description: 'Schedule content for publishing', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Social Media',
+    permissions: [
+      { key: 'marketing.social.view', label: 'View Social Media', description: 'View social posts and performance', module: 'marketing' },
+      { key: 'marketing.social.create', label: 'Create Social Post', description: 'Create social posts', module: 'marketing' },
+      { key: 'marketing.social.edit', label: 'Edit Social Post', description: 'Edit social posts', module: 'marketing' },
+      { key: 'marketing.social.delete', label: 'Delete Social Post', description: 'Delete social posts', module: 'marketing' },
+      { key: 'marketing.social.schedule', label: 'Schedule Post', description: 'Schedule social posts', module: 'marketing' },
+      { key: 'marketing.social.publish', label: 'Publish Post', description: 'Publish social posts', module: 'marketing' },
+      { key: 'marketing.social.analytics.view', label: 'View Social Analytics', description: 'View social media analytics', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Email',
+    permissions: [
+      { key: 'marketing.email.view', label: 'View Email Campaigns', description: 'View email campaigns', module: 'marketing' },
+      { key: 'marketing.email.create', label: 'Create Email Campaign', description: 'Create email campaigns', module: 'marketing' },
+      { key: 'marketing.email.edit', label: 'Edit Email Campaign', description: 'Edit email campaigns', module: 'marketing' },
+      { key: 'marketing.email.delete', label: 'Delete Email Campaign', description: 'Delete email campaigns', module: 'marketing' },
+      { key: 'marketing.email.schedule', label: 'Schedule Email', description: 'Schedule email campaigns', module: 'marketing' },
+      { key: 'marketing.email.send', label: 'Send Email Campaign', description: 'Send email campaigns', module: 'marketing' },
+      { key: 'marketing.email.analytics.view', label: 'View Email Analytics', description: 'View email delivery/open/click analytics', module: 'marketing' },
+      { key: 'marketing.email.templates.manage', label: 'Manage Email Templates', description: 'Create and manage email templates', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Tasks',
+    permissions: [
+      { key: 'marketing.tasks.view', label: 'View Marketing Tasks', description: 'View marketing tasks', module: 'marketing' },
+      { key: 'marketing.tasks.create', label: 'Create Task', description: 'Create marketing tasks', module: 'marketing' },
+      { key: 'marketing.tasks.edit', label: 'Edit Task', description: 'Edit marketing tasks', module: 'marketing' },
+      { key: 'marketing.tasks.delete', label: 'Delete Task', description: 'Delete marketing tasks', module: 'marketing' },
+      { key: 'marketing.tasks.assign', label: 'Assign Task', description: 'Assign marketing tasks to members', module: 'marketing' },
+      { key: 'marketing.tasks.approve', label: 'Approve Task', description: 'Approve completed marketing tasks', module: 'marketing' },
+      { key: 'marketing.tasks.points.manage', label: 'Manage Task Points', description: 'Set/distribute task points', module: 'marketing' },
+      { key: 'marketing.tasks.analytics.view', label: 'View Task Analytics', description: 'View marketing task analytics', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Calendar',
+    permissions: [
+      { key: 'marketing.calendar.view', label: 'View Calendar', description: 'View the marketing calendar', module: 'marketing' },
+      { key: 'marketing.calendar.manage', label: 'Manage Calendar Activities', description: 'Create/update marketing calendar activities', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Events',
+    permissions: [
+      { key: 'marketing.events.view', label: 'View Events', description: 'View events and promotions', module: 'marketing' },
+      { key: 'marketing.events.create', label: 'Create Event', description: 'Create events/promotions', module: 'marketing' },
+      { key: 'marketing.events.edit', label: 'Edit Event', description: 'Edit events/promotions', module: 'marketing' },
+      { key: 'marketing.events.delete', label: 'Delete Event', description: 'Delete events/promotions', module: 'marketing' },
+      { key: 'marketing.events.members.manage', label: 'Manage Event Members', description: 'Manage the team on an event', module: 'marketing' },
+      { key: 'marketing.events.performance.view', label: 'View Event Performance', description: 'View event performance metrics', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Budget & Expenses',
+    permissions: [
+      { key: 'marketing.budget.view', label: 'View Budget', description: 'View marketing budgets', module: 'marketing' },
+      { key: 'marketing.budget.create', label: 'Create Budget', description: 'Create marketing budgets', module: 'marketing' },
+      { key: 'marketing.budget.edit', label: 'Edit Budget', description: 'Edit marketing budgets', module: 'marketing' },
+      { key: 'marketing.budget.delete', label: 'Delete Budget', description: 'Delete marketing budgets', module: 'marketing' },
+      { key: 'marketing.expenses.create', label: 'Create Expense', description: 'Submit marketing expenses', module: 'marketing' },
+      { key: 'marketing.expenses.edit', label: 'Edit Expense', description: 'Edit marketing expenses', module: 'marketing' },
+      { key: 'marketing.expenses.delete', label: 'Delete Expense', description: 'Delete marketing expenses', module: 'marketing' },
+      { key: 'marketing.expenses.approve', label: 'Approve Expense', description: 'Approve or reject submitted expenses', module: 'marketing' },
+      { key: 'marketing.financials.view', label: 'View Financial Data', description: 'View marketing spend/budget/expense/revenue figures', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Analytics',
+    permissions: [
+      { key: 'marketing.analytics.view', label: 'View Analytics', description: 'View marketing analytics (campaign/lead/source/funnel)', module: 'marketing' },
+      { key: 'marketing.analytics.roi.view', label: 'View ROI', description: 'View campaign ROI analytics', module: 'marketing' },
+      { key: 'marketing.analytics.revenue.view', label: 'View Revenue', description: 'View marketing-attributed revenue', module: 'marketing' },
+      { key: 'marketing.analytics.export', label: 'Export Analytics', description: 'Export marketing analytics', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Reports',
+    permissions: [
+      { key: 'marketing.reports.view', label: 'View Reports', description: 'View marketing reports', module: 'marketing' },
+      { key: 'marketing.reports.generate', label: 'Generate Reports', description: 'Generate marketing reports', module: 'marketing' },
+      { key: 'marketing.reports.download', label: 'Download Reports', description: 'Download marketing reports', module: 'marketing' },
+      { key: 'marketing.reports.export', label: 'Export Reports', description: 'Export marketing reports', module: 'marketing' },
     ],
   },
 ];

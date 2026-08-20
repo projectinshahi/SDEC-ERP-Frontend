@@ -1,12 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import {
   Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
-  Calendar, User, Users, Flag, Clock, Paperclip, RefreshCw, Pencil, Trash2, ShieldAlert,
-  MessageCircle, Activity, Download, BarChart3, AtSign, X, ArrowLeft,
+  Calendar, User, Users, Flag, Clock, RefreshCw, Pencil, Trash2, ShieldAlert,
+  MessageCircle, Activity, BarChart3, AtSign, X, ArrowLeft,
   Star, MoreHorizontal, FileText, SlidersHorizontal, Award, LayoutGrid, List, Check,
 } from 'lucide-react';
 import { classNames } from '@/lib/utils';
@@ -18,7 +18,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
 import { useConfirm } from '@/lib/hooks/useConfirm';
 import {
-  fetchMyTaskWorkspace, deleteMyTask, updateMyTaskStatus, uploadMyTaskAttachment,
+  fetchMyTaskWorkspace, deleteMyTask, updateMyTaskStatus,
   type MyTask, type MyTaskWorkspace as MyTaskWorkspaceData, type MyTaskActivity,
   type PointAllocation,
 } from '@/lib/api/myTasks';
@@ -692,50 +692,6 @@ function WaitingReasonModal({
   );
 }
 
-/**
- * Attachment upload control for the details / mobile Attachments tab. Any task
- * PARTICIPANT (creator / In-Charge / assigned member) can share files — reuses the
- * existing uploadMyTaskAttachment API + Cloudinary + Socket.IO (the backend logs the
- * activity and fans out `mytask_changed`, so all participants see it in real time).
- * Rendered only inside the details panel, which non-participants can never open.
- */
-function AttachmentUpload({ taskId, onUploaded }: { taskId: number; onUploaded: () => void }) {
-  const { toast } = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const onChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    setBusy(true);
-    try {
-      const fd = new FormData();
-      Array.from(files).forEach((f) => fd.append('files', f));
-      await uploadMyTaskAttachment(taskId, fd);
-      onUploaded();
-      toast(files.length === 1 ? 'Attachment uploaded.' : `${files.length} attachments uploaded.`, 'success');
-    } catch {
-      toast('Failed to upload attachment(s).', 'error');
-    } finally {
-      setBusy(false);
-      if (inputRef.current) inputRef.current.value = '';
-    }
-  };
-  return (
-    <>
-      <input ref={inputRef} type="file" multiple onChange={onChange} className="hidden" aria-hidden="true" />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-2.5 text-sm font-semibold text-gray-600 transition hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-60"
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
-        {busy ? 'Uploading…' : 'Upload files'}
-      </button>
-    </>
-  );
-}
-
 function DetailsPanel({
   task, collapsed, onToggle, canEdit, canDelete, onEdit, onDelete, onStatus, onBack,
   canExecute, canApprove, currentUserId, generatedBy, onUploaded,
@@ -954,7 +910,6 @@ function DetailsPanel({
         <div className="flex items-center overflow-x-auto border-b border-gray-100 bg-gray-50/80 px-2 shrink-0">
           {[
             { key: 'chat' as const, icon: MessageCircle, label: 'Task Chat', short: 'Chat', count: 0 },
-            { key: 'attachments' as const, icon: Paperclip, label: 'Attachments', short: 'Files', count: task.attachments.length },
             { key: 'timeline' as const, icon: Activity, label: 'Activity Timeline', short: 'Activity', count: (task.activities || []).length },
           ].map((tab) => (
             <button
@@ -988,41 +943,6 @@ function DetailsPanel({
           {activeTab === 'chat' && (
             <div className="absolute inset-0">
               <MyTaskChat key={task.id} taskId={task.id} currentUserId={currentUserId} members={mentionables} />
-            </div>
-          )}
-
-          {activeTab === 'attachments' && (
-            <div className="p-5 space-y-4">
-              {/* Any participant (creator / In-Charge / member) can share files. */}
-              <AttachmentUpload taskId={task.id} onUploaded={onUploaded} />
-              {task.attachments.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {task.attachments.map((a) => (
-                    <a key={a.id} href={a.file_url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition hover:border-indigo-300 hover:shadow-md group">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500 group-hover:bg-indigo-100 transition-colors">
-                        <Paperclip className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-gray-800">{a.file_name}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          {(a.file_size / 1024).toFixed(1)} KB
-                          {a.uploader?.name && <> • Uploaded by {a.uploader.name}</>}
-                        </p>
-                      </div>
-                      <Download className="h-4 w-4 text-gray-300 group-hover:text-indigo-500 transition-colors shrink-0" />
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-3">
-                    <Paperclip className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-700">No attachments available</h3>
-                  <p className="text-xs text-gray-500 mt-1 max-w-[220px]">Files attached to this task will appear here.</p>
-                </div>
-              )}
             </div>
           )}
 
@@ -1169,7 +1089,6 @@ function MyTaskMobileDetails({
 
   const TABS3 = [
     { key: 'chat' as const, icon: MessageCircle, label: 'Chat', count: 0 },
-    { key: 'attachments' as const, icon: Paperclip, label: 'Files', count: task.attachments.length },
     { key: 'timeline' as const, icon: Activity, label: 'Activity', count: (task.activities || []).length },
   ];
 
@@ -1325,33 +1244,6 @@ function MyTaskMobileDetails({
         {activeTab === 'chat' && (
           <div className="absolute inset-0">
             <MyTaskChat key={task.id} taskId={task.id} currentUserId={currentUserId} members={mentionables} />
-          </div>
-        )}
-        {activeTab === 'attachments' && (
-          <div className="h-full space-y-3 overflow-y-auto scrollbar-hide p-4">
-            {/* Any participant (creator / In-Charge / member) can share files. */}
-            <AttachmentUpload taskId={task.id} onUploaded={onUploaded} />
-            {task.attachments.length ? (
-              <div className="space-y-2.5">
-                {task.attachments.map((a) => (
-                  <a key={a.id} href={a.file_url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition active:bg-gray-50">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500"><Paperclip className="h-5 w-5" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-800">{a.file_name}</p>
-                      <p className="mt-0.5 text-[11px] text-gray-400">{(a.file_size / 1024).toFixed(1)} KB{a.uploader?.name && <> • {a.uploader.name}</>}</p>
-                    </div>
-                    <Download className="h-4 w-4 shrink-0 text-gray-300" />
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 py-16 text-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100"><Paperclip className="h-6 w-6 text-gray-400" /></div>
-                <h3 className="text-sm font-semibold text-gray-700">No attachments available</h3>
-                <p className="mt-1 max-w-[220px] text-xs text-gray-500">Files attached to this task will appear here.</p>
-              </div>
-            )}
           </div>
         )}
         {activeTab === 'timeline' && (

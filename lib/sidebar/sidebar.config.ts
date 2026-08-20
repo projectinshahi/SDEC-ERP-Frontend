@@ -494,6 +494,21 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     module: 'finance',
     permission: ['finance.settings.view', 'finance.view'],
   },
+  // ── Marketing ──────────────────────────────────────────────────────────────
+  // Phase 0 ships the module + Dashboard; each section's nav item is added as its
+  // phase lands (so links never point at a route that doesn't exist yet).
+  {
+    label: 'OVERVIEW',
+    isPartition: true,
+    module: 'marketing',
+  },
+  {
+    label: 'Marketing Dashboard',
+    href: '/dashboard/marketing',
+    icon: 'LayoutDashboard',
+    module: 'marketing',
+    permission: 'marketing.dashboard.view',
+  },
   {
     // GLOBAL & UNGATED — the standalone My Tasks workspace, a common utility for
     // EVERY authenticated user. `pinTop` renders it at the TOP of every module's
