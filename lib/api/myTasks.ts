@@ -326,8 +326,15 @@ export async function fetchMyTaskMessages(id: number): Promise<MyTaskMessage[]> 
   return r.data;
 }
 
-export async function sendMyTaskMessage(taskId: number, message: string, mentions?: number[]): Promise<MyTaskMessage> {
-  const r = await apiClient.post<{ message: MyTaskMessage }>(`/my-tasks/${taskId}/messages`, { message, mentions });
+/** Send a chat message. Optionally carries an already-uploaded attachment (by id) so
+ *  it renders inside the chat bubble (WhatsApp-style) — the backend re-reads the row. */
+export async function sendMyTaskMessage(
+  taskId: number,
+  message: string,
+  mentions?: number[],
+  attachment?: { id: number },
+): Promise<MyTaskMessage> {
+  const r = await apiClient.post<{ message: MyTaskMessage }>(`/my-tasks/${taskId}/messages`, { message, mentions, attachment });
   return r.data.message;
 }
 

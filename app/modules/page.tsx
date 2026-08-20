@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Code2, ShieldCheck, Briefcase, Users, ArrowRight, LogOut, Building2, Loader2,
-  UserCog, Wallet, ListTodo, type LucideIcon,
+  UserCog, Wallet, ListTodo, Megaphone, type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -14,7 +14,7 @@ import { classNames } from '@/lib/utils';
 
 /** Maps the registry's icon NAME to a lucide component (registry stays icon-agnostic). */
 const ICON_MAP: Record<string, LucideIcon> = {
-  ShieldCheck, Briefcase, Code2, Users, UserCog, Wallet,
+  ShieldCheck, Briefcase, Code2, Users, UserCog, Wallet, Megaphone,
 };
 
 /* ──────────────────────────────────────────────────────────────────────────

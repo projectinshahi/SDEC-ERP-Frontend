@@ -13,7 +13,7 @@
 
 import type { ModuleName } from './permission.types';
 
-export type TopModule = 'development' | 'sales' | 'user' | 'master' | 'hr' | 'finance';
+export type TopModule = 'development' | 'sales' | 'user' | 'master' | 'hr' | 'finance' | 'marketing';
 
 export interface ModuleAccessUser {
   roleName?: string;
@@ -28,6 +28,7 @@ export const MODULE_LABELS: Record<TopModule, string> = {
   master: 'Master Dashboard',
   hr: 'HR',
   finance: 'Finance',
+  marketing: 'Marketing',
 };
 
 /**
@@ -43,6 +44,7 @@ export const MODULE_HOME: Record<TopModule, string> = {
   master: '/master-dashboard',
   hr: '/dashboard/hr',
   finance: '/dashboard/finance',
+  marketing: '/dashboard/marketing',
 };
 
 /** Lower-cases and strips spaces/underscores/hyphens so "Super Admin" === "superadmin". */
@@ -124,6 +126,14 @@ export const APP_MODULES: AppModuleDef[] = [
     description: 'Invoices, billing & expenses.',
     prefixes: ['finance.'], topModule: 'finance', fallbackHref: '/dashboard/finance',
   },
+  {
+    // Marketing is a first-class ERP module (same architecture as Sales/Finance):
+    // visible when the user holds ANY `marketing.*` permission (SuperAdmin/Admin
+    // bypass), opening on its own /dashboard/marketing route.
+    key: 'marketing', title: 'Marketing', icon: 'Megaphone', accent: 'cyan',
+    description: 'Campaigns, leads, content & analytics.',
+    prefixes: ['marketing.'], topModule: 'marketing', fallbackHref: '/dashboard/marketing',
+  },
 ];
 
 /**
@@ -167,6 +177,7 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
       user: false,
       hr: true,
       finance: false,
+      marketing: false,
     };
   }
 
@@ -176,7 +187,7 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
     result[m.key as TopModule] = isModuleVisible(user, m);
   }
   // Ensure every TopModule key exists even if no registry entry matched
-  for (const k of ['master', 'development', 'sales', 'user', 'hr', 'finance'] as TopModule[]) {
+  for (const k of ['master', 'development', 'sales', 'user', 'hr', 'finance', 'marketing'] as TopModule[]) {
     if (!(k in result)) result[k] = false;
   }
   return result;
@@ -211,6 +222,7 @@ export function moduleForPath(pathname: string): TopModule {
   if (pathname.startsWith('/dashboard/sales')) return 'sales';
   if (pathname.startsWith('/dashboard/hr')) return 'hr';
   if (pathname.startsWith('/dashboard/finance')) return 'finance';
+  if (pathname.startsWith('/dashboard/marketing')) return 'marketing';
   return 'development';
 }
 
@@ -220,6 +232,7 @@ export function groupForModule(module?: ModuleName | null): TopModule {
   if (module === 'user' || module === 'role') return 'user';
   if (module === 'hr') return 'hr';
   if (module === 'finance') return 'finance';
+  if (module === 'marketing') return 'marketing';
   return 'development';
 }
 

@@ -2,13 +2,24 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Send, Loader2, ShieldAlert, Trash2 } from 'lucide-react';
+import { Send, Loader2, ShieldAlert, Trash2, Paperclip, X, FileText, Download } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/lib/hooks/useToast';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 import {
   fetchMyTaskMessages, sendMyTaskMessage, deleteMyTaskMessage, markMyTaskRead,
-  type MyTaskMessage,
+  uploadMyTaskAttachment, type MyTaskMessage,
 } from '@/lib/api/myTasks';
+
+/** bytes → "2.4 MB" / "180 KB" (blank for 0/unknown). */
+const fmtSize = (b?: number): string => {
+  if (!b || b <= 0) return '';
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+};
+const isImageAttachment = (name?: string, url?: string): boolean =>
+  /\.(png|jpe?g|gif|webp|bmp|svg|avif)(\?|$)/i.test(name || '') || /\.(png|jpe?g|gif|webp|bmp|svg|avif)(\?|$)/i.test(url || '');
 
 /**
  * Real-time chat for a My Task — its OWN Socket.IO room (mytask_<id>) and its OWN
@@ -17,6 +28,7 @@ import {
  */
 export function MyTaskChat({ taskId, currentUserId, members = [] }: { taskId: number; currentUserId?: number; members?: { id: number, name: string }[] }) {
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const [messages, setMessages] = useState<MyTaskMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
@@ -27,8 +39,11 @@ export function MyTaskChat({ taskId, currentUserId, members = [] }: { taskId: nu
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
   const [cursorPos, setCursorPos] = useState(0);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -171,16 +186,25 @@ export function MyTaskChat({ taskId, currentUserId, members = [] }: { taskId: nu
     }
   };
 
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) setPendingFile(f);
+    e.target.value = ''; // let the same file be re-picked after removal
+  };
+
   const onSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
-    if (!text) return;
-    
+    // Send when there's text OR a file (WhatsApp-style: attachment-only is allowed).
+    if ((!text && !pendingFile) || uploading) return;
+
     const mentionedIds = members
       .filter((m) => text.includes(`@${m.name}`))
       .map((m) => m.id);
+    const fileToSend = pendingFile;
 
     setInput('');
+    setPendingFile(null);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.focus();
@@ -189,21 +213,49 @@ export function MyTaskChat({ taskId, currentUserId, members = [] }: { taskId: nu
     setIsTyping(false);
     socketRef.current?.emit('mytask_stop_typing', { taskId });
     try {
-      await sendMyTaskMessage(taskId, text, mentionedIds);
+      let attachmentRef: { id: number } | undefined;
+      if (fileToSend) {
+        // Reuse the EXISTING attachment upload (Cloudinary) — no new storage path —
+        // then attach it to the chat message so it renders inside the bubble.
+        setUploading(true);
+        const fd = new FormData();
+        fd.append('files', fileToSend);
+        const res = await uploadMyTaskAttachment(taskId, fd);
+        const a = res.attachments?.[0];
+        if (!a) throw new Error('Upload failed');
+        attachmentRef = { id: a.id };
+      }
+      await sendMyTaskMessage(taskId, text, mentionedIds, attachmentRef);
     } catch (err: any) {
       console.error('Failed to send message', err);
-      // Restore the text so it is never silently lost, and explain why.
+      // Restore text + file so nothing is silently lost, and explain why.
       setInput(text);
+      setPendingFile(fileToSend);
       const code = err?.statusCode ?? err?.status ?? err?.response?.status;
       toast(code === 403 ? "You don't have permission to send messages here." : 'Failed to send message.', 'error');
+    } finally {
+      setUploading(false);
     }
   };
 
   const onDelete = async (messageId: number) => {
+    // Confirm first — prevent accidental one-click deletion (reuses the app-wide
+    // confirm dialog; deletion also removes any attachment carried by the message).
+    const ok = await confirm({
+      title: 'Delete Message?',
+      message: 'Are you sure you want to delete this message? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+    });
+    if (!ok) return;
     try {
+      // On success the message is removed via the existing `mytask_message_deleted`
+      // socket event; on failure the message stays and we surface a toast.
       await deleteMyTaskMessage(taskId, messageId);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete message', err);
+      const code = err?.statusCode ?? err?.status ?? err?.response?.status;
+      toast(code === 403 ? "You don't have permission to delete this message." : 'Failed to delete message.', 'error');
     }
   };
 
@@ -271,6 +323,8 @@ export function MyTaskChat({ taskId, currentUserId, members = [] }: { taskId: nu
         ) : (
           messages.map((msg) => {
             const isMe = msg.sender_id === currentUserId;
+            const att = msg.metadata?.attachment as { file_name?: string; file_url?: string; file_size?: number } | undefined;
+            const isImg = !!att && isImageAttachment(att.file_name, att.file_url);
             return (
               <div key={msg.id} className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                 {!isMe && (
@@ -291,11 +345,43 @@ export function MyTaskChat({ taskId, currentUserId, members = [] }: { taskId: nu
                         <Trash2 className="h-3.5 w-3.5 text-gray-300 hover:text-rose-500" />
                       </button>
                     )}
-                    <div className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-2 text-sm shadow-sm ${
-                      isMe ? 'rounded-tr-sm bg-blue-600 text-white' : 'rounded-tl-sm border border-gray-100 bg-white text-gray-800'
-                    }`}>
-                      {renderMessageText(msg.message, isMe)}
-                    </div>
+                    {att && att.file_url ? (
+                      <div className={`overflow-hidden rounded-2xl text-sm shadow-sm ${
+                        isMe ? 'rounded-tr-sm bg-blue-600 text-white' : 'rounded-tl-sm border border-gray-100 bg-white text-gray-800'
+                      }`}>
+                        {isImg ? (
+                          <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="block">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={att.file_url} alt={att.file_name || 'image'} className="max-h-72 w-full max-w-[260px] object-cover" />
+                          </a>
+                        ) : (
+                          <a href={att.file_url} target="_blank" rel="noopener noreferrer"
+                            className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors ${isMe ? 'hover:bg-blue-700' : 'hover:bg-gray-50'}`}>
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isMe ? 'bg-blue-500' : 'bg-gray-100'}`}>
+                              <FileText className={`h-5 w-5 ${isMe ? 'text-white' : 'text-gray-500'}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="max-w-[160px] truncate font-medium">{att.file_name || 'Attachment'}</p>
+                              {fmtSize(att.file_size) && (
+                                <p className={`text-[11px] ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>{fmtSize(att.file_size)}</p>
+                              )}
+                            </div>
+                            <Download className={`ml-1 h-4 w-4 shrink-0 ${isMe ? 'text-blue-100' : 'text-gray-300'}`} />
+                          </a>
+                        )}
+                        {msg.message?.trim() && (
+                          <div className="whitespace-pre-wrap break-words px-4 py-2">
+                            {renderMessageText(msg.message, isMe)}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                        isMe ? 'rounded-tr-sm bg-blue-600 text-white' : 'rounded-tl-sm border border-gray-100 bg-white text-gray-800'
+                      }`}>
+                        {renderMessageText(msg.message, isMe)}
+                      </div>
+                    )}
                   </div>
                   <span className="mt-1 text-[10px] text-gray-400">
                     {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
@@ -330,7 +416,41 @@ export function MyTaskChat({ taskId, currentUserId, members = [] }: { taskId: nu
             ))}
           </div>
         )}
+        {pendingFile && (
+          <div className="mb-2 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2">
+            {pendingFile.type.startsWith('image/') ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={URL.createObjectURL(pendingFile)} alt="" className="h-10 w-10 rounded-lg object-cover" />
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-gray-400">
+                <FileText className="h-5 w-5" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-gray-700">{pendingFile.name}</p>
+              {fmtSize(pendingFile.size) && <p className="text-[10px] text-gray-400">{fmtSize(pendingFile.size)}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingFile(null)}
+              title="Remove attachment"
+              className="rounded-lg p-1 text-gray-400 transition hover:bg-gray-200 hover:text-rose-500"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <form onSubmit={onSend} className="relative flex items-end">
+          <input ref={fileInputRef} type="file" className="hidden" onChange={onPickFile} />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            title="Attach a file"
+            className="absolute bottom-1.5 left-1.5 rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
           <textarea
             ref={textareaRef}
             value={input}
@@ -338,15 +458,15 @@ export function MyTaskChat({ taskId, currentUserId, members = [] }: { taskId: nu
             onKeyDown={onKeyDown}
             placeholder="Type a message…"
             rows={1}
-            className="w-full resize-none overflow-y-auto rounded-[20px] border border-gray-200 bg-gray-50 py-2.5 pl-4 pr-12 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full resize-none overflow-y-auto rounded-[20px] border border-gray-200 bg-gray-50 py-2.5 pl-11 pr-12 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ minHeight: '42px', maxHeight: '120px' }}
           />
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={(!input.trim() && !pendingFile) || uploading}
             className="absolute bottom-1.5 right-1.5 rounded-full bg-blue-600 p-1.5 text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Send className="ml-0.5 h-4 w-4" />
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="ml-0.5 h-4 w-4" />}
           </button>
         </form>
       </div>
