@@ -93,7 +93,15 @@ const TIME_FIELDS = [
   },
 ] as const;
 
-const TODAY = new Date().toISOString().split('T')[0];
+// LOCAL calendar date 'YYYY-MM-DD' (NOT toISOString(), which is the UTC date and can
+// be the previous day for early-morning local times). A record saved for "today" and
+// the date used to look it up MUST be the same calendar day, or the saved row appears
+// under a different date and the page falls back to the default "Absent". Mirrors the
+// local TODAY in lib/hr and the text date from GET /hr/attendance.
+const TODAY = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+})();
 
 /**
  * Standard office schedule, in the 24h "HH:MM" form-state format. Pre-filled
