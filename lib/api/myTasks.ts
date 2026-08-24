@@ -350,8 +350,10 @@ export async function markMyTaskRead(id: number): Promise<{ success: boolean }> 
 }
 
 export async function uploadMyTaskAttachment(id: number, formData: FormData): Promise<{ success: boolean; attachments: MyTaskAttachment[] }> {
+  // Do NOT set Content-Type — the api-client interceptor strips it for FormData so the
+  // browser sets `multipart/form-data; boundary=…` (required for iOS Safari uploads).
   const r = await apiClient.post<{ success: boolean; attachments: MyTaskAttachment[] }>(
-    `/my-tasks/${id}/attachments`, formData, { headers: { 'Content-Type': 'multipart/form-data' } },
+    `/my-tasks/${id}/attachments`, formData,
   );
   return r.data;
 }
