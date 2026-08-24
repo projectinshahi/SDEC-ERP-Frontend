@@ -32,6 +32,16 @@ class ApiClientService {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+        // File uploads (FormData): NEVER keep a pinned Content-Type. Only the browser
+        // can add the multipart `boundary`; the client default is 'application/json'
+        // and callers sometimes hardcode 'multipart/form-data' (no boundary). iOS
+        // Safari sends whatever is pinned verbatim — with no boundary the server can't
+        // split the parts, so uploads silently fail (0 files) on iPhone/iPad while
+        // Chrome/Android tolerate it. Deleting it lets the browser emit
+        // `multipart/form-data; boundary=…` on every platform.
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+          config.headers.delete('Content-Type');
+        }
         return config;
       },
       (error) => Promise.reject(error)
