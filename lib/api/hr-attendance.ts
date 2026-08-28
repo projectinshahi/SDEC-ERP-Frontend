@@ -62,6 +62,47 @@ export async function fetchAttendance(): Promise<ApiAttendanceRecord[]> {
   return res.data?.data ?? [];
 }
 
+/* ── Employee self-service: My Attendance ─────────────────────────────────────
+ * GET /hr/attendance/me — the AUTHENTICATED user's OWN attendance only (the backend
+ * resolves the employee from the session; no employeeId is ever sent). Same records,
+ * status, times and work_hours as the HR module. */
+export interface MyAttendanceDay {
+  date: string;            // YYYY-MM-DD
+  check_in: string | null; // "09:15 AM"
+  lunch_out: string | null;
+  lunch_in: string | null;
+  check_out: string | null;
+  work_hours: number;      // decimal hours, exactly as stored
+  status: string;          // present | late | late_after_lunch | half_day | leave_half_day | leave_full_day | absent
+  late_checkin: boolean;
+  late_after_lunch: boolean;
+  leave_type: 'full_day' | 'half_day' | null;
+}
+export interface MyAttendanceLeave {
+  id: number; leave_type: string; start_date: string; end_date: string;
+  days: number; status: string; half_period: 'first_half' | 'second_half' | null;
+}
+export interface MyAttendanceResponse {
+  /** false ONLY when the authenticated user genuinely has no linked employee row.
+   *  When false the other fields are absent — show the "no profile" state, not an error. */
+  hasEmployee: boolean;
+  employee?: { name: string | null; employee_code: string; department: string | null; designation: string | null };
+  range?: { startDate: string; endDate: string };
+  summary?: {
+    workingDays: number; present: number; absent: number; halfDay: number;
+    fullDayLeave: number; lateMarks: number; totalHours: number; attendancePct: number;
+  };
+  daily?: MyAttendanceDay[];
+  leaves?: MyAttendanceLeave[];
+}
+
+export async function fetchMyAttendance(startDate: string, endDate: string): Promise<MyAttendanceResponse> {
+  const res = await apiClient.get<{ success: boolean } & MyAttendanceResponse>(
+    `/hr/attendance/me?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
+  );
+  return res.data;
+}
+
 /**
  * GET /hr/attendance/summary
  * Fetch aggregated status counts.

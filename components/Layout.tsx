@@ -86,11 +86,15 @@ const DashboardShell = ({ children }: LayoutProps) => {
   // A single sidebar item is visible when: correct module + module access + the
   // item's specific permission (SuperAdmin/Admin bypass via usePermissions).
   const isItemVisible = useCallback((item: SidebarMenuItem): boolean => {
-    // Leave-only self-service employees see ONLY the HR "Leave" item — and only
-    // while inside the HR module, so this restriction can never blank out another
-    // module's sidebar (defence-in-depth; getModuleAccess already confines them to HR).
+    // Self-service employees see ONLY their own HR self-service items (Leave +
+    // My Attendance) — and only inside the HR module, so this restriction can never
+    // blank out another module's sidebar (defence-in-depth; getModuleAccess already
+    // confines them to HR). Each item still honours its own permission below.
     if (isSelfService && currentModule === 'hr') {
-      return item.href === '/dashboard/hr/leave';
+      // A leave-only self-service employee sees ONLY their self-service items: the HR
+      // Leave page (guaranteed by hr.leave.self) and the global, ungated My Attendance
+      // tab (own attendance, self-scoped by the backend).
+      return item.href === '/dashboard/hr/leave' || item.href === '/dashboard/my-attendance';
     }
     // Global items (e.g. My Tasks) skip module-access but STILL honor their own
     // permission — so the item shows in every module, gated on that permission.
