@@ -525,6 +525,20 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     pinTop: true,
   },
   {
+    // GLOBAL & UNGATED — every authenticated employee's OWN attendance (read-only).
+    // Same pattern as My Tasks: module:null + global:true + NO permission, so it shows
+    // in EVERY module's sidebar for Sales / Development / HR / Marketing / etc. alike —
+    // no role or department restriction. The DATA is strictly self-scoped by the
+    // backend (session → own employee → own records). Route is registered in
+    // SHARED_PREFIXES so the module-isolation guard never bounces a non-HR user.
+    label: 'My Attendance',
+    href: '/dashboard/my-attendance',
+    icon: 'CalendarDays',
+    module: null,
+    global: true,
+    pinTop: true,
+  },
+  {
     // Notice — a STANDALONE top-level module, peer of My Tasks (NOT nested in it or
     // any other module). Same `global` pattern so it shows at the bottom of every
     // module's sidebar; unlike My Tasks it IS permission-gated (`notice.view`), so
