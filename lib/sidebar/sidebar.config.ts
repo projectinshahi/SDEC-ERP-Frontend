@@ -510,6 +510,13 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     permission: 'marketing.dashboard.view',
   },
   {
+    label: 'Content Production',
+    href: '/dashboard/marketing/content',
+    icon: 'FileText',
+    module: 'marketing',
+    permission: 'marketing.content.view',
+  },
+  {
     // GLOBAL & UNGATED — the standalone My Tasks workspace, a common utility for
     // EVERY authenticated user. `pinTop` renders it at the TOP of every module's
     // sidebar (immediately below the module's Dashboard/home) via Layout.tsx. It

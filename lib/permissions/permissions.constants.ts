@@ -782,6 +782,9 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'marketing.content.approve', label: 'Approve Content', description: 'Approve content for scheduling/publishing', module: 'marketing' },
       { key: 'marketing.content.publish', label: 'Publish Content', description: 'Publish content', module: 'marketing' },
       { key: 'marketing.content.schedule', label: 'Schedule Content', description: 'Schedule content for publishing', module: 'marketing' },
+      { key: 'marketing.content.move', label: 'Move Content Stages', description: 'Move content between Kanban stages (Edit Content also grants this)', module: 'marketing' },
+      { key: 'marketing.content.assign', label: 'Manage Assignments', description: 'Assign owner/designer/videographer/editor (Edit Content also grants this)', module: 'marketing' },
+      { key: 'marketing.content.analytics', label: 'Edit Performance Analytics', description: 'Record reach/views/engagement/leads/conversion and learnings (Edit Content also grants this)', module: 'marketing' },
     ],
   },
   {
