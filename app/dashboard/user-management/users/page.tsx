@@ -78,8 +78,13 @@ export default function UsersPage() {
   const handleAddUser = async (data: UserFormData) => {
     setIsSubmitting(true);
     try {
-      await createUserApi(data);
-      toast(`User "${data.name}" successfully created!`, 'success');
+      const res = await createUserApi(data);
+      // Backend reports the real welcome-email outcome (temp password travels in it).
+      if (res?.emailSent === false) {
+        toast(`User "${data.name}" created, but the welcome email could NOT be delivered. Check the email service configuration.`, 'warning');
+      } else {
+        toast(`User "${data.name}" successfully created!`, 'success');
+      }
       setIsModalOpen(false);
       loadUsers(); // Refresh dynamic list from Neon DB
     } catch (err: any) {

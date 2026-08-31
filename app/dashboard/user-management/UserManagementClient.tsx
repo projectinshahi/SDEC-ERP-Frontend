@@ -247,8 +247,14 @@ export function UserManagementClient() {
   const handleAddUser = async (data: UserFormData) => {
     setIsSubmitting(true);
     try {
-      await createUserApi(data);
-      toast(`User "${data.name}" created — a temporary password was emailed.`, 'success');
+      const res = await createUserApi(data);
+      // The backend now reports the real email outcome — never claim "was emailed"
+      // when the provider rejected the send (the temp password ONLY exists in that email).
+      if (res?.emailSent === false) {
+        toast(`User "${data.name}" created, but the welcome email could NOT be delivered. Check the email service configuration, then resend their credentials.`, 'warning');
+      } else {
+        toast(`User "${data.name}" created — a temporary password was emailed.`, 'success');
+      }
       setIsUserModalOpen(false);
       loadUsers();
     } catch (err: any) {

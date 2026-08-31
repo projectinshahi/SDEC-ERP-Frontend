@@ -438,87 +438,82 @@ function MemberAvatars({ members }: { members: { id: number; name: string }[] })
 /* ── left-panel task card ─────────────────────────────────────────────────
    Compact, scannable: title · priority + status badges · due date+time · owner
    & in-charge · member avatars. Unread tasks get a subtle red left accent + dot. */
-function TaskRow({ task, active, onClick, showDirection }: { task: MyTask; active: boolean; onClick: () => void; showDirection?: boolean }) {
-  const prio = priorityMeta(task.priority);
-  const due = fmtDue(task.dueDate, task.dueTime, task.status);
-  const st = statusMeta(task.status);
-  const inChargeName = task.inChargeId ? (task.members.find((m) => m.id === task.inChargeId)?.name || '—') : '—';
+/** Subtle full-card background tint per task state — SAME hue families the app
+ *  already uses (statusMeta badges / due tones), just at card-background strength.
+ *  Overdue (rose) outranks the status tint; an approved task is never "overdue"
+ *  (mirrors fmtDue/mobileDue). To Do keeps the existing neutral white card. */
+function cardTint(task: MyTask): { base: string; hover: string } {
+  if (task.dueDate && task.dueDate < todayYmd() && task.status !== 'approved')
+    return { base: 'bg-rose-50', hover: 'hover:bg-rose-100/70' };
+  if (task.status === 'approved') return { base: 'bg-green-50', hover: 'hover:bg-green-100/70' };
+  if (task.status === 'in_progress') return { base: 'bg-blue-50', hover: 'hover:bg-blue-100/70' };
+  if (task.status === 'done') return { base: 'bg-violet-50', hover: 'hover:bg-violet-100/70' };
+  if (task.status === 'waiting') return { base: 'bg-amber-50', hover: 'hover:bg-amber-100/70' };
+  return { base: 'bg-white', hover: 'hover:bg-gray-50' };
+}
+
+/** Reference-matched compact desktop card: ID circle · title (+ due line below) ·
+ *  right column with last-activity date and the notification/mention count badges.
+ *  Presentation ONLY — priority/status/owner/in-charge/members remain in the data
+ *  and in the details panel; they are just not rendered on the card anymore. */
+function TaskRow({ task, active, onClick }: { task: MyTask; active: boolean; onClick: () => void; showDirection?: boolean }) {
+  const due = mobileDue(task);
+  const at = mobileActivityTime(task.updatedAt);
+  const tint = cardTint(task);
   return (
     <button
       type="button"
       onClick={onClick}
       className={classNames(
-        'w-full rounded-xl border px-3.5 py-3 text-left transition',
+        'w-full rounded-xl border px-3 py-2 text-left transition',
         active
           ? 'border-indigo-400 bg-indigo-50/60 ring-1 ring-indigo-200'
-          : task.unread
-            ? 'border-gray-200 border-l-4 border-l-rose-500 bg-rose-50/30 hover:bg-rose-50/50'
-            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50',
+          : classNames(
+              'border-gray-200 hover:border-gray-300',
+              tint.base,
+              tint.hover,
+              // Unread keeps its rose left-border accent (+ dot + bold title); the
+              // card BACKGROUND is now owned by the status tint above.
+              task.unread && 'border-l-4 border-l-rose-500',
+            ),
       )}
     >
-      {/* Title + unread indicators */}
-      <div className="flex items-start justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-2">
-          {task.unread && !active && <span className="shrink-0 h-2 w-2 rounded-full bg-rose-500" title="Unread" />}
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700 shadow-sm">{task.id}</span>
-          <span className={classNames('truncate text-sm text-gray-800', task.unread && !active ? 'font-bold' : 'font-semibold')}>{task.title}</span>
+      <div className="flex w-full items-center gap-2.5">
+        {/* Task ID circle — unchanged styling */}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700 shadow-sm">{task.id}</span>
+
+        {/* Title + due/time line */}
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-2">
+            {task.unread && !active && <span className="h-2 w-2 shrink-0 rounded-full bg-rose-500" title="Unread" />}
+            <span className={classNames('truncate text-sm text-gray-800', task.unread && !active ? 'font-bold' : 'font-semibold')}>{task.title}</span>
+          </span>
+          <span className={classNames('mt-0.5 block truncate text-[11px] font-medium', due.tone)}>{due.text}</span>
         </span>
-        <span className="flex shrink-0 items-center gap-1">
-          {/* Unread @mention badge — visible ONLY to the mentioned user (the count is
-              computed per-user server-side) and cleared when they open the task. */}
-          {task.unreadMentions > 0 && !active && (
-            <span
-              className="inline-flex items-center gap-0.5 rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700"
-              title={`${task.unreadMentions} unread mention${task.unreadMentions === 1 ? '' : 's'} of you`}
-            >
-              <AtSign className="h-2.5 w-2.5" />
-              {task.unreadMentions > 1 && task.unreadMentions}
+
+        {/* Right column: last-activity date + notification badges (when applicable) */}
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          {at && <span className="text-[10px] text-gray-400">{at}</span>}
+          {(task.unreadMentions > 0 || task.unreadCount > 0) && !active && (
+            <span className="flex items-center gap-1">
+              {/* Unread @mention badge — visible ONLY to the mentioned user (the count is
+                  computed per-user server-side) and cleared when they open the task. */}
+              {task.unreadMentions > 0 && (
+                <span
+                  className="inline-flex items-center gap-0.5 rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700"
+                  title={`${task.unreadMentions} unread mention${task.unreadMentions === 1 ? '' : 's'} of you`}
+                >
+                  <AtSign className="h-2.5 w-2.5" />
+                  {task.unreadMentions > 1 && task.unreadMentions}
+                </span>
+              )}
+              {task.unreadCount > 0 && (
+                <span className="rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
+                  title={`${task.unreadCount} unread message${task.unreadCount === 1 ? '' : 's'}`}>{task.unreadCount}</span>
+              )}
             </span>
           )}
-          {task.unreadCount > 0 && !active && (
-            <span className="rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
-              title={`${task.unreadCount} unread message${task.unreadCount === 1 ? '' : 's'}`}>{task.unreadCount}</span>
-          )}
         </span>
-      </div>
-
-      {/* Priority + Status (+ Sent/Received direction) */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className={classNames('inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold', prio.badge)}>
-          <span className={classNames('h-1.5 w-1.5 rounded-full', prio.dot)} /> {prio.label}
-        </span>
-        <span className={classNames('inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold', st.tone)}
-          title={task.status === 'waiting' && task.waitingReason ? `Waiting: ${task.waitingReason}` : undefined}>{st.label}</span>
-        {showDirection && (
-          <span
-            className={classNames('inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold',
-              task.createdByMe ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600')}
-            title={task.createdByMe ? 'Created by me (Sent)' : 'Assigned to me (Received)'}
-          >
-            {task.createdByMe ? 'Sent' : 'Received'}
-          </span>
-        )}
-      </div>
-
-      {/* Due date + time (combined) */}
-      <div className={classNames('mt-2 flex items-center gap-1 text-[11px]', due.tone)}>
-        <Calendar className="h-3 w-3" /> {due.label}
-      </div>
-
-      {/* Owner + In-Charge */}
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
-        <span className="inline-flex items-center gap-1">
-          <User className="h-3 w-3 text-gray-400" /> Owner: <span className="font-medium text-gray-700">{task.createdBy?.name || '—'}</span>
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span aria-hidden>⭐</span> In-Charge: <span className="font-medium text-gray-700">{inChargeName}</span>
-        </span>
-      </div>
-
-      {/* Assigned members */}
-      <div className="mt-2 flex items-center gap-1.5">
-        <span className="text-[11px] text-gray-400">Members:</span>
-        <MemberAvatars members={task.members} />
       </div>
     </button>
   );
@@ -2019,7 +2014,7 @@ function WorkspaceInner() {
             </div>
 
             {/* The ONLY scroller in this column on desktop — the filters above stay put. */}
-            <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1 scrollbar-hide">
+            <div className="space-y-1.5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1 scrollbar-hide">
               {loading ? (
                 <div className="flex items-center justify-center py-16 text-gray-300"><Loader2 className="h-6 w-6 animate-spin" /></div>
               ) : error ? (
