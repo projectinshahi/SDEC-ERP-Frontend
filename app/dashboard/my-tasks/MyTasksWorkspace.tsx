@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'rea
 import { useSearchParams, useRouter } from 'next/navigation';
 import { io } from 'socket.io-client';
 import {
-  Inbox, Send, Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
+  Plus, ChevronDown, ChevronUp, Loader2, ListTodo, Search,
   Calendar, User, Users, Flag, Clock, RefreshCw, Pencil, Trash2, ShieldAlert,
   MessageCircle, Activity, BarChart3, AtSign, X, ArrowLeft,
   Star, MoreHorizontal, FileText, SlidersHorizontal, Award, LayoutGrid, List, Check,
@@ -31,15 +31,14 @@ type Bucket = 'inbox' | 'outbox' | 'all';
 const COLLAPSE_KEY = 'my-tasks-details-collapsed';
 
 /**
- * Primary navigation. Inbox/Outbox drive the workspace `bucket`; Analytics renders
- * the existing <TaskDashboard />. Kept as one list so the tab bar is a single strip,
- * but the underlying state (bucket + view) is unchanged.
+ * Primary navigation. All Tasks is the primary task view (every task the user can
+ * access per RBAC); Analytics renders the existing <TaskDashboard />. Inbox/Outbox
+ * are intentionally not surfaced as tabs — the underlying `bucket` state and their
+ * filter logic are left intact (unused) so nothing else has to change.
  */
 type TabKey = Bucket | 'analytics';
 const TABS: { key: TabKey; label: string; icon: any; hint: string }[] = [
-  { key: 'all', label: 'All', icon: ListTodo, hint: 'Every task you can access' },
-  { key: 'inbox', label: 'Inbox', icon: Inbox, hint: 'Tasks assigned to me' },
-  { key: 'outbox', label: 'Outbox', icon: Send, hint: 'Tasks I created' },
+  { key: 'all', label: 'All Tasks', icon: ListTodo, hint: 'Every task you can access' },
   { key: 'analytics', label: 'Analytics', icon: BarChart3, hint: 'Organisation-wide task analytics' },
 ];
 
@@ -123,15 +122,19 @@ function matchRead(t: MyTask, mode: ReadKey): boolean {
 
 /**
  * Instant text search across the fields a user actually looks a task up by:
- * Task Name, Creator (Owner), Task In-Charge, Assigned Members and Project.
- * Purely client-side over the already-fetched workspace payload — no API call.
+ * Task Number (the id, shown as "#123"), Task Name, Creator (Owner), Task In-Charge,
+ * Assigned Members and Project. Purely client-side over the already-fetched workspace
+ * payload — no API call (the payload is only the user's own tasks, not all tasks).
  * (Department is not part of this payload; the Analytics dashboard already has a
  * server-side Department filter, which is where that dimension is applicable.)
  */
 function matchSearch(t: MyTask, needle: string): boolean {
   if (!needle) return true;
   const inChargeName = t.inChargeId ? t.members.find((m) => m.id === t.inChargeId)?.name : null;
-  const haystack = [t.title, t.createdBy?.name, inChargeName, t.projectName, ...t.members.map((m) => m.name)];
+  // Task Number = t.id, displayed as "#{id}". Add both the raw number ("123") and the
+  // "#123" form so exact ("123"/"#123") and partial ("12") lookups both match — the
+  // same DB value that is rendered, never converted/truncated.
+  const haystack = [String(t.id), `#${t.id}`, t.title, t.createdBy?.name, inChargeName, t.projectName, ...t.members.map((m) => m.name)];
   return haystack.some((s) => !!s && s.toLowerCase().includes(needle));
 }
 
@@ -1367,7 +1370,7 @@ function WorkspaceInner() {
   const [data, setData] = useState<MyTaskWorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [bucket, setBucket] = useState<Bucket>('inbox');
+  const [bucket, setBucket] = useState<Bucket>('all');
 
   // Active tab is DERIVED from the existing state — Analytics is simply
   // view === 'dashboard'. No new state, and no duplicated Analytics implementation:
@@ -1708,9 +1711,9 @@ function WorkspaceInner() {
   return (
     <div className={classNames('mytasks-scope space-y-4', isMobile && 'pb-24')}>
       {distributionModal}
-      {/* ── Primary navigation: Inbox | Outbox | Analytics — DESKTOP/TABLET only.
-          On mobile (<768px) this is replaced by the fixed BOTTOM navigation below,
-          matching the reference. The active tab is DERIVED from `view` + `bucket`. */}
+      {/* ── Primary navigation: All Tasks | Analytics — DESKTOP/TABLET only.
+          On mobile (<768px) this is replaced by the fixed BOTTOM navigation below.
+          The active tab is DERIVED from `view` + `bucket`. */}
       {!isMobile && (
         <div className="flex items-end justify-between gap-3 border-b border-gray-200">
           <nav className="-mb-px flex items-center gap-0.5 overflow-x-auto" aria-label="My Tasks sections">
@@ -1772,8 +1775,8 @@ function WorkspaceInner() {
                 <RefreshCw className={classNames('h-4 w-4', refreshing && 'animate-spin')} />
               </button>
             )}
-            {/* New Task lives ONLY in the Outbox (tasks you create/send to others). */}
-            {view === 'workspace' && canCreate && bucket === 'outbox' && (
+            {/* New Task — available in the All Tasks view (the primary task view). */}
+            {view === 'workspace' && canCreate && (
               <button type="button" onClick={() => { setEditing(null); setModalOpen(true); }}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 sm:px-3.5">
                 <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New Task</span><span className="sm:hidden">New</span>
@@ -1919,7 +1922,7 @@ function WorkspaceInner() {
                   <input
                     value={search[bucket]}
                     onChange={(e) => setSearch((prev) => ({ ...prev, [bucket]: e.target.value }))}
-                    placeholder="Search task, creator, in-charge, member or project…"
+                    placeholder="Search task # / name, creator, in-charge, member or project…"
                     aria-label="Search tasks"
                     className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-7 text-xs text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
                   />
@@ -2098,13 +2101,11 @@ function WorkspaceInner() {
         />
       )}
 
-      {/* MOBILE (<768px): fixed BOTTOM navigation — Inbox · Outbox · Analytics · Add
-          Task (matches the reference). The details sheet (z-40) covers it when open. */}
+      {/* MOBILE (<768px): fixed BOTTOM navigation — All Tasks · Analytics · Add Task.
+          The details sheet (z-40) covers it when open. */}
       {isMobile && (
         <nav aria-label="My Tasks" className="fixed bottom-0 left-0 right-0 z-30 flex items-stretch border-t border-gray-200 bg-white shadow-[0_-1px_4px_rgba(15,23,42,0.05)]">
-          <BottomTab active={view === 'workspace' && bucket === 'all'} icon={ListTodo} label="All" count={lists.all.length} onClick={() => selectTab('all')} />
-          <BottomTab active={view === 'workspace' && bucket === 'inbox'} icon={Inbox} label="Inbox" count={lists.inbox.length} onClick={() => selectTab('inbox')} />
-          <BottomTab active={view === 'workspace' && bucket === 'outbox'} icon={Send} label="Outbox" count={lists.outbox.length} onClick={() => selectTab('outbox')} />
+          <BottomTab active={view === 'workspace' && bucket === 'all'} icon={ListTodo} label="All Tasks" count={lists.all.length} onClick={() => selectTab('all')} />
           {canViewDashboard && (
             <BottomTab active={view === 'dashboard'} icon={BarChart3} label="Analytics" onClick={() => selectTab('analytics')} />
           )}
