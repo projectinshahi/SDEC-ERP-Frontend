@@ -51,6 +51,32 @@ export interface SaveAttendancePayload {
   notes?: string | null;
 }
 
+/* ── Calendar-date normaliser (THE attendance day boundary) ───────────────────
+ * Attendance is keyed on a CALENDAR DAY. `attendance.date` is a Postgres DATE, but
+ * how it arrives here depends on the server: as TEXT ('2026-08-19') when the API
+ * uses to_char, or — if any endpoint/older build returns the raw column — as a
+ * timestamp the pg driver built at the SERVER'S LOCAL MIDNIGHT. On an IST server
+ * the stored day 2026-08-19 becomes "2026-08-18T18:30:00.000Z", so the old
+ * `.split('T')[0]` read it as 2026-08-18: the record was filed under the previous
+ * day, the real day found nothing, and the UI fell back to its virtual "Absent"
+ * row. (Verified against production: 698 intact rows, none deleted — purely a
+ * read-side day shift.)
+ *
+ * This returns the true calendar day for BOTH shapes: text passes through
+ * untouched; a timestamp is resolved with LOCAL date parts, which reverses the
+ * local-midnight encoding exactly. Never use toISOString()/split('T') on an
+ * attendance date — that is the UTC day and reintroduces the shift.
+ */
+export function attendanceYmd(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const v = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;            // already a calendar day
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v.split('T')[0] || null;
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 /* ── API functions ──────────────────────────────────────────────────────────── */
 
 /**

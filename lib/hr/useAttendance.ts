@@ -12,6 +12,7 @@ import {
   saveAttendance,
   deleteAttendance,
   fetchApprovedLeaves,
+  attendanceYmd,
   ApiAttendanceRecord,
   ApiApprovedLeave,
 } from '@/lib/api/hr-attendance';
@@ -52,7 +53,9 @@ function adaptRecord(r: ApiAttendanceRecord): AttendanceRecord {
     name: r.name ?? '',
     department: r.department ?? '',
     role: r.designation ?? '',
-    date: r.date ? r.date.split('T')[0] : TODAY,
+    // Calendar day of the record — normalised so a raw timestamp can never be
+    // read as the previous day (which made saved attendance show as "Absent").
+    date: attendanceYmd(r.date) ?? TODAY,
     morningIn: r.check_in ?? null,
     lunchOut: r.lunch_out ?? null,
     lunchIn: r.lunch_in ?? null,

@@ -988,9 +988,11 @@ function BottomTab({ active, icon: Icon, label, count, onClick }: {
   active: boolean; icon: any; label: string; count?: number; onClick: () => void;
 }) {
   return (
+    // The bar is ONE continuous glass surface: items carry NO background, pill,
+    // circle or per-item glass of their own. Active state = icon/label COLOUR only.
     <button type="button" onClick={onClick} aria-current={active ? 'page' : undefined}
-      className={classNames('flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold transition-colors',
-        active ? 'text-indigo-600' : 'text-gray-500')}>
+      className={classNames('flex flex-1 flex-col items-center justify-center gap-1 bg-transparent py-3 text-[11px] font-semibold transition-colors',
+        active ? 'text-indigo-600 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400')}>
       <span className="relative">
         <Icon className="h-5 w-5" />
         {count != null && count > 0 && (
@@ -1704,7 +1706,9 @@ function WorkspaceInner() {
   );
 
   return (
-    <div className={classNames('mytasks-scope space-y-4', isMobile && 'pb-24')}>
+    // Mobile bottom padding clears the floating nav + FAB + iOS safe area, so the
+    // last task card is always scrollable into view (nothing permanently covered).
+    <div className={classNames('mytasks-scope space-y-4', isMobile && 'pb-[calc(env(safe-area-inset-bottom,0px)+9.5rem)]')}>
       {distributionModal}
       {/* ── Primary navigation: All Tasks | Analytics — DESKTOP/TABLET only.
           On mobile (<768px) this is replaced by the fixed BOTTOM navigation below.
@@ -2096,22 +2100,52 @@ function WorkspaceInner() {
         />
       )}
 
-      {/* MOBILE (<768px): fixed BOTTOM navigation — All Tasks · Analytics · Add Task.
-          The details sheet (z-40) covers it when open. */}
+      {/* MOBILE (<768px): floating GLASS bottom navigation + floating Add Task FAB
+          above its right side (reference-matched). Same destinations, handlers and
+          badges as before — only the visual presentation changed. The details
+          sheet (z-40) covers both when open. Safe-area padding keeps the bar and
+          FAB clear of the iOS home indicator. */}
       {isMobile && (
-        <nav aria-label="My Tasks" className="fixed bottom-0 left-0 right-0 z-30 flex items-stretch border-t border-gray-200 bg-white shadow-[0_-1px_4px_rgba(15,23,42,0.05)]">
-          <BottomTab active={view === 'workspace' && bucket === 'all'} icon={ListTodo} label="All Tasks" count={lists.all.length} onClick={() => selectTab('all')} />
-          {canViewDashboard && (
-            <BottomTab active={view === 'dashboard'} icon={BarChart3} label="Analytics" onClick={() => selectTab('analytics')} />
-          )}
+        <>
+          {/* Floating + FAB — icon-only, circular liquid glass tinted with the app's
+              primary indigo so it reads as THE primary action above the neutral bar.
+              56px hit target; layered depth = blur + saturation + inner top
+              reflection + diffused tinted shadow. Same Add Task action as always. */}
           {canCreate && (
-            <button type="button" onClick={() => { setEditing(null); setModalOpen(true); }}
-              className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold text-indigo-600">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm"><Plus className="h-5 w-5" /></span>
-              Add Task
+            <button
+              type="button"
+              onClick={() => { setEditing(null); setModalOpen(true); }}
+              aria-label="Add Task"
+              className="fixed right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full border border-white/40 bg-indigo-500/75 text-white backdrop-blur-xl backdrop-saturate-150 transition active:scale-95 dark:border-indigo-300/25"
+              style={{
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.75rem)',
+                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.45), inset 0 -8px 16px rgba(49,46,129,0.25), 0 8px 24px rgba(79,70,229,0.35), 0 2px 6px rgba(15,23,42,0.15)',
+              }}
+            >
+              <Plus className="h-6 w-6" />
             </button>
           )}
-        </nav>
+          {/* ONE compound piece of liquid glass: the pill container owns the ENTIRE
+              glass treatment (blur + saturation + translucency + top-sheen gradient
+              + inner reflection + diffused shadow). Items inside are transparent —
+              never give a tab its own background/pill/circle, or the bar stops
+              reading as a single continuous surface. Active state = icon colour. */}
+          <nav
+            aria-label="My Tasks"
+            className="fixed left-4 right-4 z-30 flex items-stretch rounded-[1.75rem] border border-white/50 bg-white/55 backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-gray-900/55"
+            style={{
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+              // Light refracting across the surface — top-lit, fading to clear.
+              backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.28), rgba(255,255,255,0.04) 55%, rgba(255,255,255,0))',
+              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.55), inset 0 -1px 1px rgba(15,23,42,0.05), 0 12px 32px rgba(15,23,42,0.16), 0 2px 8px rgba(15,23,42,0.08)',
+            }}
+          >
+            <BottomTab active={view === 'workspace' && bucket === 'all'} icon={ListTodo} label="All Tasks" count={lists.all.length} onClick={() => selectTab('all')} />
+            {canViewDashboard && (
+              <BottomTab active={view === 'dashboard'} icon={BarChart3} label="Analytics" onClick={() => selectTab('analytics')} />
+            )}
+          </nav>
+        </>
       )}
 
       <CreateMyTaskModal
