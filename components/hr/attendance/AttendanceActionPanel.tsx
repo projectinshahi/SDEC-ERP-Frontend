@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/Card';
 import { ApiEmployee } from '@/lib/api/hr';
-import { ApiAttendanceRecord } from '@/lib/api/hr-attendance';
+import { ApiAttendanceRecord, attendanceYmd } from '@/lib/api/hr-attendance';
 import { AttendanceTimePicker } from './AttendanceTimePicker';
 
 /* ── Time format helpers ──────────────────────────────────────────────────── */
@@ -158,7 +158,10 @@ export function AttendanceFormPanel({
         return `${String(h).padStart(2, '0')}:${m}`;
       };
       setEmployeeId(editRecord.employee_id);
-      setDate(editRecord.date ? editRecord.date.split('T')[0] : TODAY);
+      // Normalised: editing a record must target the SAME calendar day it was
+      // saved under — a raw timestamp read as the previous day would make the
+      // update land on the wrong date (and leave the original showing Absent).
+      setDate(attendanceYmd(editRecord.date) ?? TODAY);
       setCheckIn(to24hLocal(editRecord.check_in));
       setLunchOut(to24hLocal(editRecord.lunch_out));
       setLunchIn(to24hLocal(editRecord.lunch_in));
@@ -168,7 +171,7 @@ export function AttendanceFormPanel({
       return;
     }
     const existing = allRecords.find(
-      r => r.employee_id === employeeId && r.date?.split('T')[0] === date
+      r => r.employee_id === employeeId && attendanceYmd(r.date) === date
     );
     if (existing) {
       // Employee already has a record for this date — show the real punches so
