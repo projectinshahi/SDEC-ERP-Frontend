@@ -773,7 +773,10 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   },
   {
     module: 'marketing',
-    label: 'Marketing · Content',
+    // Named for the module/tab it governs (Marketing → Content Production) so it is
+    // findable by that name in Role Management. LABEL ONLY — the permission keys are
+    // unchanged, so roles that already hold marketing.content.* are unaffected.
+    label: 'Marketing · Content Production',
     permissions: [
       { key: 'marketing.content.view', label: 'View Content', description: 'View content items', module: 'marketing' },
       { key: 'marketing.content.create', label: 'Create Content', description: 'Create content items', module: 'marketing' },

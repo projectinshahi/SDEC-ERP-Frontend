@@ -11,6 +11,8 @@ import {
   Loader2,
   CheckSquare,
   Square,
+  Search,
+  X,
 } from 'lucide-react';
 import { createRoleApi, updateRoleApi } from '@/lib/api/roles';
 import { PERMISSION_GROUPS, ALL_PERMISSION_KEYS } from '@/lib/permissions/permissions.constants';
@@ -19,23 +21,56 @@ import { classNames } from '@/lib/utils';
 import { useToast } from '@/lib/hooks/useToast';
 
 // ── Module filter (focuses the permission list by product area) ──────────────
-type ModuleFilter = 'all' | 'development' | 'sales' | 'hr' | 'finance';
+// Values match `PermissionGroup.module`, so a new module only needs its entry here
+// (its groups are picked up by the generic filter below — no per-module code).
+type ModuleFilter = 'all' | 'development' | 'sales' | 'hr' | 'finance' | 'marketing';
 const MODULE_FILTERS: { value: ModuleFilter; label: string }[] = [
   { value: 'all', label: 'All Modules' },
   { value: 'development', label: 'Development' },
   { value: 'sales', label: 'Sales' },
+  { value: 'marketing', label: 'Marketing' },
   { value: 'hr', label: 'HR' },
   { value: 'finance', label: 'Finance' },
 ];
 // Permission groups that belong to the Development product area.
 const DEV_MODULES: string[] = ['dashboard', 'task', 'bugs', 'tickets', 'sprints', 'blockers', 'meetings', 'project'];
 
+/**
+ * Narrow the permission list by module AND free-text search.
+ *
+ * Search matches the group label (module/feature area, e.g. "Marketing · Content
+ * Production"), the permission label, its description and its key — so "marketing",
+ * "content", "lead" and "view" all work. A group whose LABEL matches keeps all of
+ * its permissions; otherwise only its matching permissions are kept.
+ *
+ * This filters DISPLAY ONLY. Selection lives in `formData.permissions`, which is
+ * never touched here, and every mutation below (`toggleGroup` / `toggleAll`) adds
+ * or removes only the keys currently visible — so permissions selected outside the
+ * current search/module stay selected, and clearing the search brings them back.
+ */
+function searchPermissionGroups(groups: typeof PERMISSION_GROUPS, term: string) {
+  const q = term.trim().toLowerCase();
+  if (!q) return groups;
+  const out: typeof PERMISSION_GROUPS = [];
+  for (const g of groups) {
+    if (g.label.toLowerCase().includes(q) || g.module.toLowerCase().includes(q)) { out.push(g); continue; }
+    const perms = g.permissions.filter((p) =>
+      p.label.toLowerCase().includes(q) ||
+      p.key.toLowerCase().includes(q) ||
+      String(p.description ?? '').toLowerCase().includes(q));
+    if (perms.length) out.push({ ...g, permissions: perms });
+  }
+  return out;
+}
+
 function filterPermissionGroups(filter: ModuleFilter) {
   if (filter === 'all') return PERMISSION_GROUPS;
   if (filter === 'sales') return PERMISSION_GROUPS.filter((g) => g.module === 'sales');
   if (filter === 'development') return PERMISSION_GROUPS.filter((g) => DEV_MODULES.includes(g.module));
-  // 'hr' / 'finance' — future modules; their (grantable) permission groups drive
-  // the module-card visibility on the Modules page.
+  // Every other module (marketing / hr / finance) tags its groups with its own
+  // `module` value, so this generic match covers them — including Marketing ·
+  // Content Production. A module with no groups yet falls through to the
+  // "reserved for a future module" empty state below.
   return PERMISSION_GROUPS.filter((g) => g.module === filter);
 }
 
@@ -82,6 +117,8 @@ export function CreateRoleModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>('all');
+  // Free-text permission search. Display-only: it never mutates the selection.
+  const [permSearch, setPermSearch] = useState('');
   const { toast } = useToast();
 
   // Reset / populate form when modal opens
@@ -101,6 +138,7 @@ export function CreateRoleModal({
       setTouched({});
       setSubmitError(null);
       setModuleFilter('all');
+      setPermSearch('');
     }
   }, [isOpen, roleToEdit]);
 
@@ -155,8 +193,8 @@ export function CreateRoleModal({
     handleFieldChange('permissions', next);
   };
 
-  // Permission groups currently shown (after the module filter) + their keys.
-  const visibleGroups = filterPermissionGroups(moduleFilter);
+  // Permission groups currently shown (module filter THEN search) + their keys.
+  const visibleGroups = searchPermissionGroups(filterPermissionGroups(moduleFilter), permSearch);
   const visibleKeys = visibleGroups.flatMap((g) => g.permissions.map((p) => p.key));
 
   // "Select all" acts on the VISIBLE permissions, so it respects the filter.
@@ -304,6 +342,29 @@ export function CreateRoleModal({
                   </p>
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-center">
+                  {/* Permission search — module name, permission name or feature.
+                      Filters the DISPLAYED list only; selections are untouched. */}
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={permSearch}
+                      onChange={(e) => setPermSearch(e.target.value)}
+                      placeholder="Search permissions..."
+                      aria-label="Search permissions"
+                      className="w-48 rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-7 text-xs font-semibold text-gray-700 placeholder:font-normal placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                    {permSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setPermSearch('')}
+                        aria-label="Clear permission search"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                   {/* Module filter — focus the list by product area */}
                   <select
                     value={moduleFilter}
@@ -338,12 +399,33 @@ export function CreateRoleModal({
               {/* Permission groups */}
               <div className="max-h-[320px] overflow-y-auto pr-1 border border-gray-200/80 rounded-xl p-4 divide-y divide-gray-100/70 space-y-5 bg-white shadow-inner">
                 {visibleGroups.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <p className="text-sm font-semibold text-gray-500">
-                      {MODULE_FILTERS.find((f) => f.value === moduleFilter)?.label} is reserved for a future module.
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">No permissions are available here yet.</p>
-                  </div>
+                  permSearch.trim() ? (
+                    /* Search miss — distinct from the "future module" state, and it
+                       reassures the admin that nothing was deselected. */
+                    <div className="py-10 text-center">
+                      <p className="text-sm font-semibold text-gray-500">
+                        No permissions match &ldquo;{permSearch.trim()}&rdquo;
+                        {moduleFilter !== 'all' && <> in {MODULE_FILTERS.find((f) => f.value === moduleFilter)?.label}</>}.
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Your {formData.permissions.length} selected permission{formData.permissions.length === 1 ? '' : 's'} {formData.permissions.length === 1 ? 'is' : 'are'} still selected.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setPermSearch('')}
+                        className="mt-3 text-xs font-bold text-blue-600 hover:underline"
+                      >
+                        Clear search
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center">
+                      <p className="text-sm font-semibold text-gray-500">
+                        {MODULE_FILTERS.find((f) => f.value === moduleFilter)?.label} is reserved for a future module.
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">No permissions are available here yet.</p>
+                    </div>
+                  )
                 ) : visibleGroups.map((group, idx) => {
                   const groupKeys = group.permissions.map((p) => p.key);
                   const selectedInGroup = groupKeys.filter((k) =>

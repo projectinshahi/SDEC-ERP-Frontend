@@ -8,7 +8,7 @@ import { Breadcrumb } from '@/components/Breadcrumb';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { ROUTES } from '@/lib/constants';
-import { Plus, Edit, Trash2, Lock, Shield, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Lock, Shield, Loader2, AlertCircle, Search, X } from 'lucide-react';
 import { fetchRolesApi } from '@/lib/api/roles';
 import { CreateRoleModal } from '@/components/user-management/CreateRoleModal';
 
@@ -27,6 +27,7 @@ export function RolesClient() {
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleData | null>(null);
+  const [search, setSearch] = useState('');
 
   const loadRoles = async () => {
     setIsLoading(true);
@@ -49,6 +50,17 @@ export function RolesClient() {
   useEffect(() => {
     loadRoles();
   }, []);
+
+  // Role search — client-side over the already-loaded list (the roles endpoint
+  // returns the full set), so it is instant and cannot break loading/CRUD. Matches
+  // the fields the card actually shows: name + description. Case-insensitive,
+  // partial; an empty/whitespace term restores the complete list.
+  const term = search.trim().toLowerCase();
+  const visibleRoles = term
+    ? roles.filter((r) =>
+        String(r.name ?? '').toLowerCase().includes(term) ||
+        String(r.description ?? '').toLowerCase().includes(term))
+    : roles;
 
   const getPermissionCount = (perms: any): number => {
     if (Array.isArray(perms)) {
@@ -112,6 +124,38 @@ export function RolesClient() {
           </Button>
         </PermissionGuard>
       </section>
+
+      {/* Role search — find a role by name or description */}
+      {!isLoading && !error && roles.length > 0 && (
+        <div className="mb-6 flex items-center gap-3 animate-fade-in">
+          <div className="relative flex-1 max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search roles by name or description…"
+              aria-label="Search roles"
+              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-9 text-sm text-gray-700 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          {term && (
+            <span className="text-sm text-gray-500">
+              {visibleRoles.length} of {roles.length} role{roles.length === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Error Alert Box */}
       {error && (
@@ -185,10 +229,25 @@ export function RolesClient() {
             Create Your First Role
           </Button>
         </Card>
+      ) : visibleRoles.length === 0 ? (
+        /* No search matches — distinct from "no roles configured" so the real
+           empty state (and its Create CTA) is never shown for a failed search. */
+        <Card variant="outlined" className="p-12 text-center max-w-xl mx-auto border-dashed border-2 border-gray-200 rounded-2xl animate-fade-in shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 mx-auto mb-4">
+            <Search size={32} />
+          </div>
+          <h3 className="text-lg font-bold text-gray-800">No roles match “{search.trim()}”</h3>
+          <p className="text-gray-500 text-sm mt-2 max-w-sm mx-auto">
+            Try a different name, or clear the search to see all {roles.length} roles.
+          </p>
+          <Button variant="secondary" size="md" onClick={() => setSearch('')} className="mt-6">
+            Clear search
+          </Button>
+        </Card>
       ) : (
         /* Roles Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {roles.map((role, index) => (
+          {visibleRoles.map((role, index) => (
             <div
               key={role.id}
               className="flex flex-col"
