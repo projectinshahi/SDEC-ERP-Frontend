@@ -137,7 +137,16 @@ export default function SalesLeadsPage() {
   // scope is pinned to self — the backend enforces the same rule, so this is
   // affordance-hiding, not the security boundary.
   const canViewAllLeads = hasPermission('sales.leads.view_all');
-  
+  // The Pipeline's RESTING owner scope — one source for the default, the URL
+  // "not applied" value and the Clear action, so they can never disagree.
+  // A holder of "View All Leads" opens on ALL owners: that is precisely what the
+  // permission grants. Defaulting them to their own id (the old behaviour) sent
+  // ?ownerId=<me> on every load, so the backend correctly returned only their
+  // leads and the permission looked like it was being ignored. Without the
+  // permission the scope stays pinned to self — and the backend enforces that
+  // independently, so this is the affordance, never the security boundary.
+  const defaultOwnerScope = canViewAllLeads ? 'all' : (meId || 'all');
+
   const [isExporting, setIsExporting] = useState(false);
 
   // Every persisted Pipeline filter, in ONE place. Add a filter here and it is
@@ -149,10 +158,10 @@ export default function SalesLeadsPage() {
     { key: 'search', value: searchQuery, set: setSearchQuery, empty: '' },
     { key: 'source', value: sourceFilter, set: setSourceFilter, empty: 'all' },
     { key: 'stage', value: stageFilter, set: setStageFilter, empty: 'all' },
-    // `empty` is MY id, not 'all': my own Opportunities are the Pipeline's resting
-    // state, so Clear All returns here and only an explicit "All Owners" (or another
-    // user) is written to the URL as a deliberate deviation.
-    { key: 'owner', value: ownerFilter, set: setOwnerFilter, empty: meId || 'all', advanced: true },
+    // `empty` = the Pipeline's resting owner scope (all owners for a "View All
+    // Leads" holder, otherwise my own). Clear All returns here, and only a
+    // deliberate deviation from it is written to the URL.
+    { key: 'owner', value: ownerFilter, set: setOwnerFilter, empty: defaultOwnerScope, advanced: true },
     { key: 'location', value: locationFilter, set: setLocationFilter, empty: '', advanced: true },
     { key: 'temperature', value: temperatureFilter, set: setTemperatureFilter, empty: 'all', advanced: true },
     { key: 'district', value: districtFilter, set: setDistrictFilter, empty: 'all', advanced: true },
@@ -213,11 +222,11 @@ export default function SalesLeadsPage() {
   // Opportunities, which is the Pipeline's resting state.
   const activeFilters: { key: string; label: string; display: string; clear: () => void }[] = [
     ...(searchQuery.trim() ? [{ key: 'search', label: 'Search', display: `"${searchQuery.trim()}"`, clear: () => setSearchQuery('') }] : []),
-    ...(ownerFilter && ownerFilter !== (meId || 'all')
+    ...(ownerFilter && ownerFilter !== defaultOwnerScope
       ? [{
           key: 'owner', label: 'Owner',
           display: ownerFilter === 'all' ? 'All Owners' : (owners.find((o) => String(o.id) === ownerFilter)?.name ?? ownerFilter),
-          clear: () => setOwnerFilter(meId || 'all'),
+          clear: () => setOwnerFilter(defaultOwnerScope),
         }] : []),
     ...(viewMode === 'table' && stageFilter !== 'all' ? [{ key: 'stage', label: 'Stage', display: stageFilter, clear: () => setStageFilter('all') }] : []),
     ...(temperatureFilter !== 'all'
@@ -278,11 +287,11 @@ export default function SalesLeadsPage() {
         if (saved !== null) f.set(saved);
       }
       // Owner has no "unset" state: an explicit ?owner wins, otherwise the Pipeline
-      // opens on MY Opportunities. Falls back to 'all' only if the user is unknown,
-      // where the backend's RBAC scoping still applies. Without view-all the ?owner
-      // param is ignored outright, so a hand-edited URL can't widen the scope.
+      // opens on its resting scope — ALL owners for a "View All Leads" holder, my
+      // own otherwise. Without view-all the ?owner param is ignored outright, so a
+      // hand-edited URL can't widen the scope (the backend rejects it regardless).
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOwnerFilter(canViewAllLeads ? (p.get('owner') ?? (meId || 'all')) : (meId || 'all'));
+      setOwnerFilter(canViewAllLeads ? (p.get('owner') ?? defaultOwnerScope) : defaultOwnerScope);
       // Seed the applied term from the url so the restored search fetches ONCE.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setAppliedSearch(p.get('search') ?? '');
