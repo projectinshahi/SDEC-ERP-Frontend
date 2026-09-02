@@ -335,24 +335,53 @@ export function buildLeadReportDoc(
   const barX = M + 46;
   const barMax = 210;
   const numX = barX + barMax + 12;
+  // Funnel vertical rhythm — ONE place owns every gap in a sub-funnel, so the
+  // spacing is identical for both views and for any number of stages:
+  //   sub-heading → column headers → rows → TOTAL → (next view)
+  const SUB_HEAD_H = 13;      // accent bar / heading band height
+  const GAP_HEAD_COLS = 14;   // heading band  → column headers  (was ~1pt: they touched)
+  const GAP_COLS_ROWS = 12;   // column headers → first bar row
+  const ROW_H = 19;           // one bar row
+  const GAP_ROWS_TOTAL = 8;   // last row → TOTAL separator
+  const TOTAL_ROW_H = 26;     // separator + TOTAL text + trailing (old brk(22) under-reserved this)
+  const GAP_VIEWS = 16;       // TOTAL of one view → heading of the next view
+
   const drawSubFunnel = (
     label: string,
     view: { funnel: { stage: string; opportunities: number; value: number; conversionToNext: number | null }[]; totalOpportunities: number; totalValue: number },
   ) => {
-    brk(30);
+    // Keep the sub-heading with its column headers AND the first data row: a
+    // heading strand alone at a page foot is what made a section look like it had
+    // collided with the previous one. Reserve the real measured height, not a guess.
+    brk(SUB_HEAD_H + GAP_HEAD_COLS + GAP_COLS_ROWS + ROW_H);
     // View sub-header (ALL / ₹2L+) with its own totals.
-    fill(C.violet); doc.roundedRect(M, y, 3.5, 13, 1.5, 1.5, 'F');
-    ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.text(label, M + 9, y + 10);
+    fill(C.violet); doc.roundedRect(M, y, 3.5, SUB_HEAD_H, 1.5, 1.5, 'F');
+    ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+    const labelX = M + 9;
+    doc.text(label, labelX, y + 10);
+    // The totals are placed AFTER the MEASURED label width — never at a fixed x.
+    // A fixed x (M+70) was the overlap: "ALL" (18pt) cleared it, but
+    // "Rs. 2L+  (>= Rs. 2,00,000)" is ~113pt wide and printed straight through it.
+    const labelW = doc.getTextWidth(label);
     ink(C.sub); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
-    doc.text(`${view.totalOpportunities} opportunities  ·  ${inrC(view.totalValue)}`, M + 70, y + 10);
-    y += 18;
-    // Column headers.
+    const totalsTxt = `${view.totalOpportunities} opportunities  ·  ${inrC(view.totalValue)}`;
+    const totalsX = labelX + labelW + 14;
+    if (totalsX + doc.getTextWidth(totalsTxt) <= M + W) {
+      doc.text(totalsTxt, totalsX, y + 10);
+      y += SUB_HEAD_H + GAP_HEAD_COLS;
+    } else {
+      // Too wide to share the heading line (long label / big numbers) — drop the
+      // totals onto their own line instead of overprinting the heading.
+      doc.text(totalsTxt, labelX, y + SUB_HEAD_H + 9);
+      y += SUB_HEAD_H + 11 + GAP_HEAD_COLS;
+    }
+    // Column headers — same x anchors as the rows below (STAGE · OPPS · VALUE · CONV).
     ink(C.sub); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
     doc.text('STAGE', M, y); doc.text('OPPS', numX, y); doc.text('VALUE', numX + 70, y); doc.text('CONV →', numX + 150, y);
-    y += 10;
+    y += GAP_COLS_ROWS;
     const maxO = Math.max(...view.funnel.map((f) => f.opportunities), 1);
     for (const fst of view.funnel) {
-      brk(20);
+      brk(ROW_H);
       const col = stageColors[fst.stage] || C.primary;
       ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text(fst.stage, M, y + 11);
       fill(C.line); doc.roundedRect(barX, y + 3, barMax, 12, 3, 3, 'F');
@@ -363,20 +392,23 @@ export function buildLeadReportDoc(
       doc.text(inrC(fst.value), numX + 70, y + 12);
       ink(fst.conversionToNext != null ? C.green : C.sub);
       doc.text(fst.conversionToNext != null ? `${fst.conversionToNext}%` : '—', numX + 150, y + 12);
-      y += 19;
+      y += ROW_H;
     }
-    // Per-view total row.
-    brk(22);
-    stroke(C.line); doc.setLineWidth(0.8); doc.line(M, y + 1, M + W, y + 1); y += 6;
+    // Per-view total row — reserved at its TRUE height so it can never spill past
+    // the bottom margin and get overrun by whatever is placed next.
+    brk(GAP_ROWS_TOTAL + TOTAL_ROW_H);
+    y += GAP_ROWS_TOTAL - 7;
+    stroke(C.line); doc.setLineWidth(0.8); doc.line(M, y + 1, M + W, y + 1); y += 8;
     ink(C.ink); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
     doc.text('TOTAL', M, y + 10);
     doc.text(String(view.totalOpportunities), numX, y + 10);
     doc.text(inrC(view.totalValue), numX + 70, y + 10);
     ink(C.sub); doc.setFont('helvetica', 'normal'); doc.text('—', numX + 150, y + 10);
-    y += 20;
+    // End at the TRUE content bottom; GAP_VIEWS / SECTION_GAP own the space after.
+    y += 15;
   };
   drawSubFunnel('ALL', vr.all);
-  y += 8;
+  y += GAP_VIEWS;
   drawSubFunnel(`Rs. 2L+  (>= ${inrC(vr.threshold)})`, vr.highValue);
 
   // ── 7 · WON Revenue Trend — Target vs WON across the selected range ─────────
