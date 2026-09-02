@@ -65,6 +65,22 @@ export function pipelineListHref(): string {
 }
 
 /**
+ * Do two query strings describe the SAME filtered view? Compared as parameter
+ * sets, not raw text, so a re-ordered/re-serialised query ("?owner=7&view=table"
+ * vs "?view=table&owner=7") still counts as the same view. A raw !== compare made
+ * scroll restoration silently skip whenever the list's URL-sync effect rewrote the
+ * parameters in a different order than they were saved in.
+ */
+export function sameQuery(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    [...new URLSearchParams(s.startsWith('?') ? s.slice(1) : s).entries()]
+      .sort(([k1, v1], [k2, v2]) => k1.localeCompare(k2) || v1.localeCompare(v2))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('&');
+  return norm(a) === norm(b);
+}
+
+/**
  * Neighbours of `id` within the remembered order. Both null when the id isn't in
  * the list (opened directly, or filtered out since), so the caller hides the controls.
  */

@@ -28,7 +28,7 @@ import {
 import { LeadHealthBadge } from '@/components/leads/LeadHealthBadge';
 import { TEMPERATURE_OPTIONS } from '@/lib/data/leadTemperature';
 import { DISTRICTS } from '@/lib/data/districts';
-import { savePipelineState, readPipelineState } from '@/lib/utils/pipelineState';
+import { savePipelineState, readPipelineState, sameQuery } from '@/lib/utils/pipelineState';
 import { formatINR } from '@/lib/utils/currency';
 import { classNames } from '@/lib/utils';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
@@ -474,23 +474,65 @@ export default function SalesLeadsPage() {
     });
   }, [shownIds, restored]);
 
-  // Scroll offset is captured on the way out (route change unmounts this page),
-  // then restored below once the list has rendered.
+  // Scroll offset is tracked CONTINUOUSLY, never read at unmount.
+  //
+  // Opening a lead navigates to Details, and Next scrolls the window to the top of
+  // the incoming page as part of that navigation ("if the Page is not visible in
+  // the viewport, Next.js will scroll to the top of the first Page element"). That
+  // reset lands BEFORE this page's cleanup ran, so reading `window.scrollY` there
+  // captured 0 — a 0 offset is then skipped by the restore guard below, which is
+  // exactly why the list always came back at the top after viewing/editing a lead.
+  // A passive, rAF-throttled listener keeps the last real offset instead, so the
+  // saved value can't be clobbered by the navigation's own scrolling.
+  const scrollYRef = useRef(0);
   useEffect(() => {
     if (!restored) return;
-    return () => savePipelineState({ scrollY: window.scrollY });
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        scrollYRef.current = window.scrollY;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (frame) cancelAnimationFrame(frame);
+      savePipelineState({ scrollY: scrollYRef.current });
+    };
   }, [restored]);
 
-  // Restore the scroll offset only when re-entering the SAME filtered view — a
-  // fresh visit or a different filter set must start at the top.
+  // Restore the offset only when re-entering the SAME filtered view — a fresh
+  // visit or a different filter set must start at the top.
   const restoredScrollRef = useRef(false);
   useEffect(() => {
     if (restoredScrollRef.current || isLoading || !restored || leads.length === 0) return;
-    restoredScrollRef.current = true;
     const saved = readPipelineState();
-    if (saved.scrollY > 0 && saved.search === window.location.search) {
-      window.scrollTo({ top: saved.scrollY });
+    // Nothing to restore for this view — settle here so a later render can't
+    // re-trigger and yank the user around after they've started scrolling.
+    if (!(saved.scrollY > 0) || !sameQuery(saved.search, window.location.search)) {
+      restoredScrollRef.current = true;
+      return;
     }
+    restoredScrollRef.current = true;
+    // The rows exist in the DOM by this effect, but the document can still be
+    // shorter than the target for a frame or two while the list paints. Wait on
+    // ANIMATION FRAMES for the real rendered height (never a fixed setTimeout,
+    // which either fires early — clamping to a short page — or shows a jump), then
+    // set the offset in one go: an instant, non-smooth jump with no visible travel.
+    let raf = 0;
+    let frames = 0;
+    const apply = () => {
+      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      if (maxY >= saved.scrollY || frames++ > 20) {
+        window.scrollTo(0, Math.min(saved.scrollY, maxY));
+        return;
+      }
+      raf = requestAnimationFrame(apply);
+    };
+    raf = requestAnimationFrame(apply);
+    return () => cancelAnimationFrame(raf);
   }, [isLoading, restored, leads.length]);
 
   const totalPipelineValue = useMemo(() => {
