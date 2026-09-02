@@ -128,6 +128,9 @@ export function UserManagementClient() {
 
   // Filters
   const [search, setSearch] = useState('');
+  // Roles tab has its OWN search term — sharing `search` with the Users tab would
+  // make a user query silently filter the roles list when switching tabs.
+  const [roleSearch, setRoleSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [dateFilter, setDateFilter] = useState('ALL');
@@ -239,6 +242,17 @@ export function UserManagementClient() {
     });
     return rows;
   }, [users, search, roleFilter, statusFilter, dateFilter, sortBy]);
+
+  // Roles tab list — filtered from the SAME `roles` state the table renders, so
+  // there is no second data source. Partial + case-insensitive over the fields the
+  // table shows (name, description). Empty term => the complete list.
+  const filteredRoles = useMemo(() => {
+    const q = roleSearch.trim().toLowerCase();
+    if (!q) return roles;
+    return roles.filter((r) =>
+      String(r.name ?? '').toLowerCase().includes(q) ||
+      String(r.description ?? '').toLowerCase().includes(q));
+  }, [roles, roleSearch]);
 
   const activeFilterCount = (roleFilter !== 'ALL' ? 1 : 0) + (statusFilter !== 'ALL' ? 1 : 0)
     + (dateFilter !== 'ALL' ? 1 : 0) + (search.trim() ? 1 : 0);
@@ -515,7 +529,48 @@ export function UserManagementClient() {
           {isLoading ? (
             <div className="py-16 text-center"><div className="inline-block animate-spin rounded-full h-7 w-7 border-b-2 border-violet-600" /></div>
           ) : (
-            <RoleTable roles={roles} onEdit={(r) => { setEditingRole(r); setIsRoleModalOpen(true); }} onDelete={(id) => { const r = roles.find((x) => x.id === id); if (r) setRoleToDelete(r); }} />
+            <>
+              {/* Role search — client-side over the loaded roles (same data the
+                  table renders; no second source). Partial + case-insensitive. */}
+              <div className="mb-4 flex items-center gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={roleSearch}
+                    onChange={(e) => setRoleSearch(e.target.value)}
+                    placeholder="Search roles by name or description..."
+                    aria-label="Search roles"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-9 text-sm text-slate-700 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                  />
+                  {roleSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setRoleSearch('')}
+                      aria-label="Clear role search"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {roleSearch.trim() && (
+                  <span className="text-sm text-slate-500">
+                    {filteredRoles.length} of {roles.length} role{roles.length === 1 ? '' : 's'}
+                  </span>
+                )}
+              </div>
+              {filteredRoles.length === 0 ? (
+                <div className="py-14 text-center">
+                  <p className="text-sm font-medium text-slate-600">No roles match &ldquo;{roleSearch.trim()}&rdquo;</p>
+                  <button type="button" onClick={() => setRoleSearch('')} className="mt-2 text-sm font-semibold text-violet-600 hover:underline">
+                    Clear search
+                  </button>
+                </div>
+              ) : (
+                <RoleTable roles={filteredRoles} onEdit={(r) => { setEditingRole(r); setIsRoleModalOpen(true); }} onDelete={(id) => { const r = roles.find((x) => x.id === id); if (r) setRoleToDelete(r); }} />
+              )}
+            </>
           )}
         </div>
       )}
