@@ -65,7 +65,7 @@ export function normalizeRole(value?: string | null): string {
  */
 export interface AppModuleDef {
   /** Stable key. Core modules reuse the TopModule names; future ones add new keys. */
-  key: TopModule | 'hr' | 'finance' | 'crm' | 'inventory';
+  key: TopModule | 'hr' | 'finance' | 'crm' | 'inventory' | 'mytasks';
   title: string;
   description: string;
   /** lucide-react icon name, resolved to a component on the Modules page. */
@@ -80,6 +80,13 @@ export interface AppModuleDef {
   fallbackHref?: string;
   /** Built but not yet routed → card shows "Coming soon" and is non-navigable. */
   future?: boolean;
+  /**
+   * GLOBAL utility module — available to EVERY authenticated user, exactly like the
+   * `global: true` sidebar items (My Tasks / Notice / My Attendance). Visibility is
+   * not permission-prefix driven, and it is NOT part of any module's sidebar tree,
+   * so it routes straight to `fallbackHref`. Data inside stays permission-scoped.
+   */
+  global?: boolean;
 }
 
 export const APP_MODULES: AppModuleDef[] = [
@@ -134,6 +141,16 @@ export const APP_MODULES: AppModuleDef[] = [
     description: 'Campaigns, leads, content & analytics.',
     prefixes: ['marketing.'], topModule: 'marketing', fallbackHref: '/dashboard/marketing',
   },
+  {
+    // My Tasks — the standalone personal-task workspace. Mirrors its EXISTING
+    // sidebar registration (module: null + global: true + no permission), so the
+    // card is offered to every authenticated user and can never be hidden by a
+    // missing permission. No `topModule`: it is not part of any module's sidebar
+    // tree, so it opens directly on its own existing route.
+    key: 'mytasks', title: 'My Tasks', icon: 'ListTodo', accent: 'indigo',
+    description: 'Your personal tasks, discussions & attachments.',
+    prefixes: ['mytasks.'], global: true, fallbackHref: '/dashboard/my-tasks',
+  },
 ];
 
 /**
@@ -150,6 +167,7 @@ export function isModuleVisible(user: ModuleAccessUser | null | undefined, m: Ap
   const isSuper = r === 'superadmin';
   if (isSuper) return true;
   if (m.superAdminOnly) return false;
+  if (m.global) return true; // global utility (My Tasks): every authenticated user
   if ((r === 'admin') && !m.future) return true; // global admin bypass for live core modules
   return m.prefixes.some((pre) => perms.some((p) => p.startsWith(pre)));
 }
@@ -183,6 +201,9 @@ export function getModuleAccess(user: ModuleAccessUser | null | undefined): Reco
 
   const result = {} as Record<TopModule, boolean>;
   for (const m of APP_MODULES) {
+    // Global utility modules have no TopModule route guard — skip them so they
+    // never add a stray key to this Record.
+    if (!m.topModule) continue;
     if (m.key in result) continue; // skip duplicate keys (e.g. 'hr' appears in TopModule union)
     result[m.key as TopModule] = isModuleVisible(user, m);
   }
