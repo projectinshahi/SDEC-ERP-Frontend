@@ -14,7 +14,7 @@ import { classNames } from '@/lib/utils';
 
 /** Maps the registry's icon NAME to a lucide component (registry stays icon-agnostic). */
 const ICON_MAP: Record<string, LucideIcon> = {
-  ShieldCheck, Briefcase, Code2, Users, UserCog, Wallet, Megaphone,
+  ShieldCheck, Briefcase, Code2, Users, UserCog, Wallet, Megaphone, ListTodo,
 };
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -105,12 +105,16 @@ export default function ModulesPage() {
         icon: ICON_MAP[m.icon] ?? Building2,
         accent: m.accent,
         future: !!m.future,
+        global: !!m.global,
       };
       // Future modules: shown but non-navigable ("Coming soon").
       if (m.future) return [{ ...base, href: null as string | null }];
       // Master has no entries in SIDEBAR_ITEMS; it is SuperAdmin-only and routes
       // straight to its own dashboard.
       if (m.superAdminOnly) return [{ ...base, href: (m.fallbackHref ?? '/master-dashboard') as string | null }];
+      // Global utilities (My Tasks): not part of any module's sidebar tree, so
+      // firstAccessibleHref does not apply — open their own existing route.
+      if (m.global) return [{ ...base, href: (m.fallbackHref ?? null) as string | null }];
       // Core modules: land on the first page the user can ACTUALLY access. If none
       // is reachable (e.g. a create-only permission, or sprints/tickets with no
       // standalone page), hide the card entirely instead of showing one that
@@ -129,7 +133,10 @@ export default function ModulesPage() {
   useEffect(() => {
     if (isLoading || !isAuthenticated || !user) return;
     if (user.mustChangePassword) return; // handled by the auth redirect above
-    const navigableModules = modules.filter((m) => m.href);
+    // Global utilities (My Tasks) are available to EVERYONE, so they must not
+    // count here — otherwise a single-module user (e.g. Sales-only) would stop
+    // auto-redirecting and get stuck on this selection screen.
+    const navigableModules = modules.filter((m) => m.href && !m.global);
     if (navigableModules.length === 1 && navigableModules[0].href) {
       router.replace(navigableModules[0].href);
     }

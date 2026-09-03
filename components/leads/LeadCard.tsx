@@ -72,6 +72,7 @@ export function LeadCard({ lead, draggable, isDragging, onDragStart, onDragEnd, 
   return (
     <div
       draggable={draggable}
+      data-lead-id={lead.id}
       onDragStart={(e) => {
         onDragStart(lead.id);
         e.dataTransfer.setData('text/plain', String(lead.id));

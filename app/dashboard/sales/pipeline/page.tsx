@@ -28,7 +28,7 @@ import {
 import { LeadHealthBadge } from '@/components/leads/LeadHealthBadge';
 import { TEMPERATURE_OPTIONS } from '@/lib/data/leadTemperature';
 import { DISTRICTS } from '@/lib/data/districts';
-import { savePipelineState, readPipelineState, sameQuery } from '@/lib/utils/pipelineState';
+import { savePipelineState, readPipelineState, sameQuery, getScrollParent, getScrollTop, getMaxScroll, setScrollTop, readAnchor, restoreToAnchor } from '@/lib/utils/pipelineState';
 import { formatINR } from '@/lib/utils/currency';
 import { classNames } from '@/lib/utils';
 import type { Lead, LeadStage, AssignableUser } from '@/lib/types/lead';
@@ -67,6 +67,16 @@ interface SourceAnalytics {
 const OFF_BOARD_STATUSES = ['converted', 'disqualified'];
 
 type ViewMode = 'table' | 'pipeline';
+
+/** Scroll-retention tracing. OFF by default; enable for one tab with:
+ *    sessionStorage.setItem('pipeline:debug','1')   (then reload) */
+function pipeDebug(label: string, data: Record<string, unknown>) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (sessionStorage.getItem('pipeline:debug') !== '1') return;
+    console.log(`[pipeline-scroll] ${label}`, data);
+  } catch { /* private mode */ }
+}
 
 export default function SalesLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -474,34 +484,66 @@ export default function SalesLeadsPage() {
     });
   }, [shownIds, restored]);
 
-  // Scroll offset is tracked CONTINUOUSLY, never read at unmount.
+  // ── Scroll retention ──────────────────────────────────────────────────────
+  // ROOT CAUSE this fixes: the page content does NOT scroll the window. The
+  // dashboard shell is `h-screen` with an `overflow-hidden` column and a single
+  // `<main className="flex-1 overflow-y-auto">` (components/Layout.tsx), so the
+  // document never scrolls: `window.scrollY` is permanently 0 and
+  // `window.scrollTo()` is a no-op. Reading/writing window scroll therefore saved
+  // 0 and restored nothing — the list always came back at the top.
+  // `getScrollParent` resolves the element that actually scrolls (here `<main>`),
+  // walking up from the page root so it survives shell/layout changes.
   //
-  // Opening a lead navigates to Details, and Next scrolls the window to the top of
-  // the incoming page as part of that navigation ("if the Page is not visible in
-  // the viewport, Next.js will scroll to the top of the first Page element"). That
-  // reset lands BEFORE this page's cleanup ran, so reading `window.scrollY` there
-  // captured 0 — a 0 offset is then skipped by the restore guard below, which is
-  // exactly why the list always came back at the top after viewing/editing a lead.
-  // A passive, rAF-throttled listener keeps the last real offset instead, so the
-  // saved value can't be clobbered by the navigation's own scrolling.
+  // The offset is also tracked CONTINUOUSLY rather than read in the cleanup:
+  // navigation performs its own scrolling, so an offset sampled at unmount can
+  // already have been reset.
+  const listRootRef = useRef<HTMLDivElement | null>(null);
+  const scrollElRef = useRef<HTMLElement | null>(null);
   const scrollYRef = useRef(0);
+  const anchorRef = useRef<{ anchorId: number | null; anchorOffset: number }>({ anchorId: null, anchorOffset: 0 });
   useEffect(() => {
-    if (!restored) return;
+    // Listen on DOCUMENT in the CAPTURE phase. Scroll events do not bubble, but they
+    // DO run capture listeners on ancestors — so this sees scrolling from whatever
+    // element actually scrolls, and `event.target` IS that element.
+    //
+    // This deliberately does NOT try to resolve the container up front. Two earlier
+    // attempts failed exactly there: (1) the element was resolved as `window`, which
+    // never scrolls in this shell, and (2) resolving from `listRootRef` returned null
+    // because PermissionPageGuard renders a SPINNER instead of children while auth
+    // loads, so the ref was still empty when the effect ran. Capture-phase listening
+    // has no such ordering or mounting dependency at all.
     let frame = 0;
-    const onScroll = () => {
+    const onScroll = (e: Event) => {
+      const t = e.target as unknown;
+      const el = (!t || t === document || t === document.documentElement || t === document.body)
+        ? null                       // the window/document really is the scroller
+        : (t as HTMLElement);
+      scrollElRef.current = el;
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
-        scrollYRef.current = window.scrollY;
+        scrollYRef.current = getScrollTop(scrollElRef.current);
+        anchorRef.current = readAnchor(scrollElRef.current);
       });
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     return () => {
-      window.removeEventListener('scroll', onScroll);
+      document.removeEventListener('scroll', onScroll, { capture: true });
       if (frame) cancelAnimationFrame(frame);
-      savePipelineState({ scrollY: scrollYRef.current });
+      // Persist only a REAL capture, so an unmount that never saw a scroll can't
+      // wipe a good remembered position with zeros.
+      if (scrollYRef.current > 0 || anchorRef.current.anchorId) {
+        savePipelineState({ scrollY: scrollYRef.current, ...anchorRef.current });
+        pipeDebug('SAVE', {
+          container: scrollElRef.current?.tagName ?? 'window',
+          scrollY: scrollYRef.current,
+          ...anchorRef.current,
+        });
+      } else {
+        pipeDebug('SAVE SKIPPED — no scroll was ever captured', {});
+      }
     };
-  }, [restored]);
+  }, []);
 
   // Restore the offset only when re-entering the SAME filtered view — a fresh
   // visit or a different filter set must start at the top.
@@ -511,7 +553,11 @@ export default function SalesLeadsPage() {
     const saved = readPipelineState();
     // Nothing to restore for this view — settle here so a later render can't
     // re-trigger and yank the user around after they've started scrolling.
-    if (!(saved.scrollY > 0) || !sameQuery(saved.search, window.location.search)) {
+    if ((!(saved.scrollY > 0) && !saved.anchorId) || !sameQuery(saved.search, window.location.search)) {
+      pipeDebug('RESTORE SKIPPED', {
+        reason: !(saved.scrollY > 0) && !saved.anchorId ? 'nothing saved' : 'different filtered view',
+        savedSearch: saved.search, currentSearch: window.location.search,
+      });
       restoredScrollRef.current = true;
       return;
     }
@@ -524,9 +570,29 @@ export default function SalesLeadsPage() {
     let raf = 0;
     let frames = 0;
     const apply = () => {
-      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      // Container, most-reliable first: the element a real scroll event came from,
+      // else resolved from the page root (populated by now — this only runs once
+      // rows are rendered), else the window.
+      const sc = scrollElRef.current
+        ?? getScrollParent(listRootRef.current)
+        ?? (document.querySelector('main') as HTMLElement | null);
+      scrollElRef.current = sc;
+      const maxY = getMaxScroll(sc);
+      // Wait for the rendered list to be tall enough to actually hold the offset.
       if (maxY >= saved.scrollY || frames++ > 20) {
-        window.scrollTo(0, Math.min(saved.scrollY, maxY));
+        // Prefer the ANCHOR: put the lead the user was looking at back where it
+        // was. This is what makes the edit case work — row heights and even the
+        // lead's sort position may have changed, and a raw pixel offset would
+        // then land somewhere else. Falls back to the pixel offset when that lead
+        // is gone (deleted, or filtered out by the edit).
+        const viaAnchor = !!(saved.anchorId && restoreToAnchor(sc, saved.anchorId, saved.anchorOffset));
+        if (!viaAnchor) setScrollTop(sc, Math.min(saved.scrollY, maxY));
+        pipeDebug('RESTORE', {
+          container: sc?.tagName ?? 'window',
+          via: viaAnchor ? 'anchor' : 'pixels',
+          wanted: saved.scrollY, anchorId: saved.anchorId,
+          actual: getScrollTop(sc), maxY, frames,
+        });
         return;
       }
       raf = requestAnimationFrame(apply);
@@ -701,7 +767,7 @@ export default function SalesLeadsPage() {
 
   return (
     <PermissionPageGuard module="sales">
-      <div className="space-y-6">
+      <div className="space-y-6" ref={listRootRef}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Breadcrumb
             items={[
@@ -966,7 +1032,7 @@ export default function SalesLeadsPage() {
                     </tr>
                   ) : (
                     visibleLeads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                      <tr key={lead.id} data-lead-id={lead.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                         <td className="px-6 py-4 font-medium">
                           <div className="flex items-center gap-2">
                             <Link

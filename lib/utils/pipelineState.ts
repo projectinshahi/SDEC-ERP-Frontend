@@ -28,9 +28,15 @@ export interface PipelineState {
   search: string;
   /** Vertical scroll offset of the list when the user navigated away. */
   scrollY: number;
+  /** Lead the user was actually looking at (top-most visible row/card), and how
+   *  far below the container's top edge it sat. Restoring by CONTENT beats
+   *  restoring by pixels: it survives rows changing height after an edit, and it
+   *  still lands sensibly if the lead moved position under the current sort. */
+  anchorId: number | null;
+  anchorOffset: number;
 }
 
-const EMPTY: PipelineState = { ids: [], search: '', scrollY: 0 };
+const EMPTY: PipelineState = { ids: [], search: '', scrollY: 0, anchorId: null, anchorOffset: 0 };
 
 export function readPipelineState(): PipelineState {
   if (typeof window === 'undefined') return EMPTY;
@@ -43,6 +49,8 @@ export function readPipelineState(): PipelineState {
       ids: Array.isArray(parsed.ids) ? parsed.ids.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [],
       search: typeof parsed.search === 'string' ? parsed.search : '',
       scrollY: Number.isFinite(parsed.scrollY) ? Number(parsed.scrollY) : 0,
+      anchorId: Number.isInteger(parsed.anchorId) && Number(parsed.anchorId) > 0 ? Number(parsed.anchorId) : null,
+      anchorOffset: Number.isFinite(parsed.anchorOffset) ? Number(parsed.anchorOffset) : 0,
     };
   } catch {
     return EMPTY;
@@ -62,6 +70,97 @@ export function savePipelineState(patch: Partial<PipelineState>): void {
 /** Where the Pipeline list should be re-entered, filters and view included. */
 export function pipelineListHref(): string {
   return `/dashboard/sales/pipeline${readPipelineState().search}`;
+}
+
+/**
+ * The element that ACTUALLY scrolls the page content.
+ *
+ * The dashboard shell is `h-screen` with an `overflow-hidden` column and a single
+ * `<main className="flex-1 overflow-y-auto">` — so the document/body never scroll.
+ * `window.scrollY` is permanently 0 there and `window.scrollTo()` is a no-op, which
+ * is why reading/writing window scroll silently did nothing and the list always
+ * came back at the top.
+ *
+ * Walks up from `el` to the nearest genuinely scrollable ancestor instead of
+ * hard-coding `<main>`, so this keeps working if the shell (or a different mobile
+ * shell) changes. Returns null when the window really is the scroller.
+ */
+export function getScrollParent(el: HTMLElement | null): HTMLElement | null {
+  if (typeof window === 'undefined') return null;
+  let node: HTMLElement | null = el?.parentElement ?? null;
+  while (node && node !== document.body && node !== document.documentElement) {
+    const oy = window.getComputedStyle(node).overflowY;
+    // Match on the OVERFLOW STYLE ALONE. An earlier version also required
+    // `scrollHeight > clientHeight`, i.e. that the element was ALREADY scrollable.
+    // This resolver runs as soon as the page mounts — before the leads fetch
+    // resolves — when <main> still holds only the header/filters and therefore
+    // does NOT overflow. The check failed, this returned null, the caller fell
+    // back to `window`, and every subsequent scroll of <main> went unrecorded
+    // (window never scrolls in this shell), so a 0 offset was saved and the list
+    // always reopened at the top. Overflow style is stable from first paint.
+    if (oy === 'auto' || oy === 'scroll') return node;
+    node = node.parentElement;
+  }
+  return null; // window / documentElement scrolls
+}
+
+/** Current offset of whichever element scrolls. */
+export function getScrollTop(sc: HTMLElement | null): number {
+  return sc ? sc.scrollTop : (typeof window === 'undefined' ? 0 : window.scrollY);
+}
+
+/** Max scrollable offset of whichever element scrolls. */
+export function getMaxScroll(sc: HTMLElement | null): number {
+  if (sc) return Math.max(0, sc.scrollHeight - sc.clientHeight);
+  if (typeof window === 'undefined') return 0;
+  return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+}
+
+/** Jump (never smooth) to `top` on whichever element scrolls. */
+export function setScrollTop(sc: HTMLElement | null, top: number): void {
+  if (sc) sc.scrollTop = top;
+  else if (typeof window !== 'undefined') window.scrollTo(0, top);
+}
+
+/** Every rendered lead row/card tags itself with this so the anchor can be found. */
+export const LEAD_ANCHOR_ATTR = 'data-lead-id';
+
+/**
+ * The lead currently sitting at the top of the visible area, plus its offset from
+ * the container's top edge. Read from the DOM (not from React state) so it always
+ * reflects what the user can actually see.
+ */
+export function readAnchor(sc: HTMLElement | null): { anchorId: number | null; anchorOffset: number } {
+  if (typeof document === 'undefined') return { anchorId: null, anchorOffset: 0 };
+  const containerTop = sc ? sc.getBoundingClientRect().top : 0;
+  const nodes = document.querySelectorAll<HTMLElement>(`[${LEAD_ANCHOR_ATTR}]`);
+  let best: { id: number; delta: number } | null = null;
+  for (const node of nodes) {
+    const id = Number(node.getAttribute(LEAD_ANCHOR_ATTR));
+    if (!Number.isInteger(id) || id <= 0) continue;
+    const delta = node.getBoundingClientRect().top - containerTop;
+    // The first row at/below the top edge wins; if everything is above it (scrolled
+    // past the end) keep the closest one, so an anchor is always recorded.
+    if (delta >= 0) { if (!best || delta < best.delta || best.delta < 0) best = { id, delta }; }
+    else if (!best) best = { id, delta };
+  }
+  return best ? { anchorId: best.id, anchorOffset: best.delta } : { anchorId: null, anchorOffset: 0 };
+}
+
+/**
+ * Scroll so `anchorId` sits `anchorOffset` below the container's top edge again.
+ * Returns false when that lead is not on screen (deleted, or filtered out after an
+ * edit) so the caller can fall back to the pixel offset instead of doing nothing.
+ */
+export function restoreToAnchor(sc: HTMLElement | null, anchorId: number, anchorOffset: number): boolean {
+  if (typeof document === 'undefined') return false;
+  const node = document.querySelector<HTMLElement>(`[${LEAD_ANCHOR_ATTR}="${anchorId}"]`);
+  if (!node) return false;
+  const containerTop = sc ? sc.getBoundingClientRect().top : 0;
+  const current = node.getBoundingClientRect().top - containerTop;
+  const target = getScrollTop(sc) + (current - anchorOffset);
+  setScrollTop(sc, Math.max(0, Math.min(target, getMaxScroll(sc))));
+  return true;
 }
 
 /**
