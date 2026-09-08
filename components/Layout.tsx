@@ -77,9 +77,9 @@ const DashboardShell = ({ children }: LayoutProps) => {
     // the first page they ARE allowed to see; otherwise send them to /modules.
     if (access[moduleOfPath]) {
       const target = firstAccessibleHref(moduleOfPath, hasAnyPermission);
-      router.replace(target ?? '/modules');
+      router.replace(target ?? `/modules?denied=${moduleOfPath}`);
     } else {
-      router.replace('/modules');
+      router.replace(`/modules?denied=${moduleOfPath}`);
     }
   }, [user, allowed, access, moduleOfPath, hasAnyPermission, router]);
 

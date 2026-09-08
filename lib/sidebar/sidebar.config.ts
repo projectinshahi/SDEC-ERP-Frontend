@@ -515,6 +515,37 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'FileText',
     module: 'marketing',
     permission: 'marketing.content.view',
+    // NOT `exact`: this item's href is the prefix that guards every nested
+    // content route (/content/:id). Marking it exact left the card detail page
+    // matching NO sidebar item, so permissionsForPath returned [] and the route
+    // guard let anyone render it. The parent staying highlighted on a child
+    // route is the app's existing convention (see Pipeline / Pipeline Analytics).
+  },
+  {
+    label: 'Content Cards',
+    href: '/dashboard/marketing/content/list',
+    icon: 'LayoutGrid',
+    module: 'marketing',
+    permission: 'marketing.content.view',
+  },
+  {
+    // M06 #33 — Deadline view. Same module + same permission as the board, so
+    // access follows the existing Content RBAC with no new key and no
+    // hardcoded exception; permissionsForPath resolves it by longest prefix.
+    label: 'Deadlines',
+    href: '/dashboard/marketing/content/deadlines',
+    icon: 'CalendarClock',
+    module: 'marketing',
+    permission: 'marketing.content.view',
+  },
+  {
+    // M10 — Administration. Gated on the SAME admin key the API enforces, so a
+    // non-admin never sees the item and is refused if they navigate directly.
+    label: 'Administration',
+    href: '/dashboard/marketing/administration',
+    icon: 'Settings',
+    module: 'marketing',
+    permission: 'marketing.settings.manage',
   },
   {
     // GLOBAL & UNGATED — the standalone My Tasks workspace, a common utility for

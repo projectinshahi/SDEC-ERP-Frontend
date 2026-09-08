@@ -792,6 +792,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   },
   {
     module: 'marketing',
+    label: 'Marketing · Settings',
+    permissions: [
+      { key: 'marketing.settings.manage', label: 'Manage Notification Settings', description: 'Enable/disable the Content notification event types (assignment, stage reached, approval request, approval decision)', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
     label: 'Marketing · Social Media',
     permissions: [
       { key: 'marketing.social.view', label: 'View Social Media', description: 'View social posts and performance', module: 'marketing' },
