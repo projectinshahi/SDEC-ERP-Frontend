@@ -14,5 +14,7 @@ import type { ReactNode } from 'react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
-  return <PermissionPageGuard fromPath>{children}</PermissionPageGuard>;
+  // showDenied: an unauthorized user gets the explained access-denied state with
+  // a way back, rather than a silent bounce to /dashboard.
+  return <PermissionPageGuard fromPath showDenied>{children}</PermissionPageGuard>;
 }

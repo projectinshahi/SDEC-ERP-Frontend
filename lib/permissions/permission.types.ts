@@ -248,6 +248,7 @@ export type PermissionKey =
   | 'marketing.content.move'
   | 'marketing.content.assign'
   | 'marketing.content.analytics'
+  | 'marketing.settings.manage'
   | 'marketing.social.view'
   | 'marketing.social.create'
   | 'marketing.social.edit'

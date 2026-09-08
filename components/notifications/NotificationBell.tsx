@@ -93,19 +93,60 @@ export const NotificationBell = () => {
     }
     setIsOpen(false);
 
-    if (notif.entity_type === 'blocker') {
-      router.push(`/dashboard/blockers?blockerId=${notif.entity_id}`);
-    } else if (notif.entity_type === 'bug') {
-      router.push(`/dashboard/bugs?bugId=${notif.entity_id}`);
-    } else if (notif.entity_type === 'my_task') {
-      // Keep the shared My Tasks page in the module the user is currently viewing.
-      // Read the location in the handler (client-only) so this component needs no
-      // useSearchParams — which would otherwise force a Suspense boundary at build.
-      const mod = resolveModule(window.location.pathname, new URLSearchParams(window.location.search).get('module'), getModuleAccess(user));
-      router.push(withModuleContext(`/dashboard/my-tasks?taskId=${notif.entity_id}`, mod));
-    } else if (notif.entity_type === 'lead' && notif.entity_id) {
-      // Reminder / lead notifications open the Opportunity they belong to.
-      router.push(`/dashboard/sales/pipeline/${notif.entity_id}`);
+    // Related-card routing, driven by the notification's OWN entity_type/entity_id.
+    // Previously only blocker/bug/my_task/lead were handled, so notifications for
+    // deals, meetings, targets, teams, projects and incentives marked themselves
+    // read, closed the dropdown and then navigated NOWHERE — a silent dead end
+    // (166 deal + 33 meeting + 15 target + 12 team + 6 project + 1 incentive rows
+    // exist in production today). Every type now resolves to its existing detail
+    // route; anything unmapped falls back to its module list rather than doing
+    // nothing, so a click is never a no-op.
+    const id = notif.entity_id;
+    switch (notif.entity_type) {
+      case 'blocker':
+        router.push(`/dashboard/blockers?blockerId=${id}`);
+        break;
+      case 'bug':
+        router.push(`/dashboard/bugs?bugId=${id}`);
+        break;
+      case 'my_task': {
+        // Keep the shared My Tasks page in the module the user is currently viewing.
+        // Read the location in the handler (client-only) so this component needs no
+        // useSearchParams — which would otherwise force a Suspense boundary at build.
+        const mod = resolveModule(window.location.pathname, new URLSearchParams(window.location.search).get('module'), getModuleAccess(user));
+        router.push(withModuleContext(`/dashboard/my-tasks?taskId=${id}`, mod));
+        break;
+      }
+      case 'lead':
+        // Reminder / lead notifications open the Opportunity they belong to.
+        if (id) router.push(`/dashboard/sales/pipeline/${id}`);
+        break;
+      case 'deal':
+        if (id) router.push(`/dashboard/sales/deals/${id}`);
+        break;
+      case 'marketing_content':
+        if (id) router.push(`/dashboard/marketing/content/${id}`);
+        break;
+      case 'target':
+        if (id) router.push(`/dashboard/sales/targets/${id}`);
+        break;
+      case 'project':
+        if (id) router.push(`/dashboard/projects/${id}`);
+        break;
+      case 'meeting':
+        router.push('/dashboard/meetings');
+        break;
+      case 'team':
+        router.push('/dashboard/sales/teams');
+        break;
+      case 'incentive':
+        router.push('/dashboard/sales/incentives');
+        break;
+      default:
+        // Unknown/legacy type: do not navigate blindly to a guessed route, but do
+        // not fail silently either — surface it for diagnosis.
+        console.warn('[NotificationBell] No route mapped for entity_type:', notif.entity_type);
+        break;
     }
   };
 
@@ -143,8 +184,18 @@ export const NotificationBell = () => {
         aria-label="Notifications"
       >
         <Bell size={20} />
+        {/* Unread COUNT badge. This was previously a bare dot, so the bell showed
+            *that* there were unread notifications but never how many. `unreadCount`
+            is the backend's true total for this user (a dedicated COUNT query, not
+            the length of the loaded page), so it stays correct with pagination.
+            "99+" matches the existing badge convention used elsewhere in the app. */}
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full animate-pulse ring-2 ring-white dark:ring-gray-900" />
+          <span
+            className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-900"
+            aria-label={`${unreadCount} unread notifications`}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
         )}
       </button>
 

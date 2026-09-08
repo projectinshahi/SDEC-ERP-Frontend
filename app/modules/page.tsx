@@ -1,10 +1,11 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Code2, ShieldCheck, Briefcase, Users, ArrowRight, LogOut, Building2, Loader2,
-  UserCog, Wallet, ListTodo, Megaphone, type LucideIcon,
+  UserCog, Wallet, ListTodo, Megaphone, ShieldOff, type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -75,7 +76,33 @@ const ACCENTS: Record<string, { ring: string; iconBg: string; iconText: string; 
   },
 };
 
+/**
+ * M11 #52 — the standard access-denied message, shown when the dashboard layout
+ * redirected the user off a module they cannot access (?denied=<module>).
+ *
+ * Isolated behind Suspense because `useSearchParams()` opts its whole route out
+ * of static prerendering; keeping it in this leaf lets /modules stay statically
+ * generated exactly as it was before.
+ */
+function AccessDeniedNotice() {
+  const searchParams = useSearchParams();
+  if (!searchParams?.get('denied')) return null;
+  return (
+    <div
+      role="alert"
+      className="mx-auto mb-2 flex max-w-2xl items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200"
+    >
+      <ShieldOff className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>
+        You do not have permission to access this section. Choose a module below, or ask an
+        administrator to review your role assignments.
+      </span>
+    </div>
+  );
+}
+
 export default function ModulesPage() {
+
   const router = useRouter();
   const { isAuthenticated, isLoading, user, logout } = useAuth();
   const { hasAnyPermission } = usePermissions();
@@ -185,6 +212,10 @@ export default function ModulesPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-6xl space-y-10">
           <header className="text-center space-y-3">
+            {/* M11 #52 — the standard access-denied message, shown when the
+                dashboard layout redirected the user off a module they cannot
+                access. The redirect itself is unchanged; this only explains it. */}
+            <Suspense fallback={null}><AccessDeniedNotice /></Suspense>
             <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Workspace</p>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               Welcome, {user?.name?.split(' ')[0] ?? 'there'}

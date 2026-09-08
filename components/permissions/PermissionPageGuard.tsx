@@ -18,6 +18,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2, ShieldOff } from 'lucide-react';
+import { AccessDenied } from './AccessDenied';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { permissionsForPath } from '@/lib/sidebar/sidebar.config';
@@ -40,6 +41,14 @@ interface PermissionPageGuardProps {
   fromPath?: boolean;
   /** Where to redirect on failure. Defaults to '/dashboard'. */
   redirectTo?: string;
+  /**
+   * Render the shared AccessDenied state instead of redirecting.
+   *
+   * OPT-IN so no existing module's behaviour changes. It is the safer mode: the
+   * user is told why, and nothing navigates on its own, which removes any
+   * possibility of a redirect loop between two guarded routes.
+   */
+  showDenied?: boolean;
 }
 
 export function PermissionPageGuard({
@@ -49,6 +58,7 @@ export function PermissionPageGuard({
   module,
   fromPath,
   redirectTo = '/dashboard',
+  showDenied = false,
 }: PermissionPageGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -72,10 +82,12 @@ export function PermissionPageGuard({
   }
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated && !allowed) {
+    // In `showDenied` mode nothing is redirected — the denied state below is the
+    // final answer, so there is no navigation to loop on.
+    if (!showDenied && !isLoading && isAuthenticated && !allowed) {
       router.replace(redirectTo);
     }
-  }, [isLoading, isAuthenticated, allowed, router, redirectTo]);
+  }, [isLoading, isAuthenticated, allowed, router, redirectTo, showDenied]);
 
   // Still loading auth state
   if (isLoading) {
@@ -86,8 +98,11 @@ export function PermissionPageGuard({
     );
   }
 
-  // Permission denied — show brief message while redirect fires
+  /* Permission denied. `children` is NOT rendered in either branch, so a guarded
+   * page never mounts and can never fire its data requests — no protected data
+   * is fetched, let alone shown, before authorization resolves. */
   if (!allowed) {
+    if (showDenied) return <AccessDenied backHref={redirectTo} />;
     return (
       <div className="flex flex-col h-64 items-center justify-center gap-3 text-gray-400">
         <ShieldOff size={36} />
