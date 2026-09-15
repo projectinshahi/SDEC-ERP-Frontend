@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useLogout } from '@/lib/hooks/useLogout';
 import { useProject } from '@/lib/context/ProjectContext';
 import { useTheme } from '@/lib/hooks/useTheme';
 import { LogOut, Menu, FolderDot, ChevronDown, Search, HelpCircle, Sun, Moon } from 'lucide-react';
@@ -16,15 +16,10 @@ interface NavbarProps {
  * Navbar component with user menu
  */
 export const Navbar = ({ onMenuClick }: NavbarProps) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { projects, activeProject, setActiveProjectId, isLoading } = useProject();
   const { theme, toggleTheme } = useTheme();
-  const router = useRouter();
-
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
+  const handleLogout = useLogout();
 
   return (
     <nav className="sticky top-0 z-20 bg-white bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors duration-200">
@@ -96,7 +91,7 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
 
           {/* Logout Button */}
           <button
-            onClick={handleLogout}
+            onClick={() => void handleLogout()}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-650 dark:text-gray-400 hover:text-rose-650 dark:hover:text-rose-400 transition-colors"
             title="Logout"
             aria-label="Logout"

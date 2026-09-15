@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { classNames } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useLogout } from '@/lib/hooks/useLogout';
 import { isSharedPath, withModuleContext, type TopModule } from '@/lib/permissions/moduleAccess';
 import {
   LayoutDashboard,
@@ -108,7 +109,8 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, currentModule, s
   // the clean href below, so the query string never breaks highlight or the unread dot.
   const navHref = (href?: string): string =>
     href && currentModule && isSharedPath(href) ? withModuleContext(href, currentModule) : (href ?? '');
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const handleLogout = useLogout();
   const { projects, activeProject, setActiveProjectId, isLoading } = useProject();
   const { hasPermission } = usePermissions();
   const { hasUnreadMyTasks, hasUnreadNotice } = useUnreadIndicators();
@@ -414,7 +416,7 @@ export const Sidebar = ({ items, isOpen, onToggle, moduleLabel, currentModule, s
 
               {!isCollapsed ? (
                 <button
-                  onClick={logout}
+                  onClick={() => void handleLogout()}
                   className="p-1.5 hover:bg-rose-500/10 hover:text-rose-400 text-zinc-500 rounded-lg transition-colors cursor-pointer"
                   title="Logout"
                   aria-label="Logout"

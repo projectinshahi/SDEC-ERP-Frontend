@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { InlineEditableText } from '../ui/InlineEditableText';
 import { InlineSelect } from '../ui/InlineSelect';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 
 interface BugDetailsModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface BugDetailsModalProps {
 
 export function BugDetailsModal({ isOpen, onClose, bug, currentUserId, users = [], onUpdate }: BugDetailsModalProps) {
   const { hasPermission } = usePermissions();
+  const { confirm } = useConfirm();
   const canEdit = hasPermission('bugs.update');
   const [attachments, setAttachments] = useState<BugAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
@@ -71,13 +73,16 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId, users = [
 
   const handleDeleteAttachment = async (attachmentId: number) => {
     if (!bug) return;
-    try {
-      await deleteBugAttachment(bug.id, attachmentId);
-      setAttachments(prev => prev.filter(a => a.id !== attachmentId));
-    } catch (error) {
-      console.error('Failed to delete attachment', error);
-      alert('Failed to delete attachment.');
-    }
+    await confirm({
+      title: 'Delete attachment',
+      message: 'Delete this attachment? It is removed from the bug and this cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        await deleteBugAttachment(bug.id, attachmentId);
+        setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+      },
+    });
   };
 
   if (!isOpen || !bug) return null;
@@ -401,9 +406,7 @@ export function BugDetailsModal({ isOpen, onClose, bug, currentUserId, users = [
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm('Are you sure you want to delete this attachment?')) {
-                                  handleDeleteAttachment(att.id);
-                                }
+                                void handleDeleteAttachment(att.id);
                               }}
                               className="absolute top-2 right-2 p-1.5 bg-white/90 hover:bg-red-50 text-gray-500 hover:text-red-600 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all z-10"
                               title="Delete Attachment"

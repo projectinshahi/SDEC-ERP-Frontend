@@ -13,6 +13,7 @@ import {
   ApiRecruitmentStats,
   SaveCandidatePayload,
 } from '../api/hr-recruitment';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 
 export function adaptCandidate(c: ApiCandidate): Candidate {
   return {
@@ -33,6 +34,7 @@ export function adaptCandidate(c: ApiCandidate): Candidate {
 }
 
 export function useRecruitment() {
+  const { confirm } = useConfirm();
   const [candidates, setCandidates] = useState<ApiCandidate[]>([]);
   const [stats, setStats] = useState<ApiRecruitmentStats>({
     Applied: 0,
@@ -128,15 +130,18 @@ export function useRecruitment() {
 
   // Delete Candidate
   const handleDeleteCandidate = async (candidateId: string) => {
-    if (!confirm('Are you sure you want to delete this candidate?')) return;
-    try {
-      const id = Number(candidateId);
-      if (isNaN(id)) return;
-      await deleteCandidate(id);
-      await loadData();
-    } catch (err: any) {
-      alert(err?.message ?? 'Failed to delete candidate');
-    }
+    const id = Number(candidateId);
+    if (isNaN(id)) return;
+    await confirm({
+      title: 'Delete candidate',
+      message: 'Delete this candidate? Their record is removed from recruitment and this cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        await deleteCandidate(id);
+        await loadData();
+      },
+    });
   };
 
   const handleOpenAdd = () => {

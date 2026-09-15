@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useLogout } from '@/lib/hooks/useLogout';
 import { apiClient } from '@/lib/api/api-client';
 import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/Button';
@@ -27,7 +28,8 @@ function getPasswordStrength(password: string): { score: number; label: string; 
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: isAuthLoading, logout, updateUser } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading, updateUser } = useAuth();
+  const handleLogout = useLogout();
   
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -282,7 +284,7 @@ export default function ChangePasswordPage() {
             <div className="text-center pt-2">
               <button
                 type="button"
-                onClick={logout}
+                onClick={() => void handleLogout()}
                 disabled={isSubmitting}
                 className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
               >

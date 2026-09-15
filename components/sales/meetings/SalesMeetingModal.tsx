@@ -268,6 +268,7 @@ export function SalesMeetingModal({ isOpen, onClose, meeting, onSaved, users: us
 
   return (
     <Modal
+      confirmDiscard
       isOpen={isOpen}
       onClose={() => { if (!isSubmitting) onClose(); }}
       title={isEdit ? 'Edit Sales Meeting' : 'Schedule Sales Meeting'}

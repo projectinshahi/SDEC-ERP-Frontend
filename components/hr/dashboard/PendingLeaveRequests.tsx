@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { CalendarClock, Check, X, ChevronRight, PackageOpen, Loader2 } from 'lucide-react';
 import { fetchLeaves, approveLeave, rejectLeave, type ApiLeaveRecord } from '@/lib/api/hr-leave';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 
 export function PendingLeaveRequests() {
+  const { confirm } = useConfirm();
   const [leaves, setLeaves] = useState<ApiLeaveRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState<number | null>(null);
@@ -41,15 +43,21 @@ export function PendingLeaveRequests() {
   };
 
   const handleReject = async (id: number) => {
-    setActioningId(id);
-    try {
-      await rejectLeave(id);
-      await loadPendingLeaves();
-    } catch (err) {
-      console.error('[PendingLeaveRequests] reject error:', err);
-    } finally {
-      setActioningId(null);
-    }
+    await confirm({
+      title: 'Reject leave request',
+      message: 'Reject this leave request? Its status becomes Rejected and it leaves the pending queue.',
+      confirmLabel: 'Reject',
+      intent: 'danger',
+      onConfirm: async () => {
+        setActioningId(id);
+        try {
+          await rejectLeave(id);
+          await loadPendingLeaves();
+        } finally {
+          setActioningId(null);
+        }
+      },
+    });
   };
 
   const formatDateRange = (startStr: string, endStr: string) => {

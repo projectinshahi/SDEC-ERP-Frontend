@@ -219,6 +219,12 @@ function NoticeDashboard() {
   };
 
   const handlePublish = async (n: Notice) => {
+    const ok = await confirm({
+      title: 'Publish notice',
+      message: `Publish "${n.title}"? It becomes visible to everyone it targets and starts appearing in their unread count.`,
+      confirmLabel: 'Publish',
+    });
+    if (!ok) return;
     try {
       await publishNotice(n.id);
       toast('Notice published.', 'success');

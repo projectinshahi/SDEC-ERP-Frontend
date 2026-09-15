@@ -205,7 +205,8 @@ export function EditLeadModal({ isOpen, onClose, lead, stages, onSaved }: EditLe
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Opportunity" size="lg">
+    <Modal
+      confirmDiscard isOpen={isOpen} onClose={onClose} title="Edit Opportunity" size="lg">
       <form onSubmit={handleSubmit} className="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
         {/* ── Section 1 · Opportunity Details ── */}
         <section className="space-y-4">

@@ -183,7 +183,8 @@ export function CreateSalesTaskModal({
   const presetLabel = presetDealId != null ? 'Linked to deal' : 'Linked to lead';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="New Sales Task" size="lg">
+    <Modal
+      confirmDiscard isOpen={isOpen} onClose={onClose} title="New Sales Task" size="lg">
       <div className="space-y-4">
         <InputField
           id="task-title"

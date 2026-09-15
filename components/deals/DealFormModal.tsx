@@ -201,7 +201,8 @@ export function DealFormModal({ isOpen, onClose, onSaved, deal, stages, owners, 
   const title2 = readOnly ? 'Deal Details' : isEdit ? 'Edit Deal' : 'New Deal';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title2} size="lg">
+    <Modal
+      confirmDiscard isOpen={isOpen} onClose={onClose} title={title2} size="lg">
       <div className="space-y-5">
         <InputField
           label="Deal Name"

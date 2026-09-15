@@ -11,6 +11,7 @@ import { InputField } from '@/components/ui/InputField';
 import { ArrowLeft, Plus, Trash2, Pencil, SlidersHorizontal, ToggleLeft, ToggleRight } from 'lucide-react';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
 import { useToast } from '@/lib/hooks/useToast';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 import {
   fetchScoringCriteria,
   createScoringCriterion,
@@ -22,6 +23,7 @@ import type { ScoringCriterion } from '@/lib/types/leadQualification';
 export default function ScoringSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   const [criteria, setCriteria] = useState<ScoringCriterion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,14 +108,17 @@ export default function ScoringSettingsPage() {
   };
 
   const handleDelete = async (c: ScoringCriterion) => {
-    if (!window.confirm(`Delete scoring factor "${c.label}"?`)) return;
-    try {
-      await deleteScoringCriterion(c.id);
-      toast('Criterion deleted', 'success');
-      await load();
-    } catch (error: any) {
-      toast(error?.message || 'Failed to delete criterion', 'error');
-    }
+    await confirm({
+      title: 'Delete scoring factor',
+      message: `Delete the scoring factor "${c.label}"? It stops contributing to lead scores and this cannot be undone.`,
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        await deleteScoringCriterion(c.id);
+        toast('Criterion deleted', 'success');
+        await load();
+      },
+    });
   };
 
   return (

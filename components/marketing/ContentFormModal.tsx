@@ -174,7 +174,8 @@ export function ContentFormModal({ isOpen, onClose, users, onCreated }: ContentF
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Content" size="xl">
+    <Modal
+      confirmDiscard isOpen={isOpen} onClose={onClose} title="Create Content" size="xl">
       <form onSubmit={submit} className="space-y-4">
         {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</div>}
 

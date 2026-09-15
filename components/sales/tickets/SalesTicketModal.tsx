@@ -189,6 +189,7 @@ export function SalesTicketModal({
 
   return (
     <Modal
+      confirmDiscard
       isOpen={isOpen}
       onClose={onClose}
       title={editTicket ? 'Edit Sales Ticket' : 'New Sales Ticket'}

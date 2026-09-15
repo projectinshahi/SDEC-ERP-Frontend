@@ -133,7 +133,8 @@ export function CreateNoticeModal({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editNotice ? 'Edit Notice' : 'Publish Notice'} size="lg">
+    <Modal
+      confirmDiscard isOpen={isOpen} onClose={onClose} title={editNotice ? 'Edit Notice' : 'Publish Notice'} size="lg">
       <div className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Title *</label>

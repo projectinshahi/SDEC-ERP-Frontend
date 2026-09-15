@@ -226,6 +226,7 @@ export function CreateProjectModal({
 
   return (
     <Modal
+      confirmDiscard
       isOpen={isOpen}
       onClose={handleClose}
       title={isEditMode ? 'Edit Project' : 'Create New Project'}

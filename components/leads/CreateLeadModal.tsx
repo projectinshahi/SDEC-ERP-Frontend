@@ -302,7 +302,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="New Opportunity" size="lg">
+    <Modal
+      confirmDiscard isOpen={isOpen} onClose={onClose} title="New Opportunity" size="lg">
       <form onSubmit={handleSubmit} className="space-y-6 max-h-[72vh] overflow-y-auto pr-1">
         {submitError && (
           <div className="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">

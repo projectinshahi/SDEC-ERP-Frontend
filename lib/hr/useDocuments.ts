@@ -11,6 +11,7 @@ import {
   SaveDocumentPayload,
 } from '../api/hr-documents';
 import { fetchEmployees, ApiEmployee } from '../api/hr';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 
 export function adaptDocumentRecord(d: ApiHrDocument): HrDocument {
   const isExpired = d.expiry_date ? new Date(d.expiry_date) < new Date() : false;
@@ -37,6 +38,7 @@ export function adaptDocumentRecord(d: ApiHrDocument): HrDocument {
 }
 
 export function useDocuments() {
+  const { confirm } = useConfirm();
   const [documents, setDocuments] = useState<ApiHrDocument[]>([]);
   const [employees, setEmployees] = useState<ApiEmployee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -143,15 +145,20 @@ export function useDocuments() {
 
   // Delete document record
   const handleDeleteDocument = async (recordId: string) => {
-    if (!confirm('Are you sure you want to delete this document record?')) return;
-    try {
-      const id = Number(recordId);
-      if (isNaN(id)) return;
-      await deleteDocument(id);
-      await loadData();
-    } catch (err: any) {
-      alert(err?.response?.data?.message ?? err?.message ?? 'Failed to delete document record');
-    }
+    const id = Number(recordId);
+    if (isNaN(id)) return;
+    // The dialog owns the request: it holds the loading state, blocks a second
+    // click, and reports a failure in place instead of closing on an error.
+    await confirm({
+      title: 'Delete document record',
+      message: 'Delete this document record? This cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        await deleteDocument(id);
+        await loadData();
+      },
+    });
   };
 
   const handleOpenUpload = () => {
