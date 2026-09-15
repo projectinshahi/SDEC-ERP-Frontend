@@ -60,7 +60,8 @@ export function CompanyFormModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Company' : 'New Company'} size="lg">
+    <Modal
+      confirmDiscard isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Company' : 'New Company'} size="lg">
       <div className="space-y-4">
         <InputField
           id="company-name" label="Company Name" required

@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { useToast } from '@/lib/hooks/useToast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 import { fetchLeadNotes, createLeadNote, updateLeadNote, deleteLeadNote } from '@/lib/api/leads';
 import type { LeadNote } from '@/lib/types/lead';
 
@@ -47,6 +48,7 @@ export function LeadNotesPanel({ leadId, onChange }: LeadNotesPanelProps) {
   const { toast } = useToast();
   const { hasPermission, isSuperAdmin } = usePermissions();
   const { user } = useAuth();
+  const { confirm } = useConfirm();
 
   const canAdd = hasPermission('sales.edit');
   const canDelete = hasPermission('sales.delete');
@@ -124,15 +126,18 @@ export function LeadNotesPanel({ leadId, onChange }: LeadNotesPanelProps) {
   };
 
   const handleDelete = async (noteId: number) => {
-    if (!window.confirm('Delete this note? This cannot be undone.')) return;
-    try {
-      await deleteLeadNote(leadId, noteId);
-      toast('Note deleted', 'success');
-      await load();
-      onChange?.();
-    } catch (error: any) {
-      toast(error?.message || 'Failed to delete note', 'error');
-    }
+    await confirm({
+      title: 'Delete note',
+      message: 'Delete this note? This cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        await deleteLeadNote(leadId, noteId);
+        toast('Note deleted', 'success');
+        await load();
+        onChange?.();
+      },
+    });
   };
 
   const canEditNote = (note: LeadNote) => canAdd && (isAdmin || note.authorId === currentUserId);

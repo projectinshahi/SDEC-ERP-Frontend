@@ -221,24 +221,37 @@ export default function MarketingAdministrationPage() {
   };
 
   const onToggleActive = async (table: ReferenceTable, item: ReferenceItem) => {
-    if (item.active) {
-      const okToGo = await confirm({
-        title: `Deactivate “${item.name}”?`,
-        message: 'It will no longer be selectable on new content cards. Cards already using it keep their value and are not changed.',
-        confirmLabel: 'Deactivate',
-        intent: 'danger',
-      });
-      if (!okToGo) return;
+    const apply = async () => {
+      setBusy(true);
+      try {
+        await updateReferenceItem(table, item.id, { active: !item.active });
+        await loadRefs();
+        await loadAudit();
+        toast(`“${item.name}” ${item.active ? 'deactivated' : 'reactivated'} successfully`, 'success');
+      } finally { setBusy(false); }
+    };
+
+    /* Reactivating is harmless and reversible — no prompt. Deactivating hides the
+       value from every new card, so it is confirmed, and the dialog runs the
+       request itself: that is what keeps the confirm button in a loading state,
+       blocks a second click, and shows a failure in place instead of closing as
+       though it had worked. */
+    if (!item.active) {
+      try {
+        await apply();
+      } catch (err) {
+        toast(apiError(err) || 'Unable to update that item', 'error');
+      }
+      return;
     }
-    setBusy(true);
-    try {
-      await updateReferenceItem(table, item.id, { active: !item.active });
-      await loadRefs();
-      await loadAudit();
-      toast(`“${item.name}” ${item.active ? 'deactivated' : 'reactivated'} successfully`, 'success');
-    } catch (err) {
-      toast(apiError(err) || 'Unable to update that item', 'error');
-    } finally { setBusy(false); }
+
+    await confirm({
+      title: `Deactivate “${item.name}”?`,
+      message: 'It will no longer be selectable on new content cards. Cards already using it keep their value and are not changed.',
+      confirmLabel: 'Deactivate',
+      intent: 'danger',
+      onConfirm: apply,
+    });
   };
 
   const onToggleSetting = async (key: string, value: boolean) => {

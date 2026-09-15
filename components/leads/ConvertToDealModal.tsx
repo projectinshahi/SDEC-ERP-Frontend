@@ -49,7 +49,8 @@ export function ConvertToDealModal({ isOpen, onClose, lead, onConverted }: Conve
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Convert Lead to Deal" size="md">
+    <Modal
+      confirmDiscard isOpen={isOpen} onClose={onClose} title="Convert Lead to Deal" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 text-sm">
           <TrendingUp size={18} className="mt-0.5 shrink-0" />

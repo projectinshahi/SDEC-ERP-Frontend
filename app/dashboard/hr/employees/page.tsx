@@ -36,6 +36,7 @@ import {
 } from '@/lib/api/hr';
 import { fetchRolesApi } from '@/lib/api/roles';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 
 /* ── Status helpers ─────────────────────────────────────────────────────── */
 
@@ -72,6 +73,7 @@ interface Role {
 /* ── Component ──────────────────────────────────────────────────────────── */
 
 export default function EmployeesPage() {
+  const { confirm } = useConfirm();
   /* ── Data state ────────────────────────────────────────────────────────── */
   const [employees, setEmployees]       = useState<ApiEmployee[]>([]);
   const [roles, setRoles]               = useState<Role[]>([]);
@@ -317,25 +319,40 @@ export default function EmployeesPage() {
   };
 
   const handleArchive = async (emp: ApiEmployee) => {
-    try {
-      await deleteEmployee(emp.id);
-      setSelectedIds((prev) => prev.filter((item) => item !== String(emp.id)));
-      await loadEmployees();
-    } catch (err: any) {
-      alert(err?.message ?? 'Failed to remove employee');
-    }
+    await confirm({
+      title: 'Delete employee',
+      message: `Delete ${emp.name ?? 'this employee'}? Their employee record is removed permanently.`,
+      warning: 'Their linked user account is deactivated and can no longer sign in.',
+      confirmLabel: 'Delete Employee',
+      intent: 'danger',
+      onConfirm: async () => {
+        await deleteEmployee(emp.id);
+        setSelectedIds((prev) => prev.filter((item) => item !== String(emp.id)));
+        await loadEmployees();
+      },
+    });
   };
 
   const handleBulkArchive = async () => {
     if (selectedIds.length === 0) return;
     const toDelete = employees.filter((e) => selectedIds.includes(String(e.id)));
-    try {
-      await Promise.all(toDelete.map((e) => deleteEmployee(e.id)));
-      setSelectedIds([]);
-      await loadEmployees();
-    } catch (err: any) {
-      alert(err?.message ?? 'Failed to remove selected employees');
-    }
+    if (toDelete.length === 0) return;
+    await confirm({
+      title: `Delete ${toDelete.length} employee${toDelete.length === 1 ? '' : 's'}`,
+      message: `Delete the ${toDelete.length} selected employee record${toDelete.length === 1 ? '' : 's'} permanently?`,
+      warning: 'Their linked user accounts are deactivated and can no longer sign in.',
+      confirmLabel: `Delete ${toDelete.length}`,
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          await Promise.all(toDelete.map((e) => deleteEmployee(e.id)));
+          setSelectedIds([]);
+        } finally {
+          // A partial failure still changed the server; never show a stale list.
+          await loadEmployees();
+        }
+      },
+    });
   };
 
   /* ── Loading / error screens ──────────────────────────────────────────── */
@@ -576,7 +593,7 @@ export default function EmployeesPage() {
                           <PermissionGuard require="hr.employees.delete">
                             <button
                               onClick={() => handleArchive(emp)}
-                              title="Archive"
+                              title="Delete employee"
                               className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition"
                             >
                               <Trash2 size={15} />
@@ -622,7 +639,7 @@ export default function EmployeesPage() {
                     <PermissionGuard require="hr.employees.delete">
                       <button
                         onClick={() => handleArchive(emp)}
-                        title="Archive"
+                        title="Delete employee"
                         className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition"
                       >
                         <Trash2 size={14} />
@@ -680,7 +697,7 @@ export default function EmployeesPage() {
                     className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 rounded-lg transition border border-rose-100 dark:border-rose-900/30"
                   >
                     <Trash2 size={12} />
-                    <span>Archive Selected ({selectedIds.length})</span>
+                    <span>Delete Selected ({selectedIds.length})</span>
                   </button>
                 </PermissionGuard>
               )}

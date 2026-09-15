@@ -8,6 +8,7 @@ import {
   UserCog, Wallet, ListTodo, Megaphone, ShieldOff, type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useLogout } from '@/lib/hooks/useLogout';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { visibleModules } from '@/lib/permissions/moduleAccess';
 import { firstAccessibleHref } from '@/lib/sidebar/sidebar.config';
@@ -104,7 +105,8 @@ function AccessDeniedNotice() {
 export default function ModulesPage() {
 
   const router = useRouter();
-  const { isAuthenticated, isLoading, user, logout } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const handleLogout = useLogout();
   const { hasAnyPermission } = usePermissions();
   const [navigating, setNavigating] = useState<string | null>(null);
 
@@ -201,7 +203,7 @@ export default function ModulesPage() {
             <span className="font-extrabold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">SHAHI SOLUTIONS</span>
           </div>
           <button
-            onClick={() => { logout?.(); router.replace('/login'); }}
+            onClick={() => void handleLogout()}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
           >
             <LogOut size={15} /> Sign out

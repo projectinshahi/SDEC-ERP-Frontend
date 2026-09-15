@@ -518,6 +518,16 @@ export default function ContentDetailPage() {
     if (hasErrors(errs)) return;
     setPublishErrors({});
 
+    /* Confirmation comes AFTER validation, never instead of it — the user should
+       not be asked to approve a submission the form is going to reject. */
+    const ok = await confirm({
+      title: 'Mark as Published',
+      message: 'Record this card as published? It moves to the Published stage and the publication time is stamped now.',
+      warning: 'Publishing is recorded once — the timestamp and links cannot be re-recorded afterwards.',
+      confirmLabel: 'Mark as Published',
+    });
+    if (!ok) return;
+
     setSavingKey('published');
     try {
       const { content: row } = await markContentPublished(id, published);

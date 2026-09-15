@@ -69,7 +69,8 @@ export function ContactFormModal({
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Contact' : 'New Contact'} size="lg">
+    <Modal
+      confirmDiscard isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Contact' : 'New Contact'} size="lg">
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InputField id="contact-name" label="Contact Name" required value={form.name} onChange={set('name')} error={errors.name} placeholder="e.g. Jane Doe" />

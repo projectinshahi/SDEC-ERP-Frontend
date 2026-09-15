@@ -419,6 +419,7 @@ export default function ProjectsPage() {
       <Modal
         isOpen={!!projectToArchive}
         onClose={() => setProjectToArchive(null)}
+        busy={isArchiving}
         title="Archive Project"
         size="sm"
       >
@@ -457,6 +458,7 @@ export default function ProjectsPage() {
       <Modal
         isOpen={!!projectToDelete}
         onClose={() => setProjectToDelete(null)}
+        busy={isDeleting}
         title="Permanently Delete Project"
         size="sm"
       >

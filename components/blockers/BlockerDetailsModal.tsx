@@ -12,6 +12,7 @@ import { useToast } from '../ToastProvider';
 import { InlineEditableText } from '../ui/InlineEditableText';
 import { InlineSelect } from '../ui/InlineSelect';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 
 interface BlockerDetailsModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export function BlockerDetailsModal({ isOpen, onClose, blocker, currentUserId, o
   const [viewerIndex, setViewerIndex] = useState(0);
 
   const { hasPermission } = usePermissions();
+  const { confirm } = useConfirm();
   const canEdit = hasPermission('blockers.update');
 
   const [attachmentsForbidden, setAttachmentsForbidden] = useState(false);
@@ -79,15 +81,17 @@ export function BlockerDetailsModal({ isOpen, onClose, blocker, currentUserId, o
   };
 
   const handleDeleteAttachment = async (attachmentId: number) => {
-    if (!confirm('Are you sure you want to delete this attachment?')) return;
-    try {
-      await deleteBlockerAttachment(blocker.id, attachmentId);
-      setAttachments(prev => prev.filter(a => a.id !== attachmentId));
-      toast('Attachment deleted', 'success');
-    } catch (error) {
-      console.error('Failed to delete attachment', error);
-      toast('Failed to delete attachment. You may not have permission.', 'error');
-    }
+    await confirm({
+      title: 'Delete attachment',
+      message: 'Delete this attachment? It is removed from the blocker and this cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        await deleteBlockerAttachment(blocker.id, attachmentId);
+        setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+        toast('Attachment deleted', 'success');
+      },
+    });
   };
 
   const handleStatusChange = async (newStatus: string) => {

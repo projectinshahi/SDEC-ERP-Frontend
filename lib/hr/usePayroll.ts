@@ -12,6 +12,7 @@ import {
   SavePayrollPayload,
 } from '../api/hr-payroll';
 import { fetchEmployees, ApiEmployee } from '../api/hr';
+import { useConfirm } from '@/lib/hooks/useConfirm';
 
 export function adaptPayrollRecord(p: ApiPayrollRecord): PayrollRecord {
   const num = (v: number | undefined | null) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -51,6 +52,7 @@ export function adaptPayrollRecord(p: ApiPayrollRecord): PayrollRecord {
 }
 
 export function usePayroll() {
+  const { confirm } = useConfirm();
   const [payrollRecords, setPayrollRecords] = useState<ApiPayrollRecord[]>([]);
   const [employees, setEmployees] = useState<ApiEmployee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -188,15 +190,18 @@ export function usePayroll() {
 
   // Delete Payroll
   const handleDeletePayroll = async (recordId: string) => {
-    if (!confirm('Are you sure you want to delete this payroll record?')) return;
-    try {
-      const id = Number(recordId);
-      if (isNaN(id)) return;
-      await deletePayroll(id);
-      await loadData();
-    } catch (err: any) {
-      alert(err?.response?.data?.message ?? err?.message ?? 'Failed to delete payroll record');
-    }
+    const id = Number(recordId);
+    if (isNaN(id)) return;
+    await confirm({
+      title: 'Delete payroll record',
+      message: 'Delete this payroll record? This cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        await deletePayroll(id);
+        await loadData();
+      },
+    });
   };
 
   const handleOpenAdd = () => {

@@ -67,6 +67,7 @@ export function BugModal({
 
   return (
     <Modal
+      confirmDiscard
       isOpen={isOpen}
       onClose={onClose}
       title="Report New Bug"

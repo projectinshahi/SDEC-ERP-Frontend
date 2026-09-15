@@ -47,6 +47,10 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// The sentinel stored when the backend is unreachable. Not a backend session,
+// so anything that talks to the API must skip it.
+const OFFLINE_FALLBACK_TOKEN = 'dummy-jwt-token';
+
 // ── Hardcoded Super Admin fallback (matches backend) ─────────────────────────
 const ADMIN_EMAIL = 'admin@gmail.com';
 const ADMIN_PASSWORD = 'admin123';
@@ -96,7 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return;
     const token = localStorage.getItem('authToken');
     // Skip the offline Super Admin fallback token (not a real backend session).
-    if (!token || !token.startsWith('user-token-')) return;
+    // Match that token EXACTLY rather than allow-listing a backend token shape:
+    // this previously tested `startsWith('user-token-')`, which silently became
+    // false-for-everyone when the backend moved to signed tokens, turning this
+    // whole RBAC refresh into a no-op.
+    if (!token || token === OFFLINE_FALLBACK_TOKEN) return;
     try {
       const res = await apiClient.get<{ user: AuthUser }>('/auth/me');
       // If logout cleared the session while this request was in flight, discard
@@ -196,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           roleName: SUPER_ADMIN_ROLE_NAME,
           permissions: [],
         };
-        localStorage.setItem('authToken', 'dummy-jwt-token');
+        localStorage.setItem('authToken', OFFLINE_FALLBACK_TOKEN);
         localStorage.setItem('user', JSON.stringify(adminUser));
         setState({ user: adminUser, isAuthenticated: true, isLoading: false });
         return;
