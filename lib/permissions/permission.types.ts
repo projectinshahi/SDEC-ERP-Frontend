@@ -105,6 +105,7 @@ export type PermissionKey =
   | 'sales.leads.export'
   | 'sales.leads.view_all'
   | 'sales.leads.analytics'
+  | 'sales.leads.interactions.manage'
   | 'sales.leads.pipeline.manage'
   | 'sales.leads.pipeline.delete'
   | 'sales.deals.view'
