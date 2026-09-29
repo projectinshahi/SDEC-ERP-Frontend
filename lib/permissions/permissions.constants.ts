@@ -471,6 +471,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'sales.leads.export', label: 'Download Lead Report', description: 'Export a PDF report of filtered leads, KPI summaries and analytics', module: 'sales' },
       { key: 'sales.leads.view_all', label: 'View All Leads', description: "See other users' opportunities in the Pipeline and use the All Leads / My Leads toggle. Without it a user is limited to their own, and the toggle is hidden. Team/role scope still applies on top.", module: 'sales' },
       { key: 'sales.leads.analytics', label: 'View Lead Analytics', description: 'Open the Lead Analytics dashboard (scores, conversion, interactions). Independent of View Leads.', module: 'sales' },
+      // The "Add Action" control on Pipeline -> Lead Details (the Next Actions
+      // timeline). Deliberately named `.manage`, NOT `.create`: salesGrants bridges
+      // every `sales.*.create` key from the coarse `sales.create`, so a `.create`
+      // name would be auto-granted to coarse holders and could never be revoked in
+      // Role Management — which is the whole point of this permission. `.manage` is
+      // exact-match only, matching the other independent capability keys here.
+      { key: 'sales.leads.interactions.manage', label: 'Add Lead Action', description: 'Log a next action (Call / Email / Meeting) from the Next Actions timeline on a lead. Independent of Edit Leads, so it can be granted or revoked on its own. Does not widen which leads a user can reach.', module: 'sales' },
       { key: 'sales.leads.pipeline.manage', label: 'Manage Lead Pipeline Columns', description: 'Add, rename, reorder the lead pipeline (Kanban) stage columns. Independent of editing leads.', module: 'sales' },
       { key: 'sales.leads.pipeline.delete', label: 'Delete Lead Pipeline Columns', description: 'Delete lead pipeline stage columns (leads are safely moved to another stage first).', module: 'sales' },
     ],

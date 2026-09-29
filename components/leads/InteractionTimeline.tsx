@@ -39,7 +39,11 @@ function formatTimestamp(iso: string): string {
 export function InteractionTimeline({ leadId, refreshKey = 0, onChange }: InteractionTimelineProps) {
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
-  const canLog = hasPermission('sales.edit');
+  /* Its own permission, not the coarse `sales.edit` this used to borrow — that
+   * made "Add Action" impossible to control from Role Management without also
+   * removing the ability to edit leads. The API enforces the same key, so
+   * hiding the button is an affordance, never the thing that stops a caller. */
+  const canLog = hasPermission('sales.leads.interactions.manage');
 
   const [interactions, setInteractions] = useState<LeadInteraction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
