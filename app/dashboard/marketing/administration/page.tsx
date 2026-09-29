@@ -1,7 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Settings, Loader2, Plus, AlertTriangle, ShieldCheck, History, Bell, Users as UsersIcon } from 'lucide-react';
+import { Settings, Loader2, Plus, AlertTriangle, ShieldCheck, History, Bell, Users as UsersIcon, IndianRupee } from 'lucide-react';
+import { formatINR } from '@/lib/utils/currency';
+import { FieldError } from '@/components/marketing/FieldError';
+import { invalidInputCls, fieldErrorsFromApi, type FieldErrors } from '@/lib/marketing/contentValidation';
+import { validate, thresholdSchema } from '@/lib/marketing/financeValidation';
+import { fetchFinanceSettings, updateFinanceSettings, type FinanceSettings } from '@/lib/api/marketingFinance';
 import { classNames } from '@/lib/utils';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/lib/hooks/useToast';
@@ -155,6 +160,12 @@ export default function MarketingAdministrationPage() {
   const canManage = hasPermission('marketing.settings.manage');
 
   const [refs, setRefs] = useState<ReferenceData | null>(null);
+  /* MK-004.3 — the ONE place the expense thresholds are set. Both numbers live
+     in a single settings row; nothing in the app hardcodes them. */
+  const [finance, setFinance] = useState<FinanceSettings | null>(null);
+  const [financeForm, setFinanceForm] = useState({ approvalThreshold: '', largeExpenseThreshold: '' });
+  const [financeErrors, setFinanceErrors] = useState<FieldErrors>({});
+  const [savingFinance, setSavingFinance] = useState(false);
   const [settings, setSettings] = useState<ContentNotificationSettings | null>(null);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [auditTotal, setAuditTotal] = useState(0);
@@ -178,11 +189,42 @@ export default function MarketingAdministrationPage() {
     if (page.types.length) setAuditTypes(page.types);
   }, [auditOffset, auditType]);
 
+  const saveFinance = async () => {
+    if (savingFinance) return;                            // duplicate-submit lock
+    const { errors, data } = validate(thresholdSchema, financeForm);
+    if (Object.keys(errors).length || !data) { setFinanceErrors(errors); return; }
+    setFinanceErrors({});
+    setSavingFinance(true);
+    try {
+      const next = await updateFinanceSettings(data);
+      setFinance(next);
+      setFinanceForm({
+        approvalThreshold: String(next.approvalThreshold),
+        largeExpenseThreshold: String(next.largeExpenseThreshold),
+      });
+      toast('Expense thresholds updated', 'success');
+    } catch (err) {
+      const fe = fieldErrorsFromApi(err);
+      if (Object.keys(fe).length) setFinanceErrors(fe);
+      else toast(apiError(err) || 'Could not update the thresholds', 'error');
+    } finally {
+      setSavingFinance(false);
+    }
+  };
+
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [, s] = await Promise.all([loadRefs(), fetchNotificationSettings(), loadAudit()]);
+      // One parallel batch, not a waterfall of sequential fetches.
+      const [, s, , fin] = await Promise.all([
+        loadRefs(), fetchNotificationSettings(), loadAudit(), fetchFinanceSettings(),
+      ]);
       setSettings(s);
+      setFinance(fin.settings);
+      setFinanceForm({
+        approvalThreshold: String(fin.settings.approvalThreshold),
+        largeExpenseThreshold: String(fin.settings.largeExpenseThreshold),
+      });
     } catch (err) {
       setError(apiError(err) || (err as Error)?.message || 'Failed to load Administration.');
     } finally {
@@ -295,9 +337,68 @@ export default function MarketingAdministrationPage() {
         </p>
       )}
 
+      {/* MK-004.3 — the SINGLE source of truth for both expense thresholds. No
+          screen hardcodes either number; the logger reads the large-expense one
+          to decide when to confirm, and the server reads the approval one to
+          decide whether a submission needs a manager. */}
+      <Panel
+        icon={IndianRupee}
+        title="Expense Thresholds"
+        subtitle="One place for both limits. Changes apply to expenses submitted from now on; already-decided expenses are never revisited."
+      >
+        {finance ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-gray-300" htmlFor="th-approval">
+                Approval threshold (INR)
+              </label>
+              <input
+                id="th-approval" inputMode="decimal" disabled={!canManage || savingFinance}
+                className={classNames(inputCls, financeErrors.approvalThreshold && invalidInputCls)}
+                value={financeForm.approvalThreshold}
+                onChange={(e) => setFinanceForm({ ...financeForm, approvalThreshold: e.target.value })}
+              />
+              <FieldError message={financeErrors.approvalThreshold} />
+              <p className="mt-1 text-[11px] text-gray-400">
+                At or below {formatINR(finance.approvalThreshold)} an expense is auto-approved. Above it, a manager
+                must approve or reject. Set to 0 to require approval for everything.
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-gray-600 dark:text-gray-300" htmlFor="th-large">
+                Large expense confirmation (INR)
+              </label>
+              <input
+                id="th-large" inputMode="decimal" disabled={!canManage || savingFinance}
+                className={classNames(inputCls, financeErrors.largeExpenseThreshold && invalidInputCls)}
+                value={financeForm.largeExpenseThreshold}
+                onChange={(e) => setFinanceForm({ ...financeForm, largeExpenseThreshold: e.target.value })}
+              />
+              <FieldError message={financeErrors.largeExpenseThreshold} />
+              <p className="mt-1 text-[11px] text-gray-400">
+                At or above {formatINR(finance.largeExpenseThreshold)} the expense form asks the submitter to confirm
+                before anything is saved.
+              </p>
+            </div>
+            {canManage && (
+              <div className="md:col-span-2 flex justify-end">
+                <button
+                  type="button" disabled={savingFinance}
+                  onClick={() => void saveFinance()}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-60"
+                >
+                  {savingFinance && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {savingFinance ? 'Saving...' : 'Save thresholds'}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : <p className="py-4 text-center text-sm text-gray-400">Threshold settings unavailable.</p>}
+      </Panel>
+
       {/* #43 */}
       <Panel icon={ShieldCheck} title="Reference Data"
-        subtitle="Six admin-managed lists. Deactivating is non-destructive: existing cards keep their value.">
+        subtitle="Admin-managed lists. Deactivating is non-destructive: existing cards and expenses keep their value.">
         {refs ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {REFERENCE_TABLES.map((t) => (

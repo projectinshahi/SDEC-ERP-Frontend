@@ -164,6 +164,8 @@ export async function fetchContent(id: number): Promise<MarketingContent> {
 }
 
 export interface CreateContentPayload {
+  /** MK-001.5 — owning Marketing project; re-resolved and authorized server-side. */
+  projectId?: number;
   title: string;
   description?: string;
   format?: string;
@@ -232,6 +234,17 @@ export async function moveContentStage(id: number, stage: string, reason?: strin
     `/marketing/content/${id}/stage`, reason ? { stage, reason } : { stage },
   );
   return res.data.content;
+}
+
+/**
+ * MK-001.5 — soft archive / restore. Never deletes: the card leaves the active
+ * board but the row, its history and its attachments are all kept.
+ */
+export async function setContentArchived(id: number, archived: boolean): Promise<boolean> {
+  const res = await apiClient.patch<{ success: boolean; archived: boolean }>(
+    `/marketing/content/${id}/archive`, { archived },
+  );
+  return res.data.archived;
 }
 
 /** Canonical stage index — the single ordering source for direction checks. */
@@ -433,9 +446,12 @@ export interface ReferenceData {
    *  `name` IS the stored value, so a card keeps its value after deactivation. */
   platforms: ReferenceItem[];
   objectives: ReferenceItem[];
+  /** MK-004.2 — expense categories. Stored BY VALUE on finance_expense.category,
+   *  so an expense keeps its label even after the reference row is deactivated. */
+  expense_categories: ReferenceItem[];
 }
 
-/** The six admin-managed lists, in the order the Administration UI shows them. */
+/** The admin-managed lists, in the order the Administration UI shows them. */
 export const REFERENCE_TABLES = [
   { key: 'categories', label: 'Content Categories' },
   { key: 'pillars', label: 'Content Pillars' },
@@ -443,6 +459,8 @@ export const REFERENCE_TABLES = [
   { key: 'clients', label: 'Clients / Brands' },
   { key: 'campaigns', label: 'Campaigns' },
   { key: 'objectives', label: 'Objectives' },
+  // MK-004.2 — added to the SAME registry rather than getting a private editor.
+  { key: 'expense_categories', label: 'Expense Categories' },
 ] as const;
 
 /** ONE request for all four dropdown sources (no four-call waterfall). */
@@ -455,6 +473,7 @@ export async function fetchReferenceData(): Promise<ReferenceData> {
     campaigns: res.data?.campaigns ?? [],
     platforms: res.data?.platforms ?? [],
     objectives: res.data?.objectives ?? [],
+    expense_categories: res.data?.expense_categories ?? [],
   };
 }
 
@@ -468,6 +487,7 @@ export async function fetchAllReferenceData(): Promise<ReferenceData> {
     campaigns: res.data?.campaigns ?? [],
     platforms: res.data?.platforms ?? [],
     objectives: res.data?.objectives ?? [],
+    expense_categories: res.data?.expense_categories ?? [],
   };
 }
 

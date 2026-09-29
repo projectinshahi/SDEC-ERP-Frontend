@@ -33,6 +33,8 @@ import {
   Settings,
   DollarSign,
   FileText,
+  Receipt,
+  Megaphone,
 } from 'lucide-react';
 import type { ModuleName } from '@/lib/permissions/permission.types';
 import { SidebarBoardsItem } from '@/components/sidebar/SidebarBoardsItem';
@@ -73,6 +75,8 @@ const iconMap = {
   Settings,
   DollarSign,
   FileText,
+  Receipt,
+  Megaphone,
 } as const;
 
 export interface SidebarItem {

@@ -304,7 +304,14 @@ export default function ContentDetailPage() {
     }
   }, [id, hydrate]);
 
-  useEffect(() => { if (Number.isInteger(id)) load(); }, [id, load]);
+  useEffect(() => {
+    /* A non-numeric id ('/content/not-an-id') made this skip load() entirely,
+     * which left `loading` true forever — a permanent skeleton with no message.
+     * An id that cannot be valid is answered here instead of being fetched. */
+    if (Number.isInteger(id) && id > 0) { void load(); return; }
+    setError('Content card not found.');
+    setLoading(false);
+  }, [id, load]);
   // Stage history reads the EXISTING activity audit — no second history store.
   const loadHistory = useCallback(() => {
     setHistoryLoading(true);

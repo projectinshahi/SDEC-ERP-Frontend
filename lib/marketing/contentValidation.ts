@@ -18,16 +18,33 @@ export interface ApiFieldError { field: string; message: string }
  * lands next to the offending input rather than only in a toast.
  * Returns `{}` when the response carries no field detail, letting the caller
  * fall back to its generic error message.
+ *
+ * TWO shapes are understood, because the module emits both:
+ *   • `errors: [{ field, message }]`  — the original Content endpoints
+ *   • `fieldErrors: { field: message }` — the project / asset / attendance
+ *     endpoints, which key their errors directly
+ * Reading only the first silently DISCARDED every server-side field error from
+ * the second set, so a duplicate serial number (for example) surfaced nowhere.
  */
 export function fieldErrorsFromApi(err: unknown): FieldErrors {
-  const details = (err as { details?: { errors?: ApiFieldError[] } } | null)?.details;
-  const list = Array.isArray(details?.errors) ? details!.errors : [];
+  const details = (err as {
+    details?: { errors?: ApiFieldError[]; fieldErrors?: Record<string, unknown> };
+  } | null)?.details;
   const out: FieldErrors = {};
-  for (const e of list) {
+
+  for (const e of Array.isArray(details?.errors) ? details!.errors : []) {
     if (e && typeof e.field === 'string' && typeof e.message === 'string' && !out[e.field]) {
       out[e.field] = e.message;
     }
   }
+
+  const keyed = details?.fieldErrors;
+  if (keyed && typeof keyed === 'object' && !Array.isArray(keyed)) {
+    for (const [field, message] of Object.entries(keyed)) {
+      if (typeof message === 'string' && message && !out[field]) out[field] = message;
+    }
+  }
+
   return out;
 }
 

@@ -792,6 +792,33 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   },
   {
     module: 'marketing',
+    label: 'Marketing · Asset Management',
+    permissions: [
+      { key: 'marketing.assets.view', label: 'View Assets', description: 'See the equipment registry, booking requests and the availability calendar', module: 'marketing' },
+      { key: 'marketing.assets.manage', label: 'Manage Asset Registry', description: 'Add, edit, deactivate and reactivate equipment (Admin-controlled)', module: 'marketing' },
+      { key: 'marketing.assets.request', label: 'Request Assets', description: 'Submit a request to take out equipment for a project and date range', module: 'marketing' },
+      { key: 'marketing.assets.approve', label: 'Approve Asset Requests', description: 'Approve or reject equipment requests, and cancel any booking', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Attendance',
+    permissions: [
+      { key: 'marketing.attendance.self', label: 'Record Own Attendance', description: 'Check in and check out for yourself, for the current day only', module: 'marketing' },
+      { key: 'marketing.attendance.view', label: 'View Team Attendance', description: "See the Marketing team's daily attendance", module: 'marketing' },
+      { key: 'marketing.attendance.override', label: 'Override Attendance', description: 'Manually set the attendance record of another member; always requires a reason and is audited', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
+    label: 'Marketing · Production Costs',
+    permissions: [
+      { key: 'marketing.costs.view', label: 'View Production Costs', description: 'See the per-client production cost dashboard and category breakdown', module: 'marketing' },
+      { key: 'marketing.costs.manage', label: 'Log Production Costs', description: 'Record a production cost against a Marketing client and project', module: 'marketing' },
+    ],
+  },
+  {
+    module: 'marketing',
     label: 'Marketing · Settings',
     permissions: [
       { key: 'marketing.settings.manage', label: 'Manage Notification Settings', description: 'Enable/disable the Content notification event types (assignment, stage reached, approval request, approval decision)', module: 'marketing' },
