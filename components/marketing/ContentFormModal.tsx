@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import type { UserDbResponse } from '@/lib/api/users';
@@ -30,6 +30,16 @@ interface ContentFormModalProps {
   onClose: () => void;
   /** Marketing-module users for every assignee picker (server-filtered). */
   users: UserDbResponse[];
+  /**
+   * MK-001.5 — when the modal is opened from a project workspace, the new card
+   * belongs to that project. It is sent as an id only; the SERVER re-resolves
+   * and authorizes it and derives the client from it, so this is a convenience,
+   * not the authorization.
+   */
+  projectId?: number;
+  /** Stage the new card starts in — the Kanban column the Add button sits in.
+   *  Defaults to Ideas / Backlog when the modal is opened from elsewhere. */
+  initialStage?: string;
   onCreated: (content: MarketingContent) => void;
 }
 
@@ -38,12 +48,12 @@ interface ContentFormModalProps {
  * starting stage is explicitly chosen. Reuses the shared Modal + the existing
  * marketing-scoped user picklist; no data is fabricated (unassigned stays null).
  */
-export function ContentFormModal({ isOpen, onClose, users, onCreated }: ContentFormModalProps) {
+export function ContentFormModal({ isOpen, onClose, users, projectId, initialStage, onCreated }: ContentFormModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   /** Dropdown options come from ADMIN REFERENCE DATA — never hardcoded here. */
-  const [ref, setRef] = useState<ReferenceData>({ clients: [], categories: [], pillars: [], campaigns: [], platforms: [], objectives: [] });
+  const [ref, setRef] = useState<ReferenceData>({ clients: [], categories: [], pillars: [], campaigns: [], platforms: [], objectives: [], expense_categories: [] });
   const [refError, setRefError] = useState(false);
   /**
    * BOTH production field sets live here at once. Changing Content Type only
@@ -52,7 +62,7 @@ export function ContentFormModal({ isOpen, onClose, users, onCreated }: ContentF
    */
   const [production, setProduction] = useState<ProductionData>({ design: {}, shoot: {} });
   const [form, setForm] = useState({
-    title: '', description: '', format: 'poster', stage: 'idea', priority: 'medium',
+    title: '', description: '', format: 'poster', stage: initialStage ?? 'idea', priority: 'medium',
     objective: '', targetAudience: '', cta: '', references: '', notes: '',
     deadline: '', ownerId: '', designerId: '', videographerId: '', editorId: '',
     clientId: '', categoryId: '', pillarId: '', campaignId: '',
@@ -103,8 +113,14 @@ export function ContentFormModal({ isOpen, onClose, users, onCreated }: ContentF
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  /* `saving` is React STATE, so two clicks landing in the same tick both read
+     it as false and both POST — which is how a double-click created two cards.
+     The ref is updated synchronously, so the second click sees the first. */
+  const submittingRef = useRef(false);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     // Inline, field-specific validation. The backend re-validates identically —
     // this is a convenience, not the enforcement point.
     const errs: Record<string, string> = {};
@@ -114,6 +130,7 @@ export function ContentFormModal({ isOpen, onClose, users, onCreated }: ContentF
     setFieldErrors(errs);
     if (Object.keys(errs).length) { setError(null); return; }
 
+    submittingRef.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -134,6 +151,7 @@ export function ContentFormModal({ isOpen, onClose, users, onCreated }: ContentF
         designerId: form.designerId ? Number(form.designerId) : undefined,
         videographerId: form.videographerId ? Number(form.videographerId) : undefined,
         editorId: form.editorId ? Number(form.editorId) : undefined,
+        projectId,
         clientId: form.clientId ? Number(form.clientId) : undefined,
         categoryId: form.categoryId ? Number(form.categoryId) : undefined,
         pillarId: form.pillarId ? Number(form.pillarId) : undefined,
@@ -145,7 +163,7 @@ export function ContentFormModal({ isOpen, onClose, users, onCreated }: ContentF
       });
       onCreated(created);
       setForm({
-        title: '', description: '', format: 'poster', stage: 'idea', priority: 'medium',
+        title: '', description: '', format: 'poster', stage: initialStage ?? 'idea', priority: 'medium',
         objective: '', targetAudience: '', cta: '', references: '', notes: '',
         deadline: '', ownerId: '', designerId: '', videographerId: '', editorId: '',
         clientId: '', categoryId: '', pillarId: '', campaignId: '',
@@ -162,6 +180,7 @@ export function ContentFormModal({ isOpen, onClose, users, onCreated }: ContentF
       }
       setError(detail?.error || err?.message || 'Failed to create content.');
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   };

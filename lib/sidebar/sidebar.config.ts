@@ -5,7 +5,7 @@ export interface SidebarMenuItem {
   label: string;
   href?: string;
   /** Must match a key in Sidebar's iconMap */
-  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ListTodo' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'CalendarClock' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid' | 'Settings' | 'DollarSign' | 'FileText';
+  icon?: 'LayoutDashboard' | 'Users' | 'CheckSquare' | 'ListTodo' | 'ShieldCheck' | 'Briefcase' | 'Bug' | 'Rocket' | 'AlertTriangle' | 'CalendarDays' | 'CalendarClock' | 'Target' | 'TrendingUp' | 'BarChart3' | 'LayoutGrid' | 'Settings' | 'DollarSign' | 'FileText' | 'Receipt' | 'Megaphone';
   /** Module this sidebar item belongs to. null = always visible (no permission gating). */
   module?: ModuleName | null;
   permission?: PermissionKey | PermissionKey[];
@@ -510,6 +510,17 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     permission: 'marketing.dashboard.view',
   },
   {
+    // MK-001.1 — the per-client project workspace (calendar + content board).
+    // Same module and permission as Content, resolved by permissionsForPath's
+    // longest-prefix match, so /projects/:id is covered by the layout guard with
+    // no new key and no hardcoded exception.
+    label: 'Projects',
+    href: '/dashboard/marketing/projects',
+    icon: 'Briefcase',
+    module: 'marketing',
+    permission: 'marketing.content.view',
+  },
+  {
     label: 'Content Production',
     href: '/dashboard/marketing/content',
     icon: 'FileText',
@@ -537,6 +548,87 @@ export const SIDEBAR_ITEMS: SidebarMenuItem[] = [
     icon: 'CalendarClock',
     module: 'marketing',
     permission: 'marketing.content.view',
+  },
+  {
+    // MK-002 — Asset Management. The VIEW key only; the registry's Add/Edit/
+    // Deactivate controls are separately gated on marketing.assets.manage and
+    // the API enforces that independently.
+    label: 'Asset Management',
+    href: '/dashboard/marketing/assets',
+    icon: 'Briefcase',
+    module: 'marketing',
+    permission: 'marketing.assets.view',
+  },
+  {
+    // MK-002.4 — Availability calendar. Same key as the registry it reads from:
+    // it shows nothing the Asset Management page does not already show, only
+    // laid out by day. The API re-checks marketing.assets.view.
+    label: 'Asset Availability',
+    href: '/dashboard/marketing/assets/availability',
+    icon: 'CalendarDays',
+    module: 'marketing',
+    permission: 'marketing.assets.view',
+  },
+  {
+    // MK-003 — Attendance. Gated on the SELF key: anyone who can record their
+    // own attendance can open the page; the team panel and the override control
+    // appear only with their own keys, checked again server-side.
+    label: 'Attendance',
+    href: '/dashboard/marketing/attendance',
+    icon: 'CalendarClock',
+    module: 'marketing',
+    permission: 'marketing.attendance.self',
+  },
+  {
+    // MK-003.3 / MK-003.4 — monthly calendar + summary/export. The SELF key,
+    // matching the endpoints (/attendance/month, /summary, /summary.xlsx): a
+    // member always sees their OWN month, and the roster picker only appears
+    // when the server says canViewTeam.
+    label: 'Attendance Report',
+    href: '/dashboard/marketing/attendance/report',
+    icon: 'BarChart3',
+    module: 'marketing',
+    permission: 'marketing.attendance.self',
+  },
+  {
+    // MK-004.1 — per-client production costs. marketing.costs.view is currently
+    // granted to NO seeded role (only Admin/SuperAdmin reach it by bypass);
+    // the specification does not name a holder, so it stays grantable in Role
+    // Management rather than being assigned here.
+    label: 'Production Costs',
+    href: '/dashboard/marketing/costs',
+    icon: 'DollarSign',
+    module: 'marketing',
+    permission: 'marketing.costs.view',
+  },
+  {
+    // MK-004.2 / MK-004.3 / MK-004.6 — the expense logger, the approval queue and
+    // the per-client report all live on ONE page, so this is one nav item rather
+    // than three. Gated on the same financial VIEW keys the API enforces; the
+    // Log / Approve / Export controls are separately gated inside the page and
+    // re-checked server-side.
+    label: 'Expenses',
+    href: '/dashboard/marketing/expenses',
+    icon: 'Receipt',
+    module: 'marketing',
+    permission: ['marketing.costs.view', 'marketing.financials.view'],
+  },
+  {
+    // MK-004.4 — paid campaign spend and cost per lead.
+    label: 'Performance Marketing',
+    href: '/dashboard/marketing/performance',
+    icon: 'TrendingUp',
+    module: 'marketing',
+    permission: ['marketing.campaigns.view', 'marketing.financials.view'],
+  },
+  {
+    // MK-004.5 — influencer campaigns and payouts. Same authority as campaigns:
+    // an influencer campaign IS a campaign, so it needs no new permission key.
+    label: 'Influencer Marketing',
+    href: '/dashboard/marketing/influencers',
+    icon: 'Megaphone',
+    module: 'marketing',
+    permission: ['marketing.campaigns.view', 'marketing.financials.view'],
   },
   {
     // M10 — Administration. Gated on the SAME admin key the API enforces, so a

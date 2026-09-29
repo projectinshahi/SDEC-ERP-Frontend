@@ -211,6 +211,20 @@ export type PermissionKey =
   // access = holding ANY marketing.* key; each section has its own view + action keys.
   // Financial keys (budget/spend/expense/revenue/ROI) are separated so a role can be
   // granted operational access WITHOUT seeing money (enforced FE + BE).
+  // MK-002/MK-003 — equipment registry and Marketing team attendance. Registry
+  // mutation is Admin-controlled; requesting and approving are separate
+  // authorities so an approver is never implied by the ability to request.
+  | 'marketing.assets.view'
+  | 'marketing.assets.manage'
+  | 'marketing.assets.request'
+  | 'marketing.assets.approve'
+  | 'marketing.attendance.self'
+  | 'marketing.attendance.view'
+  | 'marketing.attendance.override'
+  // MK-004.1 — production cost visibility. Deliberately separate from operational
+  // Marketing access so a role can be given one without the other.
+  | 'marketing.costs.view'
+  | 'marketing.costs.manage'
   | 'marketing.dashboard.view'
   | 'marketing.dashboard.financials'
   | 'marketing.campaigns.view'
