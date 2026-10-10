@@ -193,6 +193,18 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         module: 'mytasks',
       },
       {
+        key: 'mytasks.dashboard.company',
+        label: 'Task Analytics — Company Registered',
+        description: 'Open the Task Dashboard showing ONLY tasks assigned to company accounts (users added in User Management). Not needed if View Task Dashboard is ticked — that already shows everything',
+        module: 'mytasks',
+      },
+      {
+        key: 'mytasks.dashboard.external',
+        label: 'Task Analytics — External',
+        description: 'Open the Task Dashboard showing ONLY tasks assigned to external accounts (app sign-ups invited via WhatsApp). Not needed if View Task Dashboard is ticked',
+        module: 'mytasks',
+      },
+      {
         key: 'mytasks.dashboard.export',
         label: 'Download Task Analytics Report',
         description: 'Download the Task Analytics dashboard as a branded PDF report, including the detailed filtered task list',

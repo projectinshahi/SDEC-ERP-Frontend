@@ -105,6 +105,30 @@ export interface MyTaskDashboardFilters {
   status?: string | null;
   priority?: string | null;
   inChargeId?: number | null;
+  accountType?: MyTaskAccountType | null;
+}
+
+/** 'external' = mobile-app self sign-up (no employee record → "Unassigned" department). */
+export type MyTaskAccountType = 'company' | 'external';
+
+export interface MyTaskAccountTypeStats {
+  total: number; active: number; completed: number; delayed: number;
+  dueToday: number; completionPct: number; people: number;
+  /** Every registered user of this account type, with or without tasks. */
+  registered?: number;
+}
+
+/** A registered user in the Company / External roster (`people`), with or without tasks. */
+export interface MyTaskDashboardPerson {
+  userId: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  department: string;
+  designation: string | null;
+  accountType: MyTaskAccountType;
+  joinedAt: string | null;
 }
 
 export interface MyTaskDashboardEmployee {
@@ -123,6 +147,7 @@ export interface MyTaskDashboardEmployee {
   completionPct: number;
   /** Derived from the activity timeline; null when no completion was ever logged. */
   avgCompletionHours: number | null;
+  accountType: MyTaskAccountType;
 }
 
 export interface MyTaskDashboardDepartment {
@@ -160,6 +185,7 @@ export interface MyTaskReportTask {
   department: string;
   project: string | null;
   waitingReason: string | null;
+  accountType: MyTaskAccountType;
 }
 
 export interface MyTaskDashboardData {
@@ -169,12 +195,16 @@ export interface MyTaskDashboardData {
     total: number; active: number; todo: number; inProgress: number;
     waiting: number; done: number; approved: number; delayed: number; dueToday: number;
   };
+  /** Only the types the caller may see (mytasks.dashboard.view = both; .company / .external = one). */
+  byAccountType: Partial<Record<MyTaskAccountType, MyTaskAccountTypeStats>>;
   statusDistribution: { label: string; value: number }[];
   priorityDistribution: { label: string; value: number }[];
   trend: { label: string; created: number; completed: number }[];
   /** Currently-overdue tasks bucketed by the day they were DUE (not a historical snapshot). */
   delayedTrend: { label: string; delayed: number }[];
   employees: MyTaskDashboardEmployee[];
+  /** Full roster per visible account type (people with zero tasks included). */
+  people?: Partial<Record<MyTaskAccountType, MyTaskDashboardPerson[]>>;
   departments: MyTaskDashboardDepartment[];
   companyProgress: {
     total: number; completed: number; completionPct: number;
@@ -198,6 +228,7 @@ export interface MyTaskDashboardData {
     departments: string[];
     projects: { id: string; name: string }[];
     statuses: { value: string; label: string }[];
+    accountTypes: { value: MyTaskAccountType; label: string }[];
   };
   generatedAt: string;
 }
@@ -213,6 +244,7 @@ function dashboardQuery(f: MyTaskDashboardFilters): string {
   if (f.status) p.set('status', f.status);
   if (f.priority) p.set('priority', f.priority);
   if (f.inChargeId) p.set('inChargeId', String(f.inChargeId));
+  if (f.accountType) p.set('accountType', f.accountType);
   const qs = p.toString();
   return qs ? `?${qs}` : '';
 }

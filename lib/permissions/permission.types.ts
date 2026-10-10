@@ -36,6 +36,8 @@ export type PermissionKey =
   | 'mytasks.chat.view'
   | 'mytasks.chat.send'
   | 'mytasks.dashboard.view'
+  | 'mytasks.dashboard.company'
+  | 'mytasks.dashboard.external'
   | 'mytasks.dashboard.export'
   // Notice — standalone top-level module
   | 'notice.view'

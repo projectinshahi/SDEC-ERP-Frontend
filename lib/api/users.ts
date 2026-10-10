@@ -12,6 +12,8 @@ export interface UserDbResponse {
   status: string;
   /** Real account creation timestamp (ISO) — null on legacy rows without one. */
   createdAt?: string | null;
+  phone?: string | null;
+  accountType?: 'company' | 'external';
 }
 
 /**
@@ -71,7 +73,8 @@ export async function createUserApi(data: any): Promise<any> {
   const response = await apiClient.post('/users', {
     name: data.name,
     email: data.email,
-    password: data.password,   // required — stored as SHA-256 hash on the backend
+    password: data.password,   // empty on create — the backend generates a temporary password and emails it
+    phone: data.phone || undefined,
     roles: data.roles,
     status: data.status,
   });
@@ -86,6 +89,7 @@ export async function updateUserApi(id: string, data: any): Promise<any> {
     name: data.name,
     email: data.email,
     password: data.password,   // optional — only sent if the admin is resetting the password
+    phone: data.phone ?? '',   // '' clears the phone on the backend
     roles: data.roles,
     status: data.status,
   });

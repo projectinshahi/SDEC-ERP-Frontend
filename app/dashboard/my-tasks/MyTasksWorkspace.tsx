@@ -1337,7 +1337,9 @@ function WorkspaceInner() {
   const canDelete = isSuperAdmin || hasPermission('mytasks.delete');
   const canAssign = isSuperAdmin || hasPermission('mytasks.assign');
   // Org-wide Task Dashboard (Founder/CEO/HR/Leads/Managers) — toggled in-place.
-  const canViewDashboard = isSuperAdmin || hasPermission('mytasks.dashboard.view');
+  // Full dashboard, or only its Company / External slice (backend scopes the data).
+  const canViewDashboard = isSuperAdmin || hasPermission('mytasks.dashboard.view')
+    || hasPermission('mytasks.dashboard.company') || hasPermission('mytasks.dashboard.external');
   // Per-task roles — mirror the backend (utils/myTaskAccess.ts) so the UI never
   // offers an action the server will reject. The coarse mytasks.* permission still
   // applies on top; these only narrow it further.

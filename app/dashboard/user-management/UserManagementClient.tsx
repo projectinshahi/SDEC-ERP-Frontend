@@ -5,6 +5,7 @@ import { Button } from '@/components/Button';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { RoleTable } from '@/components/user-management/RoleTable';
 import { AddUserModal } from '@/components/user-management/AddUserModal';
+import { AccountTypeBadge } from '@/components/user-management/AccountTypeBadge';
 import { CreateRoleModal } from '@/components/user-management/CreateRoleModal';
 import { PermissionGuard } from '@/components/permissions/PermissionGuard';
 import { PermissionPageGuard } from '@/components/permissions/PermissionPageGuard';
@@ -133,6 +134,7 @@ export function UserManagementClient() {
   const [roleSearch, setRoleSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [accountFilter, setAccountFilter] = useState('ALL');
   const [dateFilter, setDateFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('newest');
 
@@ -147,6 +149,8 @@ export function UserManagementClient() {
         roles: u.role ? u.role.split(',').map((r) => r.trim()).filter(Boolean) : [],
         status: String(u.status).toLowerCase() as 'active' | 'inactive',
         createdAt: u.createdAt ?? '',
+        phone: u.phone ?? null,
+        accountType: u.accountType,
       })));
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to load users from the database.');
@@ -229,9 +233,10 @@ export function UserManagementClient() {
         || u.email.toLowerCase().includes(q) || u.roles.join(' ').toLowerCase().includes(q);
       const matchesRole = roleFilter === 'ALL' || u.roles.includes(roleFilter);
       const matchesStatus = statusFilter === 'ALL' || u.status === statusFilter;
+      const matchesAccount = accountFilter === 'ALL' || u.accountType === accountFilter;
       const matchesDate = dateFilter === 'ALL' || (!!u.createdAt
         && now - new Date(u.createdAt).getTime() <= (dateWindow[dateFilter] ?? 99999) * DAY);
-      return matchesSearch && matchesRole && matchesStatus && matchesDate;
+      return matchesSearch && matchesRole && matchesStatus && matchesAccount && matchesDate;
     });
     rows = [...rows].sort((a, b) => {
       if (sortBy === 'name_asc') return a.name.localeCompare(b.name);
@@ -241,7 +246,7 @@ export function UserManagementClient() {
       return sortBy === 'oldest' ? at - bt : bt - at;
     });
     return rows;
-  }, [users, search, roleFilter, statusFilter, dateFilter, sortBy]);
+  }, [users, search, roleFilter, statusFilter, accountFilter, dateFilter, sortBy]);
 
   // Roles tab list — filtered from the SAME `roles` state the table renders, so
   // there is no second data source. Partial + case-insensitive over the fields the
@@ -255,6 +260,7 @@ export function UserManagementClient() {
   }, [roles, roleSearch]);
 
   const activeFilterCount = (roleFilter !== 'ALL' ? 1 : 0) + (statusFilter !== 'ALL' ? 1 : 0)
+    + (accountFilter !== 'ALL' ? 1 : 0)
     + (dateFilter !== 'ALL' ? 1 : 0) + (search.trim() ? 1 : 0);
 
   // ── Handlers ────────────────────────────────────────────────────────────
@@ -432,6 +438,11 @@ export function UserManagementClient() {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
+            <select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)} className={selectCls}>
+              <option value="ALL">All Accounts</option>
+              <option value="company">Company</option>
+              <option value="external">External</option>
+            </select>
             <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className={selectCls}>
               <option value="ALL">Any Date</option>
               <option value="7d">Last 7 days</option>
@@ -470,7 +481,7 @@ export function UserManagementClient() {
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      {['User', 'Email', 'Role', 'Status', 'Created Date', 'Actions'].map((h) => (
+                      {['User', 'Email', 'Phone', 'Account', 'Role', 'Status', 'Created Date', 'Actions'].map((h) => (
                         <th key={h} className={classNames('py-3.5 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap', h === 'Actions' && 'text-right')}>{h}</th>
                       ))}
                     </tr>
@@ -487,6 +498,8 @@ export function UserManagementClient() {
                             </div>
                           </td>
                           <td className="py-3 px-5 text-slate-500">{u.email}</td>
+                          <td className="py-3 px-5 text-slate-500 whitespace-nowrap">{u.phone || '—'}</td>
+                          <td className="py-3 px-5"><AccountTypeBadge type={u.accountType} /></td>
                           <td className="py-3 px-5">
                             <div className="flex flex-wrap gap-1">
                               {u.roles.length === 0 ? <span className="text-xs text-slate-400 italic">No role</span>

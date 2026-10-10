@@ -270,6 +270,13 @@ export function LoginForm() {
           <span>Sign In</span>
         )}
       </button>
+
+      <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+        Don&apos;t have an account?{' '}
+        <a href="/register" className="font-semibold text-indigo-600 hover:text-indigo-500 hover:underline transition-colors">
+          Sign up
+        </a>
+      </p>
     </form>
   );
 }

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { User, UserFormData } from '@/lib/types/user-management';
 import { AddUserModal } from '@/components/user-management/AddUserModal';
+import { AccountTypeBadge } from '@/components/user-management/AccountTypeBadge';
 import { Modal } from '@/components/Modal';
 import {
   fetchUsersDirectory,
@@ -59,6 +60,8 @@ export default function UsersPage() {
         createdAt: u.createdAt 
           ? new Date(u.createdAt).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0],
+        phone: u.phone ?? null,
+        accountType: u.accountType,
       }));
       setUsers(formatted);
     } catch (err: any) {
@@ -201,6 +204,8 @@ export default function UsersPage() {
                 <tr className="border-b border-slate-100 bg-slate-50/50">
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Account</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Role</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Created</th>
@@ -215,6 +220,12 @@ export default function UsersPage() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="h-4 bg-slate-100 rounded animate-pulse w-48" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-slate-100 rounded animate-pulse w-28" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-5 bg-slate-100 rounded-full animate-pulse w-16" />
                     </td>
                     <td className="py-4 px-6">
                       <div className="h-5 bg-slate-100 rounded-md animate-pulse w-14" />
@@ -263,6 +274,8 @@ export default function UsersPage() {
                 <tr className="border-b border-slate-100 bg-slate-50/50">
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</th>
+                  <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Account</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Role</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Created</th>
@@ -282,6 +295,12 @@ export default function UsersPage() {
                       </td>
                       <td className="py-4 px-6 text-slate-600 text-sm font-medium">
                         {user.email}
+                      </td>
+                      <td className="py-4 px-6 text-slate-600 text-sm font-medium whitespace-nowrap">
+                        {user.phone || '—'}
+                      </td>
+                      <td className="py-4 px-6">
+                        <AccountTypeBadge type={user.accountType} />
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex flex-wrap gap-1.5">

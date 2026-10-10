@@ -6,7 +6,7 @@ import { Button } from '@/components/Button';
 import { InputField } from '@/components/ui/InputField';
 // SelectField removed to support multi-role selection
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
-import { User as UserIcon, Mail, Lock, ShieldCheck, Loader2, Eye, EyeOff, Info } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Lock, ShieldCheck, Loader2, Eye, EyeOff, Info } from 'lucide-react';
 import type { User as UserType, UserFormData } from '@/lib/types/user-management';
 
 interface AddUserModalProps {
@@ -17,6 +17,9 @@ interface AddUserModalProps {
   editUser?: UserType | null;
   isSubmitting?: boolean;
 }
+
+// 'External' = mobile-app self sign-up; set by the backend, never assignable here.
+const isExternalRole = (r: string) => r.trim().toLowerCase() === 'external';
 
 // Password strength calculator
 function getPasswordStrength(password: string): { score: number; label: string; color: string } {
@@ -47,6 +50,7 @@ export function AddUserModal({
   const [formData, setFormData] = useState<UserFormData>({
     name: '',
     email: '',
+    phone: '',
     password: '',
     roles: [],
     status: 'active',
@@ -62,6 +66,7 @@ export function AddUserModal({
       setFormData({
         name: editUser?.name || '',
         email: editUser?.email || '',
+        phone: editUser?.phone || '',
         password: '',
         roles: editUser?.roles || [],
         status: editUser?.status || 'active',
@@ -91,7 +96,16 @@ export function AddUserModal({
         if (email.length > 100) return 'Email must be under 100 characters';
         if (/\s/.test(email)) return 'Email cannot contain spaces';
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Please enter a valid email (e.g. name@gmail.com)';
-        if (!email.toLowerCase().endsWith('@gmail.com')) return 'Only Gmail addresses are allowed (e.g. name@gmail.com)';
+        // Create only (same as the backend) — app sign-ups (External) may use any email,
+        // and the admin must still be able to edit/promote them.
+        if (!editUser && !email.toLowerCase().endsWith('@gmail.com')) return 'Only Gmail addresses are allowed (e.g. name@gmail.com)';
+        return '';
+      }
+      case 'phone': {
+        // Optional — the backend does the real normalization/validation.
+        const phone = String(value ?? '').trim();
+        if (phone && !/^[\d\s+()-]+$/.test(phone)) return 'Phone may only contain digits, spaces, + ( ) and -';
+        if (phone.length > 25) return 'Phone must be under 25 characters';
         return '';
       }
       case 'password': {
@@ -145,9 +159,10 @@ export function AddUserModal({
     setTouched((prev) => ({ ...prev, roles: true }));
     setFormData((prev) => {
       const isSelected = prev.roles.includes(roleName);
+      // Picking any company role drops 'External', promoting the account to company.
       const updatedRoles = isSelected
         ? prev.roles.filter((r) => r !== roleName)
-        : [...prev.roles, roleName];
+        : [...prev.roles.filter((r) => !isExternalRole(r)), roleName];
 
       const errorMsg = validateField('roles', updatedRoles);
       setErrors((errs) => ({
@@ -182,6 +197,7 @@ export function AddUserModal({
   const hasErrors =
     validateField('name', formData.name) !== '' ||
     validateField('email', formData.email) !== '' ||
+    validateField('phone', formData.phone) !== '' ||
     validateField('roles', formData.roles) !== '';
 
   const isFormValid = !hasErrors;
@@ -193,6 +209,7 @@ export function AddUserModal({
     const allTouched: Partial<Record<keyof UserFormData, boolean>> = {
       name: true,
       email: true,
+      phone: true,
       password: true,
       roles: true,
     };
@@ -202,6 +219,7 @@ export function AddUserModal({
     const newErrors: Partial<Record<keyof UserFormData, string>> = {
       name: validateField('name', formData.name),
       email: validateField('email', formData.email),
+      phone: validateField('phone', formData.phone),
       roles: validateField('roles', formData.roles),
     };
 
@@ -219,7 +237,9 @@ export function AddUserModal({
   };
 
   // Combine dynamic role options from parent with user requested standard dummy choices
-  const roleOptions = availableRoles.length > 0 ? availableRoles : ['Admin', 'Manager', 'Employee'];
+  const roleOptions = (availableRoles.length > 0 ? availableRoles : ['Admin', 'Manager', 'Employee'])
+    .filter((r) => !isExternalRole(r));
+  const isExternalAccount = editUser?.accountType === 'external' && formData.roles.some(isExternalRole);
 
   return (
     <Modal
@@ -286,6 +306,21 @@ export function AddUserModal({
             </p>
           )}
         </div>
+
+        {/* Phone Field (optional) */}
+        <InputField
+          label="Phone (Optional)"
+          id="phone"
+          type="tel"
+          placeholder="e.g. +91 98765 43210"
+          icon={Phone}
+          value={formData.phone}
+          onChange={(val) => handleFieldChange('phone', val)}
+          onBlur={() => handleBlur('phone')}
+          error={touched.phone ? errors.phone : undefined}
+          disabled={isSubmitting}
+          maxLength={25}
+        />
 
         {/* Password Field with strength indicator (Only for Edit Mode) */}
         {editUser && (
@@ -374,6 +409,11 @@ export function AddUserModal({
           <label className="block text-sm font-semibold text-gray-700">
             Assigned Authorization Roles <span className="text-red-500">*</span>
           </label>
+          {isExternalAccount && (
+            <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-lg p-2.5 font-medium">
+              External account (self sign-up from the app, limited to My Tasks). Pick a company role to promote it.
+            </p>
+          )}
           {roleOptions.length === 0 ? (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-semibold flex items-center gap-2">
               <Info size={14} className="flex-shrink-0" />

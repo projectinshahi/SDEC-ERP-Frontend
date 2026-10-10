@@ -12,6 +12,10 @@ export interface User {
   roles: string[];
   status: 'active' | 'inactive';
   createdAt: string;
+  /** E.164 (e.g. "+919876543210"), normalized by the backend. */
+  phone?: string | null;
+  /** Set by the backend: 'company' = added here, 'external' = mobile-app sign-up. Never sent. */
+  accountType?: 'company' | 'external';
 }
 
 export interface Role {
@@ -31,8 +35,9 @@ export interface Permission {
   category: string;
 }
 
-export type UserFormData = Omit<User, 'id' | 'createdAt'> & {
+export type UserFormData = Omit<User, 'id' | 'createdAt' | 'phone' | 'accountType'> & {
   password: string;
+  phone: string;
 };
 
 export type RoleFormData = Omit<Role, 'id' | 'userCount'>;
