@@ -4,7 +4,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { apiClient } from '@/lib/api/api-client';
+import { ApiError } from '@/lib/api-errors';
 
+/** Display name for an auto-created account, from the email ("john.doe@x" → "John Doe"). */
+function nameFromEmail(email: string): string {
+  const name = email.split('@')[0].replace(/[._\-+\d]+/g, ' ').trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 50);
+  return name.length >= 2 ? name : 'New User';
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -87,8 +95,31 @@ export function LoginForm() {
       const trimmedEmail = email.trim().toLowerCase();
       const trimmedPassword = password.trim();
 
-      // Direct call to useAuth login action
-      await login(trimmedEmail, trimmedPassword);
+      // One form for sign-in AND sign-up: log in, and if no account matches,
+      // create one (External role, set by the backend) with the same credentials.
+      try {
+        await login(trimmedEmail, trimmedPassword);
+      } catch (loginErr) {
+        // Only "invalid email or password" can mean "no account yet";
+        // inactive (403), network and server errors are shown as they are.
+        if (!(loginErr instanceof ApiError && loginErr.statusCode === 401)) throw loginErr;
+        try {
+          await apiClient.post('/auth/register', {
+            name: nameFromEmail(trimmedEmail),
+            email: trimmedEmail,
+            password: trimmedPassword,
+          });
+        } catch (regErr) {
+          // 409 = the email exists, so the password was simply wrong. Never create a duplicate.
+          if (regErr instanceof ApiError && regErr.statusCode === 409) throw new Error('Incorrect password. Please try again or use "Forgot password?".');
+          // 400 = new account, but the password doesn't meet the rules.
+          if (regErr instanceof ApiError && regErr.statusCode === 400) {
+            throw new Error(`Incorrect email or password. If you're new, choose a stronger password (${regErr.message}).`);
+          }
+          throw regErr;
+        }
+        await login(trimmedEmail, trimmedPassword);
+      }
       // Successful auth → role-based module selection entry point.
       router.push('/modules');
     } catch (err: any) {
@@ -116,7 +147,7 @@ export function LoginForm() {
           <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div>
             <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
-              Login Failed
+              Sign In Failed
             </h3>
             <p className="text-xs text-red-700 dark:text-red-400 mt-1">
               {authError}
@@ -267,15 +298,12 @@ export function LoginForm() {
             <span>Signing in...</span>
           </>
         ) : (
-          <span>Sign In</span>
+          <span>Continue</span>
         )}
       </button>
 
-      <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-        Don&apos;t have an account?{' '}
-        <a href="/register" className="font-semibold text-indigo-600 hover:text-indigo-500 hover:underline transition-colors">
-          Sign up
-        </a>
+      <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+        New here? Enter your email and choose a password. Your account is created automatically.
       </p>
     </form>
   );
