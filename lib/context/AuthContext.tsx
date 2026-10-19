@@ -31,6 +31,8 @@ export interface AuthUser {
   roleName: string;
   permissions: string[];
   mustChangePassword?: boolean;
+  /** 'external' = app self sign-up (My Tasks only); set by the backend on login and /auth/me. */
+  accountType?: 'company' | 'external';
 }
 
 interface AuthState {
@@ -120,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roleName: fresh.roleName ?? '',
         permissions: fresh.permissions ?? [],
         mustChangePassword: fresh.mustChangePassword ?? false,
+        accountType: fresh.accountType,
       };
       localStorage.setItem('user', JSON.stringify(merged));
       setState({ user: merged, isAuthenticated: true, isLoading: false });

@@ -94,18 +94,23 @@ export function CreateMyTaskModal({
   const [search, setSearch] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
-  const showMembers = !editTask || canAssign;
+  // External (app sign-up) users can only create tasks for themselves and can't
+  // load the user list (the backend blocks /users/picklist for them) — no picker.
+  const isExternal = user?.accountType === 'external';
+  const showMembers = !isExternal && (!editTask || canAssign);
 
   useEffect(() => {
     if (!isOpen) return;
     // EVERY active user across all modules — the backend already returns the
     // complete active-user list (single source of truth, no module/role/team
     // scoping), so NO additional client-side filtering is applied here.
-    fetchAllUsers().then(setUsers).catch(() => {});
-    // Project list for the optional Project link (reuses the existing projects API).
-    fetchProjects()
-      .then((ps) => setProjects((ps || []).map((p: any) => ({ id: String(p.id), name: p.name }))))
-      .catch(() => {});
+    if (!isExternal) {
+      fetchAllUsers().then(setUsers).catch(() => {});
+      // Project list for the optional Project link (reuses the existing projects API).
+      fetchProjects()
+        .then((ps) => setProjects((ps || []).map((p: any) => ({ id: String(p.id), name: p.name }))))
+        .catch(() => {});
+    }
     // Load the configured priority rules; refine the default (LOW) due once they
     // arrive (create mode only, and only if the user hasn't touched the due yet).
     fetchPriorityRules()
