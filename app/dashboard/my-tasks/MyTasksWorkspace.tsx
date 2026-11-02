@@ -120,6 +120,24 @@ function matchRead(t: MyTask, mode: ReadKey): boolean {
   return true;
 }
 
+// Sort. Task ID = the numeric my_tasks.id (serial, shown as "#123"), so a plain
+// numeric compare is the correct order (never a string sort: "#100" < "#99").
+// Applied to the filtered list every layout renders, so List/Grid/mobile all agree.
+type SortKey = 'id_desc' | 'id_asc';
+const DEFAULT_SORT: SortKey = 'id_desc';
+const SORT_OPTIONS: { key: SortKey; label: string; cmp: (a: MyTask, b: MyTask) => number }[] = [
+  { key: 'id_desc', label: 'Task ID — Newest First', cmp: (a, b) => b.id - a.id },
+  { key: 'id_asc', label: 'Task ID — Oldest First', cmp: (a, b) => a.id - b.id },
+];
+function SortSelect({ value, onChange, className }: { value: SortKey; onChange: (v: SortKey) => void; className?: string }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value as SortKey)} aria-label="Sort tasks"
+      className={classNames('rounded-md border border-gray-200 bg-white text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30', className)}>
+      {SORT_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+    </select>
+  );
+}
+
 /**
  * Instant text search across the fields a user actually looks a task up by:
  * Task Number (the id, shown as "#123"), Task Name, Creator (Owner), Task In-Charge,
@@ -230,17 +248,19 @@ const MOBILE_CHIPS: { key: string; label: string }[] = [
  * Rendered inside `.mytasks-scope`, so it inherits the My Tasks dark palette.
  */
 function MobileFilterSheet({
-  initialRead, initialInCharge = null, inChargeOptions, onApply, onClose,
+  initialRead, initialInCharge = null, initialSort, inChargeOptions, onApply, onClose,
 }: {
   initialRead: ReadKey;
   initialInCharge?: number | null;
+  initialSort: SortKey;
   /** Provided ONLY on the Outbox → renders the reused Task In-Charge searchable dropdown. */
   inChargeOptions?: { id: number; name: string }[];
-  onApply: (read: ReadKey, inCharge: number | null) => void;
+  onApply: (read: ReadKey, inCharge: number | null, sort: SortKey) => void;
   onClose: () => void;
 }) {
   const [draftRead, setDraftRead] = useState<ReadKey>(() => initialRead);
   const [draftInCharge, setDraftInCharge] = useState<number | null>(() => initialInCharge);
+  const [draftSort, setDraftSort] = useState<SortKey>(() => initialSort);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -275,6 +295,10 @@ function MobileFilterSheet({
             the always-visible checkbox row on the list screen, not here. */}
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pt-1 pb-4">
           <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">Sort</p>
+            <SortSelect value={draftSort} onChange={setDraftSort} className="w-full rounded-xl px-3 py-2.5 text-sm font-semibold" />
+          </div>
+          <div>
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">Read Status</p>
             <div className="flex flex-wrap gap-2">
               {READ_FILTERS.map((f) => (
@@ -292,9 +316,9 @@ function MobileFilterSheet({
           </div>
         )}
         <div className="flex shrink-0 items-center gap-3 border-t border-gray-100 px-5 py-3">
-          <button type="button" onClick={() => { setDraftRead('all'); setDraftInCharge(null); }}
+          <button type="button" onClick={() => { setDraftRead('all'); setDraftInCharge(null); setDraftSort(DEFAULT_SORT); }}
             className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Reset</button>
-          <button type="button" onClick={() => { onApply(draftRead, draftInCharge); onClose(); }}
+          <button type="button" onClick={() => { onApply(draftRead, draftInCharge, draftSort); onClose(); }}
             className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">Apply</button>
         </div>
       </div>
@@ -438,18 +462,20 @@ function MemberAvatars({ members }: { members: { id: number; name: string }[] })
 /* ── left-panel task card ─────────────────────────────────────────────────
    Compact, scannable: title · priority + status badges · due date+time · owner
    & in-charge · member avatars. Unread tasks get a subtle red left accent + dot. */
-/** Subtle full-card background tint per task state — SAME hue families the app
- *  already uses (statusMeta badges / due tones), just at card-background strength.
- *  Overdue (rose) outranks the status tint; an approved task is never "overdue"
- *  (mirrors fmtDue/mobileDue). To Do keeps the existing neutral white card. */
+/** Subtle full-card background tint per task state — SAME hue families as the grid
+ *  TONE, at card-background strength. Keyed by the grid's own `gridStatusOf`, so the
+ *  precedence is identical everywhere: Approved/Done are completed and never tinted
+ *  as overdue; Overdue (rose) outranks the remaining statuses. To Do stays white. */
+const CARD_TINT: Record<GridTone, { base: string; hover: string }> = {
+  overdue: { base: 'bg-rose-50', hover: 'hover:bg-rose-100/70' },
+  approved: { base: 'bg-green-50', hover: 'hover:bg-green-100/70' },
+  active: { base: 'bg-blue-50', hover: 'hover:bg-blue-100/70' },
+  done: { base: 'bg-violet-50', hover: 'hover:bg-violet-100/70' },
+  waiting: { base: 'bg-amber-50', hover: 'hover:bg-amber-100/70' },
+  todo: { base: 'bg-white', hover: 'hover:bg-gray-50' },
+};
 function cardTint(task: MyTask): { base: string; hover: string } {
-  if (task.dueDate && task.dueDate < todayYmd() && task.status !== 'approved')
-    return { base: 'bg-rose-50', hover: 'hover:bg-rose-100/70' };
-  if (task.status === 'approved') return { base: 'bg-green-50', hover: 'hover:bg-green-100/70' };
-  if (task.status === 'in_progress') return { base: 'bg-blue-50', hover: 'hover:bg-blue-100/70' };
-  if (task.status === 'done') return { base: 'bg-violet-50', hover: 'hover:bg-violet-100/70' };
-  if (task.status === 'waiting') return { base: 'bg-amber-50', hover: 'hover:bg-amber-100/70' };
-  return { base: 'bg-white', hover: 'hover:bg-gray-50' };
+  return CARD_TINT[gridStatusOf(task, todayYmd())];
 }
 
 /** Reference-matched compact desktop card: ID circle · title (+ due line below) ·
@@ -1389,6 +1415,8 @@ function WorkspaceInner() {
   // tabs never resets it — requirement #7), unlike the per-bucket date/read/search/
   // in-charge filters. Defaults to all-except-Approved.
   const [statusFilter, setStatusFilter] = useState<Set<string>>(() => new Set(DEFAULT_STATUS));
+  // Sort is shared like Status and lives outside `layout`, so List ⇄ Grid never resets it.
+  const [sortKey, setSortKey] = useState<SortKey>(DEFAULT_SORT);
   const [inChargeFilter, setInChargeFilter] = useState<Record<Bucket, number | null>>(() => ({ inbox: null, outbox: null, all: null })); // per-bucket
   const [waitingReasonFilter, setWaitingReasonFilter] = useState<Record<Bucket, string | null>>({ inbox: null, outbox: null, all: null }); // per-bucket, active only when Waiting is filtered
   const [readFilter, setReadFilter] = useState<Record<Bucket, ReadKey>>({ inbox: 'all', outbox: 'all', all: 'all' }); // per-bucket (never global — it would leak across tabs)
@@ -1525,6 +1553,7 @@ function WorkspaceInner() {
   // Advanced (Filter-sheet) filters currently applied: Status, Read, and
   // Task In-Charge. Drives the Filter button badge.
   const advancedFilterCount = (!isDefaultStatus(statusSel) ? 1 : 0)
+    + (sortKey !== DEFAULT_SORT ? 1 : 0)
     + (readSel !== 'all' ? 1 : 0)
     + (inChargeFilter[bucket] !== null ? 1 : 0);
   // Mobile exposes Due (chips) + Status + Read + (Outbox) Task In-Charge — all in the Filter
@@ -1566,7 +1595,13 @@ function WorkspaceInner() {
       && (inChargeFilter.all == null || t.inChargeId === inChargeFilter.all)),
     [lists.all, dateFilters.all, statusFilter, inChargeFilter.all, waitingReasonFilter.all, readFilter.all, searchAll],
   );
-  const currentList = bucket === 'all' ? allFiltered : bucket === 'inbox' ? inboxFiltered : outboxFiltered;
+  // Sorted copy of the filtered list — the ONE array every layout (List, Grid, mobile
+  // cards) renders. Sorting never touches `data`, so no task is added, dropped or mutated.
+  const currentList = useMemo(() => {
+    const filtered = bucket === 'all' ? allFiltered : bucket === 'inbox' ? inboxFiltered : outboxFiltered;
+    const cmp = (SORT_OPTIONS.find((o) => o.key === sortKey) ?? SORT_OPTIONS[0]).cmp;
+    return [...filtered].sort(cmp);
+  }, [bucket, allFiltered, inboxFiltered, outboxFiltered, sortKey]);
 
   // Task In-Charge options = distinct in-charge users across BOTH inbox + outbox
   // (name resolved from each task's members). No duplicates; sorted by name.
@@ -1609,6 +1644,7 @@ function WorkspaceInner() {
     // Reset to the DEFAULT status selection (all-except-Approved), not empty —
     // empty would hide everything. Status is shared, so this resets it everywhere.
     setStatusFilter(new Set(DEFAULT_STATUS));
+    setSortKey(DEFAULT_SORT);
     setWaitingReasonFilter((prev) => ({ ...prev, [bucket]: null }));
     setReadFilter((prev) => ({ ...prev, [bucket]: 'all' }));
     setSearch((prev) => ({ ...prev, [bucket]: '' }));
@@ -1616,6 +1652,7 @@ function WorkspaceInner() {
   };
   const defDates = DEFAULT_DATE_BY_BUCKET[bucket];
   const filtersDirty = !isDefaultStatus(statusSel)
+    || sortKey !== DEFAULT_SORT
     || dateSel.size !== defDates.length
     || !defDates.every((d) => dateSel.has(d))
     || inChargeFilter[bucket] !== null
@@ -1866,11 +1903,13 @@ function WorkspaceInner() {
             <MobileFilterSheet
               initialRead={readSel}
               initialInCharge={inChargeFilter[bucket]}
+              initialSort={sortKey}
               inChargeOptions={inChargeOptions}
               onClose={() => setFilterSheetOpen(false)}
-              onApply={(read, inCharge) => {
+              onApply={(read, inCharge, sort) => {
                 setReadFilter((prev) => ({ ...prev, [bucket]: read }));
                 setInChargeFilter((prev) => ({ ...prev, [bucket]: inCharge }));
+                setSortKey(sort);
               }}
             />
           )}
@@ -1961,6 +2000,10 @@ function WorkspaceInner() {
                 style={{ maxHeight: filtersExpanded ? '500px' : '0px', opacity: filtersExpanded ? 1 : 0 }}
               >
                 <div className="space-y-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Sort</span>
+                    <SortSelect value={sortKey} onChange={setSortKey} className="px-2 py-1 text-[11px] font-semibold" />
+                  </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="mr-0.5 w-16 shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-400">Due</span>
                     {DATE_FILTERS.map((f) => (
