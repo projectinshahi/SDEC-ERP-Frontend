@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, KeyboardEvent } from 'react';
 import { Sparkles, X, Send, Trash2, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, Legend, PieChart, Pie, Cell } from 'recharts';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { formatINR } from '@/lib/utils/currency';
@@ -270,29 +270,65 @@ export function AiAssistant() {
   );
 }
 
-/** Server-built table (and bar chart) from ERP query results. */
+const SERIES_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#0ea5e9', '#8b5cf6', '#ec4899', '#64748b'];
+
+/** Server-built table (and bar / line / pie chart) from ERP query results. */
 function DisplayBlock({ d }: { d: AiDisplay }) {
   const fmt = (v: string | number | null, col: string) =>
     v === null || v === undefined || v === '' ? '—'
       : typeof v === 'number' ? (col.includes('INR') ? formatINR(v) : v.toLocaleString('en-IN')) : v;
-  const vi = d.chartValueIndex;
-  const chartRows = vi !== undefined
-    ? d.rows.slice(0, 15).map((r) => ({ label: String(r[0] ?? '—'), value: Number(r[vi]) || 0 }))
+  const series = (d.chartSeries ?? (d.chartValueIndex !== undefined ? [d.chartValueIndex] : [])).filter((i) => i > 0 && i < d.columns.length);
+  const kind = d.chart ?? 'bar';
+  // Line charts keep every point (chronological); bar/pie keep the first 15 rows. Nulls stay null (gaps), never 0.
+  const chartRows = series.length
+    ? d.rows.slice(0, kind === 'line' ? 120 : 15).map((r) => {
+        const row: Record<string, string | number | null> = { label: String(r[0] ?? '—') };
+        for (const i of series) row[d.columns[i]] = typeof r[i] === 'number' ? (r[i] as number) : null;
+        return row;
+      })
     : [];
+  const pieRows = kind === 'pie' ? chartRows.filter((r) => typeof r[d.columns[series[0]]] === 'number' && (r[d.columns[series[0]]] as number) > 0) : [];
+  const showChart = kind === 'pie' ? pieRows.length >= 2 : chartRows.length >= 2;
+  const height = kind === 'bar' ? Math.min(40 + chartRows.length * (series.length > 1 ? 40 : 26), 300) : 200;
+  const num = (v: unknown) => (typeof v === 'number' ? v.toLocaleString('en-IN') : '—');
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900">
       <p className="border-b border-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:text-gray-200">{d.title}</p>
-      {chartRows.length >= 2 && (
-        <div className="px-2 pt-2" style={{ height: Math.min(40 + chartRows.length * 26, 300) }}>
-          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 340, height: Math.min(40 + chartRows.length * 26, 300) }}>
-            <BarChart data={chartRows} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
-              <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals />
-              <YAxis type="category" dataKey="label" width={96} tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v) => [Number(v).toLocaleString('en-IN'), d.columns[vi!]]} />
-              <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} />
-            </BarChart>
+      {showChart && (
+        <div className="px-2 pt-2" style={{ height }}>
+          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 340, height }}>
+            {kind === 'line' ? (
+              <LineChart data={chartRows} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" minTickGap={24} />
+                <YAxis tick={{ fontSize: 10 }} allowDecimals />
+                <Tooltip formatter={(v, name) => [num(v), String(name)]} />
+                {series.length > 1 && <Legend wrapperStyle={{ fontSize: 10 }} />}
+                {series.map((i, k) => (
+                  <Line key={i} type="monotone" dataKey={d.columns[i]} stroke={SERIES_COLORS[k % SERIES_COLORS.length]} strokeWidth={2} dot={chartRows.length <= 31} connectNulls={false} isAnimationActive={false} />
+                ))}
+              </LineChart>
+            ) : kind === 'pie' ? (
+              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <Pie data={pieRows} dataKey={d.columns[series[0]]} nameKey="label" cx="50%" cy="50%" outerRadius={70} innerRadius={34} isAnimationActive={false}>
+                  {pieRows.map((_, k) => <Cell key={k} fill={SERIES_COLORS[k % SERIES_COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(v, name) => [num(v), String(name)]} />
+                <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 10 }} />
+              </PieChart>
+            ) : (
+              <BarChart data={chartRows} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
+                <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals />
+                <YAxis type="category" dataKey="label" width={96} tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v, name) => [num(v), String(name)]} />
+                {series.length > 1 && <Legend wrapperStyle={{ fontSize: 10 }} />}
+                {series.map((i, k) => (
+                  <Bar key={i} dataKey={d.columns[i]} fill={SERIES_COLORS[k % SERIES_COLORS.length]} radius={[0, 4, 4, 0]} isAnimationActive={false} />
+                ))}
+              </BarChart>
+            )}
           </ResponsiveContainer>
         </div>
       )}
