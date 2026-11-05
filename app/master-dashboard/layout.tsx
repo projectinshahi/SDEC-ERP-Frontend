@@ -1,5 +1,6 @@
 'use client';
 
+import { AiAssistant } from '@/components/ai/AiAssistant';
 import { ReactNode, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
@@ -146,6 +147,7 @@ export default function MasterDashboardLayout({ children }: LayoutProps) {
               </div>
             </main>
           </div>
+          <AiAssistant />
         </div>
       </AuthGuard>
     </ErrorBoundary>

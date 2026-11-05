@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { Sidebar, type SidebarItem } from '@/components/Sidebar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { AiAssistant } from '@/components/ai/AiAssistant';
 import {
   SIDEBAR_ITEMS, itemPermissions, permissionsForPath, firstAccessibleHref,
   type SidebarMenuItem,
@@ -181,6 +182,7 @@ const DashboardShell = ({ children }: LayoutProps) => {
                 </div>
               </main>
             </div>
+            <AiAssistant />
           </div>
         )}
       </AuthGuard>
