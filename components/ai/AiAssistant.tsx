@@ -1,12 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, KeyboardEvent } from 'react';
-import { Sparkles, X, Send, Trash2, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Sparkles, X, Send, Trash2, Loader2, AlertTriangle, RotateCcw, CheckCircle2, Clock, ShieldCheck } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, Legend, PieChart, Pie, Cell } from 'recharts';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { formatINR } from '@/lib/utils/currency';
-import { askAiAssistant, fetchAiAssistantMeta, AiDisplay, AiMeta, AiTurn } from '@/lib/api/aiAssistant';
+import { askAiAssistant, fetchAiAssistantMeta, confirmAiAction, cancelAiAction, AiDisplay, AiMeta, AiTurn, AiProposal, AiActionResult } from '@/lib/api/aiAssistant';
 
 /**
  * Floating ERP AI Assistant (Phase 1, read-only).
@@ -24,6 +24,8 @@ interface Msg {
   role: 'user' | 'assistant';
   content: string;
   displays?: AiDisplay[];
+  /** Pending task-action previews; each card confirms or cancels ONE server-stored proposal. */
+  proposals?: AiProposal[];
   asOf?: string;
   error?: boolean;
 }
@@ -94,7 +96,7 @@ export function AiAssistant() {
     try {
       const res = await askAiAssistant(history);
       if (gen !== generation.current) return;
-      setMessages((prev) => [...prev, { id: nextId.current++, role: 'assistant', content: res.answer, displays: res.displays, asOf: res.asOf }]);
+      setMessages((prev) => [...prev, { id: nextId.current++, role: 'assistant', content: res.answer, displays: res.displays, proposals: res.proposals, asOf: res.asOf }]);
     } catch (e: unknown) {
       if (gen !== generation.current) return;
       setMessages((prev) => [...prev, { id: nextId.current++, role: 'assistant', error: true, content: (e as Error)?.message || 'Something went wrong. Please try again.' }]);
@@ -217,6 +219,7 @@ export function AiAssistant() {
                       {m.content}
                     </div>
                     {m.displays?.map((d, i) => <DisplayBlock key={i} d={d} />)}
+                    {m.proposals?.map((p) => <ProposalCard key={p.id} p={p} />)}
                     {m.error && m === messages[messages.length - 1] && !sending && (
                       <button type="button" onClick={retryLast} className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:underline dark:text-rose-300">
                         <RotateCcw className="h-3 w-3" /> Retry
@@ -267,6 +270,145 @@ export function AiAssistant() {
         </div>
       )}
     </>
+  );
+}
+
+const CONFIRM_LABEL: Record<AiProposal['action'], string> = {
+  create_task: 'Confirm & Create', update_task: 'Confirm & Update', assign_task: 'Confirm Assignment', change_task_status: 'Confirm Status Change',
+};
+type ProposalState = 'pending' | 'executing' | 'confirmed' | 'failed' | 'cancelled' | 'expired';
+
+/**
+ * Action preview card. The server has only STORED a proposal; this card is the one
+ * place it can be executed (Confirm → POST /actions/:id/confirm, single use) or
+ * dropped (Cancel). It expires client- and server-side; a remount after expiry
+ * cannot revive it.
+ */
+function ProposalCard({ p }: { p: AiProposal }) {
+  const expiresAtMs = new Date(p.expiresAt).getTime();
+  const [state, setState] = useState<ProposalState>(() => (expiresAtMs - Date.now() <= 0 ? 'expired' : 'pending'));
+  const [left, setLeft] = useState(() => expiresAtMs - Date.now());
+  const [result, setResult] = useState<AiActionResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const busy = useRef(false); // synchronous double-click guard
+
+  useEffect(() => {
+    if (state !== 'pending') return;
+    const t = setInterval(() => {
+      const ms = expiresAtMs - Date.now();
+      setLeft(ms);
+      if (ms <= 0) setState('expired');
+    }, 1000);
+    return () => clearInterval(t);
+  }, [state, expiresAtMs]);
+
+  const confirm = async () => {
+    if (busy.current || state !== 'pending') return;
+    busy.current = true;
+    setState('executing');
+    try {
+      setResult(await confirmAiAction(p.id));
+      setState('confirmed');
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message || 'The action could not be completed.';
+      setError(msg);
+      setState(/expired/i.test(msg) ? 'expired' : 'failed');
+    } finally {
+      busy.current = false;
+    }
+  };
+  const cancel = async () => {
+    if (busy.current || state !== 'pending') return;
+    busy.current = true;
+    try {
+      await cancelAiAction(p.id);
+      setState('cancelled');
+    } catch (e: unknown) {
+      setError((e as Error)?.message || 'Could not cancel.');
+    } finally {
+      busy.current = false;
+    }
+  };
+
+  const mm = Math.max(0, Math.floor(left / 60_000)), ss = Math.max(0, Math.floor((left % 60_000) / 1000));
+  const showCurrent = p.changes.some((c) => c.current !== null);
+  const tone = state === 'confirmed' ? 'border-emerald-200 dark:border-emerald-500/30' : state === 'failed' ? 'border-rose-200 dark:border-rose-500/30' : state === 'pending' || state === 'executing' ? 'border-indigo-200 dark:border-indigo-500/30' : 'border-gray-200 dark:border-gray-700';
+
+  return (
+    <div className={`overflow-hidden rounded-xl border bg-white dark:bg-gray-900 ${tone}`} data-proposal-id={p.id} data-proposal-state={state}>
+      <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
+        <div className="flex min-w-0 items-center gap-2">
+          <ShieldCheck className="h-4 w-4 shrink-0 text-indigo-500" />
+          <p className="truncate text-xs font-semibold text-gray-800 dark:text-gray-100">
+            {p.label}{p.taskId !== null && <span className="ml-1 font-normal text-gray-500">#{p.taskId}</span>}
+          </p>
+        </div>
+        {(state === 'pending' || state === 'executing') && (
+          <span className="flex shrink-0 items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400"><Clock className="h-3 w-3" /> expires in {mm}:{String(ss).padStart(2, '0')}</span>
+        )}
+      </div>
+      <p className="px-3 pt-2 text-xs text-gray-700 dark:text-gray-200">{p.title}</p>
+      <table className="w-full text-left text-xs">
+        <thead>
+          <tr className="text-[10px] uppercase tracking-wide text-gray-400">
+            <th className="px-3 py-1 font-semibold">Field</th>
+            {showCurrent && <th className="px-3 py-1 font-semibold">Current</th>}
+            <th className="px-3 py-1 font-semibold">Proposed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {p.changes.map((c) => (
+            <tr key={c.field} className="border-t border-gray-50 align-top dark:border-gray-800">
+              <td className="whitespace-nowrap px-3 py-1.5 font-medium text-gray-600 dark:text-gray-300">{c.field}</td>
+              {showCurrent && <td className="break-words px-3 py-1.5 text-gray-500 dark:text-gray-400">{c.current ?? '—'}</td>}
+              <td className="break-words px-3 py-1.5 font-medium text-gray-900 dark:text-gray-100">{c.proposed ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {p.notes.length > 0 && (
+        <ul className="space-y-0.5 px-3 pt-1 text-[11px] text-amber-700 dark:text-amber-300">
+          {p.notes.map((n) => <li key={n}>• {n}</li>)}
+        </ul>
+      )}
+      <div className="px-3 pb-3 pt-2">
+        {(state === 'pending' || state === 'executing') && (
+          <>
+            <p className="mb-2 text-[11px] text-gray-500 dark:text-gray-400">No changes have been made yet.</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={confirm} disabled={state !== 'pending'} aria-label={CONFIRM_LABEL[p.action]}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">
+                {state === 'executing' ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Applying…</> : CONFIRM_LABEL[p.action]}
+              </button>
+              <button type="button" onClick={cancel} disabled={state !== 'pending'} aria-label="Cancel proposal"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+        {state === 'confirmed' && result && (
+          <div className="rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200" role="status">
+            <p className="flex items-center gap-1.5 font-semibold"><CheckCircle2 className="h-4 w-4" /> {result.label} completed</p>
+            <p className="mt-1">#{result.taskId}{result.title ? ` · ${result.title}` : ''}</p>
+            <p className="mt-0.5 text-[11px]">
+              {[result.status && `Status: ${result.status}`, result.priority && `Priority: ${result.priority}`, result.due && `Due: ${result.due}`,
+                result.members && `Members: ${result.members.length ? result.members.join(', ') : 'none'}`, result.inCharge && `In-Charge: ${result.inCharge}`].filter(Boolean).join(' · ')}
+            </p>
+            <p className="mt-0.5 text-[10px] text-emerald-700/80 dark:text-emerald-300/80">
+              {new Date(result.executedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} IST
+            </p>
+          </div>
+        )}
+        {state === 'failed' && (
+          <p className="flex items-start gap-1.5 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> <span>Not applied: {error}</span>
+          </p>
+        )}
+        {state === 'cancelled' && <p className="text-xs text-gray-500 dark:text-gray-400">Cancelled — nothing was changed.</p>}
+        {state === 'expired' && <p className="text-xs text-gray-500 dark:text-gray-400">This preview has expired and cannot be applied. Ask again for a fresh preview.</p>}
+      </div>
+    </div>
   );
 }
 
