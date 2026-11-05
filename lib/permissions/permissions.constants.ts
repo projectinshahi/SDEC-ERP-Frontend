@@ -14,6 +14,7 @@ export const MODULE_PREFIX_MAP: Record<Exclude<ModuleName, 'dashboard'>, string>
   task: 'task.',
   mytasks: 'mytasks.',
   notice: 'notice.',
+  ai: 'ai.',
   role: 'role.',
   bugs: 'bugs.',
   tickets: 'tickets.',
@@ -197,6 +198,18 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         label: 'Download Task Analytics Report',
         description: 'Download the Task Analytics dashboard as a branded PDF report, including the detailed filtered task list',
         module: 'mytasks',
+      },
+    ],
+  },
+  {
+    module: 'ai',
+    label: 'AI Assistant',
+    permissions: [
+      {
+        key: 'ai.assistant.access',
+        label: 'Access AI Assistant',
+        description: "Use the read-only AI Assistant to ask questions about ERP data. Answers only include data from modules this role can already view (HR, Finance, Sales, … are checked separately)",
+        module: 'ai',
       },
     ],
   },

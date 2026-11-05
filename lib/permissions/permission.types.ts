@@ -37,6 +37,8 @@ export type PermissionKey =
   | 'mytasks.chat.send'
   | 'mytasks.dashboard.view'
   | 'mytasks.dashboard.export'
+  // AI Assistant — read-only ERP data assistant (module data still needs each module's own keys)
+  | 'ai.assistant.access'
   // Notice — standalone top-level module
   | 'notice.view'
   | 'notice.create'
@@ -317,7 +319,7 @@ export type PermissionKey =
  * Module names used for sidebar filtering and route protection.
  * 'dashboard' is always accessible and has no permission gating.
  */
-export type ModuleName = 'user' | 'task' | 'mytasks' | 'notice' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr' | 'finance' | 'marketing';
+export type ModuleName = 'user' | 'task' | 'mytasks' | 'notice' | 'ai' | 'role' | 'dashboard' | 'bugs' | 'sprints' | 'blockers' | 'meetings' | 'project' | 'sales' | 'tickets' | 'hr' | 'finance' | 'marketing';
 
 /**
  * A single permission definition with metadata for UI rendering.
