@@ -6,6 +6,10 @@ export interface AiDisplay {
   columns: string[];
   rows: Array<Array<string | number | null>>;
   chartValueIndex?: number;
+  /** bar (default) for breakdowns, line for chronological series, pie for shares of a whole. */
+  chart?: 'bar' | 'line' | 'pie';
+  /** Value columns drawn together (grouped bars / several lines); defaults to [chartValueIndex]. */
+  chartSeries?: number[];
 }
 export interface AiTurn { role: 'user' | 'assistant'; content: string }
 export interface AiAnswer { answer: string; displays: AiDisplay[]; asOf: string }
