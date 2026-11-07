@@ -1,10 +1,11 @@
-import { jsPDF } from 'jspdf';
 import { ApiAppraisal } from './performance.types';
 
 /**
  * Generate a formal computer-generated PDF Appraisal Report.
+ * jspdf is loaded on demand (≈130 KB compressed) — only when a report is downloaded.
  */
-export function generateAppraisalPdf(appraisal: ApiAppraisal) {
+export async function generateAppraisalPdf(appraisal: ApiAppraisal) {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',

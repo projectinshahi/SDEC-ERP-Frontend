@@ -7,7 +7,6 @@ import {
   BdeDashboard, SalesTarget, TargetType, PeriodType, TargetHistoryResponse,
   TargetListResponse, TargetFilters, TargetDetail,
 } from '@/lib/types/salesExecution';
-import { jsPDF } from 'jspdf';
 
 export async function fetchBdeDashboard(ownerId?: number): Promise<BdeDashboard> {
   const qs = ownerId != null ? `?ownerId=${ownerId}` : '';
@@ -84,6 +83,9 @@ export async function exportBdeSummary(type: 'daily' | 'weekly'): Promise<void> 
   const res = await apiClient.get<{ name: string; headers: string[]; rows: (string | number)[][] }>(`/sales/bde/dashboard/export?${p.toString()}`);
   const sheet = res.data;
 
+  // Loaded on demand: this API module is imported by every Sales target/BDE page, which
+  // otherwise all paid for the PDF library on first load.
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',

@@ -1,5 +1,4 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import type { Lead, LeadStage } from '@/lib/types/lead';
 import type { BdePipelineOwner } from '@/lib/types/salesReports';
@@ -112,7 +111,7 @@ export function buildFilterLines(filters: ReportFilters): string[] {
  * Builds the Sales Performance Report jsPDF document and returns it (no download).
  * Split from `exportLeadReport` so the exact render can be exercised headlessly.
  */
-export function buildLeadReportDoc(
+export async function buildLeadReportDoc(
   leads: Lead[],
   stages: LeadStage[],
   filters: ReportFilters,
@@ -123,13 +122,16 @@ export function buildLeadReportDoc(
    *  for Target/Achievement, Forecast, Trend and Insights. Absent → those sections
    *  are skipped (rest of the report is unaffected). */
   report?: SalesPerformanceReport,
-): jsPDF {
+): Promise<jsPDF> {
+  // jspdf (+ the html2canvas/dompurify it drags in, ~130 KB compressed) is loaded on
+  // demand — the Pipeline page must not pay for it until someone downloads a report.
+  const [{ default: JsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
   // ─────────────────────────────────────────────────────────────────────────
   // Founder Sales Control Report — dashboard-style presentation of the SAME
   // filter-aware payload (report) + filtered leads. No metric is recomputed a
   // second way; anything the data can't support renders as N/A (never faked).
   // ─────────────────────────────────────────────────────────────────────────
-  const doc = new jsPDF('p', 'pt', 'a4');
+  const doc = new JsPDF('p', 'pt', 'a4');
   const PW = doc.internal.pageSize.getWidth();
   const PH = doc.internal.pageSize.getHeight();
   const M = 40;
@@ -558,7 +560,7 @@ export async function exportLeadReport(
   bdePipeline?: BdePipelineOwner[],
   report?: SalesPerformanceReport,
 ) {
-  buildLeadReportDoc(leads, stages, filters, bdePipeline, report)
+  (await buildLeadReportDoc(leads, stages, filters, bdePipeline, report))
     .save(`Sales_Leads_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
 }
 

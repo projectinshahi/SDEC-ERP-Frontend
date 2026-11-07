@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
-import ExcelJS from 'exceljs';
 import { useToast } from '@/lib/hooks/useToast';
 
 /**
@@ -174,6 +173,8 @@ export function ImportBacklogModal({ isOpen, onClose, onImport, isImporting }: I
             setParsedData(null);
             return;
           }
+          // exceljs (≈250 KB compressed) is loaded on demand, only when an .xlsx is parsed.
+          const ExcelJS = (await import('exceljs')).default;
           const workbook = new ExcelJS.Workbook();
           await workbook.xlsx.load(buffer);
           const worksheet = workbook.worksheets[0];

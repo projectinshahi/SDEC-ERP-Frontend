@@ -88,7 +88,8 @@ export function UnreadIndicatorsProvider({ children }: { children: ReactNode }) 
     }
 
     loadMyTasks();
-    loadNotice();
+    // The Notice count is loaded by the [canSeeNotice, user] effect below (it also runs on
+    // mount); loading it here as well issued the same request twice on every page.
 
     if (!socketRef.current) {
       const socket = io(SOCKET_URL, { auth: { token } });

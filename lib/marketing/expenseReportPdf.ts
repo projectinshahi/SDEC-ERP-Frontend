@@ -1,5 +1,4 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type jsPDF from 'jspdf';
 import { formatINR } from '@/lib/utils/currency';
 import type { ExpenseReport } from '@/lib/api/marketingFinance';
 
@@ -20,8 +19,10 @@ const M = 40;                              // page margin
 const C = { primary: [15, 118, 110] as [number, number, number],
             slate: [71, 85, 105] as [number, number, number] };
 
-export function buildExpenseReportPdf(report: ExpenseReport): jsPDF {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+export async function buildExpenseReportPdf(report: ExpenseReport): Promise<jsPDF> {
+  // Loaded on demand (≈130 KB compressed) — only when a report is downloaded.
+  const [{ default: JsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+  const doc = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth() - M * 2;
 
   doc.setFont('helvetica', 'bold');
@@ -102,9 +103,9 @@ export function buildExpenseReportPdf(report: ExpenseReport): jsPDF {
   return doc;
 }
 
-export function downloadExpenseReportPdf(report: ExpenseReport): void {
+export async function downloadExpenseReportPdf(report: ExpenseReport): Promise<void> {
   const safe = report.client.name.replace(/[^a-zA-Z0-9-_]+/g, '-').toLowerCase();
-  buildExpenseReportPdf(report).save(
+  (await buildExpenseReportPdf(report)).save(
     `expenses-${safe}-${report.range.from ?? 'all'}-${report.range.to ?? 'all'}.pdf`,
   );
 }

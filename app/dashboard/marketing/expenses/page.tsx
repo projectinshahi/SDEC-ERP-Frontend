@@ -363,7 +363,7 @@ export default function MarketingExpensesPage() {
         // The PDF is rendered from the SERVER's report payload — the same object
         // the Excel endpoint serialises — so the two files cannot disagree.
         const report = await fetchExpenseReport(parsed.clientId, parsed.from || undefined, parsed.to || undefined);
-        downloadExpenseReportPdf(report);
+        await downloadExpenseReportPdf(report);
         if (!report.count) toastOk('Report generated — no approved expenses in that period.');
       }
       setExportOpen(false);

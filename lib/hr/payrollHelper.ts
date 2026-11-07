@@ -1,13 +1,15 @@
-import { jsPDF } from 'jspdf';
-import ExcelJS from 'exceljs';
 import { PayrollRecord } from './payroll.types';
 import { amount, round2, dayFmt } from './payrollFormat';
+
+// jspdf / exceljs are loaded on demand inside each export function: together they are
+// ~380 KB compressed and were otherwise part of the Payroll pages' first-load JavaScript.
 
 /**
  * Generate a formal computer-generated PDF Payslip with the full snapshot
  * breakdown. Legacy records (no attendance snapshot) fall back to the simple view.
  */
-export function generatePayslipPdf(record: PayrollRecord) {
+export async function generatePayslipPdf(record: PayrollRecord) {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const isLegacy = record.officeWorkingDays <= 0;
 
@@ -173,6 +175,7 @@ export function exportToCsv(records: PayrollRecord[]) {
 /** Export records as Excel via exceljs. */
 export async function exportToExcel(records: PayrollRecord[]) {
   if (records.length === 0) return;
+  const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Payroll List');
   worksheet.columns = FULL_COLUMNS.map((c) => ({ header: c.header, key: c.header, width: 16 }));
@@ -194,8 +197,9 @@ export async function exportToExcel(records: PayrollRecord[]) {
 }
 
 /** Export a compact tabular PDF report (high-value columns; full detail lives in payslips/Excel). */
-export function exportToPdf(records: PayrollRecord[]) {
+export async function exportToPdf(records: PayrollRecord[]) {
   if (records.length === 0) return;
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
   doc.setFont('helvetica', 'bold');
