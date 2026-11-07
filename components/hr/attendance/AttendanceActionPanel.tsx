@@ -57,6 +57,9 @@ interface AttendanceFormPanelProps {
   allRecords: ApiAttendanceRecord[];
   /** Pre-fill form with this existing record (edit mode). */
   editRecord?: ApiAttendanceRecord | null;
+  /** New-entry mode: start on this employee / date instead of the first employee / today. */
+  initialEmployeeId?: number | null;
+  initialDate?: string | null;
   isSaving: boolean;
   saveError: string | null;
   successMsg: string | null;
@@ -125,14 +128,16 @@ export function AttendanceFormPanel({
   employees,
   allRecords,
   editRecord,
+  initialEmployeeId,
+  initialDate,
   isSaving,
   saveError,
   successMsg,
   onSave,
   inModal = false,
 }: AttendanceFormPanelProps) {
-  const [employeeId, setEmployeeId] = useState<number | null>(employees[0]?.id ?? null);
-  const [date, setDate] = useState(TODAY);
+  const [employeeId, setEmployeeId] = useState<number | null>(initialEmployeeId ?? employees[0]?.id ?? null);
+  const [date, setDate] = useState(initialDate || TODAY);
   const [checkIn, setCheckIn] = useState('');
   const [lunchOut, setLunchOut] = useState('');
   const [lunchIn, setLunchIn] = useState('');
@@ -142,7 +147,9 @@ export function AttendanceFormPanel({
 
   // Configured scheduled lunch (org-level setting). While it is still loading a brand-new
   // entry is NOT pre-filled yet (see below), so the fallbacks only apply if the load fails.
-  const { settings: attendanceSettings, loading: settingsLoading } = useAttendanceSettings();
+  // Revalidated once per opened form (one light request) so a change saved by another HR
+  // session is picked up without a page reload; the cached value shows meanwhile.
+  const { settings: attendanceSettings, loading: settingsLoading } = useAttendanceSettings({ revalidate: true });
   const defaultLunchOut = attendanceSettings?.lunch_start_time || DEFAULT_OFFICE_TIMES.lunchOut;
   const defaultLunchIn = attendanceSettings?.lunch_end_time || DEFAULT_OFFICE_TIMES.lunchIn;
 

@@ -13,6 +13,8 @@ interface AttendanceEntryModalProps {
   allRecords: ApiAttendanceRecord[];
   /** When set, the form pre-fills with this record's data (edit mode). */
   editRecord: ApiAttendanceRecord | null;
+  /** New-entry mode only: the employee + date to start on (per-row "Add Attendance"). */
+  preset?: { employeeId: number; date: string } | null;
   isSaving: boolean;
   saveError: string | null;
   successMsg: string | null;
@@ -25,6 +27,7 @@ export function AttendanceEntryModal({
   employees,
   allRecords,
   editRecord,
+  preset,
   isSaving,
   saveError,
   successMsg,
@@ -99,6 +102,8 @@ export function AttendanceEntryModal({
             employees={employees}
             allRecords={allRecords}
             editRecord={editRecord}
+            initialEmployeeId={preset?.employeeId}
+            initialDate={preset?.date}
             isSaving={isSaving}
             saveError={saveError}
             successMsg={successMsg}

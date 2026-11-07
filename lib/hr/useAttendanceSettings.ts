@@ -31,7 +31,8 @@ export function primeAttendanceSettings(s: ApiAttendanceSettings) {
  * Hook to globally fetch and cache attendance settings (status colours + lunch
  * timings) so components can apply dynamic styling and thresholds.
  */
-export function useAttendanceSettings() {
+export function useAttendanceSettings(opts?: { revalidate?: boolean }) {
+  const revalidate = !!opts?.revalidate;
   const [settings, setSettings] = useState<ApiAttendanceSettings | null>(cache);
   const [loading, setLoading] = useState(!cache);
 
@@ -39,7 +40,9 @@ export function useAttendanceSettings() {
     let cancelled = false;
     const sync = () => { if (!cancelled) { setSettings(cache); setLoading(false); } };
     listeners.add(sync);
-    load().then(sync).catch((e) => {
+    // `revalidate`: refetch once on mount even when cached (forms that must see a change
+    // saved elsewhere). Other consumers keep sharing the single cached value.
+    load(revalidate).then(sync).catch((e) => {
       console.error('Failed to load attendance settings', e);
       if (!cancelled) setLoading(false);
     });
@@ -52,7 +55,7 @@ export function useAttendanceSettings() {
       listeners.delete(sync);
       window.removeEventListener('attendance-settings-updated', onUpdate);
     };
-  }, []);
+  }, [revalidate]);
 
   return { settings, loading };
 }
