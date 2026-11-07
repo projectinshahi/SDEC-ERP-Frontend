@@ -9,6 +9,7 @@ import { Card, CardHeader, CardBody } from '@/components/Card';
 import { ApiEmployee } from '@/lib/api/hr';
 import { ApiAttendanceRecord, attendanceYmd } from '@/lib/api/hr-attendance';
 import { AttendanceTimePicker } from './AttendanceTimePicker';
+import { useAttendanceSettings } from '@/lib/hr/useAttendanceSettings';
 
 /* ── Time format helpers ──────────────────────────────────────────────────── */
 
@@ -56,6 +57,9 @@ interface AttendanceFormPanelProps {
   allRecords: ApiAttendanceRecord[];
   /** Pre-fill form with this existing record (edit mode). */
   editRecord?: ApiAttendanceRecord | null;
+  /** New-entry mode: start on this employee / date instead of the first employee / today. */
+  initialEmployeeId?: number | null;
+  initialDate?: string | null;
   isSaving: boolean;
   saveError: string | null;
   successMsg: string | null;
@@ -107,6 +111,8 @@ const TODAY = (() => {
  * Standard office schedule, in the 24h "HH:MM" form-state format. Pre-filled
  * ONLY when ADDING a brand-new attendance entry (no existing record for the
  * employee+date); every field stays fully editable. Never applied in edit mode.
+ * The lunch pair comes from HR Settings → Attendance Timing Configuration
+ * (lunch_start_time / lunch_end_time); the constants below are the fallbacks while it loads.
  * to12h() later converts these to "10:00 AM" / "01:00 PM" / "02:00 PM" / "05:30 PM".
  */
 const DEFAULT_OFFICE_TIMES = {
@@ -122,20 +128,30 @@ export function AttendanceFormPanel({
   employees,
   allRecords,
   editRecord,
+  initialEmployeeId,
+  initialDate,
   isSaving,
   saveError,
   successMsg,
   onSave,
   inModal = false,
 }: AttendanceFormPanelProps) {
-  const [employeeId, setEmployeeId] = useState<number | null>(employees[0]?.id ?? null);
-  const [date, setDate] = useState(TODAY);
+  const [employeeId, setEmployeeId] = useState<number | null>(initialEmployeeId ?? employees[0]?.id ?? null);
+  const [date, setDate] = useState(initialDate || TODAY);
   const [checkIn, setCheckIn] = useState('');
   const [lunchOut, setLunchOut] = useState('');
   const [lunchIn, setLunchIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [isFullDayLeave, setIsFullDayLeave] = useState(false);
   const [notes, setNotes] = useState('');
+
+  // Configured scheduled lunch (org-level setting). While it is still loading a brand-new
+  // entry is NOT pre-filled yet (see below), so the fallbacks only apply if the load fails.
+  // Revalidated once per opened form (one light request) so a change saved by another HR
+  // session is picked up without a page reload; the cached value shows meanwhile.
+  const { settings: attendanceSettings, loading: settingsLoading } = useAttendanceSettings({ revalidate: true });
+  const defaultLunchOut = attendanceSettings?.lunch_start_time || DEFAULT_OFFICE_TIMES.lunchOut;
+  const defaultLunchIn = attendanceSettings?.lunch_end_time || DEFAULT_OFFICE_TIMES.lunchIn;
 
   const setters = { checkIn: setCheckIn, lunchOut: setLunchOut, lunchIn: setLunchIn, checkOut: setCheckOut };
   const values = { checkIn, lunchOut, lunchIn, checkOut };
@@ -183,15 +199,17 @@ export function AttendanceFormPanel({
       setIsFullDayLeave(existing.leave_type === 'full_day');
       setNotes(existing.notes ?? '');
     } else {
-      // Brand-new entry → pre-fill the standard office schedule (editable).
+      // Brand-new entry → pre-fill the standard office schedule (editable). Wait for the
+      // configured lunch timings so the form never flashes (or saves) the fallback pair.
+      if (settingsLoading) return;
       setCheckIn(DEFAULT_OFFICE_TIMES.checkIn);
-      setLunchOut(DEFAULT_OFFICE_TIMES.lunchOut);
-      setLunchIn(DEFAULT_OFFICE_TIMES.lunchIn);
+      setLunchOut(defaultLunchOut);
+      setLunchIn(defaultLunchIn);
       setCheckOut(DEFAULT_OFFICE_TIMES.checkOut);
       setIsFullDayLeave(false);
       setNotes('');
     }
-  }, [employeeId, date, allRecords, editRecord]);
+  }, [employeeId, date, allRecords, editRecord, defaultLunchOut, defaultLunchIn, settingsLoading]);
 
   /* Seed first employee once list loads */
   useEffect(() => {

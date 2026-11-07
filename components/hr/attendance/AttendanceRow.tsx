@@ -4,6 +4,7 @@ import React from 'react';
 import { Clock } from 'lucide-react';
 import { AttendanceRecord } from '@/lib/hr/attendance.types';
 import { attendanceBadges } from '@/lib/hr/attendanceStatus';
+import { useAttendanceSettings } from '@/lib/hr/useAttendanceSettings';
 import { AttendanceStatusBadge } from './AttendanceStatusBadge';
 
 // ── Internal punch time cell ─────────────────────────────────────────────────
@@ -35,6 +36,7 @@ interface AttendanceRowProps {
 }
 
 export function AttendanceRow({ record, isSelected, onSelect, actionMenu }: AttendanceRowProps) {
+  const { settings } = useAttendanceSettings(); // cached; supplies the configured lunch-return threshold
   const initials = record.name
     .split(' ')
     .slice(0, 2)
@@ -115,7 +117,7 @@ export function AttendanceRow({ record, isSelected, onSelect, actionMenu }: Atte
           morning lateness and/or late-after-lunch (both when both apply). */}
       <td className="py-4 px-4">
         <div className="flex flex-wrap items-center gap-1.5">
-          {attendanceBadges(record).map((b, i) => (
+          {attendanceBadges(record, settings?.lunch_end_time).map((b, i) => (
             <AttendanceStatusBadge key={i} status={b.status} label={b.label} />
           ))}
         </div>

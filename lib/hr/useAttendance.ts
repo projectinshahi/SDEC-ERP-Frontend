@@ -246,12 +246,17 @@ export function useAttendance() {
   }, [employees, adaptedRecords, selectedDate, leaveByEmployee]);
 
   /* ── Modal helpers ────────────────────────────────────────────────────────── */
-  const openEntryModal = () => {
+  /** Employee + date a NEW entry should start on (the per-row "Add Attendance" action). */
+  const [entryPreset, setEntryPreset] = useState<{ employeeId: number; date: string } | null>(null);
+
+  const openEntryModal = (preset?: { employeeId: number; date: string }) => {
     setEditRecord(null);
+    setEntryPreset(preset ?? null);
     setIsEntryModalOpen(true);
   };
 
   const openEditModal = (record: ApiAttendanceRecord) => {
+    setEntryPreset(null);
     setEditRecord(record);
     setIsEntryModalOpen(true);
   };
@@ -259,6 +264,7 @@ export function useAttendance() {
   const closeEntryModal = () => {
     setIsEntryModalOpen(false);
     setEditRecord(null);
+    setEntryPreset(null);
     setSaveError(null);
     setSuccessMsg(null);
   };
@@ -374,7 +380,7 @@ export function useAttendance() {
     /* form save */
     isSaving, saveError, successMsg, handleFormSave,
     /* modal */
-    isEntryModalOpen, editRecord, openEntryModal, openEditModal, closeEntryModal,
+    isEntryModalOpen, editRecord, entryPreset, openEntryModal, openEditModal, closeEntryModal,
     /* date / ui */
     selectedDate, setSelectedDate,
     selectedIds,

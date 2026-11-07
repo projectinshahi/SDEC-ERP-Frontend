@@ -33,35 +33,20 @@ export default function AttendancePage() {
     filtered, paginated, ITEMS_PER_PAGE,
     toggleSelectRow, toggleSelectAll, handleRemove, handleBulkRemove,
     /* modal */
-    isEntryModalOpen, editRecord, openEntryModal, openEditModal, closeEntryModal,
+    isEntryModalOpen, editRecord, entryPreset, openEntryModal, openEditModal, closeEntryModal,
     refresh,
   } = useAttendance();
 
   const [tab, setTab] = useState<AttendanceTab>('daily');
 
-  /* ── Edit handler — finds the raw record by ID or constructs a dummy one for virtual rows ─ */
+  /* ── Edit handler — real rows open the record for editing; a virtual (no record yet)
+     row opens a NEW entry preset to that employee + selected date, so the form applies
+     the configured defaults exactly like the header "Attendance Entry" button. (It used
+     to pass a dummy all-null record, which the form treated as an edit → empty fields.) */
   const handleEdit = (record: AttendanceRecord) => {
     if (record.id.startsWith('virtual-')) {
       const empId = Number(record.id.replace('virtual-', ''));
-      const emp = employees.find(e => e.id === empId);
-      if (emp) {
-        const dummy = {
-          id: 0,
-          employee_id: emp.id,
-          employee_code: emp.employee_code,
-          name: emp.name,
-          department: emp.department,
-          designation: emp.designation,
-          date: selectedDate,
-          check_in: null,
-          lunch_out: null,
-          lunch_in: null,
-          check_out: null,
-          work_hours: null,
-          status: 'absent',
-        };
-        openEditModal(dummy);
-      }
+      if (employees.some(e => e.id === empId)) openEntryModal({ employeeId: empId, date: selectedDate });
       return;
     }
 
@@ -155,7 +140,7 @@ export default function AttendancePage() {
         <AttendanceHeader
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
-          onOpenEntry={openEntryModal}
+          onOpenEntry={() => openEntryModal()}
           onExport={handleExport}
         />
 
@@ -197,6 +182,7 @@ export default function AttendancePage() {
           employees={employees}
           allRecords={rawRecords}
           editRecord={editRecord}
+          preset={entryPreset}
           isSaving={isSaving}
           saveError={saveError}
           successMsg={successMsg}

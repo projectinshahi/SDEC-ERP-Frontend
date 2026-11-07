@@ -27,7 +27,8 @@ export const NotificationBell = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
 
     if (user && token) {
-      loadNotifications();
+      // The list itself is loaded by the [filter, user] effect below (mount + filter
+      // change) — loading it here too issued the same request twice on every page.
 
       // Setup socket connection
       if (!socketRef.current) {

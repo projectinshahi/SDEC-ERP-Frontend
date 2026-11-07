@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import ExcelJS from 'exceljs';
 import { Upload, FileText, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, Download } from 'lucide-react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
@@ -41,6 +40,9 @@ const TEMPLATE_HEADERS = REQUIRED_COLUMNS.map((c) => c.label);
  * placeholder when unknown) so imported leads default to that user.
  */
 async function downloadSampleTemplate(ownerName?: string) {
+  // exceljs (≈250 KB compressed) is loaded on demand — the Pipeline page, which mounts
+  // this modal, must not pay for it on first load.
+  const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Leads');
 

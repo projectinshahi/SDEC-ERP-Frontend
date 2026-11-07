@@ -96,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // in sync WITHOUT a re-login (a role-permission change takes effect on the next
   // mount / tab focus). Fail-safe: on ANY error keep the cached permissions — the
   // backend independently enforces permissions on every request regardless.
+  const sameUser = (a: AuthUser | null, b: AuthUser): boolean =>
+    !!a && a.id === b.id && a.name === b.name && a.email === b.email && a.role === b.role
+    && a.roleName === b.roleName && (a.mustChangePassword ?? false) === (b.mustChangePassword ?? false)
+    && (a.permissions ?? []).join('|') === (b.permissions ?? []).join('|');
+
   const refreshUser = useCallback(async () => {
     if (typeof window === 'undefined') return;
     const token = localStorage.getItem('authToken');
@@ -122,7 +127,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mustChangePassword: fresh.mustChangePassword ?? false,
       };
       localStorage.setItem('user', JSON.stringify(merged));
-      setState({ user: merged, isAuthenticated: true, isLoading: false });
+      // Publish a NEW user object only when something actually changed. Every consumer
+      // keyed on `user` (notification bell, unread counts, project list, their sockets)
+      // re-runs its effect on a new reference, so an unchanged refresh used to re-fire
+      // the whole dashboard shell's requests and reconnect its sockets on every page.
+      setState((prev) => (prev.isAuthenticated && !prev.isLoading && sameUser(prev.user, merged)
+        ? prev
+        : { user: merged, isAuthenticated: true, isLoading: false }));
     } catch (err) {
       // Fail CLOSED on a revoked/forbidden session: a 401/403 from /auth/me means
       // the token is no longer valid for the current user, so clear the cached

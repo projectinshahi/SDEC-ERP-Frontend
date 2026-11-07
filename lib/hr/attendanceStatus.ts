@@ -10,7 +10,14 @@
 import { AttendanceRecord, AttendanceStatus } from './attendance.types';
 
 const OFFICE_CHECKIN_MINUTES = 10 * 60; // 10:00 AM
-const LUNCH_RETURN_MINUTES = 14 * 60;   // 02:00 PM
+/** Lunch return threshold is CONFIGURED (HR Settings → Attendance Timing); this is only the fallback. */
+const DEFAULT_LUNCH_END = '14:00';       // 02:00 PM
+
+/** 24h "HH:mm" (settings format) → minutes since midnight; falls back to the default when malformed. */
+function hhmmToMinutes(hhmm: string | null | undefined): number {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm ?? '') ?? /^(\d{1,2}):(\d{2})$/.exec(DEFAULT_LUNCH_END)!;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
 
 /** "10:11 AM" | "02:05 PM" → minutes since midnight, or null if unparseable. */
 function timeToMinutes(t: string | null | undefined): number | null {
@@ -41,11 +48,14 @@ export function formatDuration(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-/** Minutes late past the 02:00 PM lunch return (0 when on-time or missing). */
-export function afterLunchLateMinutes(lunchIn: string | null | undefined): number {
+/** Minutes late past the configured lunch return (default 02:00 PM); 0 when on-time or missing. */
+export function afterLunchLateMinutes(
+  lunchIn: string | null | undefined,
+  lunchEnd: string | null | undefined = DEFAULT_LUNCH_END,
+): number {
   const mins = timeToMinutes(lunchIn);
   if (mins == null) return 0;
-  return Math.max(0, mins - LUNCH_RETURN_MINUTES);
+  return Math.max(0, mins - hhmmToMinutes(lunchEnd));
 }
 
 export interface AttendanceBadge {
@@ -68,7 +78,7 @@ export interface AttendanceBadge {
  * Presentation-only: the underlying `record.status` (filters/sorting/summaries)
  * is untouched.
  */
-export function attendanceBadges(record: AttendanceRecord): AttendanceBadge[] {
+export function attendanceBadges(record: AttendanceRecord, lunchEnd?: string | null): AttendanceBadge[] {
   // Full-day leave (and generic leave statuses) → single badge, never late.
   if (record.status === 'Full Day Leave' || record.status === 'On Leave') {
     return [{ status: record.status }];
@@ -80,7 +90,7 @@ export function attendanceBadges(record: AttendanceRecord): AttendanceBadge[] {
     if (record.leaveHalf === 'first_half') {
       // Morning is leave → suppress Morning Late; evaluate afternoon arrival.
       badges.push({ status: 'Half Day Leave', label: 'First Half Leave' });
-      const afterLunchMins = afterLunchLateMinutes(record.lunchIn);
+      const afterLunchMins = afterLunchLateMinutes(record.lunchIn, lunchEnd);
       if (afterLunchMins > 0) {
         badges.push({ status: 'Late After Lunch', label: `After Lunch Late ${formatDuration(afterLunchMins)}` });
       }
@@ -111,7 +121,7 @@ export function attendanceBadges(record: AttendanceRecord): AttendanceBadge[] {
     }
     // Afternoon session: check for late return from lunch
     if (record.lunchIn && !record.morningIn) {
-      const afterLunchMins = afterLunchLateMinutes(record.lunchIn);
+      const afterLunchMins = afterLunchLateMinutes(record.lunchIn, lunchEnd);
       if (afterLunchMins > 0) {
         badges.push({ status: 'Late After Lunch', label: `After Lunch Late ${formatDuration(afterLunchMins)}` });
       }
@@ -127,7 +137,7 @@ export function attendanceBadges(record: AttendanceRecord): AttendanceBadge[] {
   if (morningLateMins > 0) {
     badges.push({ status: 'Late', label: `Morning Late ${formatDuration(morningLateMins)}` });
   }
-  const afterLunchMins = afterLunchLateMinutes(record.lunchIn);
+  const afterLunchMins = afterLunchLateMinutes(record.lunchIn, lunchEnd);
   if (afterLunchMins > 0) {
     badges.push({ status: 'Late After Lunch', label: `After Lunch Late ${formatDuration(afterLunchMins)}` });
   }
